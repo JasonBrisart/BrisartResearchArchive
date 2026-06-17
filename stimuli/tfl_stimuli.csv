@@ -1,0 +1,11 @@
+stimulus_id,cue,ambiguous_text,interpretation_a,interpretation_b
+S001,context_person,"Jordan saw Alex with the binoculars.","Jordan used the binoculars.","Alex had the binoculars."
+S002,context_message,"Taylor said Morgan's reply was cold.","Morgan's reply was emotionally distant.","Morgan's reply referred to low temperature."
+S003,context_room,"Casey noticed the light by the door.","The light fixture was near the door.","Casey noticed illumination coming from near the door."
+S004,context_action,"Riley watched Sam duck under the table.","Sam moved under the table.","Sam avoided something while near the table."
+S005,context_sound,"Avery heard the bat near the window.","A flying animal was near the window.","A sports bat was near the window."
+S006,context_social,"Jamie thought Pat's smile changed the room.","Pat's smile affected the social atmosphere.","The room physically changed because of lighting or arrangement."
+S007,context_object,"Drew found the glasses on the desk.","Drew found eyewear.","Drew found drinking glasses."
+S008,context_event,"Quinn said the meeting turned sharp.","The meeting became tense.","The meeting became more precise or focused."
+S009,context_memory,"Rowan remembered the bank clearly.","Rowan remembered a financial bank.","Rowan remembered a river bank."
+S010,context_signal,"Skyler saw the signal fade.","A communication signal weakened.","A gesture or cue became less noticeable."

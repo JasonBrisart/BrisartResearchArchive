@@ -1,0 +1,11 @@
+{
+  "trial_duration_sec": 12,
+  "num_trials": 120,
+  "trials_per_block": 40,
+  "blocks": ["affect", "belief", "contradiction"],
+  "affect_scale": [0, 100],
+  "probe_interval": 4,
+  "delayed_reentry_interval": 6,
+  "random_seed": 2026,
+  "feedback_levels": ["confirmatory", "mildly_contradictory", "strongly_contradictory"]
+}
