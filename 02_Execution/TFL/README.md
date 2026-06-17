@@ -69,8 +69,7 @@ TFL_Baseline/
 ## 4. Requirements
 
 - Python 3.8 or higher  
-- No required external dependencies  
-- Optional: `pandas` for analysis  
+- `pandas` (required to run analyze_tfl.py)
 
 
 ---
