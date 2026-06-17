@@ -13,7 +13,7 @@ The canonical execution systems are maintained on the official Brisart Research 
 All execution-layer implementations are intended to be accessed, cloned, and forked through GitHub.
 
 ---
-a
+
 ## Repository Role
 
 This directory serves as a structural reference within the Brisart Research Archive.
