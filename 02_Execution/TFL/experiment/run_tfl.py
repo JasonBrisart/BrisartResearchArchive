@@ -286,6 +286,8 @@ def run_experiment():
                 "recurrence_source_trial": trial["recurrence_source_trial"]
             })
 
+            out.flush()
+
     print(f"\nExperiment complete. Data saved to: {DATA_FILE}")
 
 if __name__ == "__main__":
