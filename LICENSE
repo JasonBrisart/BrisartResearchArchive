@@ -1,77 +1,37 @@
-# Brisart Research Archive
-## Public Access Terms
+## Usage Model
 
-This repository is part of the Brisart Research Archive.
+Execution systems in this repository are intended to function as **public baseline reference implementations** for evaluation and study within academic environments.
 
-All materials made available here are provided **exclusively for viewing, reading, and evaluative purposes**.
+These systems may be:
 
----
-
-## Permitted Use
-
-The following uses are permitted:
-
-- Viewing and reading materials
-- Non-commercial academic reference and awareness
-- Sharing of unmodified materials where explicitly permitted by their original distribution license (e.g., CC BY-NC-ND), with proper attribution
+- Cloned from this repository
+- Executed locally for evaluation purposes
+- Examined for structural and methodological understanding
+- Referenced in academic and research contexts
 
 ---
 
-## Prohibited Use
+### Usage Boundary
 
-The following uses are strictly prohibited without a valid licensing agreement:
+Use of these systems is subject to the Public Access Terms defined in `LICENSE`.
 
-- Operational, institutional, or production-level implementation of frameworks
-- Integration of materials into research pipelines, systems, or applied environments
-- Development of derivative execution systems, frameworks, or structured implementations
-- Redistribution, republication, or external hosting beyond what is explicitly permitted by the original license
-- Use of materials in any commercial, revenue-generating, or funded research context
+In particular:
 
----
+- Local execution for evaluation and research understanding is permitted
+- Internal exploration and conceptual analysis are permitted
 
-## License Clarification
+However, the following uses are **restricted without formal licensing**:
 
-Some materials within the Brisart Research Archive may also be distributed under Creative Commons licenses (e.g., CC BY-NC-ND).
-
-These licenses allow:
-
-- Viewing
-- Downloading
-- Limited non-commercial sharing of unmodified materials with attribution
-
-However:
-
-> **Operational implementation, institutional deployment, structured execution, and research integration are not granted under public release and require formal licensing.**
+- Operational or institutional deployment
+- Integration into research pipelines or applied systems
+- Development of derivative execution frameworks or structured implementations
+- External redistribution or replication of modified systems
 
 ---
 
-## Important Distinction
+### Licensing Pathway
 
-Public availability of materials in this repository does **not** constitute licensed access to the Brisart Research Archive.
-
-The presence of frameworks or systems in public form does **not** grant rights to:
-
-- Implement
-- Operationalize
-- Reproduce at scale
-- Integrate into institutional research environments
-
----
-
-## Institutional Access
-
-Licensed institutions are provided with:
-
-- Execution-ready framework systems
-- Operational and implementation-level materials
-- Structured documentation for integration into research environments
-- Early-access and non-public framework components
-
----
-
-## Licensing
-
-All operational, institutional, or deployment-level use requires a formal licensing agreement.
+Institutional, operational, or production-level use of these systems requires a formal licensing agreement.
 
 👉 See `ARLA.md` for the Academic Research License Agreement (ARLA)
 
