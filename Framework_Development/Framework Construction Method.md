@@ -196,7 +196,8 @@ The public archive includes:
 - Formal specifications  
 - Behavioral characterizations  
 - Abstract implementation mappings  
-
+- Cross-framework integration details
+  
 This layer is designed to support:
 
 - Academic evaluation  
@@ -212,7 +213,6 @@ Operational use of frameworks requires access to the institutional layer, which 
 - Implementation-ready specifications  
 - Parameterization and calibration logic  
 - Execution configurations  
-- Cross-framework integration details  
 - System-level operational constraints  
 
 This layer is not included in the public archive and is provided under institutional licensing.
