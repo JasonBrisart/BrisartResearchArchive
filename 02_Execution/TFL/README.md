@@ -56,15 +56,15 @@ All extensions must preserve the core structural commitments defined below.
 Repeated exposure to fixed perturbation structures (e.g., identical instructions or fixed timing intervals) may lead to participant adaptation, where perturbations become predictable and are incorporated into ongoing cognitive processing rather than functioning as external disruptions.
 As a result:
 
-perturbation effectiveness may decrease over time
-simulation stability measures may be inflated under repeated exposure
-participants may begin to execute perturbations as procedural routines
+- perturbation effectiveness may decrease over time
+- simulation stability measures may be inflated under repeated exposure
+- participants may begin to execute perturbations as procedural routines
 
 To mitigate this, laboratories may consider:
 
-introducing variability in perturbation timing (e.g., non-fixed intervals)
-applying minimal variation to perturbation instructions (e.g., directional or duration changes)
-limiting repeated exposure to identical perturbation sequences across sessions
+- introducing variability in perturbation timing (e.g., non-fixed intervals)
+- applying minimal variation to perturbation instructions (e.g., directional or duration changes)
+- limiting repeated exposure to identical perturbation sequences across sessions
 
 The current baseline implementation (v2.5) prioritizes controlled, reproducible structure and does not include these extensions by default.
 
