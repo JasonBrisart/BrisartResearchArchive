@@ -28,6 +28,7 @@ This implementation is sufficient to generate data for:
 - simulation persistence
 - ambiguity-driven behavioral bias
 - contradiction-driven updating
+- perturbation-sensitive changes in simulation stability and interpretation persistence
 
 
 ---
@@ -120,6 +121,8 @@ The analysis script provides:
 - probe-based recurrence estimate  
 - delayed reentry summary  
 - basic completion/quality check  
+- perturbation-level switch metrics
+- interpretation stability following perturbation
 
 
 ---
@@ -138,11 +141,13 @@ Each trial consists of:
 - ambiguous stimulus (A/B interpretations)  
 - prediction (simulation selection)  
 - affect-intensity rating (0–100)  
+- optional perturbation step (selected trials)  
+- immediate post-perturbation content probe (selected trials)  
 - behavioral choice (A/B)  
 - reaction time (prediction + behavioral)  
 - feedback (confirmatory or contradictory)  
 - probe (intermittent)  
-- delayed reentry (recurrence condition)  
+- delayed reentry (recurrence condition)
 
 
 ---
@@ -184,7 +189,8 @@ Adjust:
 - probe interval  
 - delayed reentry interval  
 - feedback schedule  
-
+- perturbation_interval
+- perturbation_types
 
 ---
 
@@ -263,7 +269,7 @@ It provides a **runnable baseline**, not a complete experimental system.
 
 ---
 
-### v2.4 — Baseline Completion (Current)
+### v2.4 — Baseline Completion (Reference Implementation)
 - Fixed stimulus system (clean schema, no parsing errors)
 - Fully synchronized experiment, config, stimuli, and analysis layers
 - Verified complete execution pipeline (run → data → analysis)
@@ -272,7 +278,16 @@ It provides a **runnable baseline**, not a complete experimental system.
 
 ---
 
-**Current Version:** Baseline Reference Implementation v2.4  
+#### v2.5 — Embedded Perturbation Integration (Current)
+- Integrated controlled sensory/body perturbation trials into baseline execution
+- Added immediate post-perturbation content probe
+- Added perturbation-specific output fields for stability testing
+- Expanded analysis layer to compute perturbation-specific switch metrics
+- Preserved all prior TFL baseline structural commitments while extending the baseline to test sensitivity to sensory/context variation in simulation stability
+
+---
+
+**Current Version:** Baseline Reference Implementation v2.5  
 Future versions will expand parameter estimation, model evaluation, and integration with physiological data streams.
 
 ---

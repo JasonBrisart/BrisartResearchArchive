@@ -4,13 +4,10 @@ import random
 import time
 from pathlib import Path
 
-
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
-
 DATA_DIR = ROOT_DIR / "data"
 STIM_DIR = ROOT_DIR / "stimuli"
-
 CONFIG_FILE = BASE_DIR / "config.json"
 STIM_FILE = STIM_DIR / "tfl_stimuli.csv"
 DATA_FILE = DATA_DIR / "tfl_output.csv"
@@ -24,40 +21,32 @@ def load_config():
 def load_stimuli():
     if not STIM_FILE.exists():
         raise FileNotFoundError(f"Stimulus file not found: {STIM_FILE}")
-
     with open(STIM_FILE, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         stimuli = list(reader)
-
     if not stimuli:
         raise ValueError("Stimulus file is empty.")
-
     return stimuli
 
 
 def get_valid_choice(prompt, allowed):
     allowed_upper = [x.upper() for x in allowed]
-
     while True:
         response = input(prompt).strip().upper()
-
         if response in allowed_upper:
             return response
-
         print(f"Please enter one of: {', '.join(allowed_upper)}")
 
 
 def get_affect_rating(prompt, min_value=0, max_value=100):
     while True:
         response = input(prompt).strip()
-
         try:
             value = int(response)
             if min_value <= value <= max_value:
                 return value
         except ValueError:
             pass
-
         print(f"Please enter a whole number from {min_value} to {max_value}.")
 
 
@@ -69,25 +58,35 @@ def opposite_choice(choice):
     return ""
 
 
+def make_perturbation_instruction(perturbation_type):
+    instructions = {
+        "head_turn": "Turn your head slowly to one side, then return to center.",
+        "posture_shift": "Change your sitting posture noticeably, then settle into the new posture.",
+        "scene_shift": "Look away from the screen toward a different area of the room for 3 seconds, then return.",
+        "breath_reset": "Take one slow breath in and out before continuing."
+    }
+    return instructions.get(perturbation_type, "Change posture or gaze briefly, then continue.")
+
+
 def make_trials(config, stimuli):
     random.seed(config.get("random_seed", None))
-
     blocks = config["blocks"]
     trials_per_block = config["trials_per_block"]
     probe_interval = config["probe_interval"]
     delayed_reentry_interval = config["delayed_reentry_interval"]
+    perturbation_interval = config.get("perturbation_interval", 0)
+    perturbation_types = config.get(
+        "perturbation_types",
+        ["head_turn", "posture_shift", "scene_shift", "breath_reset"]
+    )
 
     trials = []
     trial_id = 1
-
     for block in blocks:
         for block_trial_num in range(1, trials_per_block + 1):
             stimulus = random.choice(stimuli)
-
             prior = random.choice(["A", "B"])
-
             is_probe = trial_id % probe_interval == 0
-
             delayed_reentry = False
             recurrence_source_trial = ""
 
@@ -99,7 +98,7 @@ def make_trials(config, stimuli):
                     "cue": source_trial["cue"],
                     "ambiguous_text": source_trial["ambiguous_text"],
                     "interpretation_a": source_trial["interpretation_a"],
-                    "interpretation_b": source_trial["interpretation_b"]
+                    "interpretation_b": source_trial["interpretation_b"],
                 }
                 recurrence_source_trial = source_trial["trial_id"]
 
@@ -114,6 +113,13 @@ def make_trials(config, stimuli):
             else:
                 feedback_level = "neutral"
 
+            perturbation_trial = False
+            perturbation_type = ""
+            if perturbation_interval and perturbation_interval > 0:
+                perturbation_trial = (trial_id % perturbation_interval == 0)
+                if perturbation_trial:
+                    perturbation_type = random.choice(perturbation_types)
+
             trials.append({
                 "trial_id": trial_id,
                 "block": block,
@@ -127,11 +133,11 @@ def make_trials(config, stimuli):
                 "feedback_level": feedback_level,
                 "probe_trial": is_probe,
                 "delayed_reentry": delayed_reentry,
-                "recurrence_source_trial": recurrence_source_trial
+                "recurrence_source_trial": recurrence_source_trial,
+                "perturbation_trial": perturbation_trial,
+                "perturbation_type": perturbation_type,
             })
-
             trial_id += 1
-
     return trials
 
 
@@ -139,35 +145,28 @@ def determine_feedback(prediction, feedback_level):
     if feedback_level == "confirmatory":
         correct_answer = prediction
         contradiction = "none"
-
     elif feedback_level == "mildly_contradictory":
         correct_answer = opposite_choice(prediction)
         contradiction = "mild"
-
     elif feedback_level == "strongly_contradictory":
         correct_answer = opposite_choice(prediction)
         contradiction = "strong"
-
     else:
         correct_answer = ""
         contradiction = "none"
-
     return correct_answer, contradiction
 
 
 def show_feedback(feedback_level, prediction, correct_answer):
     if feedback_level == "neutral":
         print("Feedback: No outcome feedback on this trial.")
-
     elif feedback_level == "confirmatory":
         print(f"Feedback: Confirmed. Interpretation {prediction} was supported.")
-
     elif feedback_level == "mildly_contradictory":
         print(
             f"Feedback: Mild contradiction. Your prediction was {prediction}, "
             f"but Interpretation {correct_answer} is somewhat better supported."
         )
-
     elif feedback_level == "strongly_contradictory":
         print(
             f"Feedback: Strong contradiction. Your prediction was {prediction}, "
@@ -178,9 +177,7 @@ def show_feedback(feedback_level, prediction, correct_answer):
 def run_experiment():
     config = load_config()
     stimuli = load_stimuli()
-
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-
     trials = make_trials(config, stimuli)
 
     fieldnames = [
@@ -204,16 +201,21 @@ def run_experiment():
         "probe_trial",
         "content_probe",
         "delayed_reentry",
-        "recurrence_source_trial"
+        "recurrence_source_trial",
+        "perturbation_trial",
+        "perturbation_type",
+        "post_perturbation_probe",
+        "perturbation_match_prediction",
     ]
 
-    print("\nTFL Baseline Reference Implementation")
-    print("-------------------------------------")
+    print("\nTFL Baseline Reference Implementation v2.5")
+    print("-------------------------------------------")
     print("You will see ambiguous stimuli with two possible interpretations.")
     print("A = Interpretation A")
     print("B = Interpretation B")
     print("Use A or B only for prediction and behavioral choice.")
-    print("Affect rating must be 0–100.\n")
+    print("Affect rating must be 0–100.")
+    print("Some trials include a brief posture/gaze/breath perturbation to test stability.\n")
 
     with open(DATA_FILE, "w", newline="", encoding="utf-8") as out:
         writer = csv.DictWriter(out, fieldnames=fieldnames)
@@ -229,10 +231,8 @@ def run_experiment():
 
             print("\nAmbiguous stimulus:")
             print(trial["ambiguous_text"])
-
             print("\nInterpretation A:")
             print(trial["interpretation_a"])
-
             print("\nInterpretation B:")
             print(trial["interpretation_b"])
 
@@ -242,24 +242,35 @@ def run_experiment():
 
             affect = get_affect_rating("Affect intensity for this prediction (0–100): ")
 
+            post_perturbation_probe = ""
+            perturbation_match_prediction = ""
+            if trial["perturbation_trial"]:
+                print("\nPerturbation step:")
+                print(make_perturbation_instruction(trial["perturbation_type"]))
+                input("Press Enter once completed...")
+                post_perturbation_probe = get_valid_choice(
+                    "Which interpretation is most active immediately after the perturbation? (A/B/U): ",
+                    ["A", "B", "U"],
+                )
+                if post_perturbation_probe in ["A", "B"]:
+                    perturbation_match_prediction = (post_perturbation_probe == prediction)
+
             start = time.time()
             behavioral_choice = get_valid_choice("Final behavioral choice (A/B): ", ["A", "B"])
             behavioral_rt = round(time.time() - start, 4)
 
             correct_answer, contradiction = determine_feedback(
                 prediction,
-                trial["feedback_level"]
+                trial["feedback_level"],
             )
-
             show_feedback(trial["feedback_level"], prediction, correct_answer)
 
             content_probe = ""
-
             if trial["probe_trial"] or trial["delayed_reentry"]:
                 print("\nProbe:")
                 content_probe = get_valid_choice(
                     "Which interpretation is most active in your mind right now? (A/B/U for uncodable): ",
-                    ["A", "B", "U"]
+                    ["A", "B", "U"],
                 )
 
             writer.writerow({
@@ -283,12 +294,16 @@ def run_experiment():
                 "probe_trial": trial["probe_trial"],
                 "content_probe": content_probe,
                 "delayed_reentry": trial["delayed_reentry"],
-                "recurrence_source_trial": trial["recurrence_source_trial"]
+                "recurrence_source_trial": trial["recurrence_source_trial"],
+                "perturbation_trial": trial["perturbation_trial"],
+                "perturbation_type": trial["perturbation_type"],
+                "post_perturbation_probe": post_perturbation_probe,
+                "perturbation_match_prediction": perturbation_match_prediction,
             })
-
             out.flush()
 
     print(f"\nExperiment complete. Data saved to: {DATA_FILE}")
+
 
 if __name__ == "__main__":
     run_experiment()
