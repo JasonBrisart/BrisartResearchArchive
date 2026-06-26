@@ -1,4 +1,4 @@
-Temporal Feedback Loop (TFL) — Baseline Reference Implementation
+## Temporal Feedback Loop (TFL) — Baseline Reference Implementation
 
 This package provides a runnable behavioral baseline implementation of the Temporal Feedback Loop (TFL) framework.
 
