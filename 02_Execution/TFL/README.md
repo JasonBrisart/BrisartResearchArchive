@@ -1,10 +1,14 @@
-## Temporal Feedback Loop (TFL) — Baseline Reference Implementation
+Temporal Feedback Loop (TFL) — Baseline Reference Implementation
 
-This package provides a **runnable behavioral baseline implementation** of the Temporal Feedback Loop (TFL) framework.
+This package provides a runnable behavioral baseline implementation of the Temporal Feedback Loop (TFL) framework.
 
-It is designed as an **editable reference implementation** that enables laboratories to execute a complete session, generate structured output data, and adapt the system to local task materials, equipment, and analysis pipelines.
+It is designed as an editable reference implementation that enables laboratories to execute a complete session, generate structured output data, and adapt the system to local task materials, equipment, and analysis pipelines.
 
-This is not a full laboratory stack. It is a **controlled baseline** that preserves the core structural commitments required to test TFL.
+This is not a full laboratory stack. It is a controlled baseline that preserves the core structural commitments required to test TFL.
+
+This version includes perturbation-based manipulation to support stability and interruption testing within the baseline framework.
+
+In this version, perturbation is integrated as a standard component of execution. Future versions will introduce an optional runtime configuration menu, allowing perturbation and related features to be enabled or disabled as controlled experimental conditions.
 
 
 ---
