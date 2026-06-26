@@ -308,7 +308,7 @@ It provides a **runnable baseline**, not a complete experimental system.
 ---
 
 **Current Version:** Baseline Reference Implementation v2.5  
-Future versions will expand parameter estimation, model evaluation, and integration with physiological data streams.
+Future versions will include an optional runtime configuration menu to support controlled variations in TFL testing conditions.
 
 ---
 
