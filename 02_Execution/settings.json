@@ -1,0 +1,5 @@
+{
+  "check_for_updates_on_startup": true,
+  "ask_before_downloading_updates": true,
+  "download_prompt_enabled": true
+}

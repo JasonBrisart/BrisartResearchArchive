@@ -29,16 +29,18 @@ def print_header():
 def print_menu():
     print("\nRuntime Options")
     print("-" * 80)
+    print()
     print("1. Run Temporal Feedback Loop (TFL)")
-    print("   Launch the interactive TFL execution module.")
+    print("   Launch the interactive TFL runtime module.")
     print()
     print("2. Analyze TFL Output")
     print("   Run the analysis report for the latest TFL output file.")
     print()
     print("3. Check for Updates")
-    print("   Manually check GitHub and download the newest archive ZIP.")
+    print("   Check GitHub for the latest archive package.")
     print()
     print("Q. Quit")
+    print()
 
 
 def get_choice():
@@ -95,9 +97,9 @@ def analyze_tfl():
 
 def check_updates():
     try:
-        from shared.updater import startup_update_check
+        from shared.updater import manual_update_check
 
-        startup_update_check()
+        manual_update_check()
 
     except KeyboardInterrupt:
         print("\nUpdate check interrupted by user.")
