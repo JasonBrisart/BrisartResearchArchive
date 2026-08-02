@@ -62,6 +62,17 @@ class TFLGuiSession:
             parent.withdraw()
             self.parent_root = parent
             self.created_parent_root = True
+
+        # Previously participant_id was a constructor parameter that
+        # nothing ever actually supplied - FrameworkService always
+        # created runners with just `runner_type(self.app)`, so every
+        # row in every CSV had a permanently blank participant_id even
+        # though the engine and schema fully support it. Prompting here
+        # (optional - blank/cancelled is fine) is what actually makes
+        # the field usable.
+        if not self.participant_id:
+            self.participant_id = self._prompt_for_participant_id(parent)
+
         self.win = tk.Toplevel(parent)
         self.win.title("TFL GUI Assay")
         self.win.geometry("980x720")
@@ -91,6 +102,24 @@ class TFLGuiSession:
         self.render()
         if self.app is None:
             parent.mainloop()
+
+    def _prompt_for_participant_id(self, dialog_parent) -> str:
+        """
+        Optional participant ID prompt. Returns "" (not mandatory) if
+        the user cancels, closes the dialog, or leaves it blank - a
+        blank participant_id is a perfectly valid, pre-existing state
+        that the engine and analysis layer already handle correctly.
+        """
+        try:
+            from tkinter import simpledialog
+            entered = simpledialog.askstring(
+                "TFL Participant",
+                "Participant ID (optional - leave blank to skip):",
+                parent=dialog_parent,
+            )
+        except tk.TclError:
+            return ""
+        return str(entered or "").strip()
 
     def render(self) -> None:
         render_trial(self)

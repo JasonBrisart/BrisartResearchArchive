@@ -59,6 +59,12 @@ class LogController:
             return
         try:
             widget.insert("end", message)
+            # Previously missing: trim_text_widget_lines() existed
+            # specifically to cap a Text widget's growth, but nothing on
+            # this path ever called it, so long-running sessions (TFL
+            # autosave logs every 5 trials, framework launches, update
+            # checks, etc.) grew these widgets without bound.
+            trim_text_widget_lines(widget)
             widget.see("end")
         except tk.TclError:
             try:

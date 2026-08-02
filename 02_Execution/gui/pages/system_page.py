@@ -79,8 +79,26 @@ def render(app):
     app.update_box.grid(row=6, column=0, sticky="ew", padx=26, pady=10)
     app.update_box.insert("end", "Update output will appear here.\n")
 
+    # Previously, LogController.log() wrote to an attribute named
+    # "log_box" that was never created anywhere in the app - only
+    # "home_log_box" on the Dashboard actually existed. Since navigating
+    # away from Dashboard destroys that widget, every log message
+    # became invisible (except for a single status-bar line that gets
+    # overwritten by the next message) the moment the user left
+    # Dashboard. This card gives "log_box" a real, persistent home.
     app.add_card(
-        root, 7, "Framework Paths",
+        root, 7, "Activity Log",
+        "Recent application activity: framework launches, autosaves, registry refreshes, and errors.",
+    )
+    app.log_box = tk.Text(
+        root, height=10, bg=COLORS["panel"], fg=COLORS["text"],
+        insertbackground=COLORS["accent"], relief="flat", font=FONT_MONO, wrap="word",
+    )
+    app.log_box.grid(row=8, column=0, sticky="ew", padx=26, pady=(0, 10))
+    app.log_box.insert("end", "Activity log ready.\n")
+
+    app.add_card(
+        root, 9, "Framework Paths",
         (
             "Future location for installed framework discovery, "
             "framework-module paths, private institutional modules, "
@@ -88,7 +106,7 @@ def render(app):
         ),
     )
     app.add_card(
-        root, 8, "ARLA Standards",
+        root, 10, "ARLA Standards",
         (
             "Future location for:\n\n"
             "- ARLA Data Standard\n"
@@ -98,7 +116,7 @@ def render(app):
         ),
     )
     app.add_card(
-        root, 9, "Advanced",
+        root, 11, "Advanced",
         (
             "Future configuration may include framework registry toggles, "
             "private module paths, institutional profile settings, local "

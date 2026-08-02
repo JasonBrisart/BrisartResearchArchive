@@ -4,8 +4,6 @@ Downloads only. Never extracts, installs, or overwrites app files.
 """
 from __future__ import annotations
 
-import contextlib
-import io
 import os
 import re
 import shutil
@@ -74,15 +72,19 @@ def is_remote_newer(remote_version: Any, local_version: Any) -> bool:
     return normalize_version(remote_version) > normalize_version(local_version)
 
 
-def read_local_version() -> str:
+def _default_emit(line: str) -> None:
+    print(line)
+
+
+def read_local_version(emit: Callable[[str], None] = _default_emit) -> str:
     if not LOCAL_VERSION_FILE.is_file():
-        print("Local version metadata was not found. Using 0.0.0.")
+        emit("Local version metadata was not found. Using 0.0.0.")
         return "0.0.0"
     try:
         value = LOCAL_VERSION_FILE.read_text(encoding="utf-8-sig").strip()
         return canonical_version(value)
     except (OSError, UnicodeDecodeError, ValueError) as exc:
-        print(f"Local version metadata is invalid. Using 0.0.0: {exc}")
+        emit(f"Local version metadata is invalid. Using 0.0.0: {exc}")
         return "0.0.0"
 
 
@@ -282,23 +284,23 @@ def copy_update_package(source: Path, destination: Path) -> Path:
 # Download
 # ============================================================
 
-def download_latest_zip(remote_version: Any) -> Path:
+def download_latest_zip(remote_version: Any, emit: Callable[[str], None] = _default_emit) -> Path:
     version = canonical_version(remote_version)
     ensure_updates_directory()
     output_file = update_output_file(version)
     if output_file.exists():
         if existing_update_is_valid(output_file):
-            print("Update already downloaded:")
-            print(output_file)
+            emit("Update already downloaded:")
+            emit(str(output_file))
             return output_file
-        print("Existing update file is invalid and will be replaced:")
-        print(output_file)
+        emit("Existing update file is invalid and will be replaced:")
+        emit(str(output_file))
         remove_file_safely(output_file)
 
     request = build_request(REMOTE_ZIP_URL, "application/zip,application/octet-stream")
-    print("Downloading newest GitHub version...")
-    print(f"Source: {REMOTE_ZIP_URL}")
-    print(f"Destination: {output_file}")
+    emit("Downloading newest GitHub version...")
+    emit(f"Source: {REMOTE_ZIP_URL}")
+    emit(f"Destination: {output_file}")
 
     temporary_path: Path | None = None
     total_bytes = 0
@@ -344,9 +346,9 @@ def download_latest_zip(remote_version: Any) -> Path:
         if temporary_path is not None:
             remove_file_safely(temporary_path)
         raise
-    print("Download complete.")
-    print(f"Bytes downloaded: {total_bytes}")
-    print(f"Saved to: {output_file}")
+    emit("Download complete.")
+    emit(f"Bytes downloaded: {total_bytes}")
+    emit(f"Saved to: {output_file}")
     return output_file
 
 
@@ -371,69 +373,82 @@ def build_update_result(
 # Service (orchestration)
 # ============================================================
 
-def startup_update_check() -> dict[str, Any]:
-    print()
-    print("Checking for updates...")
-    local_version = read_local_version()
+def startup_update_check(emit: Callable[[str], None] = _default_emit) -> dict[str, Any]:
+    """
+    Run one update check.
+
+    `emit` receives every human-readable status line, in order. The
+    default (print to real stdout) is exactly the previous behavior for
+    direct/CLI callers. run_update_check() (the GUI-facing wrapper)
+    passes a thread-safe collector instead of relying on
+    contextlib.redirect_stdout - which swaps sys.stdout process-wide,
+    not per-thread, so a background update-check thread using it could
+    silently swallow print() output from completely unrelated code
+    running on the main thread or any other thread at the same time,
+    and could corrupt the report shown to the user with unrelated text.
+    """
+    emit("")
+    emit("Checking for updates...")
+    local_version = read_local_version(emit)
     try:
         cleanup_partial_downloads()
         remote_version = fetch_remote_version()
-        print(f"Local Version:  {local_version}")
-        print(f"GitHub Version: {remote_version}")
-        print()
-        print("Remote version source:")
-        print(REMOTE_VERSION_URL)
-        print()
-        print("Local version file:")
-        print(LOCAL_VERSION_FILE)
-        print()
-        print("Update cache directory:")
-        print(UPDATES_DIR)
+        emit(f"Local Version:  {local_version}")
+        emit(f"GitHub Version: {remote_version}")
+        emit("")
+        emit("Remote version source:")
+        emit(REMOTE_VERSION_URL)
+        emit("")
+        emit("Local version file:")
+        emit(str(LOCAL_VERSION_FILE))
+        emit("")
+        emit("Update cache directory:")
+        emit(str(UPDATES_DIR))
         if is_remote_newer(remote_version, local_version):
-            print()
-            print("Update found.")
-            downloaded_file = download_latest_zip(remote_version)
-            print()
-            print("Update package downloaded.")
-            print(downloaded_file)
-            print()
-            print("Install/apply remains manual.")
+            emit("")
+            emit("Update found.")
+            downloaded_file = download_latest_zip(remote_version, emit)
+            emit("")
+            emit("Update package downloaded.")
+            emit(str(downloaded_file))
+            emit("")
+            emit("Install/apply remains manual.")
             return build_update_result(
                 status="downloaded", local_version=local_version, remote_version=remote_version,
                 downloaded_file=downloaded_file,
                 message="A newer update package was downloaded. Installation remains manual.",
             )
-        print()
+        emit("")
         if normalize_version(remote_version) == normalize_version(local_version):
-            print("No update found. The installed version is current.")
+            emit("No update found. The installed version is current.")
             status = "current"
             message = "The installed version matches the remote version."
         else:
-            print("No update downloaded. The local version is newer than the remote version.")
+            emit("No update downloaded. The local version is newer than the remote version.")
             status = "local_newer"
             message = "The local version is newer than the remote version."
         return build_update_result(status=status, local_version=local_version, remote_version=remote_version, message=message)
     except urllib.error.HTTPError as exc:
-        print()
-        print("Update check failed.")
-        print(f"HTTP Error: {exc.code}")
-        print(f"URL: {exc.url}")
-        print("Verify the repository name, branch, and remote version path.")
+        emit("")
+        emit("Update check failed.")
+        emit(f"HTTP Error: {exc.code}")
+        emit(f"URL: {exc.url}")
+        emit("Verify the repository name, branch, and remote version path.")
         return build_update_result(status="http_error", local_version=local_version, message=f"HTTP Error {exc.code}: {exc.reason}")
     except urllib.error.URLError as exc:
-        print()
-        print("Update check failed.")
-        print(f"Network error: {exc.reason}")
+        emit("")
+        emit("Update check failed.")
+        emit(f"Network error: {exc.reason}")
         return build_update_result(status="network_error", local_version=local_version, message=str(exc.reason))
     except (OSError, UnicodeDecodeError, ValueError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
-        print()
-        print("Update check failed.")
-        print(f"{type(exc).__name__}: {exc}")
+        emit("")
+        emit("Update check failed.")
+        emit(f"{type(exc).__name__}: {exc}")
         return build_update_result(status="validation_error", local_version=local_version, message=f"{type(exc).__name__}: {exc}")
     except Exception as exc:
-        print()
-        print("Update check failed unexpectedly.")
-        print(f"{type(exc).__name__}: {exc}")
+        emit("")
+        emit("Update check failed unexpectedly.")
+        emit(f"{type(exc).__name__}: {exc}")
         return build_update_result(status="unexpected_error", local_version=local_version, message=f"{type(exc).__name__}: {exc}")
 
 
@@ -551,13 +566,33 @@ def format_update_result(result: Any, captured_output: str) -> str:
 
 
 def run_update_check() -> str:
-    output_buffer = io.StringIO()
+    """
+    GUI-facing entry point, safe to call from a background thread.
+
+    Previously this used contextlib.redirect_stdout(output_buffer)
+    around startup_update_check(). redirect_stdout swaps sys.stdout for
+    the whole process, not just the calling thread - so while an update
+    check ran on its background thread, any *other* thread (including
+    the main GUI thread) calling print() anywhere else in the app would
+    have its output silently captured into this buffer instead of the
+    real console, and could corrupt the report text shown to the user
+    with unrelated content. Collecting lines via a plain list passed as
+    the `emit` callback has the exact same effect for this call's own
+    output but is fully thread-safe, since it never touches the shared
+    sys.stdout at all.
+    """
+    collected_lines: list[str] = []
+
+    def _collect_and_print(line: str) -> None:
+        collected_lines.append(line)
+        print(line)
+
     try:
-        with contextlib.redirect_stdout(output_buffer):
-            result = startup_update_check()
-        return format_update_result(result=result, captured_output=output_buffer.getvalue())
+        result = startup_update_check(_collect_and_print)
+        captured_output = "\n".join(collected_lines).strip()
+        return format_update_result(result=result, captured_output=captured_output)
     except Exception as exc:
-        captured_output = output_buffer.getvalue().strip()
+        captured_output = "\n".join(collected_lines).strip()
         lines = ["Update check failed.", "", f"{type(exc).__name__}: {exc}"]
         if captured_output:
             lines.extend(["", "Updater output before failure:", captured_output])

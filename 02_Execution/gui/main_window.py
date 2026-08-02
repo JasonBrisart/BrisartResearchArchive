@@ -124,7 +124,32 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         if render_func is None:
             messagebox.showerror("Missing Page", f"No page renderer found for: {page_name}", parent=self)
             return
-        render_func(self)
+        try:
+            render_func(self)
+        except Exception as exc:
+            # Previously unguarded: every other action in this app
+            # (framework launch, settings save, update check, document
+            # viewer) wraps its work in try/except with a visible error
+            # dialog and a log entry. Page rendering was the one
+            # exception - a broken page would silently leave the user
+            # looking at a half-built blank screen with no indication
+            # anything went wrong, and the status bar would never
+            # update either since that happens after this call.
+            message = f"The {page_name} page could not be fully displayed: {type(exc).__name__}: {exc}"
+            try:
+                messagebox.showerror("Page Load Failed", message, parent=self)
+            except tk.TclError:
+                pass
+            if hasattr(self, "log"):
+                try:
+                    self.log(message)
+                except Exception:
+                    pass
+            try:
+                self.status_text.set(f"{page_name} failed to load - {timestamp()}")
+            except tk.TclError:
+                pass
+            return
         try:
             self.status_text.set(f"{page_name} loaded - {timestamp()}")
         except tk.TclError:
