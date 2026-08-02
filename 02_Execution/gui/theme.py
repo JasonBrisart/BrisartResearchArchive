@@ -10,7 +10,7 @@ def load_version():
         root = Path(__file__).resolve().parents[1]
         version_file = root / "version.txt"
         version = version_file.read_text(encoding="utf-8").strip()
-        return f"{version} PRERELEASE"
+        return f"{version} ALPHA"
     except Exception:
         return "Unknown Version"
 

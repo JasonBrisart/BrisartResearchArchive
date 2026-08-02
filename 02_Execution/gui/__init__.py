@@ -1,1 +1,1 @@
-"""Reusable Tkinter widgets shared across pages and framework GUIs."""
+"""GUI shell package: theme, widgets, reusable components, and pages."""

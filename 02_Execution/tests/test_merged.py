@@ -186,6 +186,88 @@ class EngineTests(unittest.TestCase):
         self.assertFalse(engine.submit_prediction("A"))
 
 
+class IdentityAndTimestampTests(unittest.TestCase):
+    """
+    Covers the participant/session identity and wall-clock timestamp
+    fields added to close the "whose data is this" gap - previously
+    every run wrote to the same identity-less output file with no way
+    to tell one participant's session from another's.
+    """
+
+    def test_session_id_auto_generated_and_unique(self):
+        first_engine, _first_timer = build_default_engine()
+        second_engine, _second_timer = build_default_engine()
+        self.assertTrue(first_engine.session_id)
+        self.assertTrue(second_engine.session_id)
+        self.assertNotEqual(first_engine.session_id, second_engine.session_id)
+
+    def test_explicit_session_id_is_respected(self):
+        engine, _timer = build_default_engine(session_id="fixed-session-001")
+        self.assertEqual(engine.session_id, "fixed-session-001")
+
+    def test_participant_id_flows_into_rows(self):
+        engine, _timer = build_default_engine(participant_id="P042")
+        engine.submit_prediction("A")
+        engine.submit_affect(50)
+        if engine.active_stage() == "content_probe":
+            engine.submit_content_probe("U")
+        if engine.active_stage() == "perturbation":
+            engine.submit_post_perturbation_probe("U")
+        engine.submit_behavioral_choice("A")
+        self.assertEqual(engine.rows[0]["participant_id"], "P042")
+        self.assertEqual(engine.rows[0]["session_id"], engine.session_id)
+
+    def test_trial_timestamps_are_recorded(self):
+        engine, _timer = build_default_engine()
+        engine.submit_prediction("A")
+        engine.submit_affect(50)
+        if engine.active_stage() == "content_probe":
+            engine.submit_content_probe("U")
+        if engine.active_stage() == "perturbation":
+            engine.submit_post_perturbation_probe("U")
+        engine.submit_behavioral_choice("A")
+        row = engine.rows[0]
+        self.assertTrue(row["trial_started_at_iso"])
+        self.assertTrue(row["trial_completed_at_iso"])
+        self.assertLessEqual(row["trial_started_at_iso"], row["trial_completed_at_iso"])
+
+
+class AutosaveHookTests(unittest.TestCase):
+    """
+    Covers on_trial_recorded, the hook that lets a caller checkpoint an
+    in-progress run to disk. Previously save_rows() was only ever
+    called once, at session completion, so a crash mid-run lost
+    everything collected up to that point.
+    """
+
+    def _complete_one_trial(self, engine) -> None:
+        engine.submit_prediction("A")
+        engine.submit_affect(50)
+        if engine.active_stage() == "content_probe":
+            engine.submit_content_probe("U")
+        if engine.active_stage() == "perturbation":
+            engine.submit_post_perturbation_probe("U")
+        engine.submit_behavioral_choice("A")
+
+    def test_hook_fires_once_per_completed_trial(self):
+        call_counts = []
+        engine, _timer = build_default_engine(
+            on_trial_recorded=lambda rows: call_counts.append(len(rows))
+        )
+        self._complete_one_trial(engine)
+        self._complete_one_trial(engine)
+        self.assertEqual(call_counts, [1, 2])
+
+    def test_hook_exception_does_not_break_the_session(self):
+        def failing_hook(rows):
+            raise RuntimeError("simulated autosave failure")
+
+        engine, _timer = build_default_engine(on_trial_recorded=failing_hook)
+        self._complete_one_trial(engine)
+        self.assertEqual(len(engine.rows), 1)
+        self.assertEqual(engine.active_stage(), "prediction")
+
+
 class OutputTests(unittest.TestCase):
     def _run_two_trials(self):
         engine, _timer = build_default_engine()
@@ -218,6 +300,96 @@ class OutputTests(unittest.TestCase):
     def test_completion_status_recorded(self):
         engine = self._run_two_trials()
         self.assertTrue(all(row["completion_status"] == "completed" for row in engine.rows))
+
+
+class ConsistencyAndCarryoverAnalysisTests(unittest.TestCase):
+    """
+    Covers the core scientific gap the framework had: prediction and
+    behavioral_choice were recorded every trial but never compared to
+    each other, and contradiction feedback was never checked for any
+    effect on the *next* trial - despite that being the entire premise
+    implied by "Temporal Feedback Loop".
+    """
+
+    @staticmethod
+    def _row(trial_id, prediction, behavioral_choice, contradiction, affect=50):
+        return {
+            "trial_id": trial_id,
+            "block": "contradiction",
+            "prediction": prediction,
+            "behavioral_choice": behavioral_choice,
+            "contradiction": contradiction,
+            "affect": affect,
+            "completion_status": "completed",
+        }
+
+    def test_perfect_consistency_is_reported(self):
+        rows = [self._row(i, "A", "A", "none") for i in range(1, 6)]
+        report = analysis.prediction_behavior_consistency_report(rows)
+        report_text = "\n".join(report)
+        self.assertIn("Comparable trials: 5", report_text)
+        self.assertIn("100.0%", report_text)
+
+    def test_zero_consistency_is_reported(self):
+        rows = [self._row(i, "A", "B", "none") for i in range(1, 6)]
+        report_text = "\n".join(analysis.prediction_behavior_consistency_report(rows))
+        self.assertIn("Prediction matched behavior: 0", report_text)
+
+    def test_rows_without_comparable_choices_are_handled(self):
+        rows = [self._row(1, "", "", "none")]
+        report_text = "\n".join(analysis.prediction_behavior_consistency_report(rows))
+        self.assertIn("No trials had both a prediction and a behavioral choice", report_text)
+
+    def test_carryover_buckets_by_prior_trial_contradiction(self):
+        # Trial 1 gets strong contradiction feedback; trial 2 (which
+        # follows it) should be bucketed under "Following 'strong'".
+        rows = [
+            self._row(1, "A", "A", "strong", affect=80),
+            self._row(2, "A", "B", "none", affect=40),
+        ]
+        report_text = "\n".join(analysis.feedback_carryover_report(rows))
+        self.assertIn("Following 'strong' feedback (1 trials)", report_text)
+
+    def test_carryover_needs_at_least_two_trials(self):
+        rows = [self._row(1, "A", "A", "none")]
+        report_text = "\n".join(analysis.feedback_carryover_report(rows))
+        self.assertIn("Not enough sequential trials", report_text)
+
+    def test_sorted_completed_rows_ignores_incomplete_trials(self):
+        rows = [
+            self._row(2, "A", "A", "none"),
+            {"trial_id": 1, "completion_status": "in_progress"},
+            self._row(3, "B", "B", "none"),
+        ]
+        ordered = analysis.sorted_completed_rows(rows)
+        self.assertEqual([row["trial_id"] for row in ordered], [2, 3])
+
+
+class AutosaveFileTests(unittest.TestCase):
+    """Covers the incremental checkpoint file lifecycle end to end."""
+
+    def test_autosave_write_load_and_remove_round_trip(self):
+        session_id = "autosave-test-001"
+        rows = [
+            {
+                "session_id": session_id, "participant_id": "P1", "trial_id": 1,
+                "framework_id": "TFL", "block": "affect", "stimulus_id": "S001",
+                "prediction": "A", "behavioral_choice": "A", "affect": 50,
+                "completion_status": "completed",
+            }
+        ]
+        saved_path = analysis.autosave_rows(rows, session_id)
+        self.assertTrue(saved_path.exists())
+        loaded = analysis.load_output(saved_path)
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["session_id"], session_id)
+        analysis.remove_autosave_file(session_id)
+        self.assertFalse(saved_path.exists())
+
+    def test_session_id_is_sanitized_for_filesystem_safety(self):
+        unsafe_id = "../../etc/passwd"
+        safe_path = analysis.get_autosave_file(unsafe_id)
+        self.assertNotIn("..", safe_path.name)
 
 
 class DependencyAuditTests(unittest.TestCase):

@@ -15,6 +15,7 @@ from __future__ import annotations
 import tkinter as tk
 
 from engine.timing import MonotonicTimer
+from . import analysis
 from .config import apply_default_options
 from .engine import TFLSessionEngine
 from .screen import render_trial
@@ -26,12 +27,19 @@ try:
 except ImportError:
     COLORS = {"bg": "#070b14"}
 
+# How often (in completed trials) the in-progress run is checkpointed to
+# disk. Previously the only save() call happened once, at the very end
+# of a session, so a crash or forced window close silently lost every
+# trial collected up to that point.
+AUTOSAVE_INTERVAL_TRIALS = 5
+
 
 class TFLGuiSession:
     """GUI-native TFL runner. Delegates all state to TFLSessionEngine."""
 
-    def __init__(self, app=None):
+    def __init__(self, app=None, participant_id: str = ""):
         self.app = app
+        self.participant_id = str(participant_id).strip()
         self.config = apply_default_options()
         self.stimuli = apply_stimulus_limit(load_stimuli(), self.config)
         self.trials = build_trials(self.config, self.stimuli)
@@ -68,7 +76,10 @@ class TFLGuiSession:
                 schedule_fn=lambda ms, cb: self.win.after(ms, cb),
                 cancel_fn=lambda handle: self.win.after_cancel(handle),
             ),
+            participant_id=self.participant_id,
+            on_trial_recorded=self._autosave_if_due,
         )
+        self.log(f"TFL session started: {self.engine.session_id}")
         self.engine.start_trial()
         self.render()
         if self.app is None:
@@ -76,6 +87,19 @@ class TFLGuiSession:
 
     def render(self) -> None:
         render_trial(self)
+
+    def _autosave_if_due(self, rows: list[dict]) -> None:
+        """Checkpoint to disk every AUTOSAVE_INTERVAL_TRIALS completed trials."""
+        if self.engine is None or not rows:
+            return
+        if len(rows) % AUTOSAVE_INTERVAL_TRIALS != 0:
+            return
+        try:
+            path = analysis.autosave_rows(rows, self.engine.session_id)
+        except Exception as exc:
+            self.log(f"Autosave failed at {len(rows)} trials: {type(exc).__name__}: {exc}")
+            return
+        self.log(f"Autosaved {len(rows)} trials to {path.name}")
 
     def window_exists(self) -> bool:
         if self.win is None:
@@ -97,13 +121,18 @@ class TFLGuiSession:
     def cancel(self) -> None:
         if not self.window_exists():
             return
+        completed_trial_count = len(self.engine.rows) if self.engine is not None else 0
+        if completed_trial_count > 0:
+            cancel_prompt = (
+                "Cancel this TFL GUI run?\n\n"
+                f"{completed_trial_count} completed trial(s) were already autosaved and will remain on disk, "
+                "but no final output file will be produced for this run."
+            )
+        else:
+            cancel_prompt = "Cancel this TFL GUI run?\n\nNo trials have been completed yet."
         try:
             from tkinter import messagebox
-            should_cancel = messagebox.askyesno(
-                "Cancel TFL Run",
-                "Cancel this TFL GUI run?\n\nResponses from the unfinished run will not be saved.",
-                parent=self.win,
-            )
+            should_cancel = messagebox.askyesno("Cancel TFL Run", cancel_prompt, parent=self.win)
         except tk.TclError:
             should_cancel = True
         if not should_cancel:

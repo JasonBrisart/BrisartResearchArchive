@@ -10,13 +10,29 @@ class reports; it never owns trial logic itself.
 """
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Callable
 
 from engine.timing import TimerInterface
 from . import feedback
 
 TIMED_STAGES = {"prediction", "behavioral_choice"}
+
+
+def generate_session_id() -> str:
+    """
+    Build a readable, sortable, collision-resistant session identifier
+    so multiple participants/runs never collide in shared output files.
+    Format: YYYYMMDD-HHMMSS-<8 hex chars>, e.g. 20260802-131045-a1b2c3d4.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return f"{timestamp}-{uuid.uuid4().hex[:8]}"
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
 
 @dataclass
@@ -36,7 +52,16 @@ class TFLSessionEngine:
     bookkeeping. Does not know anything about Tkinter.
     """
 
-    def __init__(self, config: dict, trials: list[dict], timer: TimerInterface):
+    def __init__(
+        self,
+        config: dict,
+        trials: list[dict],
+        timer: TimerInterface,
+        *,
+        participant_id: str = "",
+        session_id: str | None = None,
+        on_trial_recorded: Callable[[list[dict]], None] | None = None,
+    ):
         self.config = dict(config)
         self.trials = [dict(trial) for trial in trials]
         self.timer = timer
@@ -48,6 +73,20 @@ class TFLSessionEngine:
         self.stage_state = StageState(name="prediction")
         self.current_trial_response: dict[str, Any] = {}
         self._completion_count = 0
+
+        # Identity: lets multiple participants/sessions coexist in output
+        # data instead of every run silently overwriting the same file.
+        self.participant_id = str(participant_id).strip()
+        self.session_id = str(session_id).strip() if session_id else generate_session_id()
+
+        # Wall-clock bookkeeping, separate from the engine's relative
+        # reaction-time math (which uses the injected timer, not real time).
+        self._trial_started_at_iso = ""
+
+        # Optional hook so a caller (GUI session, headless harness, etc.)
+        # can autosave after every recorded trial without the engine
+        # itself knowing anything about file I/O or persistence.
+        self.on_trial_recorded = on_trial_recorded
 
     # ------------------------------------------------------------
     # State accessors
@@ -105,6 +144,7 @@ class TFLSessionEngine:
         if self.current_trial is None:
             self.finish_session()
             return
+        self._trial_started_at_iso = utc_now_iso()
         self.current_trial_response = {
             "prediction": "",
             "prediction_rt": "",
@@ -231,6 +271,14 @@ class TFLSessionEngine:
 
     def advance_after_behavioral_choice(self) -> None:
         self.rows.append(self.build_output_row())
+        if self.on_trial_recorded is not None:
+            try:
+                self.on_trial_recorded(self.rows)
+            except Exception:
+                # Autosave/telemetry failures must never interrupt a
+                # running session - the in-memory rows remain intact
+                # and will still be written at finish_session().
+                pass
         self.index += 1
         if self.index >= len(self.trials):
             self.finish_session()
@@ -244,6 +292,8 @@ class TFLSessionEngine:
             prediction, trial.get("feedback_level", "")
         )
         return {
+            "session_id": self.session_id,
+            "participant_id": self.participant_id,
             "trial_id": trial["trial_id"],
             "framework_id": trial["framework_id"],
             "run_mode": trial["run_mode"],
@@ -274,6 +324,8 @@ class TFLSessionEngine:
             "post_perturbation_probe": self.current_trial_response["post_perturbation_probe"],
             "perturbation_match_prediction": self.current_trial_response["perturbation_match_prediction"],
             "completion_status": "completed",
+            "trial_started_at_iso": self._trial_started_at_iso,
+            "trial_completed_at_iso": utc_now_iso(),
         }
 
     def finish_session(self) -> None:
@@ -287,4 +339,4 @@ class TFLSessionEngine:
         self.cancelled = True
 
 
-__all__ = ["TFLSessionEngine", "StageState", "TIMED_STAGES"]
+__all__ = ["TFLSessionEngine", "StageState", "TIMED_STAGES", "generate_session_id", "utc_now_iso"]

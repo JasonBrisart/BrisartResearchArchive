@@ -1,1 +1,1 @@
-"""Reusable execution infrastructure shared across framework packages."""
+"""Framework plugins live here. Each subfolder with a framework.py is auto-discovered."""

@@ -2,9 +2,15 @@
 Shared trial-row schema.
 Uses the fuller field set (includes *_timed_out and completion_status)
 so the engine can distinguish a timeout from an active response.
+
+session_id/participant_id/started_at_iso/completed_at_iso were added so
+multiple participants and multiple sessions can be told apart in output
+data - previously every run wrote to the same identity-less CSV.
 """
 
 DEFAULT_TRIAL_FIELDNAMES = [
+    "session_id",
+    "participant_id",
     "trial_id",
     "framework_id",
     "run_mode",
@@ -35,4 +41,6 @@ DEFAULT_TRIAL_FIELDNAMES = [
     "post_perturbation_probe",
     "perturbation_match_prediction",
     "completion_status",
+    "trial_started_at_iso",
+    "trial_completed_at_iso",
 ]

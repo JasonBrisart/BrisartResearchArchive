@@ -166,8 +166,14 @@ def render_completion_stage(session: Any, content: ttk.Frame) -> None:
     try:
         output_file = analysis.save_rows(session.engine.rows)
         message = f"TFL Complete. Saved {len(session.engine.rows)} trials to:\n{output_file}"
+        # The final save fully supersedes the incremental autosave
+        # checkpoint, so it can be safely removed now.
+        analysis.remove_autosave_file(session.engine.session_id)
     except Exception as exc:
-        message = f"TFL run finished, but saving failed.\n\n{type(exc).__name__}: {exc}"
+        message = (
+            f"TFL run finished, but the final save failed.\n\n{type(exc).__name__}: {exc}\n\n"
+            "The autosave checkpoint from during the run was left in place."
+        )
     info_block(content, "Session Complete", message)
     session.log(message.splitlines()[0])
     if getattr(session, "app", None) is not None:
