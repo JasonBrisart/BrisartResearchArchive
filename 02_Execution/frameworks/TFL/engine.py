@@ -61,6 +61,7 @@ class TFLSessionEngine:
         participant_id: str = "",
         session_id: str | None = None,
         on_trial_recorded: Callable[[list[dict]], None] | None = None,
+        on_stage_advanced: Callable[[], None] | None = None,
     ):
         self.config = dict(config)
         self.trials = [dict(trial) for trial in trials]
@@ -87,6 +88,26 @@ class TFLSessionEngine:
         # can autosave after every recorded trial without the engine
         # itself knowing anything about file I/O or persistence.
         self.on_trial_recorded = on_trial_recorded
+
+        # Optional hook fired whenever the engine changes stage on its
+        # own initiative rather than in direct response to a caller's
+        # submit_*() call - today that only happens via a timer timeout.
+        # Without this, a GUI has no way to know it needs to redraw when
+        # a 12-second prediction/behavioral-choice window silently
+        # expires: the engine moves on to "affect" internally, but the
+        # window keeps showing stale buttons for a stage that no longer
+        # exists, and every click on them is a silent no-op forever.
+        self.on_stage_advanced = on_stage_advanced
+
+    def _notify_stage_advanced(self) -> None:
+        if self.on_stage_advanced is None:
+            return
+        try:
+            self.on_stage_advanced()
+        except Exception:
+            # A broken UI callback must never break the running session -
+            # the same fail-safe policy already used for on_trial_recorded.
+            pass
 
     # ------------------------------------------------------------
     # State accessors
@@ -197,6 +218,14 @@ class TFLSessionEngine:
         return True
 
     def handle_timeout(self, stage_name: str, token: int) -> bool:
+        """
+        Fired by the timer, not by a caller's submit_*() call - this is
+        the one path where the engine changes its own state on its own
+        initiative. _notify_stage_advanced() at the end is what tells a
+        GUI it needs to redraw; without it, the window keeps showing a
+        stage that no longer exists and every button click on it is a
+        silent no-op forever.
+        """
         if self.completed or self.cancelled:
             return False
         if self.current_stage_name != stage_name:
@@ -212,12 +241,14 @@ class TFLSessionEngine:
             self.current_trial_response["prediction_rt"] = ""
             self.current_trial_response["prediction_timed_out"] = True
             self.begin_stage("affect")
+            self._notify_stage_advanced()
             return True
         if stage_name == "behavioral_choice":
             self.current_trial_response["behavioral_choice"] = ""
             self.current_trial_response["behavioral_rt"] = ""
             self.current_trial_response["behavioral_timed_out"] = True
             self.advance_after_behavioral_choice()
+            self._notify_stage_advanced()
             return True
         return False
 

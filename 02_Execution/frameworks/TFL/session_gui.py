@@ -78,6 +78,13 @@ class TFLGuiSession:
             ),
             participant_id=self.participant_id,
             on_trial_recorded=self._autosave_if_due,
+            # Without this, a prediction/behavioral-choice timeout moves
+            # the engine's internal stage forward but the window keeps
+            # showing the old stage's buttons - which then silently do
+            # nothing when clicked, since the engine has already moved
+            # on. This is what makes the screen re-render immediately
+            # when a 12-second window expires unattended.
+            on_stage_advanced=self.render,
         )
         self.log(f"TFL session started: {self.engine.session_id}")
         self.engine.start_trial()

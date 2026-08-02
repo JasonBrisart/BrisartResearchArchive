@@ -268,6 +268,65 @@ class AutosaveHookTests(unittest.TestCase):
         self.assertEqual(engine.active_stage(), "prediction")
 
 
+class StageAdvancedHookTests(unittest.TestCase):
+    """
+    Covers on_stage_advanced, the hook that fixes a real GUI freeze: when
+    a prediction/behavioral-choice timeout fires, the engine changes
+    stage on its own initiative (not in response to any submit_*() call
+    from the GUI), so without this hook nothing ever tells the window
+    to redraw - it keeps showing buttons for a stage that no longer
+    exists, and clicking them becomes a silent no-op forever.
+    """
+
+    def test_hook_fires_on_prediction_timeout(self):
+        calls = []
+        engine, timer = build_default_engine(on_stage_advanced=lambda: calls.append(engine.active_stage()))
+        handle = engine.stage_state.timer_handle
+        timer.fire(handle)
+        self.assertEqual(calls, ["affect"])
+
+    def test_hook_fires_on_behavioral_choice_timeout(self):
+        calls = []
+        engine, timer = build_default_engine(on_stage_advanced=lambda: calls.append(engine.active_stage()))
+        engine.submit_prediction("A")
+        engine.submit_affect(50)
+        if engine.active_stage() == "content_probe":
+            engine.submit_content_probe("U")
+        if engine.active_stage() == "perturbation":
+            engine.submit_post_perturbation_probe("U")
+        calls.clear()
+        self.assertEqual(engine.active_stage(), "behavioral_choice")
+        handle = engine.stage_state.timer_handle
+        timer.fire(handle)
+        self.assertEqual(len(calls), 1)
+
+    def test_hook_does_not_fire_on_explicit_submission(self):
+        """
+        submit_prediction() is a direct caller-initiated call, already
+        followed by session.render() in the GUI's own _submit_and_render
+        wrapper - the engine must not double-notify for that path.
+        """
+        calls = []
+        engine, _timer = build_default_engine(on_stage_advanced=lambda: calls.append(1))
+        engine.submit_prediction("A")
+        self.assertEqual(calls, [])
+
+    def test_hook_exception_does_not_break_the_session(self):
+        def failing_hook():
+            raise RuntimeError("simulated GUI redraw failure")
+
+        engine, timer = build_default_engine(on_stage_advanced=failing_hook)
+        handle = engine.stage_state.timer_handle
+        self.assertTrue(timer.fire(handle) is None)  # fire() itself never raises
+        self.assertEqual(engine.active_stage(), "affect")
+
+    def test_no_hook_configured_is_safe(self):
+        engine, timer = build_default_engine()
+        handle = engine.stage_state.timer_handle
+        timer.fire(handle)  # must not raise even with on_stage_advanced=None
+        self.assertEqual(engine.active_stage(), "affect")
+
+
 class OutputTests(unittest.TestCase):
     def _run_two_trials(self):
         engine, _timer = build_default_engine()
