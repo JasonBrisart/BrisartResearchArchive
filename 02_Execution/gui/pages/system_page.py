@@ -15,8 +15,7 @@ def render(app):
         (
             f"Application: {app.app_name}\n"
             f"Version: {app.app_version}\n"
-            f"Execution Folder:\n{app.execution_dir}\n\n"
-            f"Selected Framework: {app.selected_framework.get()}"
+            f"Execution Folder:\n{app.execution_dir}"
         ),
     )
 
@@ -61,13 +60,6 @@ def render(app):
     app.update_box.grid(row=6, column=0, sticky="ew", padx=26, pady=10)
     app.update_box.insert("end", "Update output will appear here.\n")
 
-    # Previously, LogController.log() wrote to an attribute named
-    # "log_box" that was never created anywhere in the app - only
-    # "home_log_box" on the Dashboard actually existed. Since navigating
-    # away from Dashboard destroys that widget, every log message
-    # became invisible (except for a single status-bar line that gets
-    # overwritten by the next message) the moment the user left
-    # Dashboard. This card gives "log_box" a real, persistent home.
     app.add_card(
         root, 7, "Activity Log",
         "Recent application activity: framework launches, autosaves, registry refreshes, and errors.",
