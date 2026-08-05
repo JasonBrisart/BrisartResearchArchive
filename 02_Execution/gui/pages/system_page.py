@@ -38,24 +38,6 @@ def render(app):
         row=2, column=2, padx=(8, 0), pady=(0, 4)
     )
 
-    registry_card = Card(root)
-    registry_card.grid(row=4, column=0, sticky="ew", padx=26, pady=9)
-    registry_card.grid_columnconfigure(0, weight=1)
-    ttk.Label(registry_card, text="Framework Registry", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
-    ttk.Label(
-        registry_card,
-        text=(
-            "Refresh framework discovery after adding, removing, or editing "
-            "framework modules. Useful for plugin-style development without "
-            "restarting the whole GUI."
-        ),
-        style="CardMuted.TLabel", wraplength=950, justify="left",
-    ).grid(row=1, column=0, sticky="w", pady=(7, 10))
-    ttk.Button(
-        registry_card, text="Refresh Framework Registry", command=app.refresh_framework_registry,
-        style="Accent.TButton",
-    ).grid(row=2, column=0, sticky="w")
-
     updates_card = Card(root)
     updates_card.grid(row=5, column=0, sticky="ew", padx=26, pady=9)
     updates_card.grid_columnconfigure(0, weight=1)
@@ -98,14 +80,6 @@ def render(app):
     app.log_box.insert("end", "Activity log ready.\n")
 
     app.add_card(
-        root, 9, "Framework Paths",
-        (
-            "Future location for installed framework discovery, "
-            "framework-module paths, private institutional modules, "
-            "and archive-wide plugin configuration."
-        ),
-    )
-    app.add_card(
         root, 10, "ARLA Standards",
         (
             "Future location for:\n\n"
@@ -113,14 +87,5 @@ def render(app):
             "- ARLA Assay Standard\n"
             "- ARLA Validation Standard\n"
             "- ARLA Analyzer Standard"
-        ),
-    )
-    app.add_card(
-        root, 11, "Advanced",
-        (
-            "Future configuration may include framework registry toggles, "
-            "private module paths, institutional profile settings, local "
-            "export preferences, update channels, and lab-specific runtime "
-            "defaults."
         ),
     )

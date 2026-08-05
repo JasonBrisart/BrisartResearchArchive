@@ -24,8 +24,6 @@ def render(app):
         [
             ("Run Selected Framework", app.start_selected_framework, True),
             ("Analyze Results", app.analyze_tfl, False),
-            ("Open Archive", lambda: app.show_page("Archive"), False),
-            ("System", lambda: app.show_page("System"), False),
         ],
     )
     app.add_card(
