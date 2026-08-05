@@ -9,8 +9,7 @@ def load_version():
     try:
         root = Path(__file__).resolve().parents[1]
         version_file = root / "version.txt"
-        version = version_file.read_text(encoding="utf-8").strip()
-        return f"{version} ALPHA"
+        return version_file.read_text(encoding="utf-8").strip()
     except Exception:
         return "Unknown Version"
 
