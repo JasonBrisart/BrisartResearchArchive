@@ -11,8 +11,7 @@ from config.state import AppState
 from controllers import LogController, SystemController
 from gui.components.page_helpers import UIController
 from gui.components.sidebar import build_sidebar
-from gui.theme import APP_NAME, APP_VERSION, COLORS, FONT_SMALL, apply_theme
-from services import timestamp
+from gui.theme import APP_NAME, APP_VERSION, COLORS, apply_theme
 from services.framework_service import FrameworkService
 
 EXECUTION_DIR = Path(__file__).resolve().parents[1]
@@ -25,7 +24,7 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
     Main GUI application shell.
 
     Owns: root Tk window lifecycle, app-wide state initialization,
-    framework service initialization, sidebar/statusbar/main layout,
+    framework service initialization, sidebar/main layout,
     and page navigation.
 
     Controllers own: system actions, logging, framework launch
@@ -53,7 +52,6 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         self.nav: dict[str, tk.Widget] = {}
         self.main: ttk.Frame | None = None
         self.sidebar: tk.Widget | None = None
-        self.status: ttk.Frame | None = None
 
         apply_theme(self)
         self._build_layout()
@@ -96,15 +94,6 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         self.main.grid(row=0, column=1, sticky="nsew")
         self.main.grid_columnconfigure(0, weight=1)
         self.main.grid_rowconfigure(0, weight=1)
-        self._build_statusbar()
-
-    def _build_statusbar(self):
-        self.status = ttk.Frame(self, style="Top.TFrame", padding=(18, 6))
-        self.status.grid(row=1, column=1, sticky="sew")
-        tk.Label(
-            self.status, textvariable=self.status_text, bg=COLORS["panel"],
-            fg=COLORS["muted"], font=FONT_SMALL,
-        ).pack(anchor="w")
 
     # ============================================================
     # Page Navigation
@@ -133,8 +122,7 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
             # dialog and a log entry. Page rendering was the one
             # exception - a broken page would silently leave the user
             # looking at a half-built blank screen with no indication
-            # anything went wrong, and the status bar would never
-            # update either since that happens after this call.
+            # anything went wrong.
             message = f"The {page_name} page could not be fully displayed: {type(exc).__name__}: {exc}"
             try:
                 messagebox.showerror("Page Load Failed", message, parent=self)
@@ -145,15 +133,6 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
                     self.log(message)
                 except Exception:
                     pass
-            try:
-                self.status_text.set(f"{page_name} failed to load - {timestamp()}")
-            except tk.TclError:
-                pass
-            return
-        try:
-            self.status_text.set(f"{page_name} loaded - {timestamp()}")
-        except tk.TclError:
-            pass
 
     def _update_nav_selection(self, active_name: str) -> None:
         for nav_name, button in self.nav.items():
