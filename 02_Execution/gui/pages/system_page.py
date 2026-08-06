@@ -8,7 +8,7 @@ from gui.widgets.card import Card
 def render(app):
     root = app.page_shell(
         "System",
-        "Application configuration, update management, output paths, framework registry, and advanced platform options.",
+        "Application configuration, update management, output paths, and activity log.",
     )
     app.add_card(
         root, 2, "General",
@@ -72,12 +72,12 @@ def render(app):
     app.log_box.insert("end", "Activity log ready.\n")
 
     app.add_card(
-        root, 10, "ARLA Standards",
+        root, 10, "Brisart Standards",
         (
             "Future location for:\n\n"
-            "- ARLA Data Standard\n"
-            "- ARLA Assay Standard\n"
-            "- ARLA Validation Standard\n"
-            "- ARLA Analyzer Standard"
+            "- Data Standard\n"
+            "- Assay Standard\n"
+            "- Validation Standard\n"
+            "- Analyzer Standard"
         ),
     )
