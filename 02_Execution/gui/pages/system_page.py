@@ -18,7 +18,6 @@ def render(app):
             f"Execution Folder:\n{app.execution_dir}"
         ),
     )
-
     output_card = Card(root)
     output_card.grid(row=3, column=0, sticky="ew", padx=26, pady=9)
     output_card.grid_columnconfigure(1, weight=1)
@@ -36,7 +35,9 @@ def render(app):
     ttk.Button(output_card, text="Browse", command=app.browse_output_folder).grid(
         row=2, column=2, padx=(8, 0), pady=(0, 4)
     )
-
+    ttk.Button(output_card, text="Open Folder", command=app.open_output_folder).grid(
+        row=3, column=2, padx=(8, 0), pady=(0, 8)
+    )
     updates_card = Card(root)
     updates_card.grid(row=5, column=0, sticky="ew", padx=26, pady=9)
     updates_card.grid_columnconfigure(0, weight=1)
@@ -52,14 +53,12 @@ def render(app):
     ttk.Button(
         updates_card, text="Check Updates", command=app.check_updates, style="Accent.TButton",
     ).grid(row=3, column=0, sticky="w")
-
     app.update_box = tk.Text(
         root, height=12, bg=COLORS["panel"], fg=COLORS["text"],
         insertbackground=COLORS["accent"], relief="flat", font=FONT_MONO, wrap="word",
     )
     app.update_box.grid(row=6, column=0, sticky="ew", padx=26, pady=10)
     app.update_box.insert("end", "Update output will appear here.\n")
-
     app.add_card(
         root, 7, "Activity Log",
         "Recent application activity: framework launches, autosaves, registry refreshes, and errors.",
@@ -70,7 +69,6 @@ def render(app):
     )
     app.log_box.grid(row=8, column=0, sticky="ew", padx=26, pady=(0, 10))
     app.log_box.insert("end", "Activity log ready.\n")
-
     app.add_card(
         root, 10, "Brisart Standards",
         (

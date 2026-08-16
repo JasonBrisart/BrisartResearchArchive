@@ -1,6 +1,5 @@
 """
 Brisart Research Archive — System Controller.
-
 Coordinates application-level actions that do not belong to a specific
 GUI page: framework selection/launch, registry refresh, settings
 persistence, output-folder selection, shutdown, analysis wrappers,
@@ -10,6 +9,9 @@ to their respective services.
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys as platform_sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox
@@ -36,7 +38,6 @@ class SystemController:
     # ============================================================
     # Core helpers
     # ============================================================
-
     def _set_status(self, message: str) -> None:
         status_variable = getattr(self, "status_text", None)
         if status_variable is None:
@@ -97,7 +98,6 @@ class SystemController:
     # ============================================================
     # Framework selection / launch / refresh
     # ============================================================
-
     def select_framework(self, framework_id: str) -> None:
         normalized_id = str(framework_id).strip()
         if not normalized_id:
@@ -167,7 +167,6 @@ class SystemController:
     def refresh_framework_registry(self) -> None:
         try:
             from config.registries import get_available_frameworks, get_reserved_frameworks, refresh_framework_registry
-
             registry = list(refresh_framework_registry())
             available_frameworks = list(get_available_frameworks())
             reserved_frameworks = list(get_reserved_frameworks())
@@ -216,7 +215,6 @@ class SystemController:
     # ============================================================
     # Settings persistence / shutdown / output folder
     # ============================================================
-
     def save_config(self, *, update_status: bool = False, show_error: bool = False) -> bool:
         if not hasattr(self, "settings"):
             message = "Settings could not be saved because application settings are unavailable."
@@ -353,10 +351,53 @@ class SystemController:
         self._set_status(message)
         self._log_message(message)
 
+    def open_output_folder(self) -> None:
+        """
+        Open the current output folder in the OS file explorer. Falls
+        back to the default output folder if the configured value is
+        blank or unreadable, and creates the folder first if it does
+        not exist yet so this never silently fails on a fresh install.
+        """
+        current_value = str(self._read_tk_value("output_folder", "") or "").strip()
+        folder_path: Path
+        try:
+            folder_path = Path(current_value).expanduser() if current_value else get_output_folder(getattr(self, "settings", None))
+        except (OSError, TypeError, ValueError):
+            folder_path = get_output_folder(getattr(self, "settings", None))
+        try:
+            folder_path.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            message = f"Could not create the output folder: {type(exc).__name__}: {exc}"
+            self._set_status(message)
+            self._log_message(message)
+            try:
+                messagebox.showerror("Open Folder Failed", message, parent=self)
+            except tk.TclError:
+                pass
+            return
+        try:
+            if platform_sys.platform.startswith("win"):
+                os.startfile(str(folder_path))  # noqa: S606
+            elif platform_sys.platform == "darwin":
+                subprocess.run(["open", str(folder_path)], check=False)
+            else:
+                subprocess.run(["xdg-open", str(folder_path)], check=False)
+        except Exception as exc:
+            message = f"Could not open the output folder: {type(exc).__name__}: {exc}"
+            self._set_status(message)
+            self._log_message(message)
+            try:
+                messagebox.showerror("Open Folder Failed", message, parent=self)
+            except tk.TclError:
+                pass
+            return
+        message = f"Opened output folder: {folder_path}"
+        self._set_status(message)
+        self._log_message(message)
+
     # ============================================================
     # Analysis wrappers
     # ============================================================
-
     def analyze_tfl(self) -> None:
         try:
             run_tfl_analysis(self)
@@ -390,7 +431,6 @@ class SystemController:
     # ============================================================
     # Update wrappers
     # ============================================================
-
     def check_updates(self) -> None:
         run_gui_update_check(self)
 
@@ -406,7 +446,6 @@ class SystemController:
     # ============================================================
     # Documents
     # ============================================================
-
     def open_local_doc(self) -> None:
         try:
             open_document_viewer(self)
