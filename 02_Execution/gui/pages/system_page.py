@@ -69,13 +69,3 @@ def render(app):
     )
     app.log_box.grid(row=8, column=0, sticky="ew", padx=26, pady=(0, 10))
     app.log_box.insert("end", "Activity log ready.\n")
-    app.add_card(
-        root, 10, "Brisart Standards",
-        (
-            "Future location for:\n\n"
-            "- Data Standard\n"
-            "- Assay Standard\n"
-            "- Validation Standard\n"
-            "- Analyzer Standard"
-        ),
-    )

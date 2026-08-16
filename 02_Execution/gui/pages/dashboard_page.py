@@ -52,29 +52,11 @@ def render(app):
             ("Go to Results", lambda: app.show_page("Results"), False),
         ],
     )
-    app.add_card(
-        root, 5, "Engine / Shell Split",
-        (
-            "Each framework's trial logic lives in a headless, testable "
-            "engine (see frameworks/<ID>/engine.py). The GUI only renders "
-            "engine state and forwards input back into it, so trial logic "
-            "can be verified by unit tests without ever opening a window."
-        ),
-    )
-    app.add_card(
-        root, 6, "Local-First Rule",
-        (
-            "The platform should remain readable, auditable, and usable as "
-            "local Python source. Network behavior should remain limited, "
-            "visible, and user-controlled."
-        ),
-    )
-
     app.home_log_box = tk.Text(
         root, height=10, bg=COLORS["panel"], fg=COLORS["text"],
         insertbackground=COLORS["accent"], relief="flat", font=FONT_MONO, wrap="word",
     )
-    app.home_log_box.grid(row=7, column=0, sticky="ew", padx=26, pady=10)
+    app.home_log_box.grid(row=5, column=0, sticky="ew", padx=26, pady=10)
     app.home_log_box.insert(
         "end",
         "Archive dashboard ready.\n"
