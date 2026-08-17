@@ -1,64 +1,49 @@
 from __future__ import annotations
 
-import tkinter as tk
-
-from config.registries import FRAMEWORK_REGISTRY
-from gui.theme import COLORS, FONT_MONO
-
 
 def render(app):
     root = app.page_shell(
-        "Brisart Research Archive",
-        "Local framework execution, analysis, documentation, and platform management.",
+        "Dashboard",
+        "A simple starting point for opening the main areas of the archive.",
     )
-    available_count = sum(1 for framework in FRAMEWORK_REGISTRY if framework["status"] == "Available")
-    total_count = len(FRAMEWORK_REGISTRY)
 
     app.add_card(
-        root, 2, "Launch Dashboard",
+        root,
+        2,
+        "Workspace Menu",
         (
-            "This dashboard is the front door for the local research platform. "
-            "Use it to start a framework, inspect results, open archive "
-            "documentation, or manage system settings."
+            "Use this page as a clean landing area. The sidebar contains the main navigation, "
+            "and these buttons provide quick access to the primary sections."
+        ),
+        [
+            ("Open Frameworks", lambda: app.show_page("Frameworks"), True),
+            ("Open Results", lambda: app.show_page("Results"), False),
+            ("Open Archive", lambda: app.show_page("Archive"), False),
+            ("Open System", lambda: app.show_page("System"), False),
+        ],
+    )
+
+    app.add_card(
+        root,
+        3,
+        "Quick Actions",
+        (
+            "Run the currently selected framework or analyze available results. "
+            "This card can be replaced later when the dashboard design is finalized."
         ),
         [
             ("Run Selected Framework", app.start_selected_framework, True),
             ("Analyze Results", app.analyze_tfl, False),
         ],
     )
+
     app.add_card(
-        root, 3, "Platform Status",
+        root,
+        4,
+        "Dashboard Placeholder",
         (
-            f"Application: {app.app_name}\n"
-            f"Version: {app.app_version}\n"
-            f"Execution Folder:\n{app.execution_dir}\n\n"
-            f"Registered Frameworks: {total_count}\n"
-            f"Available Frameworks: {available_count}\n"
-            f"Selected Framework: {app.selected_framework.get()}"
+            "This dashboard is intentionally minimal for now. "
+            "Future dashboard cards can be added here without changing the sidebar, "
+            "page registry, framework system, or application shell."
         ),
-    )
-    app.add_card(
-        root, 4, "Recommended Workflow",
-        (
-            "1. Select or inspect a framework.\n"
-            "2. Run the available assay.\n"
-            "3. Generate or inspect CSV output.\n"
-            "4. Run local analysis.\n"
-            "5. Review documentation and archive notes.\n"
-            "6. Extend with additional framework modules over time."
-        ),
-        [
-            ("Go to Frameworks", lambda: app.show_page("Frameworks"), False),
-            ("Go to Results", lambda: app.show_page("Results"), False),
-        ],
-    )
-    app.home_log_box = tk.Text(
-        root, height=10, bg=COLORS["panel"], fg=COLORS["text"],
-        insertbackground=COLORS["accent"], relief="flat", font=FONT_MONO, wrap="word",
-    )
-    app.home_log_box.grid(row=5, column=0, sticky="ew", padx=26, pady=10)
-    app.home_log_box.insert(
-        "end",
-        "Archive dashboard ready.\n"
-        "Use the sidebar to open Frameworks, Results, Archive, or System.\n",
     )

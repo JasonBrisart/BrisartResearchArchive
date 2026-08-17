@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.8 ALPHA] - 2026-08-16
+
+### Changed
+- Simplified the Dashboard into a minimal landing page with quick access cards for Frameworks, Results, Archive, and System.
+- Removed the previous dashboard status blocks that duplicated information already available in the System page.
+- Replaced the experimental workspace/output dashboard concepts with a cleaner placeholder dashboard so future dashboard features can be redesigned without clutter.
+- Updated Dashboard quick actions to focus on basic navigation and currently selected framework execution.
+- Removed the visible version label from the left sidebar menu to reduce visual noise and keep version details within the appropriate system-level areas.
+
+### Fixed
+- Replaced the broken Dashboard page implementation that caused a syntax error during application startup.
+- Replaced the broken Sidebar implementation that caused an unterminated string literal error during application startup.
+- Restored clean application launch behavior after simplifying the Dashboard and Sidebar files.
+
+### Notes
+- The Dashboard is now intentionally minimal.
+- The sidebar remains the primary navigation surface.
+- Future dashboard cards can be added later without changing the page registry, framework system, or application shell.
+
+---
+
 ## [0.4.7] - 2026-08-16
 
 ### Removed
