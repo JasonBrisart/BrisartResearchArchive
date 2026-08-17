@@ -34,8 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.5] - 2026-08-16
 
-Baseline version for this changelog. Confirmed working state of the merged
-Archive + OpenClaw architecture, with the full headless engine / GUI split,
+Baseline version for this changelog. Confirmed working state of the
+Archive architecture, with the full headless engine / GUI split,
 autosave, identity/timestamp fields, and hardened updater already in place.
 
 No changes tracked prior to this version.
