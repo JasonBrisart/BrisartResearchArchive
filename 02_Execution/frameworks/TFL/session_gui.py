@@ -1,11 +1,13 @@
 """
 TFLGuiSession — thin adapter wiring TFLSessionEngine to a live Tk window.
 
-This class intentionally owns almost no logic. Its only jobs are:
-    1. build the engine + config + trials
-    2. create/destroy the Tk Toplevel
-    3. bind the engine's timer to Tk's .after()/.after_cancel()
-    4. ask screen.render_trial() to redraw whenever engine state changes
+Startup flow:
+    1. start() creates the Toplevel window and immediately shows the
+       pre-session options screen (options_screen.render_options).
+    2. The user toggles Extra Stimuli / Perturbations / Probes /
+       Delayed Reentry, then clicks "Start Session".
+    3. begin_session() builds stimuli/trials/engine from the
+       (possibly edited) config and starts the first trial.
 
 All trial logic lives in engine.py and is fully covered by headless
 tests (see tests/test_merged.py, driven through app/headless.py).
@@ -18,6 +20,7 @@ from engine.timing import MonotonicTimer
 from . import analysis
 from .config import apply_default_options
 from .engine import TFLSessionEngine
+from .options_screen import render_options
 from .screen import render_trial
 from .stimuli import apply_stimulus_limit, load_stimuli
 from .trial_builder import build_trials
@@ -40,9 +43,20 @@ class TFLGuiSession:
     def __init__(self, app=None, participant_id: str = ""):
         self.app = app
         self.participant_id = str(participant_id).strip()
+
+        # Config is built immediately so the options screen has real
+        # default values to show. Stimuli/trials/engine are only built
+        # in begin_session(), once the user confirms options on the
+        # pre-session options screen. This is the key fix: previously
+        # stimuli/trials/engine were built eagerly here and start()
+        # jumped straight to the trial screen, so options_screen.py's
+        # render_options() was never actually called by anything.
         self.config = apply_default_options()
-        self.stimuli = apply_stimulus_limit(load_stimuli(), self.config)
-        self.trials = build_trials(self.config, self.stimuli)
+        self.option_vars: dict = {}
+
+        self.stimuli: list[dict] = []
+        self.trials: list[dict] = []
+
         self.win: tk.Toplevel | None = None
         self.engine: TFLSessionEngine | None = None
         self.parent_root = None
@@ -53,9 +67,6 @@ class TFLGuiSession:
     # ------------------------------------------------------------
 
     def start(self):
-        if not self.stimuli or not self.trials:
-            self.log("TFL cannot start: no stimuli or trials were generated.")
-            return
         parent = self.app
         if parent is None:
             parent = tk.Tk()
@@ -64,12 +75,9 @@ class TFLGuiSession:
             self.created_parent_root = True
 
         # Previously participant_id was a constructor parameter that
-        # nothing ever actually supplied - FrameworkService always
-        # created runners with just `runner_type(self.app)`, so every
-        # row in every CSV had a permanently blank participant_id even
-        # though the engine and schema fully support it. Prompting here
-        # (optional - blank/cancelled is fine) is what actually makes
-        # the field usable.
+        # nothing ever actually supplied - prompting here (optional -
+        # blank/cancelled is fine) is what actually makes the field
+        # usable.
         if not self.participant_id:
             self.participant_id = self._prompt_for_participant_id(parent)
 
@@ -79,6 +87,88 @@ class TFLGuiSession:
         self.win.minsize(900, 650)
         self.win.configure(bg=COLORS.get("bg", "#070b14"))
         self.win.protocol("WM_DELETE_WINDOW", self.cancel)
+
+        # Force the window to the front. Without this, some window
+        # managers (and Toplevel windows created from a withdrawn Tk
+        # root) leave the new window behind the main app window or
+        # never actually grab focus, which looks like nothing opened.
+        self.win.lift()
+        self.win.attributes("-topmost", True)
+        self.win.after(200, lambda: self.win.attributes("-topmost", False))
+        self.win.focus_force()
+
+        # Show the pre-session options screen first. The engine is not
+        # built until begin_session() runs, which happens when the user
+        # clicks "Start Session" on that screen.
+        self._render_options_safely()
+
+        if self.app is None:
+            parent.mainloop()
+
+    def _prompt_for_participant_id(self, dialog_parent) -> str:
+        """
+        Optional participant ID prompt. Returns "" (not mandatory) if
+        the user cancels, closes the dialog, or leaves it blank - a
+        blank participant_id is a perfectly valid, pre-existing state
+        that the engine and analysis layer already handle correctly.
+        """
+        try:
+            from tkinter import simpledialog
+            entered = simpledialog.askstring(
+                "TFL Participant",
+                "Participant ID (optional - leave blank to skip):",
+                parent=dialog_parent,
+            )
+        except tk.TclError:
+            return ""
+        return str(entered or "").strip()
+
+    def _render_options_safely(self) -> None:
+        # Wrapped in try/except so a broken options screen shows a real
+        # error instead of silently leaving a blank/invisible window -
+        # this was the most likely reason "Run TFL" appeared to do
+        # nothing.
+        try:
+            render_options(self)
+        except Exception as exc:
+            self.log(f"TFL options screen failed to render: {type(exc).__name__}: {exc}")
+            import traceback
+            traceback.print_exc()
+            try:
+                from tkinter import messagebox
+                messagebox.showerror(
+                    "TFL Options Failed",
+                    f"The TFL options screen could not be displayed.\n\n{type(exc).__name__}: {exc}",
+                    parent=self.win,
+                )
+            except tk.TclError:
+                pass
+
+    def begin_session(self) -> None:
+        """
+        Called by the options screen once the user clicks Start
+        Session. Builds stimuli/trials against the (possibly edited)
+        config, then builds and starts the engine.
+        """
+        try:
+            self.stimuli = apply_stimulus_limit(load_stimuli(), self.config)
+            self.trials = build_trials(self.config, self.stimuli)
+        except Exception as exc:
+            self.log(f"TFL could not build trials: {type(exc).__name__}: {exc}")
+            try:
+                from tkinter import messagebox
+                messagebox.showerror(
+                    "TFL Setup Failed",
+                    f"TFL could not build stimuli/trials from the current options.\n\n{type(exc).__name__}: {exc}",
+                    parent=self.win,
+                )
+            except tk.TclError:
+                pass
+            return
+
+        if not self.stimuli or not self.trials:
+            self.log("TFL cannot start: no stimuli or trials were generated.")
+            return
 
         self.engine = TFLSessionEngine(
             self.config,
@@ -100,26 +190,9 @@ class TFLGuiSession:
         self.log(f"TFL session started: {self.engine.session_id}")
         self.engine.start_trial()
         self.render()
-        if self.app is None:
-            parent.mainloop()
 
-    def _prompt_for_participant_id(self, dialog_parent) -> str:
-        """
-        Optional participant ID prompt. Returns "" (not mandatory) if
-        the user cancels, closes the dialog, or leaves it blank - a
-        blank participant_id is a perfectly valid, pre-existing state
-        that the engine and analysis layer already handle correctly.
-        """
-        try:
-            from tkinter import simpledialog
-            entered = simpledialog.askstring(
-                "TFL Participant",
-                "Participant ID (optional - leave blank to skip):",
-                parent=dialog_parent,
-            )
-        except tk.TclError:
-            return ""
-        return str(entered or "").strip()
+    def render_options(self) -> None:
+        self._render_options_safely()
 
     def render(self) -> None:
         render_trial(self)

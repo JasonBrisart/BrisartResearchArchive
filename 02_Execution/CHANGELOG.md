@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.9 ALPHA] - 2026-08-16
+
+### Added
+- TFL now shows a pre-session Run Options screen before starting a session, exposing Extra Stimuli, Perturbations, Probes, and Delayed Reentry as toggles.
+- Added Restore Defaults, Cancel, and Start Session controls to the new TFL options screen.
+- Added an optional participant ID prompt when launching TFL from the GUI.
+
+### Fixed
+- Fixed TFL launching directly into a session and skipping the options screen entirely. `session_gui.py` previously built the engine and rendered the trial screen immediately, so `options_screen.py` was never actually called.
+- Fixed the TFL options/session window potentially opening behind the main application window by forcing it to the front on open.
+- Fixed silent failures when the options screen could not render. Errors are now logged and shown in a visible dialog instead of leaving a blank or invisible window.
+- Fixed trial/stimuli generation now happening only after the user confirms options, instead of before the options screen is shown.
+
+### Changed
+- Reordered TFL session startup: options screen first, engine/stimuli/trials built only after "Start Session" is clicked.
+- Config values chosen on the options screen are now applied directly before session build, so toggling a setting reliably changes that run's behavior.
+
+### Notes
+- No changes were required to `options_screen.py`, `screen.py`, `engine.py`, `config.py`, `stimuli.py`, or `trial_builder.py` - the fix was isolated entirely to `session_gui.py`'s startup flow.
+- This closes the gap between the console AIO launcher's options menu and the GUI's TFL launch flow.
+
+---
+
 ## [0.4.8 ALPHA] - 2026-08-16
 
 ### Changed
