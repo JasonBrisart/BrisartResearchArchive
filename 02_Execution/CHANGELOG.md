@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.9 ALPHA] - 2026-08-16
+## [0.7.0 ALPHA] - 2026-08-16
 
 ### Added
 - TFL now shows a pre-session Run Options screen before starting a session, exposing Extra Stimuli, Perturbations, Probes, and Delayed Reentry as toggles.
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.8 ALPHA] - 2026-08-16
+## [0.6.0 ALPHA] - 2026-08-16
 
 ### Changed
 - Simplified the Dashboard into a minimal landing page with quick access cards for Frameworks, Results, Archive, and System.
@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.7] - 2026-08-16
+## [0.5.0] - 2026-08-16
 
 ### Removed
 - **8 non-functional cards removed across three pages** to cut UI clutter that had no real purpose (no click action, unbuilt placeholders, or duplicated content):
