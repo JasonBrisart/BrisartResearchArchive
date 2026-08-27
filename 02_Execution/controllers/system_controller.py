@@ -4,15 +4,17 @@ Brisart Research Archive — System Controller.
 Coordinates application-level actions that do not belong to a specific
 GUI page: framework selection/launch, registry refresh, settings
 persistence, output-folder selection, shutdown, analysis wrappers,
-update wrappers, and document viewing. Real behavior for analysis,
-updates, framework execution, and document rendering remains delegated
-to their respective services.
+update wrappers, Tooling-page actions, and document viewing. Real
+behavior for analysis, updates, framework execution, Tooling
+downloads/installs, and document rendering remains delegated to their
+respective services.
 """
 from __future__ import annotations
 
 import os
 import subprocess
 import sys as platform_sys
+import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox
@@ -25,6 +27,13 @@ from services import (
     fallback_csv_summary as build_fallback_csv_summary,
     open_tfl_csv as open_tfl_result_csv,
     set_analysis_text as display_analysis_text,
+)
+from services.tool_update_notify import show_tool_update_popup
+from services.tooling_manager import (
+    check_all_tool_updates,
+    download_and_install_tool,
+    open_tool_install_folder,
+    run_tool as run_tooling_program,
 )
 from services.updater.gui_integration import (
     check_updates as run_gui_update_check,
@@ -459,6 +468,127 @@ class SystemController:
 
     def set_update_text(self, report: Any) -> None:
         display_update_text(self, str(report))
+
+    # ============================================================
+    # Tooling wrappers (real download/run/open-folder/update-check)
+    #
+    # Each of these delegates the actual work to
+    # services/tooling_manager.py (download+verify+install/run/open-
+    # folder/check-updates), which reuses the SAME registry-fetch and
+    # signed-download-and-verify machinery as the Archive's own
+    # self-updater -- see that module's docstring for the full trust
+    # model. This controller layer only ever handles: running the work
+    # off the UI thread where needed, translating a result dict into a
+    # status/log message, and re-rendering the Tooling page afterward
+    # so its Download/Run/Open Folder buttons reflect the new state.
+    # ============================================================
+    def _refresh_tooling_page_if_visible(self) -> None:
+        show_page = getattr(self, "show_page", None)
+        if not callable(show_page):
+            return
+        if getattr(self, "_current_page_name", None) != "Tooling":
+            return
+        try:
+            self.after(0, lambda: show_page("Tooling"))
+        except (AttributeError, tk.TclError):
+            pass
+
+    def download_tool(self, tool_id: str) -> None:
+        """
+        Downloads (or updates) one Tooling-page program in the
+        background, then re-renders the Tooling page so its buttons
+        reflect the new install state. Safe to call for a fresh install
+        or an update -- services.tooling_manager.download_and_install_tool()
+        handles both identically.
+        """
+        normalized_id = str(tool_id).strip()
+        if not normalized_id:
+            self._set_status("Tooling download failed: no program was specified.")
+            return
+        self._set_status(f"Downloading {normalized_id}...")
+
+        def worker() -> None:
+            result = download_and_install_tool(normalized_id, self._log_message)
+            status = result.get("status")
+            message = str(result.get("message", ""))
+            if status == "installed":
+                self._set_status(message)
+            else:
+                self._set_status(f"Tooling download failed: {message}")
+                try:
+                    self.after(0, lambda: messagebox.showerror("Download Failed", message, parent=self))
+                except (AttributeError, tk.TclError):
+                    pass
+            self._refresh_tooling_page_if_visible()
+
+        threading.Thread(target=worker, name=f"ToolingDownload-{normalized_id}", daemon=True).start()
+
+    def run_tool(self, tool_id: str) -> None:
+        """Launches an installed Tooling-page program. Never blocks --
+        the underlying subprocess.Popen call returns immediately."""
+        normalized_id = str(tool_id).strip()
+        if not normalized_id:
+            self._set_status("Could not run program: no program was specified.")
+            return
+        result = run_tooling_program(normalized_id)
+        status = result.get("status")
+        message = str(result.get("message", ""))
+        self._set_status(message)
+        self._log_message(message)
+        if status not in {"launched"}:
+            try:
+                messagebox.showerror("Run Failed", message, parent=self)
+            except tk.TclError:
+                pass
+
+    def open_tool_folder(self, tool_id: str) -> None:
+        """Opens an installed Tooling-page program's install folder in
+        the OS file explorer."""
+        normalized_id = str(tool_id).strip()
+        if not normalized_id:
+            self._set_status("Could not open folder: no program was specified.")
+            return
+        result = open_tool_install_folder(normalized_id)
+        status = result.get("status")
+        message = str(result.get("message", ""))
+        self._set_status(message)
+        self._log_message(message)
+        if status not in {"opened"}:
+            try:
+                messagebox.showerror("Open Folder Failed", message, parent=self)
+            except tk.TclError:
+                pass
+
+    def check_tool_updates(self) -> None:
+        """
+        Checks every currently-installed Tooling-page program against
+        its registry entry, in the background. Called automatically by
+        gui/main_window.py shortly after launch -- there is no manual
+        "Check for Updates" control on the Tooling page itself anymore;
+        this is now the ONLY way this check ever runs.
+
+        GATED BY "Enable update checks": since this method is no longer
+        reachable via any button a user could click while that master
+        switch is off, it must gate itself here.
+        """
+        enable_update_checks = getattr(self, "enable_update_checks", None)
+        try:
+            checks_enabled = bool(enable_update_checks.get()) if enable_update_checks is not None else True
+        except (AttributeError, tk.TclError):
+            checks_enabled = True
+        if not checks_enabled:
+            return
+
+        def worker() -> None:
+            upgrades = check_all_tool_updates(self._log_message)
+            self.tool_update_availability = {upgrade["tool_id"]: upgrade for upgrade in upgrades}
+            if upgrades:
+                names = ", ".join(sorted(upgrade["name"] for upgrade in upgrades))
+                self._set_status(f"Tooling updates available: {names}")
+                show_tool_update_popup(self, upgrades)
+            self._refresh_tooling_page_if_visible()
+
+        threading.Thread(target=worker, name="ToolingUpdateCheck", daemon=True).start()
 
     # ============================================================
     # Documents

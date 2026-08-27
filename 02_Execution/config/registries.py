@@ -78,7 +78,13 @@ PAGE_ALIASES = {
     "System": "Settings",
 }
 
-# Main navigation group, rendered top-down in the sidebar.
+# Main navigation group, rendered top-down in the sidebar. Tooling and
+# Settings are DELIBERATELY NOT part of this list -- both are rendered
+# as their own bottom-pinned section by gui.components.sidebar.build_sidebar
+# (see TOOLING_NAV_ITEM / SETTINGS_NAV_ITEM below), separated from this
+# main list by an expanding spacer and a divider, since both are
+# app-level/utility pages rather than primary content pages like the
+# four below.
 NAV_ITEMS = [
     ("Dashboard", "\u2302"),
     ("Frameworks", "\U0001F9EA"),
@@ -86,11 +92,14 @@ NAV_ITEMS = [
     ("Archive", "\U0001F4DA"),
 ]
 
-# Settings is intentionally NOT part of NAV_ITEMS. It's rendered as its
-# own bottom-pinned section by gui.components.sidebar.build_sidebar,
-# separated from the main list by an expanding spacer and a divider, so
-# it always reads as application-level configuration rather than just
-# another content page in the same list.
+# Bottom-pinned section, rendered in THIS order -- Tooling directly
+# above Settings, both below the divider. Kept as two separate named
+# constants (rather than one list) so gui/components/sidebar.py's
+# build_sidebar() can bind each one to its own distinct pack() call
+# with predictable, explicit stacking order, instead of looping over
+# an ordered list where the visual order would depend on iteration
+# order matching pack()'s bottom-up stacking behavior implicitly.
+TOOLING_NAV_ITEM = ("Tooling", "\U0001F6E0")
 SETTINGS_NAV_ITEM = ("Settings", "\u2699")
 
 DEFAULT_PAGE = "Dashboard"
@@ -114,16 +123,23 @@ def get_page_registry() -> dict:
     its displayed title). The old "System" name/file has been fully
     replaced; "System" now only survives as an alias in PAGE_ALIASES
     for backward compatibility.
+
+    "Tooling" resolves to gui.pages.tooling_page.render -- the page
+    listing every downloadable Brisart-family program (see
+    config/tooling_catalog.py). Its sidebar position is governed by
+    TOOLING_NAV_ITEM above, not NAV_ITEMS -- this mapping only cares
+    about page NAMES, not where each name appears in the sidebar.
     """
     global _PAGE_REGISTRY_CACHE
     if _PAGE_REGISTRY_CACHE is None:
-        from gui.pages import archive_page, dashboard_page, frameworks_page, results_page, settings_page
+        from gui.pages import archive_page, dashboard_page, frameworks_page, results_page, settings_page, tooling_page
         _PAGE_REGISTRY_CACHE = {
             "Dashboard": dashboard_page.render,
             "Frameworks": frameworks_page.render,
             "Results": results_page.render,
             "Archive": archive_page.render,
             "Settings": settings_page.render,
+            "Tooling": tooling_page.render,
         }
     return _PAGE_REGISTRY_CACHE
 

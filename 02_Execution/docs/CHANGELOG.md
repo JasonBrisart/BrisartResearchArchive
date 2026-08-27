@@ -5,6 +5,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.0 ALPHA] - 2026-08-27
+
+### Added
+- **Tooling page**, a brand new page for downloading, running, and updating separate Brisart-family programs directly from the Archive:
+  - `config/tooling_catalog.py` (new): static catalog of installable programs (BrisartIdentityTools, BrisartAI, BrisartOS, Project Context Helper, Entitle, AutoExeBuilder).
+  - `config/tooling_state.py` (new): persisted on-disk record of what's installed, which version, and where.
+  - `services/tooling_manager.py` (new): download, verify, install, run, and update-check logic — reuses the exact same hash-then-signature verification gate already built for the Archive's own self-updater, so an installed program is verified exactly as rigorously as an Archive update.
+  - `services/tool_update_notify.py` (new): popup summary shown when an installed program has a newer version available.
+  - `gui/pages/tooling_page.py` (new): one card per program, split into an **Installed** group (top) and an **Available to Download** group (bottom), each sorted alphabetically.
+  - New **Tooling** sidebar entry, pinned directly above **Settings** at the bottom of the sidebar, separated by a divider.
+  - `controllers/system_controller.py`: new `download_tool()`, `run_tool()`, `open_tool_folder()`, and `check_tool_updates()` methods wiring the page to the manager above.
+  - An automatic Tooling update check now runs once at startup, staggered 1 second after the Archive's own self-update check.
+
+### Changed
+- **Frameworks page rebuilt** to match the Tooling page's structure and conventions:
+  - Removed the "Framework Library" card and its Run Selected Framework / View Results / Refresh Registry actions from this page (all three remain available elsewhere — Dashboard and Results already have them).
+  - Replaced the 2-column card grid with a single-column, one-card-per-row layout.
+  - Frameworks are now split into an **Available** group (top) and an **Available to Download** group (bottom), each sorted alphabetically by name, instead of one flat list in declared order.
+  - Removed the "Select" button; available frameworks now show only **Run** and **Results**.
+  - Unavailable frameworks now show **"Not installed."** in the card body (matching Tooling's wording) instead of just the bare description.
+  - Replaced "Reserved" / "Coming Soon" badge and button text with **"Available to Download"**, matching Tooling's terminology.
+- **Activity Log now shows the newest entry at the top** instead of the bottom, for both new entries logged during the current session and persisted history loaded from previous sessions (`controllers/log_controller.py`, `gui/pages/settings_page.py`).
+
+### Fixed
+- **Window now always opens at exactly 800x600 on every launch**, regardless of any window size previously saved to `user_settings.json`. Previously, the 800x600 value was only a *default* — the very first time a user resized the window and closed the app, that saved size was read back and applied on the next launch, silently overriding the intended 800x600 starting size from then on (`gui/main_window.py`).
+
+---
+
 ## [0.8.0 ALPHA] - 2026-08-27
 
 ### Added

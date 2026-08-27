@@ -32,7 +32,7 @@ misconfigure:
     navigating to this page, even if the setting was changed elsewhere
     or loaded from disk in a disabled state.
 
-ACTIVITY LOG PERSISTENCE, specifically:
+ACTIVITY LOG PERSISTENCE AND DISPLAY ORDER, specifically:
 The Activity Log box is populated on every render() call by reading
 config.activity_log.load_activity_log() -- the on-disk, rolling
 100-entry history written by controllers/log_controller.py's log()
@@ -41,6 +41,17 @@ closing and reopening the app, instead of the box always starting
 blank. If no history exists yet (very first launch, or the log file
 was never written to), a single placeholder line is shown instead of
 an empty box.
+
+Newest entry always on top: load_activity_log() returns persisted
+history oldest-first/newest-last (that on-disk storage format is
+unchanged -- see config/activity_log.py's docstring).
+_populate_activity_log() REVERSES that list before inserting it into
+the Text box, so the most recent persisted entry displays at the very
+top -- consistent with how controllers/log_controller.py's
+_write_log_widget() inserts every NEW entry during the live session
+(also at the top, via "1.0", not "end"). app.log_box.see("1.0") (not
+"end") keeps the view scrolled to the top -- where the newest entry
+always is -- immediately after this page renders.
 
 MOUSE WHEEL OVER update_box / log_box, specifically:
 Both Text boxes on this page (the "Update output" box and the Activity
@@ -102,16 +113,18 @@ def _apply_update_checks_enabled_state(app) -> None:
 def _populate_activity_log(log_box: tk.Text) -> None:
     """
     Fill the Activity Log Text box with persisted history from
-    previous sessions (oldest first, newest last -- matching the order
-    new entries get appended in during the current session), falling
-    back to a single placeholder line if no history exists yet.
+    previous sessions, NEWEST FIRST -- load_activity_log() itself
+    returns oldest-first/newest-last, so that list is reversed here
+    before insertion, falling back to a single placeholder line if no
+    history exists yet.
     """
     try:
         history = load_activity_log()
     except Exception:
         history = []
     if history:
-        log_box.insert("end", "\n".join(history) + "\n")
+        newest_first = list(reversed(history))
+        log_box.insert("end", "\n".join(newest_first) + "\n")
     else:
         log_box.insert("end", "Activity log ready.\n")
 
@@ -119,7 +132,7 @@ def _populate_activity_log(log_box: tk.Text) -> None:
 def render(app):
     root = app.page_shell(
         "Settings",
-        "Application configuration, update management, output paths, and activity log.",
+        "Application configuration, update management, and activity log.",
     )
     app.add_card(
         root, 2, "General",
@@ -243,7 +256,7 @@ def render(app):
     app.add_card(
         root, 7, "Activity Log",
         "Recent application activity: framework launches, autosaves, registry refreshes, and errors. "
-        "Kept across sessions -- the most recent 100 actions are shown, oldest first.",
+        "Kept across sessions -- the most recent 100 actions are shown, newest first.",
     )
     app.log_box = tk.Text(
         root, height=10, bg=COLORS["panel"], fg=COLORS["text"],
@@ -251,5 +264,5 @@ def render(app):
     )
     app.log_box.grid(row=8, column=0, sticky="ew", padx=26, pady=(0, 10))
     _populate_activity_log(app.log_box)
-    app.log_box.see("end")
+    app.log_box.see("1.0")
     bind_text_widget_scroll_passthrough(app.log_box, app)

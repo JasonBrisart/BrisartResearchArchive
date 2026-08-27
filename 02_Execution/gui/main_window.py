@@ -9,18 +9,40 @@ page module can just call app.<method>() directly without importing
 any of those modules itself.
 
 WINDOW SIZE, specifically:
-Defaults to 800x600 (see config/runtime.DEFAULT_SETTINGS) rather than
-the old 1220x780, so the app opens at a reasonable, non-bloated size on
-a typical display -- the user can always resize larger afterward, and
-that new size is what gets persisted (see SystemController.save_config
-in controllers/system_controller.py). self.minsize(800, 600) below is
-a SEPARATE hard floor enforced directly by Tk, independent of whatever
-is in settings -- it must be kept in sync with
-config.runtime.MIN_WINDOW_WIDTH/MIN_WINDOW_HEIGHT, since either one
-alone silently overriding the other back up would defeat the point of
-a smaller default (Tk's minsize() always wins over a smaller
-geometry() request, and normalize_int() in config/runtime.py always
-wins over a smaller saved setting).
+The window ALWAYS opens at exactly 800x600 on launch, every single
+time, regardless of whatever window_width/window_height value is
+currently saved in user_settings.json.
+
+This is deliberately DIFFERENT from a normal "default" value: a
+default only applies the first time, before any settings file exists
+-- once the user resizes the window and closes the app (which saves
+the new size via SystemController.save_config()), a plain default
+would silently stop applying, and the app would keep reopening at
+whatever size was last saved instead. That was the previous behavior,
+and it's why simply setting DEFAULT_SETTINGS to 800x600 in
+config/runtime.py was not suffient on its own to guarantee an 800x600
+launch for anyone who had already resized and saved a different size.
+
+The fix here is unconditional: self.geometry() below is called with
+the literal FORCED_STARTUP_WIDTH/FORCED_STARTUP_HEIGHT constants, NOT
+self.settings['window_width']/['window_height'] -- the saved values
+are never read for this purpose anymore. Resizing still works exactly
+as before during the session, and the new size is still written to
+user_settings.json when the app closes (SystemController.save_config()
+is unchanged) -- that persisted value is just never used to set the
+STARTUP geometry anymore. If some other feature is ever added that
+legitimately wants to know "what size was the window last closed at,"
+that data is still there in settings; it's only the launch-time
+self.geometry() call that ignores it now.
+
+self.minsize(800, 600) below is a SEPARATE hard floor enforced
+directly by Tk, independent of the startup geometry -- it stops the
+user from ever resizing the window smaller than 800x600 during the
+session. It happens to use the same 800x600 numbers as
+FORCED_STARTUP_WIDTH/HEIGHT, but conceptually serves a different
+purpose (a floor on resizing, not a startup value) and remains here as
+its own constant pairing with config.runtime.MIN_WINDOW_WIDTH/
+MIN_WINDOW_HEIGHT for that reason.
 
 MOUSEWHEEL SCROLLING, specifically -- FIX 6, the current mechanism for
 the general page area:
@@ -67,6 +89,33 @@ touchpad scrolling depends on). self._page_canvas (kept in sync by
 page_helpers.UIController.page_shell() on every page render) is always
 what actually gets scrolled, regardless of which specific widget the
 cursor's real screen coordinates resolve to.
+
+TOOLING UPDATE CHECK, specifically:
+self.tool_update_availability is a plain dict (never persisted -- it
+only ever reflects the current session's most recent check), keyed by
+tool_id, populated by SystemController.check_tool_updates() whenever a
+check finds at least one installed Tooling-page program with a newer
+version published. gui/pages/tooling_page.py reads this dict directly
+to decide which programs show an "Update to vX.Y.Z" button, alongside
+their existing Run/Open Folder buttons. This dict simply does not
+exist as a populated attribute (falls back to {} via getattr with a
+default) until the first check of the current session has completed,
+so the Tooling page shows no update buttons at all on first render,
+before that first check finishes.
+
+The automatic Tooling update check is chained to run 1 second AFTER
+the Archive's own self-update startup check (see
+STARTUP_TOOLING_CHECK_DELAY_MS below), rather than at the same moment,
+so the two background checks don't compete for the network or the UI
+thread's attention during the first seconds after launch.
+
+self._current_page_name tracks whichever page name was most recently
+passed to show_page(), after alias normalization. This is read by
+SystemController's Tooling wrappers (download_tool/check_tool_updates)
+to decide whether to bother re-rendering the Tooling page after a
+background operation finishes -- there is no reason to force a Tooling
+page render if the user has already navigated to a different page in
+the meantime.
 """
 from __future__ import annotations
 
@@ -94,10 +143,24 @@ if str(EXECUTION_DIR) not in sys.path:
 # the check never competes with initial layout for the UI thread.
 STARTUP_UPDATE_CHECK_DELAY_MS = 1500
 
+# Delay before the automatic Tooling update check fires, staggered
+# 1 second after the Archive's own self-update check above -- see the
+# TOOLING UPDATE CHECK section of this module's docstring for why.
+STARTUP_TOOLING_CHECK_DELAY_MS = STARTUP_UPDATE_CHECK_DELAY_MS + 1000
+
+# The window ALWAYS opens at exactly this size on every launch, no
+# matter what -- never read from self.settings['window_width']/
+# ['window_height']. See the WINDOW SIZE section of this module's
+# docstring for why this is deliberately unconditional rather than a
+# one-time-only default.
+FORCED_STARTUP_WIDTH = 800
+FORCED_STARTUP_HEIGHT = 600
+
 # Hard floor enforced directly by Tk via self.minsize() below. Must stay
 # equal to config.runtime.MIN_WINDOW_WIDTH/MIN_WINDOW_HEIGHT -- see the
-# WINDOW SIZE section of this module's docstring for why both need to
-# move together.
+# WINDOW SIZE section of this module's docstring for why this is a
+# separate concept from FORCED_STARTUP_WIDTH/HEIGHT above, even though
+# both currently use the same 800x600 numbers.
 MIN_WINDOW_WIDTH = 800
 MIN_WINDOW_HEIGHT = 600
 
@@ -111,7 +174,8 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
     and page navigation.
 
     Controllers own: system actions, logging, framework launch
-    wrappers, update wrappers, settings persistence.
+    wrappers, update wrappers, Tooling-page actions, settings
+    persistence.
     """
 
     def __init__(self):
@@ -125,7 +189,12 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         initialize_framework_registry()
 
         self.title(APP_NAME)
-        self.geometry(f"{self.settings['window_width']}x{self.settings['window_height']}")
+        # Deliberately hardcoded -- NOT self.settings['window_width']/
+        # ['window_height'] -- so the window always opens at exactly
+        # 800x600, every launch, regardless of whatever size was saved
+        # from a previous session. See the WINDOW SIZE section of this
+        # module's docstring for the full rationale.
+        self.geometry(f"{FORCED_STARTUP_WIDTH}x{FORCED_STARTUP_HEIGHT}")
         self.minsize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
         self.configure(bg=COLORS["bg"])
 
@@ -140,6 +209,13 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         # scrolls, regardless of which specific widget the real cursor
         # position resolves to.
         self._page_canvas: tk.Canvas | None = None
+        # Tracks the most recently shown page name (post-alias-
+        # normalization) -- see the TOOLING UPDATE CHECK section of
+        # this module's docstring for why SystemController reads this.
+        self._current_page_name: str | None = None
+        # Populated by SystemController.check_tool_updates() -- see the
+        # TOOLING UPDATE CHECK section of this module's docstring.
+        self.tool_update_availability: dict = {}
 
         apply_theme(self)
         self._build_layout()
@@ -162,6 +238,13 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         # downloads + verifies and leaves installation to the user).
         # Runs on a background thread; never blocks window startup.
         self.after(STARTUP_UPDATE_CHECK_DELAY_MS, lambda: startup_check(self))
+
+        # Automatic Tooling update check, staggered 1 second after the
+        # Archive's own self-update check above -- see the TOOLING
+        # UPDATE CHECK section of this module's docstring for why.
+        # Silent if nothing needs updating; shows a summary popup and
+        # updates gui/pages/tooling_page.py's buttons otherwise.
+        self.after(STARTUP_TOOLING_CHECK_DELAY_MS, self.check_tool_updates)
 
     # ============================================================
     # Mousewheel scrolling (FIX 6) -- see module docstring
@@ -261,6 +344,7 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
 
     def show_page(self, name: str) -> None:
         page_name = normalize_page_name(name)
+        self._current_page_name = page_name
         self.clear()
         self._update_nav_selection(page_name)
         render_func = get_page_registry().get(page_name)
