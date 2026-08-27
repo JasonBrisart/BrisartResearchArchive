@@ -1,6 +1,5 @@
 """
 Framework discovery and page registry.
-
 Kept from the Archive branch, which already isolated framework
 discovery failures so one malformed plugin can't take down the whole
 app - that isolation behavior is exactly what the merge keeps.
@@ -42,7 +41,9 @@ RESERVED_FRAMEWORKS = [
      "status": "Coming Soon", "module": "", "runner_module": "",
      "runner_class": "", "description": "Reserved framework slot.", "features": []},
 ]
+
 FRAMEWORK_DISPLAY_ORDER = ["TFL", "SST", "IRE", "PFT", "PCT", "RIET"]
+
 REQUIRED_METADATA_KEYS = [
     "id", "name", "status", "module",
     "runner_module", "runner_class", "description", "features",
@@ -58,26 +59,40 @@ FRAMEWORK_REGISTRY: list[dict] = []
 # ============================================================
 # Page registry
 # ============================================================
+
 # gui.pages is imported lazily (not at module load time) so that
 # config.registries - and therefore framework discovery - can be
 # imported and unit-tested in headless/no-display environments without
 # ever touching Tkinter. Only actually rendering a page requires a
 # display.
 
+# NOTE: The canonical name for the settings/config page is "Settings"
+# (not "System" - that was the old pre-rename name). "System" is kept
+# here only as a backward-compatible alias in case anything external
+# still references it.
 PAGE_ALIASES = {
     "Home": "Dashboard",
     "Execution": "Frameworks",
     "Analysis": "Results",
     "Documentation": "Archive",
-    "Settings": "System",
+    "System": "Settings",
 }
+
+# Main navigation group, rendered top-down in the sidebar.
 NAV_ITEMS = [
     ("Dashboard", "\u2302"),
     ("Frameworks", "\U0001F9EA"),
     ("Results", "\U0001F4CA"),
     ("Archive", "\U0001F4DA"),
-    ("System", "\u2699"),
 ]
+
+# Settings is intentionally NOT part of NAV_ITEMS. It's rendered as its
+# own bottom-pinned section by gui.components.sidebar.build_sidebar,
+# separated from the main list by an expanding spacer and a divider, so
+# it always reads as application-level configuration rather than just
+# another content page in the same list.
+SETTINGS_NAV_ITEM = ("Settings", "\u2699")
+
 DEFAULT_PAGE = "Dashboard"
 
 _PAGE_REGISTRY_CACHE: dict | None = None
@@ -92,17 +107,23 @@ def get_page_registry() -> dict:
     Build (once) and return the page-name -> render-function mapping.
     Imports gui.pages on first call only, so this stays untouched by
     any test that never needs to render a page.
+
+    NOTE: "Settings" resolves to gui.pages.settings_page.render (the
+    checkbox-based settings/config page, matching the <name>_page.py
+    naming convention used by every other page module, and matching
+    its displayed title). The old "System" name/file has been fully
+    replaced; "System" now only survives as an alias in PAGE_ALIASES
+    for backward compatibility.
     """
     global _PAGE_REGISTRY_CACHE
     if _PAGE_REGISTRY_CACHE is None:
-        from gui.pages import archive_page, dashboard_page, frameworks_page, results_page, system_page
-
+        from gui.pages import archive_page, dashboard_page, frameworks_page, results_page, settings_page
         _PAGE_REGISTRY_CACHE = {
             "Dashboard": dashboard_page.render,
             "Frameworks": frameworks_page.render,
             "Results": results_page.render,
             "Archive": archive_page.render,
-            "System": system_page.render,
+            "Settings": settings_page.render,
         }
     return _PAGE_REGISTRY_CACHE
 

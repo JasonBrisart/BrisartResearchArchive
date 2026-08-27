@@ -6,7 +6,6 @@ def render(app):
         "Dashboard",
         "A simple starting point for opening the main areas of the archive.",
     )
-
     app.add_card(
         root,
         2,
@@ -19,10 +18,9 @@ def render(app):
             ("Open Frameworks", lambda: app.show_page("Frameworks"), True),
             ("Open Results", lambda: app.show_page("Results"), False),
             ("Open Archive", lambda: app.show_page("Archive"), False),
-            ("Open System", lambda: app.show_page("System"), False),
+            ("Open Settings", lambda: app.show_page("Settings"), False),
         ],
     )
-
     app.add_card(
         root,
         3,
@@ -36,7 +34,6 @@ def render(app):
             ("Analyze Results", app.analyze_tfl, False),
         ],
     )
-
     app.add_card(
         root,
         4,

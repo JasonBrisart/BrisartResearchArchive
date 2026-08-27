@@ -1,5 +1,27 @@
+"""
+gui/pages/results_page.py
+The Results page: run/refresh TFL analysis, open the generated CSV,
+and display the analysis report in a scrollable Text box
+(analysis_box). Registered as the "Results" page in
+config.registries.get_page_registry(). services.set_analysis_text()
+(see services/__init__.py) writes new report text directly into
+analysis_box on every "Run TFL Analysis" click; this module only ever
+sets its initial placeholder content.
+
+MOUSE WHEEL OVER analysis_box, specifically:
+Calls bind_text_widget_scroll_passthrough() right after creating
+analysis_box, for the same reason as gui/pages/settings_page.py's
+update_box/log_box: Tk's built-in, automatic Text-widget scroll
+binding intercepts and swallows the wheel event even when the box's
+own content is already fully visible (nothing to scroll internally),
+which otherwise blocks the event from ever reaching the page-level
+scroll handler in gui/main_window.py. See
+gui.components.page_helpers.bind_text_widget_scroll_passthrough()'s
+docstring (FIX 7) for the full mechanism.
+"""
 import tkinter as tk
 
+from gui.components.page_helpers import bind_text_widget_scroll_passthrough
 from gui.theme import COLORS, FONT_MONO
 
 
@@ -29,7 +51,6 @@ def render(app):
             "and archive-ready reports here."
         ),
     )
-
     app.analysis_box = tk.Text(
         root, height=30, bg=COLORS["panel"], fg=COLORS["text"],
         insertbackground=COLORS["accent"], relief="flat", font=FONT_MONO, wrap="word",
@@ -44,3 +65,4 @@ def render(app):
         "3. Run analysis.\n"
         "4. Inspect or export results.\n",
     )
+    bind_text_widget_scroll_passthrough(app.analysis_box, app)

@@ -1,5 +1,6 @@
 """
 Brisart Research Archive — System Controller.
+
 Coordinates application-level actions that do not belong to a specific
 GUI page: framework selection/launch, registry refresh, settings
 persistence, output-folder selection, shutdown, analysis wrappers,
@@ -25,7 +26,7 @@ from services import (
     open_tfl_csv as open_tfl_result_csv,
     set_analysis_text as display_analysis_text,
 )
-from services.updater import (
+from services.updater.gui_integration import (
     check_updates as run_gui_update_check,
     set_update_text as display_update_text,
     update_check_is_running as gui_update_check_is_running,
@@ -89,6 +90,12 @@ class SystemController:
         )
         settings["enable_update_checks"] = self._read_tk_value(
             "enable_update_checks", settings.get("enable_update_checks", True)
+        )
+        settings["notify_on_update"] = self._read_tk_value(
+            "notify_on_update", settings.get("notify_on_update", True)
+        )
+        settings["auto_install_updates"] = self._read_tk_value(
+            "auto_install_updates", settings.get("auto_install_updates", True)
         )
         settings["theme"] = self._read_tk_value("theme", settings.get("theme", "dark"))
         settings["window_width"] = self._window_dimension("winfo_width", settings.get("window_width", 1220))
@@ -430,6 +437,16 @@ class SystemController:
 
     # ============================================================
     # Update wrappers
+    #
+    # There is no manual "Install Update" action anymore. Every check --
+    # whether from this button or the automatic startup check -- goes
+    # through the same path in services.updater.gui_integration:
+    #   - auto_install_updates ON: installs immediately, no prompt.
+    #   - auto_install_updates OFF, notify_on_update ON: asks with a
+    #     Yes/No dialog before downloading anything. Declining just
+    #     means it will ask again next time.
+    #   - auto_install_updates OFF, notify_on_update OFF: checks and
+    #     downloads+verifies silently; never installs, never prompts.
     # ============================================================
     def check_updates(self) -> None:
         run_gui_update_check(self)

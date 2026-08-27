@@ -1,9 +1,23 @@
 """
+config/runtime.py
 Persistent application settings.
-
 Kept from the Archive branch essentially unchanged - this module was
 already solid: normalization, path validation, atomic JSON storage,
 recovery, and persistence, all pure standard library.
+
+WINDOW SIZE DEFAULTS, specifically:
+DEFAULT_SETTINGS["window_width"/"window_height"] is 800x600, chosen so
+the app opens at a reasonable, non-bloated size rather than filling a
+large portion of the screen by default. MIN_WINDOW_WIDTH/
+MIN_WINDOW_HEIGHT were lowered to match (800x600) -- previously they
+were 1060/700, which is HIGHER than the new default, meaning
+normalize_int() would have silently clamped an 800x600 default (or any
+saved 800x600 setting) straight back up to 1060x700 the moment it
+passed through here. Both this file's MIN_WINDOW_WIDTH/HEIGHT and
+gui/main_window.py's hardcoded self.minsize() call (a second,
+independent floor enforced directly by Tk) must be kept in sync with
+each other, or a smaller default gets silently overridden by whichever
+one of the two still has the old, larger floor.
 """
 from __future__ import annotations
 
@@ -19,6 +33,7 @@ from typing import Any
 
 APP_NAME = "Brisart Research Archive"
 SETTINGS_VERSION = 1
+
 APP_DIR = Path(os.getenv("APPDATA", str(Path.home()))) / APP_NAME
 SETTINGS_FILE = APP_DIR / "user_settings.json"
 SETTINGS_TEMP_FILE = APP_DIR / "user_settings.json.tmp"
@@ -31,13 +46,25 @@ DEFAULT_SETTINGS = {
     "theme": "dark",
     "output_folder": "outputs",
     "enable_update_checks": True,
-    "window_width": 1220,
-    "window_height": 780,
+    "notify_on_update": True,
+    # Governs BOTH the automatic startup check and the manual "Check
+    # Updates" button: when True, a verified newer release is installed
+    # automatically rather than only downloaded. Defaults to True since
+    # this app is built first for daily use by its own author -- flip
+    # to False in Settings if you'd rather always confirm installs
+    # yourself via the Yes/No prompt.
+    "auto_install_updates": True,
+    # Deliberately modest (not the previous 1220x780) so the window
+    # opens at a reasonable size rather than dominating the screen by
+    # default. See the module docstring for why MIN_WINDOW_WIDTH/HEIGHT
+    # below had to move together with this.
+    "window_width": 800,
+    "window_height": 600,
 }
 
 ALLOWED_THEMES = {"dark"}
-MIN_WINDOW_WIDTH = 1060
-MIN_WINDOW_HEIGHT = 700
+MIN_WINDOW_WIDTH = 800
+MIN_WINDOW_HEIGHT = 600
 MAX_WINDOW_WIDTH = 7680
 MAX_WINDOW_HEIGHT = 4320
 
@@ -47,7 +74,6 @@ WINDOWS_RESERVED_NAMES = {
     *(f"COM{i}" for i in range(1, 10)),
     *(f"LPT{i}" for i in range(1, 10)),
 }
-
 
 # ============================================================
 # Normalization
@@ -184,6 +210,12 @@ def normalize_settings(data: Any) -> dict:
     settings["output_folder"] = normalize_output_folder(settings.get("output_folder"))
     settings["enable_update_checks"] = normalize_bool(
         settings.get("enable_update_checks"), DEFAULT_SETTINGS["enable_update_checks"]
+    )
+    settings["notify_on_update"] = normalize_bool(
+        settings.get("notify_on_update"), DEFAULT_SETTINGS["notify_on_update"]
+    )
+    settings["auto_install_updates"] = normalize_bool(
+        settings.get("auto_install_updates"), DEFAULT_SETTINGS["auto_install_updates"]
     )
     settings["window_width"] = normalize_int(
         settings.get("window_width"), DEFAULT_SETTINGS["window_width"], MIN_WINDOW_WIDTH, MAX_WINDOW_WIDTH
@@ -387,6 +419,7 @@ def reset_settings() -> bool:
 __all__ = [
     "APP_NAME", "SETTINGS_VERSION", "APP_DIR", "SETTINGS_FILE", "SETTINGS_TEMP_FILE",
     "SETTINGS_BACKUP_FILE", "LEGACY_SETTINGS_FILE", "DEFAULT_SETTINGS",
+    "MIN_WINDOW_WIDTH", "MIN_WINDOW_HEIGHT", "MAX_WINDOW_WIDTH", "MAX_WINDOW_HEIGHT",
     "normalize_text", "normalize_bool", "normalize_int", "normalize_theme",
     "normalize_framework_id", "normalize_output_folder", "normalize_settings",
     "is_safe_output_folder_text", "get_app_dir", "ensure_app_dir", "get_default_output_dir",
