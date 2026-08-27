@@ -22,16 +22,17 @@ a smaller default (Tk's minsize() always wins over a smaller
 geometry() request, and normalize_int() in config/runtime.py always
 wins over a smaller saved setting).
 
-MOUSEWHEEL SCROLLING, specifically -- FIX 6, the actual working fix:
+MOUSEWHEEL SCROLLING, specifically -- FIX 6, the current mechanism for
+the general page area:
 Every page is wrapped in a scrollable Canvas by
 gui.components.page_helpers.UIController.page_shell(). Earlier fixes
 (see page_helpers.py's module docstring for the full history)
 correctly got a physical mouse wheel working over the entire page, but
-a laptop touchpad's two-finger scroll gesture still did nothing at
-all, no matter which widget was hovered.
+a touchpad two-finger scroll gesture still did nothing at all, no
+matter which widget was hovered.
 
-Root cause: Tk keeps an internal cache of "which widget is currently
-under the pointer," used to decide which widget receives a
+Root cause hypothesis: Tk keeps an internal cache of "which widget is
+currently under the pointer," used to decide which widget receives a
 <MouseWheel> event. That cache is only ever updated by real <Motion>
 events -- the cursor physically moving. A mouse wheel almost always
 has tiny hand jitter right before/during scrolling, which keeps the
@@ -49,10 +50,15 @@ The fix: bind ONE handler here, at the Tk root, instead of per-widget.
 Inside _on_global_mousewheel(), the target widget is resolved via
 self.winfo_containing(event.x_root, event.y_root) -- a live, direct
 query of the real OS cursor position -- instead of trusting whatever
-widget Tk's own (stale, touchpad-broken) internal dispatch decided on
-for this event. This sidesteps the stale-cache problem entirely: it
-does not matter what Tk thinks the "current widget" is, only where the
-cursor is actually, physically sitting right now.
+widget Tk's own (stale) internal dispatch decided on for this event.
+This sidesteps the stale-cache problem entirely: it does not matter
+what Tk thinks the "current widget" is, only where the cursor is
+actually, physically sitting right now.
+
+NOTE: touchpad scrolling over the general page area remains an open,
+unresolved issue even with this fix in place -- see
+docs/KNOWN_ISSUES.md for the current status, confirmed environment
+details, what has been ruled out so far, and the next diagnostic step.
 
 Bound once, here, at app startup -- NOT per-page and NOT via
 bind_scrolling_recursively() (which remains in page_helpers.py as a
@@ -141,8 +147,8 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
 
         # Bound ONCE, at the root, for the lifetime of the app -- see
         # the MOUSEWHEEL SCROLLING (FIX 6) section of this module's
-        # docstring for why a single root-level handler using real
-        # screen coordinates is what actually fixes touchpad scrolling.
+        # docstring, and docs/KNOWN_ISSUES.md for the current status of
+        # touchpad scrolling on the general page area.
         self.bind_all("<MouseWheel>", self._on_global_mousewheel)
         self.bind_all("<Button-4>", self._on_global_mousewheel)
         self.bind_all("<Button-5>", self._on_global_mousewheel)
@@ -168,8 +174,9 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         widget under the cursor via a live screen-coordinate query
         (winfo_containing) rather than trusting Tk's own internal
         dispatch decision for this event -- see the module docstring
-        for exactly why that distinction is what makes touchpad
-        scrolling work at all.
+        for why that distinction matters, and docs/KNOWN_ISSUES.md for
+        the current status of touchpad scrolling on the general page
+        area.
         """
         try:
             target_widget = self.winfo_containing(event.x_root, event.y_root)

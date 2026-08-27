@@ -10,13 +10,14 @@ it builds fresh on each call.
 
 MOUSEWHEEL SCROLLING, specifically -- full history, in the order each
 fix was actually attempted (FIX 1 first, chronologically down to the
-most recent). The current, actually-correct mechanism is FIX 6 (wired
-from gui/main_window.py -- see that module's docstring for how it's
-bound) plus FIX 7 (see bind_text_widget_scroll_passthrough() below).
-FIX 1 through FIX 5 are kept as historical record of what was tried
-and why each attempt was insufficient on its own -- do not remove them
-when adding a future fix; append below FIX 7 instead, in the same
-chronological, oldest-first order.
+most recent). The current, actually-correct mechanism for a physical
+mouse wheel is FIX 6 (wired from gui/main_window.py -- see that
+module's docstring for how it's bound) plus FIX 7 (see
+bind_text_widget_scroll_passthrough() below). FIX 1 through FIX 5 are
+kept as historical record of what was tried and why each attempt was
+insufficient on its own -- do not remove them when adding a future fix;
+append below FIX 7 instead, in the same chronological, oldest-first
+order.
 
   FIX 1 -- binding timing (superseded): the wheel handler used to be
   gated behind the canvas's own <Enter>/<Leave> hover events, which
@@ -27,15 +28,14 @@ chronological, oldest-first order.
   FIX 5/6): event.delta is only a clean multiple of 120 for a
   traditional mechanical mouse wheel. Laptop trackpads and Precision
   Touchpads send much smaller deltas (sometimes +/-1 to +/-40), and
-  int(-1 * (event.delta / 120)) truncates anything under 120 straight
+  int(-1 * (event.delta / 120)) truncates anything smaller straight
   to 0 -- a guaranteed no-op scroll. Fixed by guaranteeing at least 1
   unit of scroll for any nonzero delta.
 
   FIX 3/4 (superseded) -- the focus-following approach (<Enter>/
   <ButtonRelease-1> pulling keyboard focus onto the canvas) assumed
   <MouseWheel> routes by keyboard focus on Windows. That assumption
-  was never verified against a real display and turned out to be
-  wrong, or at least insufficient.
+  turned out to be wrong, or at least insufficient, once tested.
 
   FIX 5 (superseded by FIX 6, kept for the Text-widget-detection
   helper below, which FIX 6 also reuses) -- bind the wheel handler
@@ -44,32 +44,35 @@ chronological, oldest-first order.
   (verified working), but insufficient alone for touchpads -- see
   FIX 6 below for why.
 
-  FIX 6 (current, actually correct for the general page area) -- see
-  main_window.py's _on_global_mousewheel(). Root cause finally
-  identified: Tk keeps an internal cache of "which widget is currently
-  under the pointer," used to decide which widget a <MouseWheel> event
+  FIX 6 (current mechanism for the general page area) -- see
+  main_window.py's _on_global_mousewheel(). Root cause hypothesis: Tk
+  keeps an internal cache of "which widget is currently under the
+  pointer," used to decide which widget a <MouseWheel> event
   dispatches to. That cache is only updated by real <Motion> events
   (the cursor physically moving). A mouse wheel is almost always
   preceded by tiny cursor jitter, which keeps that cache correct. A
-  laptop touchpad's two-finger scroll gesture moves the cursor ZERO
-  pixels by design -- the OS deliberately separates "finger scroll"
-  from "pointer position" -- so if the cursor was already resting
-  somewhere before the gesture started, Tk's cached "current widget" is
-  stale (or simply wrong), and the wheel event dispatches to whatever
-  widget that stale cache says, not the widget actually visually under
-  the touchpad-controlled cursor. This is why FIX 5 (above) worked
+  touchpad two-finger scroll gesture moves the cursor ZERO pixels by
+  design -- the OS deliberately separates "finger scroll" from
+  "pointer position" -- so if the cursor was already resting somewhere
+  before the gesture started, Tk's cached "current widget" is stale
+  (or simply wrong), and the wheel event dispatches to whatever widget
+  that stale cache says, not the widget actually visually under the
+  touchpad-controlled cursor. This is why FIX 5 (above) worked
   perfectly for a physical mouse wheel but did nothing at all for a
   touchpad, no matter which widget was hovered: the event was never
   reaching ANY of the widgets FIX 5 bound onto in the first place. The
   fix: bind a single handler at the Tk root (not per-widget), and
-  inside it, resolve the target widget via winfo_containing(event.x_root,
-  event.y_root) -- a live, direct OS coordinate query (real cursor
-  position, independent of Tk's own stale internal motion cache) --
-  instead of trusting Tk's own dispatch decision for the event at all.
-  NOTE: per docs/KNOWN_ISSUES.md, Jason has reported touchpad scrolling
-  over the general page area is STILL not working even with FIX 6 in
-  place. That issue remains open and undiagnosed; see that file for the
-  full attempt history and what evidence would help resolve it.
+  inside it, resolve the target widget via
+  winfo_containing(event.x_root, event.y_root) -- a live, direct OS
+  coordinate query (real cursor position, independent of Tk's own
+  stale internal motion cache) -- instead of trusting Tk's own
+  dispatch decision for the event at all.
+
+  NOTE: touchpad scrolling over the general page area remains an open,
+  unresolved issue even with FIX 6 in place -- see
+  docs/KNOWN_ISSUES.md for the current status, confirmed environment
+  details, what has been ruled out so far, and the next diagnostic
+  step.
 
   FIX 7 -- implemented in bind_text_widget_scroll_passthrough() below.
   A DIFFERENT, CONFIRMED-FIXED bug (affects mouse and touchpad
@@ -263,13 +266,14 @@ def bind_scrolling_recursively(root_widget: tk.Misc, on_mousewheel: Callable) ->
     Walk `root_widget` and every descendant, binding <MouseWheel>,
     <Button-4>, and <Button-5> DIRECTLY on each one as an instance
     binding. Kept as a supplementary/defensive layer -- confirmed
-    working for a real mouse wheel -- but the primary, touchpad-safe
-    mechanism is the global handler in main_window.py (FIX 6); see the
-    module docstring for why this alone is not sufficient for
-    touchpads. Safe to call on a widget tree that is still being built
-    or that gets partially destroyed mid-walk (each bind() call is
-    individually guarded). add="+" throughout so this never clobbers
-    any other binding a widget might already have.
+    working for a real mouse wheel -- but the primary mechanism for the
+    general page area is the global handler in main_window.py (FIX 6);
+    see the module docstring for why this alone is not sufficient for
+    touchpads, and docs/KNOWN_ISSUES.md for the current status of that
+    open issue. Safe to call on a widget tree that is still being
+    built or that gets partially destroyed mid-walk (each bind() call
+    is individually guarded). add="+" throughout so this never
+    clobbers any other binding a widget might already have.
     """
     def _walk(widget: tk.Misc) -> None:
         try:
