@@ -45,6 +45,16 @@ so the two don't compete for the network/UI thread at launch.
 self._current_page_name tracks the most recently shown page (post-alias)
 so SystemController's Tooling wrappers can skip re-rendering the Tooling
 page if the user has navigated elsewhere.
+
+IMPORTS FROM controllers/, specifically:
+controllers/__init__.py does not exist (the project has no __init__.py
+files anywhere -- every package is a PEP 420 namespace package). This
+means LogController and SystemController must each be imported directly
+from their own submodule (controllers.log_controller,
+controllers.system_controller) rather than from the controllers package
+itself -- `from controllers import LogController, SystemController`
+would fail with an ImportError, since there is no package-level
+__init__.py to re-export them.
 """
 from __future__ import annotations
 import sys
@@ -54,7 +64,8 @@ from tkinter import messagebox, ttk
 from config.registries import DEFAULT_PAGE, get_page_registry, initialize_framework_registry, normalize_page_name
 from config.runtime import load_settings
 from config.state import AppState
-from controllers import LogController, SystemController
+from controllers.log_controller import LogController
+from controllers.system_controller import SystemController
 from gui.components.page_helpers import UIController, mousewheel_units, widget_is_or_contains_text
 from gui.components.sidebar import build_sidebar
 from gui.theme import APP_NAME, APP_VERSION, COLORS, apply_theme
