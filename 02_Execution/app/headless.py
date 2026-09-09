@@ -6,7 +6,6 @@ TFLSessionEngine with a deterministic virtual clock, with zero Tkinter
 involvement. This is what makes the engine provably testable.
 """
 from __future__ import annotations
-
 from engine.timing import NullSchedulerTimer
 from frameworks.TFL.config import get_default_config
 from frameworks.TFL.engine import TFLSessionEngine

@@ -9,13 +9,10 @@ the GUI equivalent of the console options_menu() toggles, wired
 through TFLGuiSession.begin_session() instead of a text prompt loop.
 """
 from __future__ import annotations
-
 import tkinter as tk
 from tkinter import ttk
 from typing import Any
-
 from .config import apply_default_options
-
 try:
     from gui.theme import COLORS, FONT_HEAD
 except ImportError:
@@ -27,7 +24,6 @@ except ImportError:
         "accent": "#14b8a6",
     }
     FONT_HEAD = ("Segoe UI", 13, "bold")
-
 try:
     from gui.widgets.card import Card
 except ImportError:
@@ -36,7 +32,6 @@ except ImportError:
             kwargs.setdefault("style", "Card.TFrame")
             kwargs.setdefault("padding", (16, 14))
             super().__init__(parent, *args, **kwargs)
-
 
 TOGGLE_DEFINITIONS = [
     (
@@ -76,13 +71,11 @@ def _build_toggle_row(parent, session, key: str, title: str, description: str, r
     initial_value = bool(session.config.get(key, False))
     variable = tk.BooleanVar(master=session.win, value=initial_value)
     session.option_vars[key] = variable
-
     ttk.Checkbutton(
         parent,
         text=title,
         variable=variable,
     ).grid(row=row, column=0, sticky="w", pady=(10, 0))
-
     ttk.Label(
         parent,
         text=description,
@@ -121,19 +114,15 @@ def render_options(session: Any) -> None:
             return
     except tk.TclError:
         return
-
     session.clear()
     session.option_vars = {}
-
     root = ttk.Frame(session.win, style="Bg.TFrame", padding=22)
     root.pack(fill="both", expand=True)
-
     ttk.Label(
         root,
         text="TFL Run Options",
         style="Title.TLabel",
     ).pack(anchor="w")
-
     ttk.Label(
         root,
         text=(
@@ -144,30 +133,24 @@ def render_options(session: Any) -> None:
         wraplength=860,
         justify="left",
     ).pack(anchor="w", pady=(4, 18))
-
     card = Card(root)
     card.pack(fill="x", pady=(0, 16))
     card.grid_columnconfigure(0, weight=1)
-
     for index, (key, title, description) in enumerate(TOGGLE_DEFINITIONS):
         row = index * 2
         _build_toggle_row(card, session, key, title, description, row)
-
     actions = ttk.Frame(root, style="Bg.TFrame")
     actions.pack(fill="x", pady=(4, 0))
-
     ttk.Button(
         actions,
         text="Restore Defaults",
         command=lambda: _apply_restore_defaults(session),
     ).pack(side="left")
-
     ttk.Button(
         actions,
         text="Cancel",
         command=session.cancel,
     ).pack(side="left", padx=(8, 0))
-
     ttk.Button(
         actions,
         text="Start Session",

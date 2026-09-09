@@ -8,25 +8,20 @@ covered here because it needs a display; the point of the engine split
 is that trial *logic* never needs one.
 """
 from __future__ import annotations
-
 import importlib
 import pkgutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-
 import os
-
 # Force a throwaway APPDATA so tests never touch the user's real settings
 # or output folders.
 _TEMP_APPDATA = tempfile.mkdtemp(prefix="brisart_test_appdata_")
 os.environ["APPDATA"] = _TEMP_APPDATA
-
 from app.headless import build_default_engine
 from config.registries import get_available_frameworks, refresh_framework_registry
 from frameworks.TFL import analysis, framework
@@ -193,7 +188,6 @@ class IdentityAndTimestampTests(unittest.TestCase):
     every run wrote to the same identity-less output file with no way
     to tell one participant's session from another's.
     """
-
     def test_session_id_auto_generated_and_unique(self):
         first_engine, _first_timer = build_default_engine()
         second_engine, _second_timer = build_default_engine()
@@ -239,7 +233,6 @@ class AutosaveHookTests(unittest.TestCase):
     called once, at session completion, so a crash mid-run lost
     everything collected up to that point.
     """
-
     def _complete_one_trial(self, engine) -> None:
         engine.submit_prediction("A")
         engine.submit_affect(50)
@@ -261,7 +254,6 @@ class AutosaveHookTests(unittest.TestCase):
     def test_hook_exception_does_not_break_the_session(self):
         def failing_hook(rows):
             raise RuntimeError("simulated autosave failure")
-
         engine, _timer = build_default_engine(on_trial_recorded=failing_hook)
         self._complete_one_trial(engine)
         self.assertEqual(len(engine.rows), 1)
@@ -277,7 +269,6 @@ class StageAdvancedHookTests(unittest.TestCase):
     to redraw - it keeps showing buttons for a stage that no longer
     exists, and clicking them becomes a silent no-op forever.
     """
-
     def test_hook_fires_on_prediction_timeout(self):
         calls = []
         engine, timer = build_default_engine(on_stage_advanced=lambda: calls.append(engine.active_stage()))
@@ -314,7 +305,6 @@ class StageAdvancedHookTests(unittest.TestCase):
     def test_hook_exception_does_not_break_the_session(self):
         def failing_hook():
             raise RuntimeError("simulated GUI redraw failure")
-
         engine, timer = build_default_engine(on_stage_advanced=failing_hook)
         handle = engine.stage_state.timer_handle
         self.assertTrue(timer.fire(handle) is None)  # fire() itself never raises
@@ -369,7 +359,6 @@ class ConsistencyAndCarryoverAnalysisTests(unittest.TestCase):
     effect on the *next* trial - despite that being the entire premise
     implied by "Temporal Feedback Loop".
     """
-
     @staticmethod
     def _row(trial_id, prediction, behavioral_choice, contradiction, affect=50):
         return {
@@ -426,7 +415,6 @@ class ConsistencyAndCarryoverAnalysisTests(unittest.TestCase):
 
 class AutosaveFileTests(unittest.TestCase):
     """Covers the incremental checkpoint file lifecycle end to end."""
-
     def test_autosave_write_load_and_remove_round_trip(self):
         session_id = "autosave-test-001"
         rows = [

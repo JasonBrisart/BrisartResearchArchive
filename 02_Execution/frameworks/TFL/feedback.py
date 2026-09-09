@@ -1,25 +1,29 @@
+"""
+frameworks/TFL/feedback.py
+TFL feedback logic and instruction text. determine_feedback() maps a
+trial's prediction plus its configured feedback level to (correct_answer,
+contradiction) -- the pair the engine records on every row and that
+analysis.feedback_carryover_report() later buckets trials by. The
+remaining helpers are display-only: show_feedback() for headless/CLI runs
+and make_perturbation_instruction() for the short instruction shown on a
+perturbation trial in both console and GUI. No file I/O, no state.
+"""
 from __future__ import annotations
-
-
 def opposite_choice(choice: str) -> str:
     if choice == "A":
         return "B"
     if choice == "B":
         return "A"
     return ""
-
-
 def determine_feedback(prediction: str, feedback_level: str) -> tuple[str, str]:
     """
     Determine the feedback outcome for one TFL trial.
-
     Returns:
         correct_answer: the answer shown as correct for this trial.
         contradiction: one of "", "mild", "strong".
     """
     prediction = str(prediction).strip().upper()
     feedback_level = str(feedback_level).strip().lower()
-
     if prediction not in {"A", "B"}:
         return "", ""
     if feedback_level in {"", "neutral"}:
@@ -31,8 +35,6 @@ def determine_feedback(prediction: str, feedback_level: str) -> tuple[str, str]:
     if feedback_level == "strongly_contradictory":
         return opposite_choice(prediction), "strong"
     return prediction, "none"
-
-
 def show_feedback(feedback_level: str, prediction: str, correct_answer: str) -> None:
     """Console feedback display, retained for headless/CLI runs."""
     feedback_level = str(feedback_level).strip().lower()
@@ -48,8 +50,6 @@ def show_feedback(feedback_level: str, prediction: str, correct_answer: str) -> 
     else:
         print(f"Recorded interpretation: {prediction}")
     print("-" * 40)
-
-
 def make_perturbation_instruction(perturbation_type: str) -> str:
     """Return a short perturbation instruction for console and GUI use."""
     perturbation_type = str(perturbation_type).strip().lower()

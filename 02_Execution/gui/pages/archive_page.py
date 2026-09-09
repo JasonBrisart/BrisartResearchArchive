@@ -1,3 +1,10 @@
+"""
+gui/pages/archive_page.py
+The Archive page: a single card that opens the local .txt/.md document
+viewer (gui.components.document_viewer, via app.open_local_doc) for
+browsing README/notes/release/protocol documents inside the GUI.
+Registered as the "Archive" page in config.registries.get_page_registry().
+"""
 def render(app):
     root = app.page_shell(
         "Archive",

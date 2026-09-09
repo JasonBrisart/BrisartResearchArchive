@@ -1,14 +1,33 @@
-from __future__ import annotations
+"""
+frameworks/TFL/framework.py
+TFL framework identity, metadata, paths, experiment constants, and output
+schema -- the single module config.registries discovers (via
+FRAMEWORK_METADATA) to register TFL, and the stable public surface other
+layers import from.
 
+BASE_STIMULUS_LIMIT / PREDICTION_PROMPT / PREDICTION_CHOICES /
+SESSION_INTRO_TEXT are re-exported from frameworks/TFL/settings.py, THE
+single place to edit TFL's tunable behavior. This module's own copies
+were removed so there is exactly one source of truth for these values
+instead of two that could silently drift apart.
+
+The lazy re-export wrappers at the bottom (apply_default_options,
+load_stimuli, build_trials, analyze_output, ...) forward to the real
+implementations in config.py / stimuli.py / trial_builder.py /
+feedback.py / analysis.py without importing them at module-load time, so
+one broken submodule can't break framework discovery itself -- discovery
+only needs FRAMEWORK_METADATA, which is defined here directly.
+"""
+from __future__ import annotations
 from pathlib import Path
 
 from config.runtime import get_framework_output_dir
 from frameworks.shared.schema import DEFAULT_TRIAL_FIELDNAMES
+from frameworks.TFL import settings
 
 # ============================================================
 # Framework Identity
 # ============================================================
-
 FRAMEWORK_ID = "TFL"
 FRAMEWORK_NAME = "Temporal Feedback Loop"
 VERSION_LABEL = "TFL Baseline Reference Implementation"
@@ -42,7 +61,6 @@ FRAMEWORK_METADATA = {
 # ============================================================
 # Paths
 # ============================================================
-
 TFL_DIR = Path(__file__).resolve().parent
 
 
@@ -60,24 +78,17 @@ def get_output_file() -> Path:
 
 
 # ============================================================
-# Experiment Constants
+# Experiment Constants -- re-exported from settings.py
+# (see that module for the actual values; edit them THERE, not here)
 # ============================================================
-
-BASE_STIMULUS_LIMIT = 20
-PREDICTION_PROMPT = "\nPredicted interpretation (A/B): "
-PREDICTION_CHOICES = ["A", "B"]
-SESSION_INTRO_TEXT = (
-    "You will see ambiguous stimuli with two possible interpretations.\n"
-    "A = Interpretation A\n"
-    "B = Interpretation B\n"
-    "Use A or B only for prediction and behavioral choice.\n"
-    "Affect rating must be 0-100."
-)
+BASE_STIMULUS_LIMIT = settings.BASE_STIMULUS_LIMIT
+PREDICTION_PROMPT = settings.PREDICTION_PROMPT
+PREDICTION_CHOICES = list(settings.PREDICTION_CHOICES)
+SESSION_INTRO_TEXT = settings.SESSION_INTRO_TEXT
 
 # ============================================================
 # Output Schema
 # ============================================================
-
 CSV_FIELDNAMES = DEFAULT_TRIAL_FIELDNAMES
 
 # ============================================================
@@ -86,8 +97,6 @@ CSV_FIELDNAMES = DEFAULT_TRIAL_FIELDNAMES
 # These wrappers preserve stable public entry points without eagerly
 # loading the rest of the TFL implementation during metadata discovery,
 # so one broken submodule doesn't break framework discovery itself.
-
-
 def apply_default_options(config=None):
     from .config import apply_default_options as _apply_default_options
     return _apply_default_options(config)

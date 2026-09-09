@@ -1,30 +1,33 @@
 """
-TFL session engine — the headless, testable brain of the framework.
+frameworks/TFL/engine.py
+TFL session engine -- the headless, testable brain of the framework. All
+trial state, timing, validation, and recording live here with zero
+Tkinter dependency, so it can be driven by unit tests (via
+engine.timing.NullSchedulerTimer) or by a real GUI (via
+engine.timing.MonotonicTimer bound to Tk's .after()). The GUI layer
+(screen.py + session_gui.py) only renders whatever state this class
+reports; it never owns trial logic itself.
 
-This is the core of the merge: all trial state, timing, validation, and
-recording lives here with zero Tkinter dependency, so it can be driven
-by unit tests (via engine.timing.NullSchedulerTimer) or by a real GUI
-(via engine.timing.MonotonicTimer bound to Tk's .after()). The GUI
-layer (screen.py + session_gui.py) only renders whatever state this
-class reports; it never owns trial logic itself.
+The timed-stage countdown falls back to TRIAL_DURATION_SEC from
+frameworks/TFL/settings.py (the single source of truth for TFL's
+tunable behavior) when a config does not carry its own trial_duration_sec.
 """
 from __future__ import annotations
-
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
-
 from engine.timing import TimerInterface
 from . import feedback
+from . import settings
 
 TIMED_STAGES = {"prediction", "behavioral_choice"}
 
 
 def generate_session_id() -> str:
     """
-    Build a readable, sortable, collision-resistant session identifier
-    so multiple participants/runs never collide in shared output files.
+    Build a readable, sortable, collision-resistant session identifier so
+    multiple participants/runs never collide in shared output files.
     Format: YYYYMMDD-HHMMSS-<8 hex chars>, e.g. 20260802-131045-a1b2c3d4.
     """
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -51,7 +54,6 @@ class TFLSessionEngine:
     response validation/locking, row construction, and completion
     bookkeeping. Does not know anything about Tkinter.
     """
-
     def __init__(
         self,
         config: dict,
@@ -74,29 +76,23 @@ class TFLSessionEngine:
         self.stage_state = StageState(name="prediction")
         self.current_trial_response: dict[str, Any] = {}
         self._completion_count = 0
-
         # Identity: lets multiple participants/sessions coexist in output
-        # data instead of every run silently overwriting the same file.
+        # data rather than every run writing to the same identity-less file.
         self.participant_id = str(participant_id).strip()
         self.session_id = str(session_id).strip() if session_id else generate_session_id()
-
         # Wall-clock bookkeeping, separate from the engine's relative
         # reaction-time math (which uses the injected timer, not real time).
         self._trial_started_at_iso = ""
-
-        # Optional hook so a caller (GUI session, headless harness, etc.)
-        # can autosave after every recorded trial without the engine
-        # itself knowing anything about file I/O or persistence.
+        # Optional hook so a caller (GUI session, headless harness) can
+        # autosave after every recorded trial without the engine knowing
+        # anything about file I/O or persistence.
         self.on_trial_recorded = on_trial_recorded
-
-        # Optional hook fired whenever the engine changes stage on its
-        # own initiative rather than in direct response to a caller's
-        # submit_*() call - today that only happens via a timer timeout.
-        # Without this, a GUI has no way to know it needs to redraw when
-        # a 12-second prediction/behavioral-choice window silently
-        # expires: the engine moves on to "affect" internally, but the
-        # window keeps showing stale buttons for a stage that no longer
-        # exists, and every click on them is a silent no-op forever.
+        # Optional hook fired whenever the engine changes stage on its own
+        # initiative rather than in response to a submit_*() call -- today
+        # only on a timer timeout. A GUI needs this to know it must redraw
+        # when a timed window expires: the engine moves to the next stage
+        # internally, but without this the window keeps showing buttons for
+        # a stage that no longer exists and every click on them is a no-op.
         self.on_stage_advanced = on_stage_advanced
 
     def _notify_stage_advanced(self) -> None:
@@ -105,14 +101,13 @@ class TFLSessionEngine:
         try:
             self.on_stage_advanced()
         except Exception:
-            # A broken UI callback must never break the running session -
-            # the same fail-safe policy already used for on_trial_recorded.
+            # A broken UI callback must never break the running session --
+            # same fail-safe policy used for on_trial_recorded.
             pass
 
     # ------------------------------------------------------------
     # State accessors
     # ------------------------------------------------------------
-
     @property
     def current_trial(self) -> dict | None:
         if 0 <= self.index < len(self.trials):
@@ -139,7 +134,6 @@ class TFLSessionEngine:
     # ------------------------------------------------------------
     # Stage / timer management
     # ------------------------------------------------------------
-
     def invalidate_timer(self) -> None:
         if self.stage_state.timer_handle is not None:
             self.timer.cancel(self.stage_state.timer_handle)
@@ -152,7 +146,7 @@ class TFLSessionEngine:
         started_at = self.timer.now()
         self.stage_state = StageState(name=stage_name, started_at=started_at)
         if stage_name in TIMED_STAGES:
-            duration = float(self.config.get("trial_duration_sec", 12))
+            duration = float(self.config.get("trial_duration_sec", settings.TRIAL_DURATION_SEC))
             self.stage_state.deadline_at = started_at + duration
             self.stage_state.timer_token += 1
             token = self.stage_state.timer_token
@@ -184,7 +178,6 @@ class TFLSessionEngine:
     # ------------------------------------------------------------
     # Response submission
     # ------------------------------------------------------------
-
     def submit_prediction(self, choice: str) -> bool:
         return self._submit_timed_choice("prediction", choice)
 
@@ -219,12 +212,10 @@ class TFLSessionEngine:
 
     def handle_timeout(self, stage_name: str, token: int) -> bool:
         """
-        Fired by the timer, not by a caller's submit_*() call - this is
-        the one path where the engine changes its own state on its own
-        initiative. _notify_stage_advanced() at the end is what tells a
-        GUI it needs to redraw; without it, the window keeps showing a
-        stage that no longer exists and every button click on it is a
-        silent no-op forever.
+        Fired by the timer, not by a caller's submit_*() call -- the one
+        path where the engine changes its own state on its own initiative.
+        _notify_stage_advanced() at the end tells a GUI to redraw; without
+        it the window keeps showing a stage that no longer exists.
         """
         if self.completed or self.cancelled:
             return False
@@ -299,7 +290,6 @@ class TFLSessionEngine:
     # ------------------------------------------------------------
     # Advancement / recording / completion
     # ------------------------------------------------------------
-
     def advance_after_behavioral_choice(self) -> None:
         self.rows.append(self.build_output_row())
         if self.on_trial_recorded is not None:
@@ -307,8 +297,8 @@ class TFLSessionEngine:
                 self.on_trial_recorded(self.rows)
             except Exception:
                 # Autosave/telemetry failures must never interrupt a
-                # running session - the in-memory rows remain intact
-                # and will still be written at finish_session().
+                # running session -- the in-memory rows remain intact and
+                # will still be written at finish_session().
                 pass
         self.index += 1
         if self.index >= len(self.trials):

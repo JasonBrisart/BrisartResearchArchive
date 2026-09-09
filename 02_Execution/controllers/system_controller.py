@@ -22,7 +22,7 @@ from typing import Any
 
 from config.runtime import get_output_folder, normalize_settings, save_settings as persist_settings
 from gui.components.document_viewer import open_local_doc as open_document_viewer
-from services import (
+from services.tfl_analysis import (
     analyze_tfl as run_tfl_analysis,
     fallback_csv_summary as build_fallback_csv_summary,
     open_tfl_csv as open_tfl_result_csv,

@@ -1,13 +1,28 @@
-from __future__ import annotations
+"""
+frameworks/TFL/trial_builder.py
+Builds the complete, ordered TFL trial sequence from a config and a
+stimulus set. Normalizes and validates every config field (blocks,
+feedback levels, perturbation types, intervals, seed), assigns each trial
+its block/feedback/prior/probe/perturbation properties, and shuffles the
+stimulus pool deterministically from random_seed so a given seed always
+yields the same sequence. Delayed-reentry trials reuse the exact stimulus
+content of their declared recurrence-source trial, so the relationship
+recorded in recurrence_source_trial always holds. Pure logic, no I/O.
 
+VALID_BLOCKS and VALID_FEEDBACK_LEVELS are read from
+frameworks/TFL/settings.py (the single source of truth for TFL's
+tunable behavior) instead of being hardcoded here as a second, separate
+copy that could silently drift out of sync with it.
+"""
+from __future__ import annotations
 import random
 from collections.abc import Iterable
-
 from . import framework
+from . import settings
 from .config import DEFAULT_FEEDBACK_LEVELS, DEFAULT_PERTURBATION_TYPES
 
-VALID_BLOCKS = {"affect", "belief", "contradiction"}
-VALID_FEEDBACK_LEVELS = {"confirmatory", "mildly_contradictory", "strongly_contradictory"}
+VALID_BLOCKS = settings.VALID_BLOCKS
+VALID_FEEDBACK_LEVELS = settings.VALID_FEEDBACK_LEVELS
 REQUIRED_STIMULUS_FIELDS = (
     "stimulus_id", "cue", "ambiguous_text", "interpretation_a", "interpretation_b",
 )
@@ -113,7 +128,6 @@ def normalize_stimuli(stimuli) -> list[dict]:
 # ============================================================
 # Trial helpers
 # ============================================================
-
 def is_interval_trial(trial_number: int, interval: int) -> bool:
     return interval > 0 and trial_number % interval == 0
 
@@ -178,7 +192,6 @@ def select_perturbation(
 # ============================================================
 # Trial construction
 # ============================================================
-
 def build_trials(config: dict, stimuli: list[dict]) -> list[dict]:
     """
     Build the complete TFL trial sequence. Delayed-reentry trials reuse
@@ -187,7 +200,6 @@ def build_trials(config: dict, stimuli: list[dict]) -> list[dict]:
     """
     if not isinstance(config, dict):
         raise TypeError("TFL config must be a dictionary.")
-
     normalized_stimuli = normalize_stimuli(stimuli)
     blocks = normalize_blocks(config.get("blocks", ["affect", "belief", "contradiction"]))
     trials_per_block = positive_int(config.get("trials_per_block", len(normalized_stimuli)), len(normalized_stimuli))
@@ -197,7 +209,6 @@ def build_trials(config: dict, stimuli: list[dict]) -> list[dict]:
     total_trials = min(configured_trial_count, trials_per_block * len(blocks))
     if total_trials < 1:
         raise ValueError("TFL trial count must be at least one.")
-
     random_seed = positive_int(config.get("random_seed", 2026), 2026, allow_zero=True)
     probe_interval = positive_int(config.get("probe_interval", 4), 4, allow_zero=True)
     delayed_reentry_interval = positive_int(config.get("delayed_reentry_interval", 6), 6, allow_zero=True)
@@ -208,20 +219,16 @@ def build_trials(config: dict, stimuli: list[dict]) -> list[dict]:
     enable_delayed_reentry = normalize_bool(config.get("enable_delayed_reentry", True), True)
     enable_perturbations = normalize_bool(config.get("enable_perturbations", False), False)
     run_mode = str(config.get("run_mode", "default_tfl")).strip() or "default_tfl"
-
     randomizer = random.Random(random_seed)
     stimulus_pool = [dict(stimulus) for stimulus in normalized_stimuli]
     randomizer.shuffle(stimulus_pool)
-
     trials: list[dict] = []
     for trial_index in range(total_trials):
         trial_number = trial_index + 1
         if trial_index > 0 and trial_index % len(stimulus_pool) == 0:
             randomizer.shuffle(stimulus_pool)
-
         block, block_trial_number = block_for_trial(trial_index, blocks, trials_per_block)
         stimulus = dict(stimulus_pool[trial_index % len(stimulus_pool)])
-
         delayed_reentry = should_use_delayed_reentry(enable_delayed_reentry, delayed_reentry_interval, trial_number)
         recurrence_source_trial = ""
         if delayed_reentry:
@@ -232,14 +239,12 @@ def build_trials(config: dict, stimuli: list[dict]) -> list[dict]:
                     raise RuntimeError("Delayed-reentry source trial is outside the generated trial list.")
                 source_trial = trials[source_index]
                 stimulus = {field: source_trial[field] for field in REQUIRED_STIMULUS_FIELDS}
-
         perturbation_trial = False
         perturbation_type = ""
         if enable_perturbations:
             perturbation_trial, perturbation_type = select_perturbation(
                 perturbation_interval, perturbation_types, trial_number
             )
-
         trials.append({
             "trial_id": trial_number,
             "framework_id": framework.FRAMEWORK_ID,
@@ -259,5 +264,4 @@ def build_trials(config: dict, stimuli: list[dict]) -> list[dict]:
             "perturbation_trial": perturbation_trial,
             "perturbation_type": perturbation_type,
         })
-
     return trials

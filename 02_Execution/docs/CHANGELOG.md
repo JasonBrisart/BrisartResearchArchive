@@ -5,6 +5,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.1 ALPHA] - 2026-09-08
+
+### Added
+- **`frameworks/TFL/settings.py`** (new file): THE single place to edit TFL's tunable behavior -- trial duration, trial/block counts, probe/delayed-reentry/perturbation intervals, random seed, affect range, stimulus limit, feedback levels, perturbation types, default run-option toggles, and all prompt/intro text. A pure-data leaf module with no internal imports, so it can never create a circular import.
+- **`services/timestamps.py`** (new file): the generic `timestamp()` helper used by `controllers/log_controller.py`, split out of the old `services/__init__.py`.
+- **`services/tfl_analysis.py`** (new file): the four TFL-specific GUI bridge functions (`analyze_tfl`, `set_analysis_text`, `fallback_csv_summary`, `open_tfl_csv`), split out of the old `services/__init__.py` so TFL-only logic no longer lives in the generic `services` package initializer.
+
+### Changed
+- **`frameworks/TFL/config.py` rewritten** to assemble `DEFAULT_CONFIG` and the "official default startup" option set entirely from `frameworks/TFL/settings.py`. The file now holds no tunable literals of its own -- every value is read from `settings.py`, so TFL's behavior is edited in exactly one file.
+- **`frameworks/TFL/framework.py`**: `BASE_STIMULUS_LIMIT`, `PREDICTION_PROMPT`, `PREDICTION_CHOICES`, and `SESSION_INTRO_TEXT` are now re-exported from `settings.py` instead of being hardcoded here as a second, separate copy.
+- **`frameworks/TFL/trial_builder.py`**: `VALID_BLOCKS` and `VALID_FEEDBACK_LEVELS` now read from `settings.py` instead of local hardcoded set literals.
+- **`frameworks/TFL/engine.py`**: the timed-stage countdown now falls back to `settings.TRIAL_DURATION_SEC` instead of a hardcoded `12`.
+- **`frameworks/TFL/session_gui.py`**: `AUTOSAVE_INTERVAL_TRIALS` is now imported from `settings.py` instead of being defined locally.
+- **`services/__init__.py` removed entirely.** `services/` is now a PEP 420 namespace package, consistent with every other package in the project -- this was the last remaining `__init__.py` file anywhere in the codebase.
+- **`controllers/log_controller.py`**: import changed from `from services import timestamp` to `from services.timestamps import timestamp`.
+- **`controllers/system_controller.py`**: import changed from `from services import (analyze_tfl, ...)` to `from services.tfl_analysis import (analyze_tfl, ...)`.
+
+### Notes
+- No behavior, output schema, or stored-format changes. `get_default_config()` produces byte-identical output to the pre-refactor version -- verified directly (120 trials, 40 per block, all interval/feedback/perturbation values unchanged).
+- No changes were required to `frameworks/TFL/stimuli.py`, `frameworks/TFL/feedback.py`, `frameworks/TFL/analysis.py`, or `frameworks/TFL/screen.py` -- none of them referenced the old config layout.
+- TFL's full edit surface is now exactly two files: `settings.py` for all tunable behavior, `stimuli.py` for all stimulus content.
+
+---
+
 ## [0.9.0 ALPHA] - 2026-08-27
 
 ### Added

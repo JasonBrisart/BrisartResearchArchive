@@ -1,6 +1,14 @@
+"""
+gui/pages/dashboard_page.py
+The Dashboard page: a deliberately minimal landing area with quick-access
+cards for the main sections (Frameworks/Results/Archive/Settings) and a
+couple of quick actions (run the selected framework, analyze results).
+Registered as the "Dashboard" page in
+config.registries.get_page_registry() and is the DEFAULT_PAGE shown at
+launch. Intentionally sparse so future dashboard cards can be added here
+without touching the sidebar, page registry, or application shell.
+"""
 from __future__ import annotations
-
-
 def render(app):
     root = app.page_shell(
         "Dashboard",

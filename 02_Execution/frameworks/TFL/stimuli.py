@@ -1,3 +1,16 @@
+"""
+frameworks/TFL/stimuli.py
+The embedded TFL stimulus library and its validation. EMBEDDED_STIMULI is
+a fixed set of 60 ambiguous-sentence stimuli, each with two competing
+interpretations, carried in-process so a run needs no filesystem or
+network lookup. load_stimuli() returns validated copies (callers cannot
+mutate the embedded definitions); validate_stimuli() rejects malformed,
+empty, or duplicate-id collections; apply_stimulus_limit() trims to the
+first BASE_STIMULUS_LIMIT (20) items unless the config enables extra
+stimuli. FALLBACK_STIMULI is a backward-compatible alias for
+EMBEDDED_STIMULI.
+"""
+
 from __future__ import annotations
 
 from . import framework

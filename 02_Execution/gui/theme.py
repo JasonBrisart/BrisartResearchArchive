@@ -1,10 +1,16 @@
+"""
+gui/theme.py
+Central visual theme for the Archive GUI: the app name, the version
+string (read once from version.txt), the shared COLORS palette and FONT
+constants, and apply_theme(), which configures every ttk style
+(frames, labels, buttons, entries, checkbuttons) used across the app.
+Every gui/ module imports its colors/fonts from here so the look stays
+consistent and changing the palette is a single-file edit.
+"""
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
-
 APP_NAME = "Brisart Research Archive"
-
-
 def load_version():
     try:
         root = Path(__file__).resolve().parents[1]
@@ -12,10 +18,7 @@ def load_version():
         return version_file.read_text(encoding="utf-8").strip()
     except Exception:
         return "Unknown Version"
-
-
 APP_VERSION = load_version()
-
 COLORS = {
     "bg": "#070b14",
     "panel": "#0c1320",
@@ -30,33 +33,27 @@ COLORS = {
     "warning": "#f59e0b",
     "danger": "#ef4444",
 }
-
 FONT = ("Segoe UI", 10)
 FONT_SMALL = ("Segoe UI", 9)
 FONT_TITLE = ("Segoe UI", 20, "bold")
 FONT_HEAD = ("Segoe UI", 13, "bold")
 FONT_MONO = ("Consolas", 10)
-
-
 def apply_theme(root: tk.Tk):
     style = ttk.Style(root)
     try:
         style.theme_use("clam")
     except tk.TclError:
         pass
-
     style.configure("Bg.TFrame", background=COLORS["bg"])
     style.configure("Side.TFrame", background="#050812")
     style.configure("Top.TFrame", background=COLORS["panel"])
     style.configure("Card.TFrame", background=COLORS["panel"], relief="flat")
-
     style.configure("TLabel", background=COLORS["bg"], foreground=COLORS["text"], font=FONT)
     style.configure("Muted.TLabel", background=COLORS["bg"], foreground=COLORS["muted"], font=FONT_SMALL)
     style.configure("Title.TLabel", background=COLORS["bg"], foreground=COLORS["text"], font=FONT_TITLE)
     style.configure("Card.TLabel", background=COLORS["panel"], foreground=COLORS["text"], font=FONT)
     style.configure("CardMuted.TLabel", background=COLORS["panel"], foreground=COLORS["muted"], font=FONT_SMALL)
     style.configure("CardTitle.TLabel", background=COLORS["panel"], foreground=COLORS["text"], font=FONT_HEAD)
-
     style.configure(
         "TButton", background=COLORS["panel2"], foreground=COLORS["text"],
         padding=(12, 8), bordercolor=COLORS["border"], font=FONT,
@@ -66,7 +63,6 @@ def apply_theme(root: tk.Tk):
         background=[("active", COLORS["panel3"]), ("pressed", COLORS["accent"]), ("disabled", COLORS["panel"])],
         foreground=[("disabled", COLORS["muted"])],
     )
-
     style.configure(
         "Accent.TButton", background=COLORS["accent"], foreground="#031514",
         padding=(12, 8), font=("Segoe UI", 10, "bold"),
@@ -76,7 +72,6 @@ def apply_theme(root: tk.Tk):
         background=[("active", COLORS["accent2"]), ("pressed", COLORS["accent"]), ("disabled", COLORS["panel"])],
         foreground=[("disabled", COLORS["muted"])],
     )
-
     style.configure("TCombobox", fieldbackground=COLORS["panel2"], foreground=COLORS["text"])
     style.configure("TEntry", fieldbackground=COLORS["panel2"], foreground=COLORS["text"])
     style.configure("TCheckbutton", background=COLORS["panel"], foreground=COLORS["text"], font=FONT)
