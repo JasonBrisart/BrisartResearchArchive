@@ -1,0 +1,1 @@
+This directory contains early-stage conceptual exploration, preliminary hypotheses, and pre-formal development artifacts for TFL.

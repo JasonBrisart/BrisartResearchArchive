@@ -1,0 +1,1 @@
+This directory contains structured empirical refinement artifacts, including observations, test logs, parameter discovery, and model update decisions.
