@@ -1,59 +1,69 @@
-## Usage Model
+# Brisart Research Archive
 
-Execution systems in this repository are provided as **public baseline reference implementations** for evaluation and study within academic environments.
+The Brisart Research Archive is an independent research archive focused on the development, preservation, documentation, and distribution of advanced cognitive frameworks.
 
-These systems may be:
+Rather than functioning as a traditional software project, the archive serves as a centralized knowledge base for framework research, architecture specifications, definitions, theoretical models, implementation guidance, and supporting research materials.
 
-- Cloned from this repository
-- Executed locally for evaluation purposes
-- Examined for structural and methodological understanding
-- Referenced in academic and research contexts
+## Purpose
 
----
+The purpose of the Brisart Research Archive is to:
 
-### Conditional Use
+- Preserve original cognitive frameworks and research models.
+- Provide transparent framework documentation.
+- Maintain architecture specifications and reference materials.
+- Support framework validation, analysis, and discussion.
+- Distribute framework-related software, tools, and supporting resources.
 
-Extended use of these systems depends on licensing status.
+## What Is Included
 
-#### Public Access (Unlicensed)
+The archive contains framework documentation organized into structured sections such as:
 
-Without a formal license, use is limited to:
+- Overview
+- Architecture
+- Definitions
+- Boundaries
+- Guarantees
+- Integration Notes
+- Reference Implementations
+- Release Notes
+- Additional Supporting Materials
 
-- Local execution for evaluation and research understanding
-- Internal academic exploration and conceptual analysis
-- Structural and methodological study
+## Research Philosophy
 
-Operational use is **not permitted**.
+The archive is built around the idea that frameworks should be documented as complete systems rather than isolated concepts.
 
----
+Each framework is intended to provide:
 
-#### Licensed Access (ARLA)
+- Clear terminology
+- Defined scope and boundaries
+- Architectural structure
+- Operational assumptions
+- Integration guidance
+- Long-term preservation of the underlying research
 
-Institutions holding a valid ARLA license may:
+## Intended Audience
 
-- Modify and extend execution systems
-- Integrate frameworks into research pipelines
-- Develop structured implementations based on the systems
-- Deploy frameworks within institutional research environments
+The archive is intended for:
 
----
+- Independent researchers
+- Research laboratories
+- Academic institutions
+- Framework developers
+- Cognitive science enthusiasts
+- Organizations exploring novel cognitive models and theoretical systems
 
-### Restricted Without Licensing
+## Framework Distribution
 
-The following uses require formal licensing under ARLA:
+Public documentation provides access to framework information and supporting materials.
 
-- Operational or institutional deployment
-- Integration into research pipelines or applied systems
-- Development of derivative execution frameworks or structured implementations
-- External redistribution or replication of modified systems
+Private framework distributions may contain implementation-ready specifications. Institutions may also participate in custom development processes where implementation-ready specifications are generated internally.
 
----
+## Licensing
 
-### Licensing Pathway
+Licensing for the broader Brisart ecosystem is maintained through the centralized Brisart licensing repository. Current licensing terms, participation requirements, subscription information, and usage policies should be consulted through the official licensing resources.
 
-Institutional, operational, or production-level use requires a formal licensing agreement.
+## Contact
 
-👉 See `ARLA.md` for the Academic Research License Agreement (ARLA)
-
-For licensing inquiries:  
-jason@brisartresearcharchive.com
+Creator and Owner,
+Jason Brisart, jason@BrisartResearchArchive.com
+https://www.BrisartResearchArchive.com
