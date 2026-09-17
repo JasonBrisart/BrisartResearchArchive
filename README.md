@@ -56,7 +56,7 @@ The archive is intended for:
 
 Public documentation provides access to framework information and supporting materials.
 
-Private framework distributions may contain implementation-ready specifications. Institutions may also participate in custom development processes where implementation-ready specifications are generated internally. 【1-4931b9】
+Private framework distributions may contain implementation-ready specifications. Institutions may also participate in custom development processes where implementation-ready specifications are generated internally.
 
 ## Licensing
 
@@ -64,8 +64,6 @@ Licensing for the broader Brisart ecosystem is maintained through the centralize
 
 ## Contact
 
-Jason Brisart
-
-jason@BrisartResearchArchive.com
-
+Creator and Owner,
+Jason Brisart, jason@BrisartResearchArchive.com
 https://www.BrisartResearchArchive.com
