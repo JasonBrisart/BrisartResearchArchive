@@ -1,148 +1,119 @@
-- this keeps happening
+# Recurring Patterns
 
-like I’ll think something is done and then it just… comes back later
+## Persistence
 
-not immediately
-later
+I keep thinking something is done and then it comes back later.
 
-it’s not random
+Not immediately.
 
--
+Later.
 
-emotion makes things stay longer
+It doesn't feel random.
 
-not always
+## Emotion and Persistence
 
-but when something hits harder it sticks
+Emotion seems to make things stay longer.
 
-and then I see it again later
+Not always.
 
-maybe it’s just stronger?
+But when something hits harder, it sticks.
 
-idk
+Then I see it again later.
 
-- same pattern again
+Maybe it's stronger somehow.
 
-something doesn’t resolve → it keeps showing up
+## Unresolved Content
 
-like it’s waiting for something
+Something doesn't resolve and keeps showing up.
 
+It feels like it is waiting for something.
 
+## Expectation Under Uncertainty
 
-I keep noticing that under uncertainty I default to what I think instead of what’s actually there
+Under uncertainty, I default to what I think instead of what is actually there.
 
-like I don’t pause
+I don't pause.
 
-I just fill it in
+I fill in the gap.
 
+## Belief Effects
 
--
+Belief definitely changes how things look.
 
-belief definitely changes how things look
+Once I become convinced of something, it seems to reshape everything else.
 
-like once I’m convinced of something it kind of rewrites everything else
+Even things that should contradict it.
 
-even stuff that should contradict it
+## Contradiction
 
-this keeps happening
+Contradiction usually doesn't end things.
 
+It changes them.
 
-- contradiction doesn’t actually end things most of the time
+The thought bends rather than disappears.
 
-it just changes them a little
+## Delayed Updating
 
-like the thought bends
+There is always a delay between something happening and it actually clicking.
 
-not disappears
+Updates do not seem instantaneous.
 
+## Thought Persistence
 
--
+Thoughts don't fully disappear.
 
-there’s always a delay
+They become quieter.
 
-between something happening and it actually “clicking”
+Then they become louder again later.
 
-like the update isn’t instant
+Often the same thoughts.
 
-I notice this a lot
+## Memory
 
-- thoughts don’t fully go away
+Memory arrives automatically.
 
-they just get quieter
+It almost never feels random.
 
-then louder again later
+## Stepwise Processing
 
-same ones
+Things feel like they happen in steps rather than continuously.
 
--
+Update.
 
-memory comes in without asking
+Then update again.
 
-it’s always relevant somehow
+Then update again.
 
-never feels random
+Very fast, but still discrete.
 
-which is weird
+## Loop Structure
 
--
+I keep returning to the idea of a loop.
 
-feels like things are happening in steps
+I don't know exactly why.
 
-not continuous
+But it definitely doesn't feel linear.
 
-I keep coming back to this
+## Interruption Threshold
 
-like…
-it updates
+Things persist until something strong interrupts them.
 
-then updates again
+Weak contradiction often changes nothing.
 
-then again
+Strong contradiction sometimes does.
 
-but fast
+## Multiple Interpretations
 
--
+When things are unclear, multiple interpretations can coexist.
 
-same idea again — loop
+I don't immediately choose one.
 
-I keep thinking of it as a loop
+I hover between them.
 
-don’t know why exactly
+## Summary
 
-but it’s definitely not a straight line
+Something is repeating.
 
+I just don't know exactly what is repeating yet.
 
--
-
-things persist until something strong interrupts them
-
-not weak stuff
-
-strong
-
-weak contradiction → nothing changes
-
-strong contradiction → maybe
-
-
--
-
-multiple interpretations keep showing up
-
-especially when things are unclear
-
-I don’t just pick one
-
-I kind of hover between them
-
-
-
-this keeps happening too
-
-
-- something is definitely repeating
-
-I just don’t know what exactly is repeating yet
-
-pattern is there though
-
+But the pattern is there.
