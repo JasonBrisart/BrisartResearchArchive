@@ -1,47 +1,50 @@
-maybe there are components here
+# Early Structure Attempt
 
-not just one thing looping
+Maybe there are components here.
 
-more like different pieces interacting
+Not just one thing looping.
 
-- current input
-- memory
-- expectation
-- emotional influence
+More like different pieces interacting:
 
-these keep showing up in different ways
+- Current input
+- Memory
+- Expectation
+- Emotional influence
 
-like nothing I’m noticing really exists without at least one of these
+These keep showing up in different ways.
 
-but I don’t know how they connect yet
+Nothing I'm noticing really exists without at least one of these.
 
-or what order they happen in
+But I don't know how they connect yet.
 
-do they happen one after another?
+Or what order they happen in.
 
-or all at once?
+Do they happen one after another?
 
-some of it feels simultaneous
-some of it feels sequential
+Or all at once?
 
-maybe each pass through the loop combines all of them somehow
+Some of it feels simultaneous.
 
-but I don’t know what drives what yet
+Some of it feels sequential.
 
-like does memory come in first?
+Maybe each pass through the loop combines all of them somehow.
 
-or does expectation shape what memory shows up?
+But I don't know what drives what yet.
 
-and where does emotion actually act
+Does memory come in first?
 
-on selection? persistence? output?
+Or does expectation shape what memory shows up?
 
-not clear yet	
+And where does emotion actually act?
 
-but it definitely doesn’t feel like a single process
+- Selection?
+- Persistence?
+- Output?
 
-feels like multiple components feeding into each other
+Not clear yet.
 
-need to figure out how they connect
-``
+But it definitely doesn't feel like a single process.
 
+It feels like multiple components feeding into each other.
+
+Need to figure out how they connect.
