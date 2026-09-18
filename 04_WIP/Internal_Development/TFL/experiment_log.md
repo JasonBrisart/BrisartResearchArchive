@@ -1,11 +1,17 @@
+## Persistence threshold test
+
 - Test: persistence threshold
-  Result: partial evidence for nonlinear behavior
-  Status: requires further parameter testing
+- Result: partial evidence for nonlinear behavior
+- Status: requires further parameter testing
+
+## Contradiction strength test
 
 - Test: contradiction strength variation
-  Result: mixed outcomes; revision/suppression split observed
-  Status: refine manipulation scale
+- Result: mixed outcomes; revision/suppression split observed
+- Status: refine manipulation scale
+
+## Cue overlap reentry test
 
 - Test: cue overlap reentry
-  Result: reentry appears dependent on context similarity
-  Status: requires formalization
+- Result: reentry appears dependent on context similarity
+- Status: requires formalization
