@@ -1,10 +1,9 @@
 ## Licensing
 
-This project is part of the Brisart ecosystem.
+Licensing, subscription requirements, usage rights, institutional participation,
+and current licensing terms are maintained through the official Brisart Research
+Archive licensing portal.
 
-The latest licensing terms, participation policies,
-ecosystem programs, and related documentation are
-maintained in the BrisartLicensing repository.
+Official Licensing Information:
 
-Refer to:
-https://github.com/JasonBrisart/BrisartLicensing
+https://brisartresearcharchive.com/licensing-%2F-payment
