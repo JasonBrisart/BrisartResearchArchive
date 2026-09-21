@@ -1,0 +1,41 @@
+Project Context Helper v3.1.4
+Created: 2026-09-20 21:17:14 -0400
+Author: Jason Brisart
+Repository: https://github.com/JasonBrisart/BrisartDevTools
+Root: C:\Users\Jason\OneDrive\Documents\GitHub\BrisartResearchArchive\09_Curriculum
+Profile: archive
+
+Settings
+--------
+Snapshot ZIP: True
+Redaction: False
+Hashes: True
+Line counts: True
+Folder tree: True
+File index: True
+File contents: True
+Complete source required: True
+
+Git State
+---------
+Repository: not detected
+
+Summary
+-------
+Included files: 3856
+Skipped files: 0
+Included bytes: 26400761
+
+Source Completeness
+-------------------
+Status: PASS
+Included source files: 3856
+Missing or blocked source files: 0
+
+Extensions
+----------
+.json: 1
+.md: 3855
+
+Skip Reasons
+------------

@@ -1,3 +1,23 @@
+# Historical Context
+
+This document contains proposed investigations generated during framework development.
+
+Not every proposed test was executed.
+
+Many entries represent attempts to identify ways of distinguishing between competing explanations.
+
+Purpose:
+
+This file functioned as an idea queue for future investigation and method development.
+
+Historical Importance:
+
+The document preserves questions that appeared important at the time development was occurring, including questions that were never fully answered.
+
+Relationship To Released TFL:
+
+The presence of a proposed test does not imply that the underlying mechanism was adopted into the released framework.
+
 ## Persistence
 
 - Persistence curves should be plotted against affective intensity to determine whether a true threshold exists or whether the apparent threshold is an artifact of measurement scaling.

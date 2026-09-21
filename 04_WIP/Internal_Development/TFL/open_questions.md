@@ -1,3 +1,23 @@
+# Historical Context
+
+This document records unresolved questions identified during development.
+
+Purpose:
+
+Not every important question can be answered during a single development cycle.
+
+This file was used to preserve unanswered questions so that they would remain visible rather than be forgotten.
+
+Historical Importance:
+
+The questions recorded here help explain where uncertainty existed during development and what issues remained under investigation.
+
+Relationship To Released TFL:
+
+The presence of a question does not imply a deficiency in the released framework.
+
+Many questions simply fell outside the scope of the final release or remained topics for future investigation.
+
 ## Persistence
 
 - Is there a true persistence threshold, or is the threshold an artifact of measurement resolution?

@@ -1,3 +1,24 @@
+# Historical Context
+
+This document preserves one of the earliest attempts to describe the pattern that would eventually contribute to development of the Temporal Feedback Loop (TFL) framework.
+
+At the time this note was written, no formal framework existed. The observations contained here were exploratory and reflect an early effort to determine whether a recurring process might underlie a collection of otherwise disconnected observations.
+
+Historical Role:
+
+Raw Observation
+→ Initial Loop Concept
+→ Internal Development
+→ Formal TFL Development
+
+Relationship To Released TFL:
+
+This document predates formal TFL development and should not be interpreted as a description of the released framework. It is preserved as a historical artifact documenting one of the earliest efforts to describe the emerging pattern.
+
+Archival Note:
+
+This file remains valuable primarily because it records the developmental process before formal framework construction began.
+
 # the loop idea
 
 this "loop" idea keeps coming back

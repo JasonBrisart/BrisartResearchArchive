@@ -1,3 +1,25 @@
+# Historical Context
+
+This document records situations where expectations produced by the developing model did not match observation.
+
+During development, anomalies were treated as valuable information rather than errors. An anomaly often indicated one of three possibilities:
+
+1. An incomplete explanation.
+2. A missing variable.
+3. An incorrect assumption.
+
+This file was maintained to ensure contradictory evidence was preserved rather than removed from the record.
+
+Historical Role:
+
+The anomaly log served as a challenge mechanism against emerging TFL concepts. It was specifically intended to identify situations where the current interpretation appeared insufficient.
+
+Relationship To Released TFL:
+
+Anomalies contained within this document should not be interpreted as failures of the released framework. Most entries were recorded before formal framework boundaries had been established.
+
+This file exists primarily as a historical record of model refinement.
+
 ## Persistence anomalies
 
 - Persistence is observed under conditions where affective intensity appears insufficient to meet the expected threshold.

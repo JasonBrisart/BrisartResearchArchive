@@ -1,3 +1,23 @@
+# Historical Context
+
+This document records proposed additions, modifications, or expansions to the developing model.
+
+Purpose:
+
+As new observations emerged, it became necessary to explore whether the existing structure adequately explained them.
+
+The extensions recorded here represent attempts to solve specific developmental problems.
+
+Historical Importance:
+
+Many framework ideas never become visible because they are discarded before publication.
+
+This file preserves those exploratory ideas for historical and archival purposes.
+
+Relationship To Released TFL:
+
+The majority of proposals contained here should be viewed as developmental possibilities rather than official framework elements.
+
 ## Persistence
 
 - Introduce explicit persistence threshold parameters into the model rather than assuming continuous scaling.

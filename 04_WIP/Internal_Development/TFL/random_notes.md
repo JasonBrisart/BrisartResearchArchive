@@ -1,3 +1,25 @@
+# Historical Context
+
+This document preserves miscellaneous notes that emerged during development but did not clearly belong within a structured category.
+
+Purpose:
+
+Research development often produces observations, intuitions, concerns, and speculative ideas that appear important but cannot yet be formalized.
+
+Rather than discard these thoughts, they were preserved here.
+
+Historical Importance:
+
+These notes provide additional insight into the developmental environment in which TFL was created.
+
+They may reveal lines of thinking, concerns, and exploratory concepts that were never developed further.
+
+Relationship To Released TFL:
+
+This document should be considered the least authoritative material within the development archive.
+
+Its value is historical rather than explanatory.
+
 ## Persistence & threshold
 
 - threshold vs curve still unclear — need to actually test the shape

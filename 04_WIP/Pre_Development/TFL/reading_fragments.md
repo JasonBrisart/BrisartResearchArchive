@@ -1,3 +1,24 @@
+# Historical Context
+
+This document records notes produced while comparing early observations against existing literature and related theoretical work.
+
+The purpose of these notes was to determine whether the observed patterns already had established explanations, terminology, or theoretical frameworks elsewhere in the literature.
+
+Historical Role:
+
+Observation
+→ Literature Review
+→ Comparison
+→ Internal Development
+
+Relationship To Released TFL:
+
+References and comparisons recorded here should not be interpreted as endorsements, confirmations, or foundations of the released TFL framework. They reflect an exploratory effort to understand how the observations related to existing research.
+
+Archival Note:
+
+This document is preserved because it records the intellectual environment and comparative investigation that occurred during early development.
+
 ### the prediction machine idea
 
 this "prediction machine" idea keeps showing up. Clark's whole thing is basically that brains are constantly trying to match incoming sensory input with top-down expectations/predictions, using prediction error to update

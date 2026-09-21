@@ -1,3 +1,28 @@
+# Historical Context
+
+This document records development-stage decisions made during refinement of early TFL concepts.
+
+Many decisions recorded here were provisional and were made to guide ongoing investigation rather than to establish permanent framework components.
+
+Purpose:
+
+The goal of maintaining this file was to preserve the reasoning process behind development choices.
+
+Without this record, future readers would be able to see what was tested but not why particular development directions were pursued.
+
+Relationship To Released TFL:
+
+A decision appearing in this document should not be interpreted as evidence that the decision became part of TFL.
+
+Some decisions were:
+
+- retained,
+- modified,
+- replaced,
+- or rejected entirely.
+
+This file is best understood as a historical development log.
+
 ## Persistence
 
 - Evidence suggests persistence follows threshold behavior rather than linear scaling. Pending formal integration into framework as parameter.

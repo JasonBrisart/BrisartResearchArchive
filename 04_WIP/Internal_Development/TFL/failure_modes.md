@@ -1,3 +1,21 @@
+# Historical Context
+
+This document records situations in which development-stage concepts became difficult to evaluate, test, or interpret.
+
+Purpose:
+
+Understanding where a model struggles can be as informative as understanding where it succeeds.
+
+This file was maintained to identify limitations, ambiguity, and potential sources of error.
+
+Historical Importance:
+
+Preserving known weaknesses helps future researchers understand why certain development paths were abandoned.
+
+Relationship To Released TFL:
+
+Failure modes described here generally relate to development-stage concepts rather than the released framework.
+
 ## Identification failures
 
 - System fails when simulation content cannot be uniquely identified.

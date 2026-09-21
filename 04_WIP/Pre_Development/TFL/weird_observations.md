@@ -1,3 +1,23 @@
+# Historical Context
+
+This document preserves unusual observations that did not fit comfortably within other categories during early development.
+
+Many of these observations appeared noteworthy but lacked a clear explanation at the time they were recorded.
+
+Historical Role:
+
+Unexpected Observation
+→ Open Investigation
+→ Pattern Evaluation
+
+Relationship To Released TFL:
+
+The observations contained here should not be interpreted as components of TFL. They are preserved because they influenced the questions that later development attempted to answer.
+
+Archival Note:
+
+Many important research directions originate from observations that initially appear difficult to explain. This file preserves those developmental starting points.
+
 ### feels true even after knowing it's not
 
 why does something still feel true even after I know it's not

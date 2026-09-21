@@ -1,3 +1,23 @@
+# Historical Context
+
+This document was created during the internal development phase of TFL after the initial pattern-recognition stage but before framework formalization.
+
+The purpose of this file was to convert informal observations into more structured and testable statements. The observations recorded here were not considered established framework components. They were development-stage observations used to guide further investigation.
+
+The observations contained in this file helped determine which phenomena appeared sufficiently recurring or significant to warrant further testing.
+
+Historical Role:
+Pre-TFL Notes
+→ Structured Observations
+→ Testing
+→ Formalization
+
+Relationship To Released TFL:
+
+The presence of an observation in this file does not mean it became part of the released framework. Some observations influenced development, some were revised, and others were ultimately discarded.
+
+Researchers should treat this file as a record of investigative direction rather than a description of the final framework.
+
 ## Persistence & threshold behavior
 
 - Simulation persistence does not appear linear with affective intensity. There may be threshold behavior where persistence sharply increases after a certain point rather than scaling gradually.
