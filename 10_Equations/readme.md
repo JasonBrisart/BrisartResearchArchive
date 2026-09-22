@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This section contains the mathematical, formal-modeling, and quantitative-theory development work of the Brisart Research Archive.
+This section contains the equations, mathematical models, and quantitative-theory development work of the Brisart Research Archive.
 
-While the frameworks in `01_Frameworks` describe concepts, principles, and system architectures, the materials in `10_Equations` attempt to express those ideas in formal, analytical, or quantitatively testable form.
+While the frameworks in `01_Frameworks` describe concepts, principles, and system architectures, the materials in `10_Equations` attempt to express those ideas through equations, formal mathematical relationships, analytical models, and other quantitatively testable forms.
 
-Not every framework requires an equation, and not every equation becomes a framework. This folder exists for cases where a concept has been developed far enough to justify formal analysis, derivation, simulation, parameter estimation, quantitative modeling, or other forms of mathematical investigation.
+Not every framework requires an equation, and not every equation becomes a framework. This folder exists for cases where a concept has been developed far enough to justify formal mathematical representation, analysis, derivation, simulation, parameter estimation, or other forms of quantitative investigation.
 
 ## What belongs here
 
