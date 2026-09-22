@@ -11,7 +11,7 @@ The Brisart Format is a structured framework-authoring standard designed for the
 
 **Standardized Core Structure**
 
-*(Brisart Format v4)*
+*(Brisart Format v4.1)*
 
 ---
 
@@ -70,11 +70,3 @@ Provide a high-level integration of the framework's central ideas and significan
 Summarize the framework's contribution, major insights, practical value, and broader implications. Conclude with a clear statement regarding the framework's purpose, relevance, and future potential.
 
 ---
-
-## Appendix A: Definitions and Symbols (Optional)
-
-Define important terminology, abbreviations, acronyms, variables, symbolic notation, mathematical expressions, or framework-specific language used throughout the document.
-
-Use tables, lists, or brief explanatory sections where appropriate.
-
-Additional appendices (e.g., Appendix B, C, D, etc.) may include diagrams, implementation examples, case studies, datasets, supplemental notes, alternative models, extended analyses, supporting material, or other framework-specific content.
