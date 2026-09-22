@@ -2,74 +2,28 @@
 
 ## Purpose
 
-This section contains the equations, mathematical models, and quantitative-theory development work of the Brisart Research Archive.
+This section contains formal theory papers that explain proposed system behavior through both conceptual principles and equations.
 
-While the frameworks in `01_Frameworks` describe concepts, principles, and system architectures, the materials in `10_Equations` attempt to express those ideas through equations, formal mathematical relationships, analytical models, and other quantitatively testable forms.
+Documents in this section present complete theories. They do not contain equations in isolation. Each paper uses written explanations and mathematical expressions together to define how a proposed system operates, changes, stabilizes, destabilizes, or transitions between states.
 
-Not every framework requires an equation, and not every equation becomes a framework. This folder exists for cases where a concept has been developed far enough to justify formal mathematical representation, analysis, derivation, simulation, parameter estimation, or other forms of quantitative investigation.
+A typical paper may introduce a theory, divide it into principles, define the relationships described by each principle, and use equations to formally represent those relationships.
 
-## What belongs here
+## What Belongs Here
 
-Examples of materials appropriate for this section include:
+This section contains formal theory papers structured around:
 
-- Formal equations
-- Mathematical models
-- Quantitative theories
-- Stability analyses
-- Derivations
-- Proofs
-- System-identification methods
-- Estimation procedures
-- Analytical extensions
-- Mathematical appendices
-- Simulation studies
-- Validation studies
-- Reference papers centered on formal or quantitative models
+- A clearly stated purpose
+- A defined theoretical system or process
+- Principles explaining how the system operates
+- Variables representing parts of the theory
+- Equations formalizing the relationships between those variables
+- Written interpretations of the equations
+- Process cycles or state transitions
+- Central theoretical claims
+- Current limitations
+- Proposed conditions for future testing
+- A summary of the complete theory
 
-## Relationship to the rest of the archive
+The theory and its equations remain together in the same paper.
 
-This folder supports other archive sections but does not replace them.
-
-- `01_Frameworks` contains conceptual and theoretical frameworks.
-- `05_Documentation` contains explanatory documentation.
-- `08_Framework_Development` contains developmental, exploratory, and historical material.
-- `10_Equations` contains formal, analytical, mathematical, and quantitative representations when they exist.
-
-Many frameworks may never appear in this section. Only frameworks that have been formalized, mathematically analyzed, or developed into quantitative models belong here.
-
-## Long-term vision
-
-This section is expected to expand over time.
-
-Future contents may include:
-
-- New Brisart equations
-- Mathematical extensions of existing frameworks
-- Multi-variable system models
-- Formal analyses of framework dynamics
-- Proofs and derivations
-- Validation studies
-- Dataset fitting experiments
-- Simulation research
-- Mathematical research papers emerging from archive development
-
-The goal is not to collect equations for their own sake. The goal is to preserve the formal, analytical, and quantitatively testable components of the Brisart Research Archive in one location.
-
-## Archive status
-
-This section contains research materials and should be treated as ongoing research work.
-
-Individual papers may range from:
-
-- Exploratory
-- Developmental
-- Conceptual but formally structured
-- Mathematically derived
-- Numerically verified
-- Empirically tested
-
-Readers should evaluate each document according to its stated status, assumptions, scope, and limitations.
-
-As with the rest of the archive, the presence of a paper in this section does not imply empirical validation. Some documents may represent early-stage formalization efforts, while others may contain fully developed mathematical models and quantitative analyses.
-
-The purpose of this section is to preserve and organize the formal side of archive development as it evolves over time.
+A paper does not need to consist primarily of mathematics. Most of the document may be written explanation. It belongs here when equations are used to formalize the principles, mechanisms, relationships, or transitions described by the theory.
