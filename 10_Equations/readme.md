@@ -2,28 +2,68 @@
 
 ## Purpose
 
-This section contains formal theory papers that explain proposed system behavior through both conceptual principles and equations.
+This section contains formal theories, laws, governing equations, and quantitative models in which mathematical relationships form the central basis of the work.
 
-Documents in this section present complete theories. They do not contain equations in isolation. Each paper uses written explanations and mathematical expressions together to define how a proposed system operates, changes, stabilizes, destabilizes, or transitions between states.
+The materials preserved here define, explain, or investigate relationships among variables through equations. Written explanations provide the meaning, assumptions, scope, and limitations of those relationships, but the formal mathematical structure remains central to the document.
 
-A typical paper may introduce a theory, divide it into principles, define the relationships described by each principle, and use equations to formally represent those relationships.
+A work belongs here when removing its equations would remove or substantially weaken the theory, law, or model being presented.
 
 ## What Belongs Here
 
-This section contains formal theory papers structured around:
+This section is intended for:
+
+- Formal theories defined through equations
+- Proposed laws expressed mathematically
+- Governing equations
+- Quantitative system models
+- Mathematical descriptions of system behavior
+- Equations describing change over time
+- Stability and resistance laws
+- Threshold and transition models
+- State equations
+- Conservation relationships
+- Equilibrium conditions
+- Rate equations
+- Interacting systems of equations
+- Mathematical extensions of an established theory or law
+- Analytical studies centered on a defined equation
+- Simulation studies built directly from formal equations
+- Validation studies testing mathematical predictions
+
+These works may contain substantial written explanation. They may include purposes, principles, definitions, diagrams, examples, claims, derivations, interpretations, limitations, and proposed tests.
+
+The defining feature is that equations are not merely supporting details. They express the central relationships that constitute the theory, law, or model.
+
+## Formal Theories
+
+A formal theory in this section may begin with a conceptual description of a system and then define that system through mathematical relationships.
+
+A formal theory paper may include:
 
 - A clearly stated purpose
-- A defined theoretical system or process
-- Principles explaining how the system operates
-- Variables representing parts of the theory
-- Equations formalizing the relationships between those variables
-- Written interpretations of the equations
-- Process cycles or state transitions
-- Central theoretical claims
+- A defined system or process
+- Foundational principles
+- Defined variables
+- Equations associated with those principles
+- Explanations of how the equations interact
+- Conditions governing stability or change
+- Thresholds separating different system states
+- A complete mathematical cycle or model
+- Central claims
+- Assumptions and boundary conditions
 - Current limitations
-- Proposed conditions for future testing
-- A summary of the complete theory
+- Conditions for testing
+- A summary of the theory
 
-The theory and its equations remain together in the same paper.
+For example, a formal theory may describe how a system forms a stable baseline, accumulates resistance, becomes destabilized, returns to fluidity, and establishes a new baseline.
 
-A paper does not need to consist primarily of mathematics. Most of the document may be written explanation. It belongs here when equations are used to formalize the principles, mechanisms, relationships, or transitions described by the theory.
+The paper would then use equations to define relationships such as:
+
+```text
+Reinforcement
+    ↓
+Increasing system stability
+    ↓
+Increasing resistance
+    ↓
+Greater required destabilization
