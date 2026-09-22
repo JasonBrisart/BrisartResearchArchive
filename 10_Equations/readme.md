@@ -2,13 +2,11 @@
 
 ## Purpose
 
-This section contains the mathematical and formal-modeling work of the Brisart Research Archive.
+This section contains the mathematical, formal-modeling, and quantitative-theory development work of the Brisart Research Archive.
 
-While the frameworks in `01_Frameworks` describe concepts, principles, and system architectures, the materials in `10_Equations` attempt to express those ideas in formal mathematical form.
+While the frameworks in `01_Frameworks` describe concepts, principles, and system architectures, the materials in `10_Equations` attempt to express those ideas in formal, analytical, or quantitatively testable form.
 
-Not every framework requires an equation, and not every equation becomes a framework. This folder exists for cases where a concept has been developed far enough to justify formal analysis, derivation, simulation, or parameter estimation.
-
----
+Not every framework requires an equation, and not every equation becomes a framework. This folder exists for cases where a concept has been developed far enough to justify formal analysis, derivation, simulation, parameter estimation, quantitative modeling, or other forms of mathematical investigation.
 
 ## What belongs here
 
@@ -16,6 +14,7 @@ Examples of materials appropriate for this section include:
 
 - Formal equations
 - Mathematical models
+- Quantitative theories
 - Stability analyses
 - Derivations
 - Proofs
@@ -23,41 +22,9 @@ Examples of materials appropriate for this section include:
 - Estimation procedures
 - Analytical extensions
 - Mathematical appendices
-- Reference papers centered on quantitative models
-
----
-
-## Current contents
-
-### Brisart Loop Equation
-
-The Brisart Loop Equation is a formal model of adaptive systems operating under:
-
-- Error correction
-- Suppression
-- Social coupling
-- Memory accumulation
-
-The model describes how a system updates over time in response to:
-
-1. The difference between its current state and target.
-2. The degree to which that difference matters.
-3. Forces which prevent the system from occupying its desired state.
-4. The influence of surrounding systems.
-5. The accumulation of unresolved past errors.
-
-The paper develops:
-
-- The governing update equation.
-- Stability analysis.
-- The Brisart Number (B).
-- Steady-state offset analysis.
-- Memory asymmetry results.
-- Parameter estimation procedures.
-
-The current release is a formal mathematical model with numerical verification and recoverable parameter estimation procedures. No real-world datasets have yet been fitted.
-
----
+- Simulation studies
+- Validation studies
+- Reference papers centered on formal or quantitative models
 
 ## Relationship to the rest of the archive
 
@@ -65,12 +32,10 @@ This folder supports other archive sections but does not replace them.
 
 - `01_Frameworks` contains conceptual and theoretical frameworks.
 - `05_Documentation` contains explanatory documentation.
-- `08_Framework_Development` contains developmental and historical material.
-- `10_Equations` contains formal mathematical representations when they exist.
+- `08_Framework_Development` contains developmental, exploratory, and historical material.
+- `10_Equations` contains formal, analytical, mathematical, and quantitative representations when they exist.
 
-Many frameworks may never appear in this section. Only frameworks that are expressed mathematically belong here.
-
----
+Many frameworks may never appear in this section. Only frameworks that have been formalized, mathematically analyzed, or developed into quantitative models belong here.
 
 ## Long-term vision
 
@@ -85,22 +50,26 @@ Future contents may include:
 - Proofs and derivations
 - Validation studies
 - Dataset fitting experiments
+- Simulation research
 - Mathematical research papers emerging from archive development
 
-The goal is not to collect equations for their own sake. The goal is to preserve the quantitative and formally testable components of the Brisart Research Archive in one location.
-
----
+The goal is not to collect equations for their own sake. The goal is to preserve the formal, analytical, and quantitatively testable components of the Brisart Research Archive in one location.
 
 ## Archive status
 
-This section contains mathematical reference materials and should be treated as research work.
+This section contains research materials and should be treated as ongoing research work.
 
 Individual papers may range from:
 
-- exploratory;
-- developmental;
-- formally derived;
-- numerically verified;
-- empirically tested.
+- Exploratory
+- Developmental
+- Conceptual but formally structured
+- Mathematically derived
+- Numerically verified
+- Empirically tested
 
-Readers should evaluate each document according to its stated status and limitations.
+Readers should evaluate each document according to its stated status, assumptions, scope, and limitations.
+
+As with the rest of the archive, the presence of a paper in this section does not imply empirical validation. Some documents may represent early-stage formalization efforts, while others may contain fully developed mathematical models and quantitative analyses.
+
+The purpose of this section is to preserve and organize the formal side of archive development as it evolves over time.
