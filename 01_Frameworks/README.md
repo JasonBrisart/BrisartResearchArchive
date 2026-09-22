@@ -6,40 +6,7 @@ This folder is the home of the core theoretical framework documents for the Bris
 
 This is where a framework's *theory* lives — its formal structure, variables, and claims — independent of curriculum materials, public release packaging, licensing, or execution/software tooling, which are maintained elsewhere in the archive.
 
-## Folder Structure
-
-```
-01_Frameworks/
-├── PCT/
-│   ├── Architecture_v1.md
-│   └── Overview_v1.md
-├── SST/
-└── TFL/
-    ├── Architecture_v1.md
-    ├── Architecture_v2.md
-    ├── Architecture_v3.md
-    ├── Architecture_v4.md
-    ├── Boundaries_v1.md
-    ├── Boundaries_v2.md
-    ├── Definitions_v1.md
-    ├── Definitions_v2.md
-    ├── Definitions_v3.md
-    ├── Definitions_v4.md
-    ├── Guarantees_v1.md
-    ├── Guarantees_v2.md
-    ├── Guarantees_v3.md
-    ├── Guarantees_v4.md
-    ├── Integration_Notes_v1.md
-    ├── Integration_Notes_v2.md
-    ├── Notes_v1.md
-    ├── Notes_v2.md
-    ├── Overview_v1.md
-    ├── Overview_v2.md
-    ├── Reference_Implementation_v1.md
-    ├── Reference_Implementation_v2.md
-    ├── Release_Notes_v1.md
-    └── Release_Notes_v2.md
-```
+---
 
 ## Document Types
 
@@ -49,13 +16,16 @@ Each framework subfolder uses a consistent set of document types, versioned inde
 |---|---|
 | **Overview** | High-level summary of the framework's core claim, variables, and operational loop. |
 | **Architecture** | Formal structural definition of components, layers, and information flow. |
-| **Definitions** | Precise definitions of every core variable and structural term. |
 | **Boundaries** | Explicit scope limits — what the framework does *not* claim or model. |
-| **Guarantees** | Non-negotiable architectural properties the framework enforces across implementations. |
-| **Integration_Notes** | How the framework interfaces with other frameworks in the archive (directional relationships and constraints). |
+| **Guarantees** | Non-negotiable architectural properties the framework enforces across 
+| **Definitions** | Precise definitions of every core variable and structural term. |
 | **Reference_Implementation** | Pseudocode representation of a single processing cycle, structural only. |
+implementations. |
+| **Integration_Notes** | How the framework interfaces with other frameworks in the archive (directional relationships and constraints). |
 | **Notes** | Clarifications, interpretive guidance, and implementation caveats. |
 | **Release_Notes** | Version history and development timeline for the framework. |
+
+---
 
 ## Versioning Convention
 
