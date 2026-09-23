@@ -1,5 +1,16 @@
 [
   {
+    "created": "2026-09-23 15:26:18 -0400",
+    "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive",
+    "profile": "archive",
+    "export_dir": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\PROJECT_CONTEXT_EXPORTS\\project_context_20260923_152620",
+    "included_count": 4459,
+    "skipped_count": 8023,
+    "total_included_bytes": 30877941,
+    "git_branch": "main",
+    "git_commit_short": "a2c40707e0"
+  },
+  {
     "created": "2026-09-22 17:10:49 -0400",
     "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive",
     "profile": "archive",
@@ -537,16 +548,5 @@
     "total_included_bytes": 6502753,
     "git_branch": "",
     "git_commit_short": ""
-  },
-  {
-    "created": "2026-09-18 23:26:19 -0400",
-    "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive",
-    "profile": "archive",
-    "export_dir": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\PROJECT_CONTEXT_EXPORTS\\project_context_20260918_232623",
-    "included_count": 85,
-    "skipped_count": 1129,
-    "total_included_bytes": 576467,
-    "git_branch": "main",
-    "git_commit_short": "bb848b9bfd"
   }
 ]

@@ -1,12 +1,4 @@
-# 01_Frameworks
-
-## Purpose
-
-This folder is the home of the core theoretical framework documents for the Brisart Research Archive. Each subfolder corresponds to a single framework, identified by its acronym, and contains the versioned drafts that define that framework's architecture, terminology, guarantees, and boundaries.
-
-This is where a framework's *theory* lives — its formal structure, variables, and claims — independent of curriculum materials, public release packaging, licensing, or execution/software tooling, which are maintained elsewhere in the archive.
-
----
+# 05_Documentation
 
 ## Document Types
 
@@ -22,7 +14,6 @@ Each framework subfolder uses a consistent set of document types, versioned inde
 | **Reference_Implementation** | Pseudocode representation of a single processing cycle, structural only. |
 | **Integration_Notes** | How the framework interfaces with other frameworks in the archive (directional relationships and constraints). |
 | **Notes** | Clarifications, interpretive guidance, and implementation caveats. |
-| **Release_Notes** | Version history and development timeline for the framework. |
 
 ---
 
