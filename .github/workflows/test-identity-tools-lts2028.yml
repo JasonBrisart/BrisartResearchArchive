@@ -1,0 +1,48 @@
+# Purpose: Run Identity Tools' test suite (LTS-2028 tree) whenever code under 95_Identity_Tools/LTS-2028 changes.
+# Communication / relationships: Runs automatically on GitHub Actions when changes are pushed
+#   or a pull request is opened against files under 95_Identity_Tools/LTS-2028. Reports pass/fail status
+#   back to the commit/PR in the GitHub Actions tab; does not notify or call any other
+#   workflow in this repository.
+# Settings / parameters: Triggers only on push/pull_request to `main` when the diff touches
+#   `95_Identity_Tools/LTS-2028/**`. Python version pinned to 3.14. Working directory scoped to `95_Identity_Tools/LTS-2028`.
+# Edge cases: If `95_Identity_Tools/LTS-2028/requirements.txt` does not exist, the install step is skipped rather
+#   than failing. If no tests are collected, pytest exits non-zero (code 5) and the job is
+#   reported as failed.
+# Known limitations: Does not cache pip dependencies. Does not run lint/type-check steps.
+#   Does not build or publish artifacts.
+# Examples: Editing a file under `95_Identity_Tools/LTS-2028/` and pushing to `main` triggers this workflow;
+#   editing a file under any other top-level folder does not.
+
+name: Test Identity Tools (LTS-2028)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '95_Identity_Tools/LTS-2028/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '95_Identity_Tools/LTS-2028/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 95_Identity_Tools/LTS-2028
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run tests
+        run: pytest -q
