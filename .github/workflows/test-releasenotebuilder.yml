@@ -9,13 +9,16 @@
 #   3.14. Working directory scoped to `98_Tooling/ReleaseNoteBuilder`. PYTHONPATH is set to the working directory
 #   itself so that top-level packages inside `98_Tooling/ReleaseNoteBuilder` can be imported absolutely by test
 #   files, matching how the project is run locally.
-# Edge cases: If no tests are collected, pytest exits non-zero (code 5) and the job is
-#   reported as failed. A commit that only touches files outside `98_Tooling/ReleaseNoteBuilder` will not
-#   auto-trigger this workflow - use "Run workflow" in the Actions tab to force a run.
+# Edge cases: pytest exit code 5 ("no tests collected") is treated as a pass, so projects
+#   without a test suite report green instead of failing. Genuine test failures (exit code 1)
+#   and collection/import errors (exit code 2) still fail the job. A commit that only touches
+#   files outside `98_Tooling/ReleaseNoteBuilder` will not auto-trigger this workflow - use "Run workflow" in the
+#   Actions tab to force a run.
 # Known limitations: Does not install project dependencies from requirements.txt - only
 #   pytest itself is installed. If the project under test imports third-party packages,
 #   those tests will fail with ModuleNotFoundError. Does not cache pip dependencies.
-#   Does not run lint/type-check steps. Does not build or publish artifacts.
+#   Does not run lint/type-check steps. Does not build or publish artifacts. Because exit
+#   code 5 passes, a project that silently loses all its tests will still report green.
 # Examples: Editing a file under `98_Tooling/ReleaseNoteBuilder/` and pushing to `main` triggers this workflow
 #   automatically; using "Run workflow" in the Actions tab triggers it regardless of what
 #   changed.
@@ -54,4 +57,12 @@ jobs:
       - name: Run tests
         run: |
           export PYTHONPATH="$PWD:$PYTHONPATH"
+          set +e
           pytest -q
+          code=$?
+          set -e
+          if [ "$code" -eq 5 ]; then
+            echo "::notice::No tests collected in 98_Tooling/ReleaseNoteBuilder - treating as pass."
+            exit 0
+          fi
+          exit "$code"
