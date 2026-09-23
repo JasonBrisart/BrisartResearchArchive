@@ -1,0 +1,152 @@
+name: tests
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fast:
+    name: unittest --fast (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run the fast suite (everything except the real-KDF tests)
+        run: python tests/run_tests.py --fast
+      - name: Verify the tests left no artifacts behind
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Tests modified the working tree:"
+            git status --porcelain
+            exit 1
+          fi
+
+  slow:
+    name: unittest --slow (real BSR2 KDF)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run only the slow real-KDF tests
+        run: python tests/run_tests.py --slow
+      - name: Verify the tests left no artifacts behind
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Tests modified the working tree:"
+            git status --porcelain
+            exit 1
+          fi
+
+  smoke:
+    name: CLI smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # The three CLIs import top-level packages (biometrics.*, packages.*), but
+    # some steps run from inside a tool subdirectory, so the repo root must be
+    # importable regardless of CWD.
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # --- biometrics -----------------------------------------------------
+      # enroll/verify unlock a local keyring via getpass, which falls back to a
+      # plain stdin read when stdin is not a TTY (as in CI), so every
+      # keyring-touching command has its passphrase piped in.
+      - name: Biometrics sample generation and multi-modal enroll/verify round trip
+        working-directory: biometrics
+        run: |
+          set -euo pipefail
+          python app.py make-samples ci-enroll
+          python app.py make-samples ci-other
+          printf 'ci-bio-pass\nci-bio-pass\n' | python app.py enroll ci-person --label "CI Person" \
+            --voice data/samples/ci-enroll_voice.wav \
+            --fingerprint data/samples/ci-enroll_fingerprint.pgm \
+            --video data/samples/ci-enroll_video.brvid
+          printf 'ci-bio-pass\n' | python app.py verify ci-person \
+            --voice data/samples/ci-enroll_voice.wav \
+            --fingerprint data/samples/ci-enroll_fingerprint.pgm \
+            --video data/samples/ci-enroll_video.brvid
+          python app.py list
+          python app.py inspect ci-person
+      - name: Biometrics verification rejects a different identity's samples
+        working-directory: biometrics
+        run: |
+          if printf 'ci-bio-pass\n' | python app.py verify ci-person \
+              --voice data/samples/ci-other_voice.wav \
+              --fingerprint data/samples/ci-other_fingerprint.pgm \
+              --video data/samples/ci-other_video.brvid; then
+            echo "Expected a mismatched multi-modal probe to fail verification"
+            exit 1
+          fi
+          echo "Mismatched probe correctly rejected."
+      - name: Re-enrolling an existing identity is refused
+        working-directory: biometrics
+        run: |
+          if printf 'ci-bio-pass\n' | python app.py enroll ci-person --label "Someone Else" \
+              --voice data/samples/ci-other_voice.wav; then
+            echo "Expected re-enrollment to fail for an existing identity"
+            exit 1
+          fi
+          echo "Re-enrollment correctly refused; delete the identity first to replace it."
+      - name: Deleting and re-enrolling an identity replaces its template
+        working-directory: biometrics
+        run: |
+          set -euo pipefail
+          python app.py delete ci-person
+          printf 'ci-bio-pass\n' | python app.py enroll ci-person --label "CI Person Renewed" \
+            --voice data/samples/ci-other_voice.wav
+      - name: Invalid identity ids are rejected
+        working-directory: biometrics
+        run: |
+          if printf 'ci-bio-pass\n' | python app.py enroll "ci/user" --label "Bad Id" \
+              --voice data/samples/ci-enroll_voice.wav; then
+            echo "Expected an invalid identity id to be rejected"
+            exit 1
+          fi
+          echo "Invalid identity id correctly rejected."
+      # --- vault ----------------------------------------------------------
+      - name: Vault round trip
+        run: |
+          set -euo pipefail
+          printf 'ci-smoke-passphrase\nci-smoke-passphrase\n' \
+            | python -m vault.app --vault /tmp/ci_vault.json init
+          printf 'ci-smoke-passphrase\n' \
+            | python -m vault.app --vault /tmp/ci_vault.json upsert \
+                "CI  Record" --kind identity --payload '{"value": "ci-value"}' \
+                --record-id ci-record
+          python -m vault.app --vault /tmp/ci_vault.json list
+          printf 'ci-smoke-passphrase\n' \
+            | python -m vault.app --vault /tmp/ci_vault.json get ci-record
+      - name: Re-upserting an existing record id updates it in place
+        run: |
+          set -euo pipefail
+          before=$(python -m vault.app --vault /tmp/ci_vault.json list | wc -l)
+          printf 'ci-smoke-passphrase\n' \
+            | python -m vault.app --vault /tmp/ci_vault.json upsert \
+                "CI  Record" --kind identity --payload '{"value": "again"}' \
+                --record-id ci-record
+          after=$(python -m vault.app --vault /tmp/ci_vault.json list | wc -l)
+          if [ "$before" != "$after" ]; then
+            echo "Expected re-upserting an existing record id to update in place, not add a record"
+            exit 1
+          fi
+          echo "Record correctly updated in place instead of duplicated."
+      # --- packages -------------------------------------------------------
+      - name: Package demo
+        working-directory: packages
+        run: python main.py demo

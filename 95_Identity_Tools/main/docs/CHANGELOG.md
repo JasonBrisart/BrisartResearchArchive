@@ -1,0 +1,2208 @@
+# Changelog
+
+All notable changes to BrisartIdentityTools are recorded here.
+
+---
+
+## [1.9.1] - 2026-09-12
+
+A test-correctness follow-up to 1.9.0.
+
+The unlock-throttling implementation forward-ported from
+LTS-2028-SEC-1 and LTS-2028-SEC-2 remained correct. However, the
+shared-counter Vault regression test inherited an incomplete correction
+from LTS-2028-COR-1.
+
+Version 1.9.0's regression test attempted to expire the ordinary
+backoff window by resetting `locked_until` to `0.0`. This was
+incorrect. `locked_until` represents the full lockout imposed after the
+maximum failed-attempt threshold is reached; ordinary exponential
+backoff is calculated using `failed_attempts` and `last_failure_at`.
+
+### Fixed
+
+**Forward-port of `LTS-2028-COR-2` (Low)**
+
+`vault/tests/test_unlock_throttle.py` now preserves
+`failed_attempts == 1` while setting `last_failure_at` to `0.0`,
+making the recorded failure old enough that the ordinary backoff
+interval has elapsed while keeping the shared counter intact.
+
+The corrected test verifies that:
+
+1. A failed passphrase increments the shared persisted counter.
+2. The recovery-code path observes the same persisted state.
+3. Expiring the ordinary backoff interval does not reset the counter.
+4. A valid recovery-code unlock succeeds after the interval has elapsed.
+5. Successful recovery-code authentication clears the shared state.
+
+### Verification
+
+The corrected test was validated through the real-KDF slow suite:
+
+```text
+PASS  ran 46 test(s)
+
+Ran 46 tests in 6258.102s
+
+OK
+```
+---
+
+## [1.9.0] - 2026-09-12
+
+A security-hardening release forward-porting the completed LTS-2028 unlock-throttling patch set into the Current line. This release closes missing application-layer attempt controls in the Vault and Biometrics keyring authentication paths while preserving Main's existing hardware architecture, Integrity Ledger, stored data formats, and dependency model.
+
+The security work originated on the frozen LTS-2028 line, where the shared application architecture was corrected and verified first, then was adapted to Main without importing LTS release numbering or branch-specific history. Main remains the Current development line; the permanent LTS identifiers below are retained solely for cross-branch traceability.
+
+### Security
+
+- **Vault unlock throttling, forward-ported from `LTS-2028-SEC-1` (High).** `VaultService.unlock()` and `VaultService.unlock_with_recovery_code()` now consult the existing `crypto.throttle.AttemptLimiter` through the new `crypto/attempt_store.py` persistence adapter. Passphrase and recovery-code failures share one `"unlock_attempts"` counter inside `vault.json`, so switching credential types does not reset the attempt budget. A caller in an active backoff or lockout period is refused before a `Keyring` is constructed or the slow KDF is run. Failed authentication updates the persisted state; successful authentication clears it.
+
+- **Biometrics keyring unlock throttling, forward-ported from `LTS-2028-SEC-2` (High).** The Biometrics CLI and GUI now route passphrase authentication through the new `biometrics/identity/keyring_access.py` entry point instead of calling `Keyring.unlock_with_passphrase()` independently. Both interfaces therefore enforce the same policy and persist the same `"unlock_attempts"` state inside `keyring.json`; neither interface can be used to bypass backoff or lockout established through the other.
+
+- **Shared policy.** Both components inherit the unchanged `AttemptLimiter` defaults: five failed attempts, exponential backoff from one second to a maximum of 300 seconds, and a 900-second (15-minute) lockout after the fifth failure. This release wires the already-shipped limiter into the applicable unlock paths; it does not modify the limiter or any cryptographic primitive.
+
+### Fixed
+
+- **Shared-counter regression-test correction, forward-ported from `LTS-2028-COR-1` (Low).** The Vault recovery-code test now expires only the temporary `locked_until` gate while preserving `failed_attempts`, then verifies that a successful recovery-code unlock clears the same counter previously incremented by a failed passphrase attempt. The production throttling behavior was correct; the original test incorrectly attempted the recovery-code unlock while the legitimate initial backoff was still active. The corrected test is deterministic and does not use `sleep()`.
+
+### Added
+
+- `crypto/attempt_store.py`: a small, component-neutral persistence adapter for reading, checking, updating, and clearing `AttemptLimiter` state in caller-owned JSON containers.
+- `biometrics/identity/keyring_access.py`: the single throttled Biometrics keyring-unlock entry point shared by the CLI and GUI.
+- `crypto/tests/test_attempt_store.py`: focused coverage for fresh state, stable field naming, failure recording, lockout, successful clearing, shared-counter semantics, default-limiter behavior, and status inspection.
+- `vault/tests/test_unlock_throttle.py`: real-KDF integration coverage for Vault passphrase and recovery-code throttling.
+- `biometrics/tests/test_keyring_access.py`: real-KDF integration coverage for the shared Biometrics keyring-access path and retry messaging.
+
+### Changed
+
+- `vault/store/vault_service.py`: both Vault unlock methods now check persisted attempt state before keyring construction, record failures, and clear state on success. Main-only Integrity Ledger behavior and all non-unlock Vault operations remain unchanged.
+- `biometrics/app.py`: CLI keyring unlocking now uses `biometrics.identity.keyring_access`.
+- `gui/tabs/tab_biometrics.py`: GUI keyring unlocking now uses the same shared access function as the CLI.
+- `tests/run_tests.py`: `VaultUnlockThrottleTests` and `KeyringAccessThrottleTests` are registered as slow real-KDF suites; existing Main test registrations are preserved.
+- `docs/BSR2_INTEGRATION.md`, `crypto/README.md`, `vault/README.md`, and `biometrics/README.md`: documentation now describes the wired application-layer throttling behavior and its residual limits instead of presenting `AttemptLimiter` only as an available building block.
+
+### Verification
+
+- Confirmed that every Python file in the complete 1.9.0 working tree parses and compiles successfully.
+- Confirmed all eight `crypto.tests.test_attempt_store` tests pass.
+- Confirmed by syntax-tree inspection that the Biometrics CLI and GUI call only `keyring_access.unlock_with_passphrase()` and retain no direct keyring passphrase-unlock bypass.
+- Confirmed both Vault unlock paths contain limiter checks, failure recording, and successful-state clearing.
+- Confirmed the corrected Vault shared-counter test preserves `failed_attempts` while expiring only `locked_until`.
+- Confirmed both new real-KDF test classes are registered in the slow test set.
+
+### Compatibility and residual risk
+
+- No existing Vault, identity, keyring, biometric-template, attachment, package, custody-chain, hardware, or Integrity Ledger format is broken. The only persisted addition is the optional plain `"unlock_attempts"` field inside the applicable Vault or keyring container. Existing files load unchanged and begin with fresh attempt state.
+- No migration is required.
+- No BSR2 primitive or cryptographic envelope behavior changed. This is application-layer attempt throttling only.
+- The limiter state is file-based and unauthenticated. A local actor with write access to `vault.json` or `keyring.json` can edit or remove the plain `"unlock_attempts"` field. The control constrains ordinary live-interface guessing but is not a tamper-proof defense against a fully capable local actor.
+- No new external dependencies were introduced. Main remains pure Python and standard-library only outside its deliberately optional, caller-supplied hardware bindings and transports.
+
+---
+
+### [1.8.0] - 2026-09-12
+
+Extends `hardware/` (introduced in 1.7.0) with fingerprint-scanner
+support and brings `hardware/cameras/onvif_camera.py` onto the same
+architectural rule the rest of the subsystem already follows. Every
+existing subsystem (Vault, Biometrics, Packages, Crypto) remains
+untouched: nothing in `hardware/` is imported by, or wired into, any of
+them. No stored vault, identity, keyring, biometric-template, attachment,
+package, or custody-chain format changed. There is no data migration.
+
+As with 1.7.0, this remains **main-only and excluded from LTS-2028 by
+policy**.
+
+**Supersedes part of 1.7.0's description**, not its shipped code: 1.7.0
+described `onvif_camera.py` as connecting "all the way to the camera
+itself rather than deferring to a caller-supplied binding," reasoning
+that ONVIF has no OS-proprietary layer forcing a split the way PC/SC
+does. That reasoning was correct, but this release changes the decision
+it led to: `onvif_camera.py` is now split behind a transport contract
+**for consistency with the rest of `hardware/`**, not because a
+proprietary wall requires it. See `hardware/README.md`'s "Why ONVIF is
+split the same way despite having no proprietary wall" for the full
+reasoning. This is a breaking change to `ONVIFCamera.__init__`'s
+signature — see **Changed** below.
+
+#### Added
+- **`hardware/base/onvif_transport.py`**: `ONVIFTransport`, an abstract
+  two-method contract (`post`, `get`) for the one operation this project
+  deliberately does not implement for cameras — opening a network
+  connection and exchanging bytes with the camera itself. Mirrors the
+  same boundary `pcsc_binding.py` already draws for smart-card readers.
+  This project ships the contract only.
+- **`hardware/base/biometric_binding.py`**: `BiometricBinding`, an
+  abstract six-method contract (`open_session`, `close_session`,
+  `list_devices`, `open_device`, `close_device`, `capture`) for the one
+  operation this project deliberately does not implement for
+  fingerprint scanners — the raw call into an OS-owned biometric
+  framework (the Windows Biometric Framework/WinBio, `libfprint`/
+  `fprintd` on Linux) or a vendor SDK where no OS-level framework
+  exists. Unlike ONVIF, there is no open wire protocol here to fall
+  back on; every real capture path goes through one of these. This
+  project ships the contract only.
+- **`hardware/biometric/fingerprint_scanner.py`**: a `BiometricBase`
+  driver for any fingerprint scanner reachable through an
+  organization-supplied `BiometricBinding`. Contains 100% of the logic
+  this project can implement in pure Python — device-name matching,
+  retry policy, and strict shape validation of a capture result
+  (`{"width": int, "height": int, "pixels": bytes}`, flat 8-bit
+  grayscale, `len(pixels) == width * height`, matching the same buffer
+  convention `biometrics/codecs/image_tools.py` already uses) — with
+  zero third-party packages and zero OS/SDK calls of its own. The
+  constructor requires a caller-supplied `BiometricBinding` instance and
+  raises `TypeError` immediately if one is not provided. A malformed
+  capture result from a binding is rejected with a specific
+  `DeviceConnectionError` at this boundary rather than passed downstream
+  silently corrupt; "no finger presented" raises the new
+  `FingerNotPresentError` rather than returning `None` or a blank
+  buffer.
+
+#### Changed
+- **`hardware/cameras/onvif_camera.py`: `ONVIFCamera.__init__` now
+  requires a `transport` argument (breaking change).** Previously:
+  `ONVIFCamera(host, username, password, port=...)`, using
+  `urllib.request` directly. Now:
+  `ONVIFCamera(transport, host, username, password, port=...)`,
+  raising `TypeError` immediately if `transport` is not an
+  `ONVIFTransport` instance. All SOAP construction, WS-Security digest
+  generation, and XML parsing are unchanged; only the two operations
+  that touch the network (`post` for SOAP calls, `get` for the
+  snapshot fetch) now go through `self._transport` instead of
+  `urllib.request.urlopen()` directly. This file's import list no
+  longer includes `urllib.request`. Existing code constructing
+  `ONVIFCamera` must be updated to supply an `ONVIFTransport`
+  implementation; see `hardware/README.md`, "Writing your own binding,
+  transport, or driver."
+- **`hardware/hardware_manager.py`: `HardwareManager.create_device()`
+  now accepts and forwards arguments.** Previously:
+  `create_device(self, device_name: str)`. Now:
+  `create_device(self, device_name: str, *args, **kwargs)`, forwarding
+  directly to the registered class's constructor. This was necessary
+  because `PCSCReader`, `ONVIFCamera`, and `FingerprintScanner` all now
+  require a binding/transport argument at construction — without this
+  change, `HardwareManager` could only construct the zero-argument
+  placeholder drivers. `HardwareManager` still never imports,
+  constructs, or knows about any concrete binding/transport
+  implementation.
+- **`hardware/README.md`: rewritten to describe all three device
+  categories under one consistent rule** ("Brisart owns protocol and
+  logic; the organization deploying this software owns the literal
+  connection to the outside world") instead of describing PC/SC and
+  ONVIF under two different postures. Includes a new section
+  explaining why ONVIF is held to the same rule despite having no
+  OS-proprietary wall forcing it, updated dependency-status entries for
+  `fingerprint_scanner.py`, and a `HardwareManager` usage example
+  showing how a binding/transport is passed through
+  `create_device(name, *args, **kwargs)`.
+
+#### Notes
+- **Dependency accounting, precisely stated, across all three real
+  drivers:** `onvif_camera.py`, `pcsc_reader.py`, and
+  `fingerprint_scanner.py` each import only the Python standard library
+  or other `hardware/*` modules. No PyPI package, no vendored
+  third-party source, and no license notice obligation is introduced
+  anywhere in this subsystem.
+- **The architecture is now uniform, not applied only where a wall
+  forces it.** PC/SC and biometric scanners have a genuine
+  OS-proprietary or vendor-SDK wall with no way around it on any
+  platform; ONVIF does not, and is still split behind a transport
+  contract by deliberate consistency choice. All three device
+  categories in `hardware/` now follow one rule.
+- Every one of the three real drivers' constructors requires its
+  binding/transport object and raises `TypeError` immediately if it is
+  missing or the wrong type — there is no default, no silent fallback,
+  and no partially-working mode for any of them.
+- None of `onvif_camera.py`, `pcsc_reader.py`, or
+  `fingerprint_scanner.py` has been validated against physical hardware
+  as part of this repository's own test suite. All three are correct
+  against their documented protocol/contract; real-world calibration
+  against specific vendor firmware and a specific organization's
+  binding/transport implementation is open, in the same spirit as
+  `docs/KNOWN_ISSUES.md`'s KI-001.
+- No new external dependencies were introduced anywhere in this
+  project. The standing caveats are unchanged and still apply in full:
+  BSR2 is unreviewed research cryptography (see
+  `docs/BSR2_INTEGRATION.md`), the package custody chain is
+  tamper-evident rather than a digital signature, and the video
+  liveness gate remains a motion-presence check rather than general
+  anti-spoofing (KI-001).
+
+---
+
+### [1.7.0] - 2026-09-12
+
+Introduces `hardware/`, an optional device-integration layer for physical
+cameras and smart card readers — the first release on **main** to diverge
+from LTS-2028 in scope rather than only in patch content. Every existing
+subsystem (Vault, Biometrics, Packages, Crypto) is untouched: nothing in
+`hardware/` is imported by, or wired into, any of them. A checkout with
+`hardware/` deleted entirely still behaves identically to one that
+includes it. No stored vault, identity, keyring, biometric-template,
+attachment, package, or custody-chain format changed. There is no data
+migration.
+
+As explicitly called out in 1.3.x's own release notes, this feature is
+**main-only and excluded from LTS-2028 by policy**: LTS-2028 remains
+feature-frozen, pure-Python, and free of any hardware or device
+integration for its full support lifetime.
+
+#### Added
+- **`hardware/base/device_base.py`**: `DeviceBase`, the root abstract
+  contract every device satisfies — `name` (property),
+  `connect() -> bool`, `disconnect() -> None`, `health_check() -> bool`.
+  Contains no vendor-specific logic of any kind.
+- **`hardware/base/camera_base.py`**, **`biometric_base.py`**,
+  **`reader_base.py`**: thin `DeviceBase` subclasses adding exactly one
+  modality-specific abstract method each — `capture_image()`, `scan()`,
+  and `read_card()` respectively.
+- **`hardware/registry.py`** and **`hardware/hardware_manager.py`**: a
+  plain dict-backed device registry (`register()` / `get()` /
+  `list_registered()`) and `HardwareManager.create_device(name)`, the
+  single entry point between the rest of this project and any
+  registered driver. No driver is registered automatically; nothing
+  under `hardware/` runs unless explicitly opted into.
+- **`hardware/exceptions.py`**: `HardwareError`, `DeviceConnectionError`,
+  `UnsupportedDeviceError` — the exception family every driver in this
+  subsystem raises.
+- **`hardware/cameras/onvif_camera.py`**: a real, complete `CameraBase`
+  driver for any ONVIF-compliant IP camera (Axis, Hikvision, Dahua, and
+  most budget IP cameras). Implements WS-Security UsernameToken auth,
+  `GetCapabilities`, `GetProfiles`, `GetSnapshotUri`, and
+  `GetSystemDateAndTime` as hand-built SOAP/XML using only
+  `urllib.request`, `xml.etree.ElementTree`, `hashlib`, `base64`, and
+  `os` from the standard library. **Zero third-party packages.** ONVIF
+  is a published, vendor-neutral network standard with no OS-proprietary
+  layer comparable to smart-card middleware, so this driver connects
+  all the way to the camera itself rather than deferring to a
+  caller-supplied binding.
+- **`hardware/card_readers/pcsc_reader.py`**: a real `ReaderBase` driver
+  for any PC/SC-compliant smart card reader (ACR122U, HID Omnikey,
+  Identiv, and most USB/contactless readers). Contains 100% of the
+  logic this project can implement in pure Python — reader-name
+  matching, retry policy, `GET_UID` APDU construction, status-word
+  validation, and hex encoding of the ATR/UID — with **zero third-party
+  packages and zero OS calls of its own**. This file makes no `ctypes`
+  call and contains no platform check anywhere in its source.
+- **`hardware/base/pcsc_binding.py`**: `PCSCBinding`, an abstract
+  five-method contract (`establish_context`, `release_context`,
+  `list_readers`, `connect`, `disconnect`, `get_atr`, `transmit`) for the
+  one operation this project deliberately does not implement: the raw
+  call into an operating system's own PC/SC service (`winscard.dll` on
+  Windows, `PCSC.framework` on macOS, `libpcsclite` on Linux). This
+  project ships the contract only; `PCSCReader` requires a
+  caller-supplied `PCSCBinding` instance at construction and raises
+  `TypeError` immediately if one is not provided. Implementing that
+  binding, for whichever OS(es) a deployment actually runs, is left to
+  the organization deploying this software.
+- **`hardware/cameras/placeholder_camera.py`**,
+  **`hardware/card_readers/placeholder_reader.py`**,
+  **`hardware/biometric/placeholder_biometric.py`**: zero-dependency
+  reference implementations proving each `DeviceBase` contract is
+  satisfiable, used for architecture testing ahead of real drivers.
+- **`hardware/drivers/`**: reserved, currently empty directory for
+  future low-level drivers.
+- **`hardware/README.md`**: documents the device contract, the
+  dependency status of every driver, and the reasoning behind the
+  PC/SC binding hand-off.
+
+#### Notes
+- **Dependency accounting, precisely stated:** every file under
+  `hardware/` imports only the Python standard library or other
+  `hardware/*` modules. No PyPI package, no vendored third-party source,
+  and no license notice obligation is introduced anywhere in this
+  subsystem.
+- **The one real proprietary boundary in this release is PC/SC, and
+  this project stops one step short of it.** PC/SC has no path on any
+  OS that avoids the operating system's own smart-card service —
+  `pcsc_reader.py` contains every piece of logic that can be written
+  without touching it, and defers the actual OS call to a
+  `PCSCBinding` an operator supplies. ONVIF has no equivalent wall: it
+  is XML over an HTTP socket, which the standard library already
+  speaks completely, so `onvif_camera.py` is shipped as a complete,
+  working driver.
+- Neither driver has been validated against physical hardware as part
+  of this repository's own test suite (no CI runner has a camera or
+  card reader attached). Both are correct against their documented
+  protocols; real-world calibration against specific vendor firmware
+  is open, in the same spirit as `docs/KNOWN_ISSUES.md`'s KI-001.
+- A lab that never registers a driver via `hardware.registry.register()`
+  is entirely unaffected by this release — `HardwareManager` and the
+  registry perform no work and make no calls until something explicitly
+  opts in.
+- No new external dependencies were introduced anywhere in this
+  project; `hardware/` keeps BrisartIdentityTools' non-hardware
+  subsystems exactly as dependency-free as before. The standing
+  caveats are unchanged and still apply in full: BSR2 is unreviewed
+  research cryptography (see `docs/BSR2_INTEGRATION.md`), the package
+  custody chain is tamper-evident rather than a digital signature, and
+  the video liveness gate remains a motion-presence check rather than
+  general anti-spoofing (KI-001).
+
+---
+
+## [1.6.0] - 2026-09-11
+
+Adds an **Integrity Ledger**: an external, hash-chained ledger of periodic
+file checkpoints, meant to narrow — not close — the "edit a sealed file,
+then revert it to its original bytes before anyone checks" blind spot every
+tamper-evidence mechanism already in this repository (BSR2's authentication
+tag, `packages.custody`'s in-package hash chain, the external audit logs in
+`vault/`, `biometrics/`, and `packages/`) shares by mathematical necessity:
+all of them only ever inspect a file's *current* state. No stored vault,
+identity, keyring, biometric-template, attachment, or package format
+changed. There is no data migration.
+
+### Added
+
+- **`common/integrity_ledger.py`**: new module. `append_checkpoint()`
+  records a file's SHA-256 + size into an external, hash-chained ledger
+  (the same hash-chain construction `packages.custody` already uses, so the
+  *ledger itself* is tamper-evident — editing, deleting, or reordering a
+  past checkpoint entry is detectable via `verify_ledger()`).
+  `current_status()` compares a file's current hash against its most recent
+  checkpoint. `history_for_path()` and `list_tracked_paths()` inspect a
+  ledger's recorded history. Depends only on `common.hashing`,
+  `common.atomic_io`, and `common.timestamps` — no BSR2/crypto involvement,
+  since this ledger's own integrity comes from a plain hash chain, not
+  encryption.
+- **`tools/integrity_checkpoint.py`**: new standalone CLI, in the same style
+  as `tools/envinfo.py`. `checkpoint`, `status`, `history`, `verify`, and
+  `list-tracked` subcommands, meant to be run by hand or on an OS-level
+  scheduler (cron / Windows Scheduled Task) against any file this project
+  produces (a `vault.json`, a biometrics `keyring.json`, a package `.json`
+  file, or anything else a lab wants tracked).
+- **`docs/INTEGRITY_LEDGER.md`**: new file. Explains the mechanism, states
+  plainly what it does and does not detect (with a worked example of both
+  the "checkpoint lands inside the tamper window" case it catches and the
+  "tamper-then-revert entirely between checkpoints" case it cannot), and
+  gives CLI usage and suggested cadence.
+- **`common/tests/test_integrity_ledger.py`**: 20 new tests, including two
+  that directly exercise the core scenario this feature exists for: a
+  tamper-then-revert that straddles a checkpoint is caught
+  (`test_edit_then_revert_straddling_a_checkpoint_is_caught`), and the
+  honest confirmation that a tamper-then-revert entirely between two
+  checkpoints is *not* caught
+  (`test_edit_then_revert_entirely_between_checkpoints_is_not_caught`).
+
+### Notes
+
+- **This is new feature work and therefore lands on `main` only**, per the
+  LTS-2028 policy documented in `docs/SECURITY.md` ("No new features ...
+  are introduced into an LTS line for the life of that line"). Nothing
+  about the tamper-evidence already shipped in LTS-2028 (1.3.x) is broken
+  or being fixed here — BSR2's authentication tag, `packages.custody`'s hash
+  chain, and every audit log already work exactly as designed, within their
+  documented limits. This module adds a *new* capability (narrowing, not
+  fixing, the current-state-only blind spot), which is explicitly out of
+  scope for an LTS line.
+- **This does not close the "edit then perfectly revert" gap; it narrows
+  it, in proportion to checkpoint frequency.** A lab that never runs
+  `checkpoint` gets nothing from this feature. A lab that runs it
+  continuously would close the gap almost entirely, at the cost of running
+  a persistent process this project deliberately does not ship. Anywhere
+  in between is a genuine tradeoff between operational overhead and how
+  small a tamper-then-revert window remains undetectable — stated
+  explicitly in `docs/INTEGRITY_LEDGER.md` and the module's own docstring,
+  the same way `biometrics/features/liveness.py`'s scope statement and
+  `docs/KNOWN_ISSUES.md`'s KI-003 entry state their own limits rather than
+  implying more than they deliver.
+- Added `docs/KNOWN_ISSUES.md` KI-004, documenting this same blind-window
+  limitation as a permanent, by-design characteristic (not a defect to be
+  fixed), consistent with how KI-003 already documents the bulk-encryption
+  throughput ceiling.
+- No new external dependencies were introduced; the project remains pure
+  Python, standard-library only.
+
+---
+
+## [1.5.0] - 2026-09-11
+
+Adds an inspectable, on-disk variant of the Identity-Bound Package demo,
+alongside the existing in-memory-only demo. No stored vault, identity,
+keyring, biometric-template, attachment, or package format changed. There
+is no data migration.
+
+### Added
+
+- **`packages/demo.py`**: new shared module, `run_demo(save_to_disk, output_root)`,
+  used by both `packages.main`'s `demo` command and
+  `gui.tabs.tab_packages.PackagesTab`'s Packages tab, so the CLI and GUI demo
+  paths can never drift apart from each other. Runs the exact same real
+  create -> add-recipient -> open -> validate-custody cycle the original
+  demo always performed.
+
+- **CLI**: `python main.py demo --save [--output-dir DIR]` now additionally
+  writes every artifact produced during the demo to a new, clearly-named
+  folder (`DEMO_DO_NOT_USE_<timestamp>_<package_id>/` under
+  `data/packages/demo` by default): the real `package.json`, each
+  recipient's passphrase text (`alice_passphrase.txt` / `bob_passphrase.txt`),
+  a formatted `custody_chain.txt`, and a `README.txt` walking through what
+  happened and what to try next -- including how to hand-edit the package
+  file and watch authentication correctly reject the tampered result.
+
+- **GUI**: the Packages tab gained a second button, **"Run Demo (Save Files)"**,
+  next to the existing **"Run Demo"** button. The existing button's behavior
+  is completely unchanged (still in-memory only, nothing written to disk).
+  The new button runs the same cycle with `save_to_disk=True` and offers to
+  open the resulting folder directly in the OS file manager
+  (`os.startfile` on Windows, `open`/`xdg-open` elsewhere, best-effort only).
+
+### Notes
+
+- **Demo keys are derived from passphrase text, not raw bytes.** Every
+  existing CLI/GUI command that asks for "master key text" derives a key by
+  hashing whatever text is typed (`hashlib.sha256(text)`); there is no
+  existing path that accepts a raw 32-byte key directly. `run_demo()`
+  therefore generates each recipient's key from a random passphrase string
+  and saves that passphrase text to disk, rather than a raw key -- so a
+  saved demo package can be opened immediately through the existing `open`
+  command or the GUI's "Open Package..." dialog with zero changes required
+  anywhere else in the codebase. Verified directly: `main.py open <saved
+  package> --identity-id bob` with the saved passphrase returns the real
+  decrypted payload.
+
+- **This is the one place in the repository a master key's text-equivalent
+  is ever written unwrapped to disk**, and it is deliberate and clearly
+  labeled: the folder name is prefixed `DEMO_DO_NOT_USE_`, and the written
+  `README.txt` states in capital letters that this is not how a real
+  package's key material should ever be stored (every other key-holding
+  file -- a vault, a biometrics keyring -- stores only a BSR2-wrapped key).
+
+- Tamper-detection was re-verified against the saved output: flipping a
+  single hex character in `payload.ciphertext` and reopening as bob
+  correctly raises an authentication failure, exactly as it would for any
+  other sealed package.
+
+- This is new feature work and therefore lands on `main` only, per the
+  LTS-2028 policy documented in `docs/SECURITY.md` ("No new features ...
+  are introduced into an LTS line for the life of that line"). LTS-2028
+  (1.3.x) is unaffected and its `demo` command's behavior is unchanged.
+
+- No new external dependencies were introduced; the project remains pure
+  Python, standard-library only.
+
+---
+
+## [1.4.0] - 2026-09-11
+
+### Added
+
+- Introduced a dedicated `hardware/` subsystem on the main development branch.
+- Established the foundation for future hardware and device integration support.
+- Added a reserved hardware integration namespace to isolate device-specific functionality from the core identity platform.
+- Implemented an architecture that allows hardware functionality to be added, updated, or removed independently of the core BrisartIdentityTools codebase.
+- Established a clear separation between the dependency-free identity framework and future hardware integration layers.
+- Created the initial foundation for future biometric device, access-control device, and hardware adapter support.
+
+### Architecture
+
+- Defined the hardware subsystem as an optional extension layer that communicates with existing BrisartIdentityTools functionality rather than modifying core platform behavior.
+- Preserved the existing dependency-free architecture of the core identity platform.
+- Designed the hardware subsystem so future hardware support can be developed without requiring invasive changes throughout the repository.
+- Established the architectural boundary that differentiates the Current (main) development line from the Long-Term Support (LTS) line.
+
+### Notes
+
+- No hardware devices are supported in this release.
+- No hardware drivers are included in this release.
+- No third-party dependencies were introduced.
+- Existing identity, biometric, vault, package, and cryptographic functionality remain unchanged.
+- LTS-2028 (1.3.x) remains feature-frozen and continues to exclude all hardware and device integration functionality.
+
+---
+
+## [1.3.6] - 2026-09-11
+
+A security-hardening and bug-fix patch continuing the untrusted-input
+parsing work of 1.3.3. Every biometric enroll/verify run decodes an
+attacker-influenceable file (a WAV voice sample, a PGM/PNG fingerprint, a
+BRVID clip) *before* any cryptography happens, so these files are the
+earliest thing that touches the system. This release closes remaining
+"individually-valid header fields whose product or target size is
+unbounded" gaps in the codec layer. No stored vault, identity, keyring,
+biometric-template, attachment, package, or custody-chain format changed.
+There is no data migration; 1.3.5 data loads unchanged.
+
+As an LTS-2028 (1.3.x) release, this remains feature-frozen, pure-Python,
+and dependency-free: no new features, no hardware or device integration,
+and no third-party dependencies are introduced. These are security and
+correctness fixes only.
+
+### Security
+
+- **`biometrics/codecs/wave_tools.py`: the WAV sample rate is now bounded,
+  so the duration guard can no longer be neutralized by an absurd header
+  value.** `read_wave()` validated only `sample_rate <= 0` and had no upper
+  bound, so the existing `frame_count > sample_rate * MAX_DURATION_SECONDS`
+  ceiling could be pushed arbitrarily high by a hostile WAV declaring an
+  astronomically large sample rate — the same class of bug closed for the
+  BRVID container (`frame_count * width * height`) and the PNG IDAT stream
+  in 1.3.3. A new `MAX_SAMPLE_RATE` ceiling is checked up front, and a WAV
+  whose declared rate exceeds it is refused before any frames are read.
+  A legitimate recording's real, header-declared samples still round-trip
+  byte-for-byte. Regression test:
+  `biometrics/tests/test_codec_and_dsp_support.py::WaveToolsTests::test_rejects_absurd_sample_rate`.
+
+### Fixed
+
+- **`biometrics/codecs/image_tools.py`: `resize_nearest()` and
+  `crop_center()` now bound their *target* dimensions, not just the source
+  image's.** `_check_image()` already refused a decoded image whose own
+  width/height exceeded `MAX_DIMENSION`, but the target dimensions these two
+  functions resize/crop to were only checked `>= 1`, never `<= MAX_DIMENSION`
+  — so a target request larger than the supported maximum would allocate
+  `target_width * target_height` bytes with no ceiling. This is not reachable
+  from today's callers (the fingerprint and template paths pass fixed 64- and
+  128-pixel constants), but a shared image utility should refuse an
+  out-of-range target the same way it already refuses an out-of-range source.
+  Both functions now raise `ImageToolsError` on a target dimension above
+  `MAX_DIMENSION`. Regression test:
+  `biometrics/tests/test_codec_and_dsp_support.py::ImageToolsTests::test_rejects_oversized_target_dimensions`.
+
+- **`biometrics/codecs/video.py`: `probe()` now applies the same
+  `MAX_BODY_BYTES` ceiling to `frame_count * width * height` that `decode()`
+  gained in 1.3.3.** The header-only inspection path computed
+  `expected_size = HEADER_STRUCT.size + frame_count * width * height` purely
+  to report `size_matches_header`, so it never allocated the body and was not
+  itself an allocation bug — but leaving the product unbounded here while
+  `decode()` bounds it was an avoidable inconsistency. `probe()` now refuses a
+  header whose implied body exceeds the ceiling, so the two entry points into
+  the BRVID container agree on what a well-formed header is. Regression test:
+  `biometrics/tests/test_video_support.py::VideoCodecTests::test_probe_rejects_body_over_ceiling`.
+
+### Notes
+
+- These fixes originate on the `LTS-2028` branch and are PR-merged into
+  `main`, so both supported lines carry them: LTS-2028 (1.3.x) as a
+  security-and-correctness patch, and the latest release on `main` (Current)
+  through the merge. The Supported Versions table in `docs/SECURITY.md` is
+  unchanged.
+
+- This is parsing-layer and input-validation hardening only. It does **not**
+  change, and does not claim to strengthen, BSR2's own cryptography — every
+  wrapped master key and sealed payload is exactly as protected as it was in
+  1.3.5. The standing caveats still apply in full: BSR2 is unreviewed research
+  cryptography (see `docs/BSR2_INTEGRATION.md`), the package custody chain is
+  tamper-evident rather than a digital signature, and the video liveness gate
+  remains a motion-presence check rather than general anti-spoofing (KI-001).
+
+- No stored format changed and no shipped module's cryptographic behavior
+  changed; 1.3.5 vaults, identities, keyrings, templates, and packages load
+  unchanged.
+
+- No new external dependencies were introduced; the project remains pure
+  Python, standard-library only.
+
+---
+
+## [1.3.5] - 2026-09-10
+
+A small, targeted patch closing the same filename-ordering bug fixed in
+1.3.3 (`biometrics/reports/report_writer.py`) and 1.3.4
+(`vault/reports/audit_log.py`) — this time in the third and last sibling
+audit-log module, `packages/audit.py`. No stored vault, identity, keyring,
+biometric-template, attachment, package, or custody-chain format changed.
+There is no data migration.
+
+### Fixed
+
+- **`packages/audit.py`: package audit entry filenames now use
+  microsecond-precision timestamps, matching the identical fix already
+  applied to `biometrics/reports/report_writer.py` in 1.3.3 and
+  `vault/reports/audit_log.py` in 1.3.4.** `_entry_filename()` previously
+  derived its name from `utc_now_iso().replace(":", "").replace("+", "Z")` —
+  a hand-mangled, second-precision timestamp that didn't even go through the
+  shared `common.timestamps.filename_timestamp()` helper — plus a 4-byte
+  random suffix. Two package audit events recorded in the same second sorted
+  only by that random suffix, so `list_entries()`'s documented oldest-first
+  ordering guarantee did not actually hold for same-second events. This is
+  more than a theoretical risk for this module specifically:
+  `packages.package`'s `create_package`/`add_recipient`/`open_package`
+  functions each call `audit.record_event()`, and `packages/main.py`'s own
+  `demo` command runs a full create → add-recipient → open cycle in one
+  process invocation — three real audit events that routinely land in the
+  same wall-clock second. `_entry_filename()` now uses the filename-safe
+  `common.timestamps.microsecond_timestamp()`, so a burst of package audit
+  events sorts deterministically oldest-first, matching the ordering
+  `vault.reports.audit_log.list_entries()` and
+  `biometrics.reports.report_writer.list_reports()` already provide. The
+  random suffix is retained. Regression tests:
+  `packages/tests/test_package_audit.py::PackageAuditTests::test_entry_filename_uses_microsecond_precision`
+  and
+  `packages/tests/test_package_audit.py::PackageAuditTests::test_rapid_successive_events_sort_oldest_first_by_filename`.
+
+### Notes
+
+- This closes out the bug class across all three sibling audit/report-log
+  modules in the repository (`biometrics/reports/report_writer.py`,
+  `vault/reports/audit_log.py`, `packages/audit.py`); no other module in the
+  codebase constructs a chronologically-sortable filename from a timestamp.
+- This is a filename-formatting fix confined to the external package audit
+  log. It does not change, and does not claim to strengthen, the in-package
+  custody chain (`packages/custody.py`), BSR2's own cryptography, or any
+  stored package/vault/identity format — every wrapped content key, key
+  slot, and sealed payload is exactly as protected as it was in 1.3.4. The
+  standing 1.3.4 caveats still apply in full: BSR2 is unreviewed research
+  cryptography (see `docs/BSR2_INTEGRATION.md`), the package custody chain
+  is tamper-evident rather than a digital signature, and the video liveness
+  gate remains a motion-presence check rather than general anti-spoofing
+  (KI-001).
+- No stored format changed and no shipped module's cryptographic behavior
+  changed; 1.3.4 vaults, identities, keyrings, templates, and packages load
+  unchanged.
+- No new external dependencies were introduced; the project remains pure
+  Python, standard-library only.
+
+---
+
+## [1.3.4] - 2026-09-10
+
+A small, targeted patch closing a filename-ordering inconsistency between the
+Vault and Biometrics audit trails. No stored vault, identity, keyring,
+biometric-template, attachment, package, or custody-chain format changed.
+There is no data migration.
+
+### Fixed
+
+- **`vault/reports/audit_log.py`: audit entry filenames now use
+  microsecond-precision timestamps, matching the identical fix already
+  applied to `biometrics/reports/report_writer.py` in 1.3.3.** `_entry_filename()`
+  derived its name from a second-precision `utc_now_iso()` plus a 4-byte
+  random suffix, so two vault audit events recorded in the same second (a
+  batch upsert, or several records created back-to-back) sorted only by that
+  random suffix — `list_entries()`'s documented oldest-first ordering
+  guarantee did not actually hold for same-second events, even though the
+  identical class of bug had already been fixed on the biometrics side in
+  1.3.3 (`f78cade801`, "Harden parsing of untrusted biometric inputs" cycle).
+  `_entry_filename()` now uses the filename-safe
+  `common.timestamps.microsecond_timestamp()`, so a burst of vault events
+  sorts deterministically oldest-first, matching the ordering
+  `biometrics.reports.report_writer.list_reports()` already provides. The
+  random suffix is retained. Regression tests:
+  `vault/tests/test_audit_log.py::VaultAuditLogTests::test_entry_filename_uses_microsecond_precision`
+  and
+  `vault/tests/test_audit_log.py::VaultAuditLogTests::test_rapid_successive_events_sort_oldest_first_by_filename`.
+
+### Notes
+
+- This is a filename-formatting fix confined to the audit-log layer. It does
+  not change, and does not claim to strengthen, BSR2's own cryptography, the
+  vault record schema, or any stored payload — every wrapped master key and
+  sealed record is exactly as protected as it was in 1.3.3. The standing
+  1.3.3 caveats still apply in full: BSR2 is unreviewed research cryptography
+  (see `docs/BSR2_INTEGRATION.md`), the video liveness gate is a
+  motion-presence check rather than general anti-spoofing (KI-001), and the
+  bulk file/folder/drive throughput ceiling remains an inherent property of
+  pure-Python BSR2 (KI-003).
+
+- No stored format changed and no shipped module's cryptographic behavior
+  changed; 1.3.3 vaults, identities, keyrings, templates, and packages load
+  unchanged.
+  
+- No new external dependencies were introduced; the project remains pure
+  Python, standard-library only.
+
+---
+
+## [1.3.3] - 2026-09-09
+
+A security-hardening and bug-fix patch on the **untrusted-input parsing
+surface**. Every biometric enroll/verify run decodes an attacker-influenceable
+file (a PNG fingerprint image, a BRVID clip) *before* any cryptography happens,
+so a malformed or hostile file is the earliest thing that touches this system.
+This release closes a genuine decompression-bomb in the PNG decoder and tightens
+several header-validation and input-bound paths around it. No stored vault,
+identity, keyring, biometric-template, attachment, package, or custody-chain
+format changed. There is no data migration; 1.3.2 data loads unchanged.
+
+### Security
+
+- **`biometrics/codecs/png.py`: the IDAT stream is no longer decompressed
+  without a size ceiling (decompression-bomb fix).** `decode()` previously
+  called `zlib.decompress(b"".join(idat_parts))` with no bound on the size of
+  the decompressed result, so a small, well-formed grayscale PNG whose IDAT
+  expands to an enormous scanline buffer — a classic decompression bomb,
+  reachable through any decoded `--fingerprint` image — could drive an
+  unbounded allocation on the machine doing enrollment or verification. The
+  exact size of the decompressed scanline data is fully determined by the
+  already-validated IHDR dimensions (one filter byte plus `width` pixel bytes
+  per row, `height` rows), so decompression is now performed through
+  `zlib.decompressobj()` capped at exactly that ceiling and **refused** if the
+  stream would expand past it, before the oversized buffer can be
+  materialised. A valid image's real, header-declared scanline data still
+  round-trips byte-for-byte. Regression test:
+  `biometrics/tests/test_codec_and_dsp_support.py::PngRoundTripTests::test_rejects_decompression_bomb`.
+
+### Fixed
+
+- **`biometrics/codecs/video.py`: `frame_count * width * height` is now bounded
+  before any frame slicing.** `decode()` bounded `frame_count`, `width`, and
+  `height` individually (`MAX_FRAME_COUNT`, `MAX_DIMENSION`) but not their
+  *product*, so a header sitting at each individual maximum implied a body far
+  larger than any real clip. A new `MAX_BODY_BYTES` ceiling is checked against
+  `frame_count * width * height` up front, so a corrupt-but-individually-valid
+  header is refused based on the header alone, before the body length check.
+  Regression test:
+  `biometrics/tests/test_video_support.py::VideoCodecTests::test_rejects_body_over_ceiling_before_slicing`.
+
+- **`biometrics/codecs/image_tools.py`: `block_grid_means()` no longer returns a
+  silently wrong result for a `grid_size` larger than the image.** When
+  `grid_size` exceeded `width` or `height`, `_partition()` produced
+  zero-width/zero-height blocks whose `count` was `0`, and the
+  `total / count if count else 0.0` guard quietly substituted `0.0` — yielding a
+  feature vector that looked valid but was meaningless. `block_grid_means()` now
+  rejects a `grid_size` larger than either dimension with an `ImageToolsError`,
+  so a misconfigured extractor fails loudly instead of producing a degenerate
+  template. Regression test:
+  `test_codec_and_dsp_support.py::ImageToolsTests::test_block_grid_means_rejects_oversized_grid`.
+
+- **`vault/app.py`: `encrypt-paths --chunk-mb` is now bounded so a caller cannot
+  request a chunk size at or above BSR2's single-envelope limit.** The chunk
+  size was passed straight through to `BulkFileService` with no upper bound; a
+  value of 16 or more produces chunks that BSR2's envelope refuses to seal
+  (`MAX_PLAINTEXT_BYTES` ≈ 16 MiB), failing the whole operation partway through
+  with a confusing envelope error rather than a clear argument error.
+  `--chunk-mb` is now validated to `1..15` (new `MAX_CHUNK_MB`) and rejected
+  with a plain message otherwise, before any work is done.
+
+- **`biometrics/reports/report_writer.py`: report filenames now use
+  microsecond precision.** `_report_filename()` derived its name from a
+  second-precision `utc_now_iso()` plus a 4-byte random suffix, so two events in
+  the same second sorted only by that random suffix. It now uses the
+  filename-safe `common.timestamps.microsecond_timestamp()`, so a burst of
+  enroll/verify events sorts deterministically oldest-first in `list_reports()`,
+  matching the ordering guarantee its docstring already states. The random
+  suffix is retained.
+
+### Added
+
+- **`biometrics/tests/test_codec_and_dsp_support.py`**: new regression cases for
+  the PNG decompression-bomb ceiling (a small PNG whose IDAT would inflate past
+  its own IHDR dimensions is rejected) and the oversized-`grid_size`
+  `ImageToolsError`.
+- **`biometrics/tests/test_video_support.py`**: new regression case for the
+  BRVID `frame_count * width * height` body-size ceiling.
+
+### Notes
+
+- This is parsing-layer and input-validation hardening only. It does **not**
+  change, and does not claim to strengthen, BSR2's own cryptography — every
+  wrapped master key and sealed payload is exactly as protected by BSR2 as it
+  was in 1.3.2. The standing 1.3.2 caveats still apply in full: BSR2 is
+  unreviewed research cryptography (see `docs/BSR2_INTEGRATION.md`), the package
+  custody chain is tamper-evident rather than a digital signature, the video
+  liveness gate is a motion-presence check rather than general anti-spoofing
+  (KI-001), and losing both a vault's passphrase and its recovery code is
+  unrecoverable by design.
+
+- No stored format changed and no shipped module's cryptographic behavior
+  changed; the fixes are confined to how malformed or hostile *input* is
+  detected and refused at the earliest possible boundary.
+
+- No new external dependencies were introduced; the project remains pure
+  Python, standard-library only.
+
+---
+
+## [1.3.2] - 2026-09-08
+
+A security-hardening patch closing a doc/code mismatch: `docs/BSR2_INTEGRATION.md`
+and `biometrics/README.md` both claimed that files holding a BSR2-wrapped master
+key are "created on first use with mode 0600 ... and the loader warns if the mode
+is later widened." That protection did not actually exist in the code. No stored
+vault, identity, keyring, biometric-template, attachment, package, or
+custody-chain format changed. There is no data migration.
+
+### Security
+
+- **`vault.json` and the biometrics `keyring.json` are now written with
+  owner-only (0600) permissions on POSIX platforms, and widened permissions are
+  now flagged.** Both files hold a BSR2-wrapped master key -- `vault.json`'s
+  `keyring` section, and the standalone biometrics `keyring.json` -- but
+  `vault/store/vault_file.py`'s `create_vault_file`/`save_state` and
+  `biometrics/app.py`'s `_load_or_create_keyring` previously wrote them with
+  whatever default permissions the process umask produced, and neither ever
+  inspected permissions on load. `common/atomic_io.py`'s `atomic_write_text`/
+  `atomic_write_json` gained an optional `file_mode` parameter (new constant
+  `SENSITIVE_FILE_MODE = 0o600`); both call sites now request it on every
+  write. A new `warn_if_permissive()` helper is called after every vault-file
+  load (`vault_file.load_state`) and every keyring-file load
+  (`biometrics.app._load_or_create_keyring`), printing an advisory to stderr
+  if the file on disk is more permissive than 0600 -- catching a file that
+  predates this fix, or one that was widened by hand afterward. Both
+  `file_mode` and `warn_if_permissive` are no-ops on Windows (`os.name ==
+  "nt"`), for the same reason `atomic_io._flush_directory` already no-ops
+  there: `os.chmod` cannot express POSIX owner/group/other bits the way
+  `SENSITIVE_FILE_MODE` intends, so enforcing it there would be a false sense
+  of protection rather than a real one.
+
+### Added
+
+- `common/tests/test_common_utils.py`: new `AtomicIoPermissionTests` class
+  covering `file_mode` (applies the requested mode; omitting it does not
+  force `SENSITIVE_FILE_MODE` onto ordinary writes) and `warn_if_permissive`
+  (flags an overly-open file, stays silent for a correctly-restricted or
+  missing one). Skipped on Windows.
+
+- `vault/tests/test_sealed_vault.py`: new `VaultFilePermissionTests` class
+  confirming `VaultService.create` writes `vault.json` at 0600, and that a
+  subsequent `upsert` re-applies 0600 even if the file was widened by hand in
+  between. Skipped on Windows.
+
+### Notes
+
+- No stored format changed and no shipped module's cryptographic behavior
+  changed; 1.3.1 vaults, identities, keyrings, templates, and packages load
+  unchanged.
+
+- This is filesystem-permission hardening only. It does not change, and does
+  not claim to strengthen, BSR2's own encryption -- the wrapped master key
+  inside these files is exactly as protected by BSR2 as it was in 1.3.1. The
+  1.3.1 security caveats (BSR2 is unreviewed research crypto, the package
+  custody chain is tamper-evident rather than a digital signature, losing
+  both a vault's passphrase and recovery code is unrecoverable by design)
+  are unchanged and still apply.
+
+- On Windows (this project's primary development platform per `version.py`'s
+  own git history), this patch is a no-op by design; protecting these files
+  there is a filesystem/ACL concern outside what `os.chmod` can portably
+  guarantee, and is intentionally not claimed here.
+
+---
+
+## [1.3.1] - 2026-09-07
+
+A documentation and test-coverage release. No stored vault, identity,
+keyring, biometric-template, attachment, package, or custody-chain format
+changed. There is no data migration.
+
+### Added
+
+- **`docs/SECURITY.md`**: new file. Describes how to report a security
+  vulnerability privately (GitHub Private Vulnerability Reporting preferred,
+  direct maintainer contact as fallback), response-time expectations, in-scope
+  vs. out-of-scope components (`vendor/` is out of scope but still forwarded
+  upstream), and restates the standing BSR2 research-cryptography caveat from
+  `docs/BSR2_INTEGRATION.md` without softening it.
+
+- **`docs/KNOWN_ISSUES.md`**: new file. Tracks open, non-trivial issues using
+  a standardized bug-report template (Reported date / Severity / Environment /
+  Component / Steps to Reproduce / Expected behavior / Actual behavior /
+  Tried-Ruled-out / Next step). Initial entries: KI-001 (video liveness
+  threshold uncalibrated against real camera hardware), KI-002 (GUI test
+  coverage gap, now partially resolved by this release's new `gui/tests/`),
+  and KI-003 (bulk file/folder/drive encryption's ~1.4 KB/s throughput
+  ceiling, a documented BSR2 limitation rather than a defect).
+
+- **`tools/envinfo.py`**: new standalone diagnostic script. Prints OS,
+  machine/processor architecture, Python version/architecture, and Tcl/Tk
+  version in one block, meant to be pasted directly into a `KNOWN_ISSUES.md`
+  bug report's Environment field. Reads only OS/Python/Tk metadata; never
+  modifies anything or sends data anywhere.
+
+- **`gui/tests/test_constants.py`**: new regression tests for
+  `gui.core.constants._find_repo_root()`, the repo-root bootstrap walk every
+  other `gui` module depends on at import time. Covers finding the root when
+  `version.py` is two levels up, one level up, when no `version.py` exists
+  anywhere in the chain (graceful fallback rather than a crash), and when
+  multiple `version.py` files exist at different levels (nearest one wins).
+  Also covers `APP_TITLE`, `_MODALITY_FILETYPES`, and `_Cancelled`.
+
+- **`gui/tests/test_busy.py`**: new regression tests for
+  `gui.core.busy.run_in_background` and `BusyDialog` — the background-
+  thread/queue contract every slow (BSR2 KDF-touching) GUI action goes
+  through. Covers the success path, the error path (with and without an
+  `on_error` handler), and that `work()` genuinely runs off the main thread.
+
+- **`gui/tests/test_path_panel.py`**: new regression tests for
+  `gui.widgets.path_panel.PathSelectionPanel` — the shared file/folder/drive
+  picker used by both the Vault "Files / Folders / Drives" sub-tab and the
+  Biometrics "File Attachments" sub-tab. Covers add/dedup/remove/clear
+  behavior, first-seen ordering, and the `on_change` callback.
+
+### Changed
+
+- **`version.py`**: bumped `__version__` from `1.3.0` to `1.3.1`.
+
+### Notes
+- All three `gui/tests/` files use a `_HAS_DISPLAY` skip guard: they run for
+  real on a machine with a working Tk display (any normal desktop) and skip
+  cleanly on a headless CI runner with no display, consistent with how GUI
+  tests are conventionally handled when CI doesn't provision a display.
+
+- `gui/tabs/*.py` (the actual Vault/Biometrics/Packages tab wiring) still has
+  no direct test coverage; this remains open as the "Next step" in
+  `docs/KNOWN_ISSUES.md`'s KI-002 entry.
+
+- No new external dependencies were introduced.
+
+---
+
+## [1.3.0] - 2026-09-03
+
+Re-introduces a video-modality liveness/anti-spoofing GATE, closing the gap
+explicitly documented since 1.0.0 in `biometrics/README.md`'s Status section
+and `docs/BSR2_INTEGRATION.md`'s Residual Risks item 7 ("there is currently
+no liveness or anti-spoofing check for any modality"). This is a new
+implementation built against the current BRVID video pipeline, not a
+resurrection of the 0.6.0-beta AVI-based liveness code removed in the 1.0.0
+restructure. No stored template format changed; existing enrolled video
+templates verify unchanged.
+
+### Added
+
+- **`biometrics/features/liveness.py`**: new module. `assess_liveness()` measures mean absolute per-pixel frame-to-frame difference across a decoded BRVID clip and reports `is_live` against `DEFAULT_LIVENESS_THRESHOLD` (0.75). A clip built from a single repeated frame, or any clip with genuinely zero motion, scores exactly `0.0` and always fails the gate. **This is a motion-presence check, not general anti-spoofing** — it does not detect a played-back video recording, a physically-wobbled photograph, or a high-quality mask/deepfake with natural micro-motion; see the module's own docstring for the full scope statement.
+
+- **`biometrics/engine/enrollment.py`**: `enroll_modality()`/`enroll_identity()` gained an `allow_static: bool = False` parameter. For the `video` modality only, a static clip is refused at enrollment time by default — mirroring the 0.6.0-beta design ("a photograph cannot be baked into a template and make the verification-time gate meaningless"), re-implemented against the current codebase.
+
+- **`biometrics/engine/verification.py`**: `verify_modality()`/`verify_identity()` gained the same `allow_static` parameter. For the `video` modality only, a static probe is reported as a non-match with a populated `"liveness"` field **before** its similarity score is ever computed, rather than being scored against the stored template. Every other modality's result dict is unaffected and never gains a `"liveness"` key.
+
+- **`biometrics/app.py`**: `enroll` and `verify` both gained a `--allow-static` flag, threaded through to the functions above. `verify`'s console output now prints `LIVENESS_FAILED` (with the measured motion energy and threshold) instead of a similarity score when the gate rejects a video probe.
+
+- **`biometrics/tests/test_liveness.py`**: new regression tests covering zero-motion detection, the enrollment-time refusal and its override, the verification-time non-match-before-scoring behavior, and that non-video modalities are entirely unaffected.
+
+### Notes
+
+- Backward compatible: no change to any stored record's schema, and no change to any existing CLI flag's meaning. `--allow-static` is new and optional; omitting it preserves the exact enrollment/verification flow for every non-video modality.
+
+- **The default threshold is calibrated only against this project's own synthetic sample generator, not a real camera.** Real-world tuning against actual video captures is unfinished and open-ended — this release delivers the mechanism (a working, tested gate with a documented override), not a validated production threshold.
+
+- No new external dependencies were introduced.
+
+---
+
+## [1.2.3] - 2026-09-03
+
+A patch release fixing a silent data-loss bug shared by the Vault and
+Biometrics bulk file/folder/drive bundling paths. No stored vault,
+identity, keyring, biometric-template, attachment, package, or
+custody-chain format changed. There is no data migration.
+
+### Fixed
+
+- **A same-named standalone file added to a bulk bundle could silently overwrite another file of the same name on restore, with zero error or warning.** `vault/store/bulk_file_service.py`'s and `biometrics/engine/bulk_attachments.py`'s (hand-duplicated, per this project's existing separation between the two tools) `_build_zip_from_paths()` assigned a standalone file's archive entry name as nothing more than its own bare filename (`root_path.name`), with no check against every other archive entry name already written into the same bundle. Selecting two individual files that happen to share a filename — an ordinary thing to do, e.g. two different folders each containing their own `report.pdf` or `notes.txt`, each added to the bundle one at a time via "Add Files..." — silently wrote two zip entries under the identical name. `zipfile` permits this at write time with no error or warning of any kind. On restore, `zipfile.ZipFile.extractall()` extracts entries in archive order, and a later entry with the same name silently overwrites an earlier one already written to disk — so one of the two originally-selected files was permanently and silently dropped from the bundle. The bundle's own reported metadata (`files_bundled` count at encrypt/attach time, `files_restored` count at restore time) continued to claim full success throughout, since both files genuinely were written into and extracted from the archive; only the file actually left on disk afterward was wrong.
+
+### Changed
+
+- **Every archive entry name (standalone file or walked folder/drive entry) is now tracked as it is written into a bulk bundle.** New `_unique_arcname()` helper (added independently to both `vault/store/bulk_file_service.py` and `biometrics/engine/bulk_attachments.py`) disambiguates a colliding name by inserting `" (2)"`, `" (3)"`, etc. before the file's extension — the same numbering convention a filesystem itself uses when asked to keep two same-named files side by side — so nothing is silently discarded and the disambiguated names remain human-readable after restore.
+
+### Notes
+
+- Backward compatible: no change to any stored record's schema, any CLI flag's name or meaning, or any function's public signature. Existing bundles created before this fix restore identically to before; the fix only changes how a *new* bundle's internal archive entry names are chosen when a collision would otherwise occur.
+- Verified with two real, same-named files (`report.pdf`) bundled from two different source folders in a single `encrypt-paths`/`attach-paths` call, on both the Vault and Biometrics code paths independently: before the fix, restoring the bundle produced only one `report.pdf` on disk (the other's bytes were gone with no error); after the fix, the restored folder correctly contains both `report.pdf` and `report (2).pdf`, each byte-for-byte identical to its own original source file. A third same-named addition was also verified to correctly become `report (3).pdf` rather than colliding with the already-disambiguated `report (2).pdf`.
+- No new external dependencies were introduced.
+
+---
+
+## [1.2.2] - 2026-08-25
+
+A patch release fixing a metadata-loss bug in the Vault's record summary
+path. No stored vault, identity, keyring, biometric-template, attachment,
+package, or custody-chain format changed. There is no data migration.
+
+### Fixed
+
+- **`vault/records/record_model.py`**: `public_summary()` previously returned
+  only the five fields every record kind shares (`record_id`/`label`/`kind`/
+  `created_at`/`updated_at`), silently dropping a file record's plaintext
+  `original_filename`, `file_size_bytes`, and `file_sha256` fields (set
+  directly on the record by `VaultService.upsert_file_bytes()`). Because
+  `upsert_file_bytes()` manually re-merged those fields onto its own return
+  value, a file's size appeared correctly immediately after encryption — but
+  `VaultService.list_records()` and `get_summary()` call `public_summary()`
+  directly with no such merge, so the GUI's "Files / Folders / Drives" tab
+  silently blanked its Size column back to empty on every refresh, even
+  though the size was sitting in the clear on disk the whole time.
+  `public_summary()` now includes `original_filename`/`file_size_bytes`/
+  `file_sha256` whenever present on the record, and omits them otherwise, so
+  ordinary `"note"`/`"credential"` records and `"bundle-manifest"` records
+  (whose size is sealed inside an encrypted payload) are summarized exactly
+  as before.
+
+### Added
+
+- **`vault/tests/test_public_summary_file_metadata.py`**: four regression
+  tests confirming a file record's size/filename/hash survive a fresh
+  `list_records()` call (the actual bug), that `get_summary()` also carries
+  them, that ordinary JSON records never gain these keys, and that updating
+  a file record keeps its metadata current.
+
+---
+
+## [1.2.1] - 2026-08-25
+
+A patch release fixing a record-kind bug in the Vault's chunked bulk file/folder/drive
+encryption path. No stored vault, identity, keyring, biometric-template, attachment,
+package, or custody-chain format changed. There is no data migration.
+
+### Fixed
+
+- **`vault/store/bulk_file_service.py`**: chunk records created by
+  `BulkFileService.upsert_large_bytes()` (and therefore `upsert_paths()`) were
+  previously sealed under the same `"file"` kind used by a genuinely standalone
+  single-file record. This made an internal bundle chunk indistinguishable from a
+  real standalone file record created directly through
+  `VaultService.upsert_file`/`upsert_file_bytes`. Chunks are now sealed under the
+  already-defined `BUNDLE_CHUNK_KIND` (`"bundle-chunk"`) instead, so a chunk, a
+  bundle manifest, and a standalone file each carry a distinct, correct `kind`.
+- **`gui/tabs/tab_vault.py`**: the "Files / Folders / Drives" list no longer shows
+  internal bundle chunks as if each were its own independent encrypted file (only
+  standalone files and bundle manifests are listed). The "Decrypt / Restore
+  Selected..." button now checks the selected record's `kind` first: a standalone
+  `"file"`-kind record is decrypted directly to disk, while any other kind (a
+  bundle manifest) is restored via the existing zip-based `restore_paths()` flow.
+  Previously, selecting a genuine standalone file record here always triggered the
+  bundle-restore path, which assumes a JSON manifest, and failed with a confusing
+  "decrypted payload is not valid JSON" error instead of decrypting the file.
+- **`vault/store/vault_service.py`**: `upsert_file_bytes()`/`upsert_file()` now
+  accept an optional `kind` parameter (defaults to `"file"`, unchanged for existing
+  callers) so callers like `BulkFileService` can seal internal pieces under a
+  distinct kind without duplicating the sealing logic.
+
+### Added
+
+- **`vault/tests/test_bulk_file_service.py`**: three regression tests confirming
+  bundle chunks use `BUNDLE_CHUNK_KIND`, bundle manifests use
+  `BUNDLE_MANIFEST_KIND`, and a standalone file record's kind is never conflated
+  with either.
+
+---
+
+## [1.2.0] - 2026-08-25
+
+A GUI architecture release that splits the former single-file desktop interface
+into focused, folder-grouped modules. The visible Vault, Biometrics, and
+Packages workflows remain in one Tkinter window, but the implementation is now
+organized so the window shell, background-operation handling, reusable widgets,
+and each tool tab can be maintained independently.
+
+No stored vault, identity, keyring, biometric-template, attachment, package, or
+custody-chain format changed. There is no data migration.
+
+### Added
+
+- **`app.py`** is now the small root-level GUI entry point. It owns only the main
+  window, notebook assembly, menu bar, About dialog, and `main()`.
+
+- **`gui/core/constants.py`** centralizes the application title, biometric
+  file-type filters, cancellation sentinel, and repository-root import
+  bootstrap. The root is located by walking upward to `version.py` rather than
+  assuming a fixed directory depth.
+
+- **`gui/core/busy.py`** centralizes the modal busy dialog and the shared
+  background-operation runner used to keep slow KDF and encrypted-data work
+  from blocking Tkinter's event loop.
+
+- **`gui/widgets/dialogs.py`** contains reusable modal-dialog helpers instead of
+  repeating dialog construction across tabs.
+
+- **`gui/widgets/path_panel.py`** contains the shared file, folder, and drive-root
+  selection panel used by bulk Vault and biometric-attachment workflows.
+
+- **`gui/tabs/tab_vault.py`**, **`gui/tabs/tab_biometrics.py`**, and
+  **`gui/tabs/tab_packages.py`** now own their respective interfaces.
+
+### Changed
+
+- **The desktop GUI is modular instead of monolithic.** The former
+  `gui/app.py` implementation was split by responsibility. The executable shell
+  now lives at the repository root as `app.py`, while reusable GUI code lives
+  under `gui/core/`, `gui/widgets/`, and `gui/tabs/`.
+
+- **The supported direct GUI launch command is now `python app.py`.** The GUI
+  README and root README now document the actual root entry point and current
+  file layout.
+
+- **GUI import setup is depth-independent.** Importing
+  `gui.core.constants` establishes the repository root before any tab imports
+  Vault, Biometrics, or Packages modules.
+
+- **Documentation now matches the split GUI architecture.** `README.md`,
+  `gui/README.md`, and `docs/README_FULL_FILE_ENCRYPTION.md` no longer describe
+  `gui/app.py` or the deleted drag-and-drop module as current files.
+
+### Removed
+
+- **`gui/app.py`** was removed after its responsibilities were divided between
+  the root `app.py` shell and the new GUI submodules.
+
+- **`gui/windows_dnd.py`** was removed. The 1.2.0 interface uses the shared
+  Tkinter path-selection panel and standard picker dialogs.
+
+### Notes
+
+- The split is architectural. GUI actions still call the existing Vault,
+  Biometrics, and Packages application layers; cryptography, validation,
+  persistence, and identity policy were not reimplemented in the interface.
+
+- The project remains standard-library only and does not add a GUI dependency.
+
+- The 1.1.1 vendored-BSR2 digest-pin fix and the 1.1.0 biometric similarity fix
+  remain unchanged.
+
+- Existing security caveats remain in effect: BSR2 is unreviewed research
+  cryptography, the package custody chain is tamper-evident rather than a
+  digital signature, and losing both a vault passphrase and recovery code is
+  unrecoverable by design.
+
+---
+
+## [1.1.1] - 2026-08-25
+
+A patch fixing the digest-pin defect that shipped as a documented **Known
+issue** in 1.1.0, plus the CI path and documentation that referred to the
+pre-`tests/` layout. No shipped module's behavior changed, no stored format
+changed, and there is nothing to migrate. With this release the full suite
+(308 fast tests) passes clean.
+
+### Fixed
+
+- **`tests/test_bsr2_vendor_integrity.py` digest pin (the 1.1.0 Known issue) is
+  resolved.** The test's `_sha256()` normalized line endings (`\r\n → \n`)
+  before hashing, so on a Windows (CRLF) checkout the digest it produced could
+  never match the authoritative **raw-byte** pins in `PINNED_DIGESTS`
+  (`89ccae49…`, `b50b01b7…`, `93b0f72d…`, `d5ba6022…`), and
+  `test_vendored_files_match_their_pinned_digests` failed even though `vendor/`
+  was byte-for-byte correct. `_sha256()` now hashes the exact bytes on disk with
+  **no** line-ending conversion, so it compares directly against the raw-byte
+  pins. As stated in 1.1.0, the pins themselves were always correct — they are
+  unchanged; only the test's hashing was wrong.
+
+- **`run_tests.py` and `test_bsr2_vendor_integrity.py` now resolve the
+  repository root robustly.** Both locate the root by walking up to the
+  directory that contains both `version.py` and `vendor/`, rather than assuming
+  a fixed depth. This keeps discovery, `sys.path`, and the `vendor/` lookup
+  correct now that all three root-level test files live under `tests/`, and
+  removes the fixed-path fragility that caused the 1.0.3 "vendored BSR2
+  directory is missing" class of error.
+
+- **CI workflow invoked the runner at its old path.** `.github/workflows/tests.yml`
+  called `python run_tests.py` in the `fast` and `slow` jobs, but the runner
+  moved to `tests/` in 1.1.0, so both jobs would fail at the first step. Both now
+  call `python tests/run_tests.py`. The `smoke` job is unchanged.
+
+### Changed
+
+- **Documentation corrected to match the enforced pin.** `README.md`,
+  `docs/BSR2_INTEGRATION.md`, and `vendor/README.md` still carried notes from
+  the 1.0.0 window stating the vendor digest test had been "dropped" or "does
+  not currently exist." Those notes are replaced with an accurate description:
+  `vendor/` is pinned by `tests/test_bsr2_vendor_integrity.py`, which SHA-256s
+  every vendored file against a byte-for-byte digest and fails CI on any drift,
+  edit, or unpinned `.py` file. The README's test-command examples now point at
+  `python tests/run_tests.py`.
+
+### Notes
+
+- The 1.1.0 biometric similarity fix, the `tests/` reorganization, and the
+  removal of ruff are all unchanged and remain in effect; this release only
+  closes the pin defect and aligns CI and docs with the shipped layout.
+
+- The security caveats are unchanged and still apply: BSR2 is unreviewed
+  research crypto, the package custody chain is tamper-evident rather than a
+  digital signature, and losing both a vault's passphrase and recovery code is
+  unrecoverable by design.
+
+---
+
+## [1.1.0] - 2026-08-25
+
+A biometric matching-accuracy release, combined with a test-suite reorganization
+and the final removal of ruff from the toolchain. No stored template format
+changed and no shipped module's runtime behavior changed except the biometrics
+similarity scoring described below.
+
+### Fixed
+
+- **All three biometric modalities (fingerprint, voice, video) used a
+  similarity metric that was blind to real impostors.** `compare()` in each of
+  `fingerprint_features.py`, `video_features.py`, and `voice_features.py` used
+  plain cosine similarity, which measures only the *angle* between two feature
+  vectors, never how far apart their actual values are. For all three of this
+  project's feature spaces (fingerprint ridge-orientation + magnitude values,
+  raw video pixel-brightness block-means, voice energy/band-DCT vectors), the
+  vectors are mostly positive and similarly shaped regardless of whose
+  biometric data they came from, so two completely different people's vectors
+  still pointed in a broadly similar direction. Cosine similarity reported
+  that as a near-perfect match.
+
+  Verified directly against real generated samples (the `ci-enroll` /
+  `ci-other` seeds the CLI smoke test uses), confirmed end-to-end through the
+  actual CLI:
+
+  | Modality | old cosine score (bug) | new score | threshold | result |
+  |---|---|---|---|---|
+  | fingerprint | 0.9974 | 0.6197 | 0.80 | correctly rejected |
+  | voice | 0.9762 | 0.6213 | 0.85 | correctly rejected |
+  | video | 0.9159 | 0.6162 | 0.75 | correctly rejected |
+
+  A genuine self-match scored 1.0000 before and after the fix in every case,
+  so real enrollments continue to verify correctly.
+
+  Mean-centering (a Pearson-correlation-style cosine variant) was tried first
+  and barely moved the impostor score: cosine similarity is fundamentally an
+  angle-only metric, and this project's impostor/genuine separation lives in
+  magnitude of difference, not angle, so no cosine variant was going to fix it.
+
+### Added
+
+- **`biometrics/features/similarity.py`** — a new shared module holding
+  `distance_similarity()`: a normalized-Euclidean-distance-based score in
+  `(0.0, 1.0]`, self-relative to each vector pair's own average magnitude and
+  mapped through exponential decay so identical vectors score exactly `1.0`.
+  All three feature modules now import this one function instead of each
+  defining their own `compare()` math.
+
+### Changed
+
+- **`fingerprint_features.py`, `video_features.py`, `voice_features.py`** —
+  each module's `compare()` is now a thin wrapper delegating to
+  `distance_similarity()`. Feature extraction itself is unchanged; only the
+  similarity/scoring step changed.
+- **Test suite reorganized under `tests/`.** `run_tests.py`,
+
+  `test_bsr2_vendor_integrity.py`, and `test_cli_dispatcher.py` moved from the
+  repository root into `tests/`, alongside every other tool's `tests/`
+  directory, for a more consistent layout. `run_tests.py`'s discovery logic
+  is unaffected since it walks the whole tree by dotted module name rather
+  than assuming a fixed location for these three files.
+
+### Removed
+
+- **ruff removed entirely.** `pyproject.toml` (which existed solely to
+  configure ruff) is deleted, the `lint:` job is removed from
+  `.github/workflows/tests.yml`, and the local `.ruff_cache/` is cleared.
+  This project remains pure Python with zero external dependencies end to
+  end, including in its dev/CI tooling.
+
+### Known issue (not fixed in this release)
+
+- **`tests/test_bsr2_vendor_integrity.py` still has a stale digest pin.**
+  `PINNED_DIGESTS` in its current, moved location still holds the
+  CRLF-normalized hash values (`89ccae49...`, `b50b01b7...`, `93b0f72d...`,
+  `d5ba6022...`), which do not match what the test's own `_sha256()`
+  (line-ending-normalizing) hashing produces against the actual `vendor/*.py`
+  files on disk. This means `test_vendored_files_match_their_pinned_digests`
+  will still fail if the suite is run as-is. This is a carry-over from
+  1.0.3.1 that was diagnosed but not yet corrected in the files that shipped
+  in this snapshot — flagging it explicitly rather than presenting the suite
+  as fully green. Fixing it requires either updating `PINNED_DIGESTS` to
+  match the test's own normalized output, or intentionally switching
+  `_sha256()` to raw (non-normalized) hashing and re-pinning to match --
+  a decision that was in progress but not finalized as of this release.
+
+### Notes
+
+- No enrolled template's stored bytes changed and no re-enrollment is
+  required; the biometrics fix applies at verification time against
+  templates exactly as they were already stored.
+
+- If you have any automation or tests that assert a specific non-1.0
+  similarity score for fingerprint/voice/video, those expected values will
+  need updating to reflect the new distance-based scoring.
+
+- The 1.0.3.1 security caveats are unchanged and still apply: BSR2 is
+  unreviewed research crypto, the package custody chain is tamper-evident
+  rather than a digital signature, and losing both a vault's passphrase and
+  recovery code is unrecoverable by design.
+
+---
+
+## [1.0.3] - 2026-08-24
+
+A one-line path fix to the vendored-BSR2 digest-pin test. No shipped module
+changed and no stored format changed; this release only makes
+`test_bsr2_vendor_integrity.py` actually find the `vendor/` directory it is
+supposed to hash, so the integrity pin restored in 1.0.1 genuinely runs
+instead of erroring on a wrong path.
+
+### Fixed
+
+- **`test_bsr2_vendor_integrity.py` looked for `vendor/` one directory too
+  high.** The test computed `_VENDOR_DIR = Path(__file__).resolve().parent.parent
+  / "vendor"`, but the file ships at the **repository root** (next to `vendor/`),
+  not under a `tests/` subdirectory, so `.parent.parent` walked up to the
+  repository's *parent* folder and looked for `<parent>/vendor` — which does not
+  exist. Every subtest failed with a `FileNotFoundError` / "vendored BSR2
+  directory is missing" against a path like `.../GitHub/vendor` instead of
+  `.../GitHub/BrisartIdentityTools/vendor`. Changed to
+  `Path(__file__).resolve().parent / "vendor"` (one level up, since the file is
+  already at the root) and corrected the stale `<root>/tests/test_...py` comment.
+  The four pinned SHA-256 values were already correct and are unchanged; with
+  the path fixed, all four subtests pass and the vendor pin is genuinely
+  enforced.
+
+### Notes
+
+- No stored format changed and no shipped module's behavior changed; 1.0.2 data
+  loads unchanged and there is nothing to migrate.
+
+- This was purely a test-path arithmetic bug: the vendored files, their pinned
+  digests, and the test's comparison logic were all correct. Only the directory
+  the test looked in was wrong.
+
+- The 1.0.1 security caveats are unchanged and still apply: BSR2 is unreviewed
+  research crypto, the package custody chain is tamper-evident rather than a
+  digital signature, and losing both a vault's passphrase and recovery code is
+  unrecoverable by design.
+
+---
+
+## [1.0.2] - 2026-08-24
+
+A CI, test-runner, and tooling pass on top of 1.0.1. No shipped module's
+behavior changed — this release fixes the failing GitHub Actions workflow,
+splits the test suite into fast and slow (real-KDF) runs so CI is affordable
+again, corrects one test whose assertions did not match shipped behavior, and
+trims `pyproject.toml` down to the only thing that actually reads it. No stored
+format changed and no data migration is required.
+
+### Fixed
+
+- **GitHub Actions biometrics smoke job could never pass.** The `smoke` job's
+  biometrics steps call `python app.py enroll ...`, which unlocks a local
+  keyring via `getpass`. On CI there is no TTY, so `getpass` reads empty input
+  and `Keyring.create("")` raised `passphrase cannot be empty` on the very
+  first enroll — the job failed before exercising anything. Every
+  keyring-touching biometrics step now pipes its passphrase in on stdin, the
+  same pattern the vault steps already used. `make-samples`/`list`/`inspect`/
+  `delete` do not touch the keyring and need no passphrase.
+
+- **Wrong exception type asserted in `crypto/tests/test_rng.py`.** Two tests
+  asserted `generate(0, ...)` and `generate(32, b"")` raise
+  `Bsr2IntegrationError`, but `crypto/rng.py` does not wrap the vendored
+  `BrisartDRBGError` (a `ValueError`), so it surfaces unwrapped. Both tests now
+  assert `ValueError`, matching shipped behavior. (The alternative — wrapping
+  the error in `rng.py` for API consistency with the rest of the layer — was
+  considered and deferred; it would be a behavior change, not a test fix.)
+
+### Changed
+
+- **`run_tests.py` rewritten for explicit, fail-loud discovery and a fast/slow
+  split.** The tree is pure PEP 420 (no `__init__.py`) and `conftest.py` is a
+  pytest-only hook `unittest` never loads, so the old
+  `unittest discover -s . -t .` was fragile (could silently collect nothing or
+  error on import). The runner now discovers each `tests/` directory explicitly
+  with the repository root as `top_level_dir`, adds the two root-level test
+  modules by name, and **fails loudly on a collection import error instead of
+  passing with zero tests**. New flags:
+
+  - `python run_tests.py` — every test.
+  - `python run_tests.py --fast` — everything except the real-KDF tests.
+  - `python run_tests.py --slow` — only the real-KDF tests.
+
+  Fast/slow is filtered at the **class** level, so a module holding both fast
+  and slow classes (`test_keyring`, `test_factors`,
+  `test_label_normalization`) still runs its fast classes under `--fast`.
+
+- **CI workflow split into `fast` and `slow` jobs.** The ~75 real-BSR2-KDF
+  derivations (`test_sealed_vault`, `test_file_records`, `test_batch_upsert`,
+  `KeyringUnlockTests`, `FactorHashKdfRoundTripTests`) previously ran on **every**
+  matrix Python (3.10–3.13) via `run_tests.py`, at roughly a minute per
+  derivation — about 300 Actions-minutes per push. Now the `fast` job runs the
+  full non-KDF suite across 3.10–3.13, and a separate `slow` job runs the
+  real-KDF tests **once** on 3.12. Every test still runs on every push; the
+  cost is just no longer paid four times over.
+
+- **`pyproject.toml` trimmed to a ruff-only config.** This project is cloned
+  and run in place (`python cli.py`, `python run_tests.py`) and is never built
+  as a wheel or published, so the `[project]` metadata table was dead config
+  and — worse — carried a hardcoded version that had drifted from `version.py`.
+  The `[project]` table (and its duplicate version) was removed; `version.py`
+  (`__version__`) is now the single source of truth, consistent with how
+  `vault/` and `biometrics/` settings already import it. The `[tool.ruff]`
+  configuration is unchanged except for one added `per-file-ignores` glob
+  (`test_*.py`) so the two root-level test modules are covered like the ones
+  under `tests/`.
+
+### Notes
+
+- No stored format changed and no shipped module's behavior changed; 1.0.1 data
+  loads unchanged and there is nothing to migrate.
+
+- The version bump exists to record the CI/tooling fixes; the application code,
+  stored formats, and BSR2 construction are identical to 1.0.1.
+
+- The 1.0.1 security caveats are unchanged and still apply: BSR2 is unreviewed
+  research crypto, the package custody chain is tamper-evident rather than a
+  digital signature, and losing both a vault's passphrase and recovery code is
+  unrecoverable by design.
+
+---
+
+## [1.0.1] - 2026-08-24
+
+A test-coverage and integrity pass on top of 1.0.0. No shipped module's
+behavior changes — this release adds 204 new tests across 19 files, fills the
+biggest coverage gaps left after the 1.0.0 restructure (the entire `crypto/`
+layer previously had no direct tests), and **restores the vendored-BSR2 digest
+pin that was dropped in 1.0.0**. No stored format changed and no data migration
+is required.
+
+### Added
+
+**Direct tests for the `crypto/` layer (previously untested)**
+- `crypto/tests/test_envelope.py` — seal/open round trips, length-hiding
+  padding buckets, context binding (a ciphertext cannot be moved between
+  contexts), uniform authentication failure on modified ciphertext / wrong key
+  / wrong context, and the `MAX_PAYLOAD_BYTES` refusal. Uses a random 32-byte
+  master key, so it exercises real BSR2 sealing without paying the KDF cost.
+
+- `crypto/tests/test_keyring.py` — malformed-state rejection, the iteration
+  floor **and** ceiling (0.8.0-beta), recovery-code formatting, and a small
+  real-KDF unlock round trip (passphrase and recovery code).
+
+- `crypto/tests/test_factors.py` — keyed-MAC bind/verify (fast), parse-time
+  rejection of out-of-range iteration counts without running the KDF, plus one
+  real-KDF hash/verify round trip.
+
+- `crypto/tests/test_throttle.py` — regression coverage for the 0.8.0-beta
+  corrupt-state hardening: `NaN`/`Infinity`/negative fields are discarded, a
+  `NaN` `locked_until` no longer silently unlocks, and an astronomical
+  `failed_attempts` no longer builds a giant integer.
+
+- `crypto/tests/test_context.py` and `crypto/tests/test_rng.py` — context-string
+  construction/rejection and DRBG output-length/independence checks.
+
+**Coverage for the rest of the tree**
+- `common/tests/test_common_utils.py` — atomic writes, hashing, and the
+  timestamp helpers, including an explicit check that the `utc_now_iso` alias
+  exists (its absence was the 1.0.0 import crash).
+
+- `vault/tests/` — `test_record_model.py`, `test_record_ids_and_time.py` (the
+  0.4.0 shared-timestamp rule), and `test_audit_log.py`.
+
+- `biometrics/tests/` — `test_bulk_attachments.py` (multi-chunk + mixed
+  file/folder bundling, missing-chunk detection), `test_device_key.py`, and
+  `test_report_writer.py`.
+
+- `packages/tests/` — `test_custody_chain.py` (including the 0.8.2-beta
+  non-list `CustodyError`), `test_identity.py`, `test_package_audit.py`, and
+  `test_verification.py`.
+
+- `tests/test_cli_dispatcher.py` — the `cli.py` dispatch table, including that
+  every documented tool (`biometrics`, `vault`, `package`, `gui`, `version`,
+  `help`) is reachable.
+
+### Fixed
+
+- **Restored the vendored-BSR2 digest pin.** `tests/test_bsr2_vendor_integrity.py`
+  is recreated: it SHA-256s every file in `vendor/` against pinned values and
+  fails if any drifts, is edited, or an unpinned `.py` file appears. This closes
+  the open item flagged in `README.md`, `docs/BSR2_INTEGRATION.md`, and
+  `vendor/README.md` after 1.0.0 dropped the original test.
+
+### Notes
+
+- No stored format changed and no shipped module's behavior changed; 1.0.0 data
+  loads unchanged and there is nothing to migrate.
+
+- Most new tests use injected 32-byte keys or envelope-shaped fixtures so they
+  run fast; the real-KDF round trips are isolated into their own test classes
+  and are slow by design (~85 s per derivation), consistent with the existing
+  sealed-vault and package suites.
+
+- The 1.0.0 security caveats are unchanged and still apply: BSR2 is unreviewed
+  research crypto, the package custody chain is tamper-evident rather than a
+  digital signature, and losing both a vault's passphrase and recovery code is
+  unrecoverable by design.
+
+---
+
+## [1.0.0] - 2026-08-24
+
+The first non-beta, production/stable release of **BrisartIdentityTools**.
+
+This release is far more than a version bump over `0.8.2-beta`. Between the two
+builds the entire repository was **restructured into a single flat tree**, three
+brand-new subsystems were added (a desktop GUI, a full file/folder/drive
+encryption layer, and a unified CLI dispatcher), a shared `common/` utility
+layer was extracted, and a batch of defensive bug fixes landed. Every tool
+directory was renamed and reorganized.
+
+No stored format changed: vaults, identities, keyrings, templates, and packages
+written by `0.8.2-beta` load unchanged. There is nothing to migrate.
+
+---
+
+### Added
+
+**Desktop GUI (`gui/`)**
+- **`gui/app.py`** — a single-window Tkinter desktop front-end covering all
+  three tools (Vault, Biometrics, Packages) in one process. Standard library
+  only (`tkinter` ships with Python), so it adds no new dependency. Every
+  button calls directly into the existing service layer
+  (`vault.store.vault_service.VaultService`,
+  `biometrics.engine.enrollment`/`verification`, `packages.package`); no crypto,
+  validation, or persistence logic is duplicated in the GUI.
+
+  - **Vault tab**: choose/init/unlock/lock a vault, list records (works while
+    locked), create records via a JSON payload editor, view/decrypt or delete a
+    record, **plus** a new "Files / Folders / Drives" sub-tab for bulk
+    encryption of any size.
+
+  - **Biometrics tab**: create/unlock the keyring, enroll against
+    voice/fingerprint/video files, verify a probe with an "any modality matches"
+    option, inspect, delete, generate synthetic samples, **plus** a new "File
+    Attachments" sub-tab.
+
+  - **Packages tab**: create a package, add/remove recipients, open as a
+    recipient, verify and display the custody chain, and run the same demo cycle
+    as `packages/main.py demo`.
+
+  - Every KDF-touching operation runs on a background thread behind a modal
+    "Working..." progress dialog, so the window never appears frozen during a
+    derivation that can take tens of seconds to minutes.
+
+**Full file / folder / drive encryption**
+- **`vault/store/bulk_file_service.py`** — `BulkFileService`: chunked
+  encrypt/decrypt of content of any size, plus `upsert_paths()` /
+  `restore_paths()` to zip any mix of files, folders, and drive roots into one
+  bundle (preserving relative structure) before chunking past BSR2's ~16 MiB
+  single-envelope limit. Reassembly verifies a whole-content SHA-256.
+
+- **`biometrics/engine/bulk_attachments.py`** — the same chunking/bundling
+  logic, biometrics-side, storing chunks as ordinary attachments plus a manifest.
+
+- **`biometrics/engine/attachments.py`** — attach an arbitrary raw file (any
+  extension, or none) to an identity, sealed under the same master key,
+  byte-for-byte recoverable.
+
+- **`vault/store/vault_service.py`** — new `upsert_file` / `upsert_file_bytes` /
+  `get_file` / `get_file_bytes` methods to seal arbitrary raw bytes as a vault
+  record (never parsed as JSON), with plaintext filename/size/SHA-256 metadata.
+
+- **`docs/README_FULL_FILE_ENCRYPTION.md`** — documents the feature and its
+  honest real-world throughput ceiling (BSR2 is ~1.4 KB/s in pure Python).
+
+**Unified CLI dispatcher**
+- **`cli.py`** — `python cli.py <tool> ...` launches `biometrics`, `vault`,
+  `package`, or `gui` in-process, plus `version` and `help`.
+
+**Shared utility layer (`common/`)**
+- **`common/atomic_io.py`** — the single canonical `atomic_write_text` /
+  `atomic_write_json`, replacing three near-identical write-then-rename copies.
+
+- **`common/hashing.py`** — canonical `sha256_bytes` / `sha256_file`, replacing
+  five pasted copies.
+
+- **`common/timestamps.py`** — canonical UTC timestamp helpers.
+
+- **`common/README.md`**.
+
+**Other new files**
+- **`version.py`** — single source of truth for the ecosystem version
+  (`__version__ = "1.0.0"`), imported by both `vault` and `biometrics` settings
+  so the two tools can never report different versions.
+- New tests: `vault/tests/test_bulk_file_service.py`,
+  `vault/tests/test_file_records.py`, `biometrics/tests/test_attachments.py`.
+- New docs/READMEs across every subsystem (`crypto/README.md`,
+  `packages/README.md`, `vault/README.md`, `biometrics/README.md`,
+  `vendor/README.md`).
+
+---
+
+### Changed
+
+**Repository restructure — every tool directory renamed and reorganized**
+- `LabID_Beta/`            → **`biometrics/`** (reorganized into
+  `codecs/`, `engine/`, `features/`, `identity/`, `reports/`, `samples/`,
+  `config/`, `tests/`).
+- `IdentityVault_beta/`    → **`vault/`** (persistence moved under
+  `vault/store/`).
+- `identity_bound_packages/` → **`packages/`**.
+- `brisart_bsr2/`          → **`crypto/`** (BSR2 integration layer).
+- `bsr2_vendor/`           → **`vendor/`** (vendored BSR2, byte-identical).
+- The repository is now **one flat namespace-package tree (PEP 420)** with
+  fully-qualified imports throughout; `brisart_bsr2/__init__.py` and other
+  `__init__.py` markers were dropped. A single `conftest.py` /
+  `run_tests.py` now drives every suite in one pass.
+- `packages/crypto.py` → **`packages/ciphers.py`** (renamed to avoid colliding
+  with the new top-level `crypto/` package).
+
+**Versioning & packaging**
+- Version bumped `0.8.2-beta` → **`1.0.0`**.
+- `pyproject.toml` development-status classifier moved from
+  `4 - Beta` → **`5 - Production/Stable`**; description and keywords updated to
+  mention the GUI.
+- `README.md` quick-start now documents `python cli.py gui` and the new
+  restructured layout / commands.
+
+**CLI surface**
+- `vault/app.py` gained `encrypt-file`, `decrypt-file`, `encrypt-paths`, and
+  `restore-paths` subcommands.
+- `biometrics/app.py` gained `attach`, `attach-paths`, `extract-attachment`,
+  `restore-paths`, and `remove-attachment` subcommands.
+
+---
+
+### Removed
+
+- **`tests/test_bsr2_vendor_integrity.py`** — the digest pin that verified the
+  vendored BSR2 files were byte-identical to upstream was **dropped during the
+  restructure and not recreated**. Until it (or an equivalent digest check) is
+  re-added, an accidental edit to `vendor/` will not be caught by CI. Flagged as
+  an open item in `vendor/README.md` and `docs/BSR2_INTEGRATION.md`.
+- **`LabID_Beta/core/scoring.py`** and **`LabID_Beta/core/template_engine.py`** —
+  no longer present in the reorganized `biometrics/` tree.
+- All `_beta` / `LabID` / `IdentityVault` / `brisart_bsr2` / `bsr2_vendor`
+  directory names and their contents (superseded by the renamed trees above).
+
+---
+
+### Fixed
+
+- **Timestamp import crash (`common/timestamps.py`)** — every consumer imports
+  `utc_now_iso`, but the canonical module only defined `utc_now`. An
+  `utc_now_iso = utc_now` alias was added; without it, importing any vault,
+  biometrics, or packages module raised
+  `ImportError: cannot import name 'utc_now_iso'` and broke all three tools.
+- **Wrong sealed-envelope algorithm assertion in tests** — `test_sealed_vault.py`
+  and `test_sealed_biometrics_flow.py` asserted the envelope `algorithm` was
+  `"BSR2"`, but the real constant is `"BSR2-ARX-SPONGE-ETM"`. The old assertion
+  always failed even though sealing was correct; both tests now assert the
+  correct value.
+- **CI invalid-identity-id smoke step (`.github/workflows/tests.yml`)** — the
+  step meant to exercise path-traversal/invalid-char validation was passing a
+  bad second positional argument, so argparse rejected the command before
+  validation ran (the step passed for the wrong reason). It now uses the real
+  CLI signature so the identity-id validation is actually exercised. A stray
+  duplicate `tests.yml` at the repo root (which Actions never reads) was noted
+  for removal.
+- **Custody chain hardening (`packages/custody.py`)** — `verify_chain` now
+  rejects a non-list chain and non-dict entries with `CustodyError` before
+  iterating, instead of raising a raw `TypeError` on a hand-edited
+  `"custody_chain": 123`. New regression tests cover both cases.
+- **Unused imports (`packages/package.py`)** — removed `RecipientIdentityError`
+  and `validate_identity_id` imports (never referenced) that failed the ruff
+  `F401` lint job.
+
+---
+
+### Notes
+
+- **No data migration required.** Every stored format, encryption scheme, and
+  the underlying BSR2 construction are unchanged from `0.8.2-beta`; CLI and GUI
+  usage can be freely mixed against the same vault/keyring/package files.
+- The GUI is a **second way to drive the same application layer**, not a new
+  one. Every security caveat in `docs/BSR2_INTEGRATION.md` still applies: BSR2 is
+  unreviewed research cryptography, the package custody chain is tamper-evident
+  rather than a digital signature, and losing both a vault's passphrase and
+  recovery code is unrecoverable by design.
+- The full file/folder/drive encryption removes the *architectural* 16 MiB
+  ceiling via chunking, but the *practical* ceiling is now throughput
+  (~1.4 KB/s in pure Python) — realistic for individual files and folders up to
+  tens of MB, not for backing up a whole multi-hundred-GB drive.
+
+---
+
+## [0.8.2-beta] - 2026-08-23
+
+One more defensive bug fix in the identity-bound package open path, in the same
+vein as 0.8.1: a malformed custody chain crashed a boolean validator instead of
+being reported as invalid. Latent — the normal create-then-open flow never
+triggers it. It only fires on a hand-edited `.ibp`. No stored format changed and
+no data migration is required. The fix is confined to
+`identity_bound_packages/custody.py`.
+
+### Fixed
+
+**Identity-bound packages — verify_chain crashed on a non-list custody chain**
+
+`verify_chain` is a boolean predicate, and 0.4.0 already hardened it so a
+truncated custody event returns `False` rather than raising `KeyError`. But it
+still iterated `custody_chain` without checking it is a list, so a hand-edited
+package carrying `"custody_chain": 123` (or any non-iterable) raised `TypeError`
+straight out of the function. Because the package `signature` does not cover
+`custody_chain`, `verify_signature` passes first, so in `open_package` that
+`TypeError` escaped uncaught instead of producing the uniform
+`ValueError("Custody chain is broken or tampered with.")`, and skipped the
+`DENIED ... reason=custody` audit event that every other denial records.
+`verify_chain` now rejects a non-dict package, a non-list chain, and a non-object
+event, returning `False` before iterating.
+
+### Notes
+
+- No stored format changed. Packages, identities, and vaults written by 0.8.1
+  load unchanged; there is nothing to migrate.
+- This hardens the code against corrupt and adversarial stored input. The 0.7.0
+  security caveats are unchanged and still apply: BSR2 is unreviewed research
+  crypto, the package `signature` field remains a shared-secret hash rather than
+  a digital signature, and losing both the passphrase and the recovery code is
+  unrecoverable by design.
+  
+---
+
+## [0.8.1-beta] - 2026-08-23
+
+Two defensive bug fixes in the identity-bound package open path. Both are
+latent: the normal create-then-open flow never triggers either one. They only
+fire on a malformed or hand-edited `.ibp` — a package missing a signed field, or
+a payload that authenticates but is not valid UTF-8 — where the previous code
+raised the wrong exception type and, in `open_package`, skipped the audit event
+that every other denial records. No stored format changed and no data migration
+is required. The fixes are confined to `identity_bound_packages/package.py`.
+
+### Fixed
+
+**Identity-bound packages — verify_signature crashed on a truncated package**
+
+`verify_signature` is a boolean predicate, and 0.8.0 already hardened it to
+report a package with a missing `signature` as invalid rather than raising. But
+`_sign` reads `format`, `package_id`, `recipient_policy`, and `payload_hash` by
+direct subscript, so a package missing any of those — a truncated file or a
+hand-edited one — still raised `KeyError` out of `verify_signature`. In
+`open_package` that escaped as an uncaught `KeyError` instead of the intended
+`ValueError("Signature verification failed (package altered).")`, and skipped the
+`DENIED ... reason=signature` audit event. `verify_signature` now rejects a
+non-dict input and any package missing a signed field, returning `False` before
+`_sign` is called.
+
+**Identity-bound packages — a non-UTF-8 payload escaped the open pipeline**
+
+In `open_package`, the payload was decrypted inside the guarded block but decoded
+to text outside it, so an authenticated-but-non-UTF-8 payload surfaced as an
+uncaught `UnicodeDecodeError` instead of the pipeline's uniform
+`ValueError("Payload decryption failed (package altered).")`, and skipped the
+`DENIED ... reason=decrypt` audit event. The decode now runs inside the guarded
+block, so corruption is reported consistently and always audited.
+
+### Notes
+
+- No stored format changed. Packages, identities, and vaults written by 0.8.0
+  load unchanged; there is nothing to migrate.
+- Both fixes harden the code against corrupt and adversarial stored input. The
+  0.7.0 security caveats are unchanged and still apply: BSR2 is unreviewed
+  research crypto, the package `signature` field remains a shared-secret hash
+  rather than a digital signature, and losing both the passphrase and the
+  recovery code is unrecoverable by design.
+
+---
+
+## [0.8.0-beta] - 2026-08-23
+
+A hardening pass over the BSR2 integration and application layers. 0.7.0 moved
+every stored secret behind authenticated encryption; this release makes the code
+around that encryption hold up when the values it reads back are hostile or
+corrupt rather than well-formed. Every finding shares one theme: a persisted
+value on the authentication path — limiter state, an iteration count, a stored
+record — was trusted more than a file an attacker or a disk fault can edit
+deserves. No stored format changes and no data migration is required.
+
+Nothing in `bsr2_vendor/` is touched; it remains byte-identical and pinned by
+`tests/test_bsr2_vendor_integrity.py`. Every fix lives in the integration or
+application layer. The two behaviours that could hang or crash a process were
+reproduced against the vendored primitives before and after the fix.
+
+### Security
+
+- **Attempt limiter no longer crashes or silently unlocks on corrupt state.**
+  `AttemptLimiter._normalize` treated `NaN` and `Infinity` as valid numbers,
+  because they are floats and `nan < 0` is `False`. A limiter state persisted
+  with `locked_until` set to `NaN` made `locked_until > now` evaluate `False`,
+  so a genuine lockout silently evaporated; and the subsequent
+  `int(failed_attempts)` raised an uncaught `ValueError` out of a method whose
+  contract is to raise `AttemptLockedOut` or return state, turning a corrupt
+  state file into a hard crash on the unlock path. Non-finite fields are now
+  discarded and read as fresh state, the same fail-safe already applied to
+  non-numeric fields.
+- **Attempt-limiter backoff can no longer be turned into a stall.** The backoff
+  delay was computed as `base * 2 ** (failed_attempts - 1)` before being clamped
+  to `max_delay_seconds`. Because `failed_attempts` comes from caller-persisted
+  state, a stored count in the billions built a multi-gigabit integer that was
+  then immediately discarded — a single `check()` measured at roughly 48 seconds.
+  The exponent is now capped before exponentiation, so the clamp result is
+  identical for honest input and the work is bounded regardless of the stored
+  value.
+- **KDF iteration counts are now bounded above as well as below.** 0.7.0
+  validated the 10,000-iteration floor on read, to stop a tampered header from
+  requesting a cheap derivation. It did not bound the ceiling. A stored factor
+  hash or keyring header carrying an astronomical iteration count made
+  verification or unlock run the deliberately slow KDF to completion — years of
+  work — before the digest could even be compared and fail. Factor hashes
+  (`factors.py`) and keyrings (`keyring.py`, on both the create and load paths)
+  now reject an over-maximum count as malformed at parse time, so a tampered
+  value fails fast without ever entering the KDF. The ceiling sits far above
+  BSR2's 120,000 default, so no legitimate keyring or hash is affected.
+
+### Fixed
+
+**IdentityVault — batch upserts validated values too late to stay atomic**
+
+`upsert_records` validated `kind` and `label` in its up-front pass but not
+`value`, so a non-string value slipped through to the second, mutating loop and
+raised from inside `build_plain_payload` — after earlier items in the batch had
+already been applied to the in-memory vault and with the final save skipped, the
+same failed-open, work-lost behaviour that 0.4.0 fixed for the missing-field
+case. `value` is now validated during the prepare pass, so a bad item is
+rejected before any record is mutated and the batch stays all-or-nothing.
+
+**Identity-bound packages — malformed identity files raised a bare KeyError**
+
+`IdentityProfile.__init__` read `identity_id` and `name` by direct subscript, so
+an identity file missing either field raised a raw `KeyError` out of the
+constructor, inconsistent with every other structural check in the class and
+invisible to callers catching `Bsr2IntegrationError`. A missing field is now
+reported as an integration error like every other malformed-file case.
+
+**Identity-bound packages — a non-UTF-8 payload escaped the open pipeline**
+
+In `open_package`, the payload was decrypted inside the guarded block but decoded
+to text outside it, so an authenticated-but-non-UTF-8 payload surfaced as an
+uncaught `UnicodeDecodeError` instead of the pipeline's uniform
+`ValueError("Payload decryption failed (package altered).")`, and skipped the
+`DENIED ... reason=decrypt` audit event that every other open failure records.
+The decode now runs inside the guarded block, so corruption is reported
+consistently and always audited.
+
+### Notes
+
+- No stored format changed. Vaults, identities, keyrings, templates, and
+  packages written by 0.7.0 load unchanged; there is nothing to migrate.
+- These fixes harden the code against corrupt and adversarial *stored* input.
+  The 0.7.0 security caveats are unchanged and still apply: BSR2 is unreviewed
+  research crypto, the package `signature` field remains a shared-secret hash
+  rather than a digital signature, and losing both the passphrase and the
+  recovery code is unrecoverable by design.
+
+---
+
+## [0.7.0-beta] - 2026-08-04
+
+Encryption at rest, using real BSR2. Everything the repository previously stored
+in the clear — vault record values, biometric templates, package payloads — is
+now sealed with authenticated encryption. Still zero third-party dependencies:
+BSR2 is standard library only, and it is vendored rather than depended on.
+
+This release changes stored formats and refuses some previously readable files.
+See **Changed** and **Migration** below.
+
+### Added
+
+- `bsr2_vendor/`: BSR2 vendored **byte-identical** from
+  [BrisartSecurityResearch](https://github.com/JasonBrisart/BrisartSecurityResearch)
+  at commit `656d962c447b7ac69d76b717820c34ae8e56b38a` — sponge primitives,
+  authenticated envelope, DRBG, and OS entropy collection. No cryptographic
+  primitive is implemented in this repository.
+- `tests/test_bsr2_vendor_integrity.py`: pins every vendored file by SHA-256, so
+  an upstream drift or a local edit fails the suite instead of silently changing
+  what ships.
+- `brisart_bsr2/`: the integration layer between BSR2 and the three tools.
+  - `keyring.py` — master-key wrapping. A random 32-byte master key is sealed
+    under a passphrase-derived key and again under an offline recovery code, so
+    unlocking costs one slow derivation per session rather than one per
+    operation.
+  - `envelope.py` — seal/open with length-hiding padding (8-byte length prefix,
+    256-byte blocks) applied inside the authenticated plaintext.
+  - `context.py` — canonical context strings binding each ciphertext to the
+    object it belongs to.
+  - `factors.py` — factor hashing split by input entropy.
+  - `rng.py` — DRBG seeded from `secrets.token_bytes` with transparent reseeding
+    at upstream's lifecycle limits.
+  - `throttle.py` — `AttemptLimiter` with caller-persisted state.
+  - `errors.py` — one exception family; callers never import vendor exceptions.
+- Offline recovery codes: 40 characters of Crockford base32 (200 bits), shown
+  once at `init`. A second full-strength path to the master key, which is the
+  price of being able to recover at all.
+- `LabID_Beta/identity/device_key.py`: 32-byte local device key, created on first
+  use with mode `0600` via `os.open` so it is never briefly world-readable.
+  Refuses to overwrite an existing key, which would orphan every sealed
+  template.
+- `docs/BSR2_INTEGRATION.md`: full threat model — what each protection buys, the
+  KDF cost reasoning, per-tool boundaries, and residual risks.
+- New tests covering round trips, tamper rejection, context binding (a template
+  sealed for one identity cannot be moved to another), keyring unlock failure,
+  recovery-code unlock, iteration-downgrade rejection, and legacy migration.
+  Repository total is now **111 passing tests**.
+
+### Changed
+
+- **Minimum Python is now 3.10** (was 3.9). Vendored BSR2 uses `int | None` in
+  annotations that Python evaluates at import time, so 3.9 fails to import the
+  envelope module. Patching the vendored file would break byte-identical
+  vendoring and the digest pin in `tests/test_bsr2_vendor_integrity.py`, so the
+  floor moved instead. CI covers 3.10 through 3.13.
+- **Vault record values are sealed** under the vault master key. Record shells
+  (`record_id`, `kind`, `label`, timestamps) stay readable so `list` and `verify`
+  work while locked — a deliberate metadata trade-off, documented rather than
+  implied.
+- **Biometric templates are sealed** under the device key and bound to identity
+  id plus modality. Template format is now
+  `brisart-identity-tools/labid-template/v2`.
+- **Package payloads are sealed** under a random per-package content key, which
+  is itself wrapped once per recipient. Consequence: creating a package requires
+  every recipient's identity unlocked at creation time, because BSR2 is
+  symmetric and there is no public-key path without a dependency.
+- Factor hashing replaced unsalted single-pass SHA-256, which leaked shared
+  secrets through identical digests and fell to GPU guessing. Low-entropy inputs
+  now use BSR2's slow KDF; high-entropy inputs use a keyed MAC, because
+  stretching them adds nothing while a fast digest on a passphrase is a real
+  weakness.
+- Package verification runs cheap structural checks before expensive factor
+  verification, so a tampered package is rejected without paying for a
+  derivation.
+- `IdentityProfile`'s keyring is now built lazily, so an identity that only ever
+  adopts a master key directly is no longer forced to carry and validate a
+  keyring it never uses.
+- Renamed `test_plaintext_vault.py` → `test_sealed_vault.py` and
+  `test_plaintext_labid_flow.py` → `test_sealed_labid_flow.py`; both previously
+  asserted that data was readable on disk.
+- `.gitignore` now excludes `device_key.json`, `*.identity`, `*.ibp`, and runtime
+  `data/` directories. A device key decrypts every template beside it.
+- CI smoke job sets `IDENTITY_VAULT_PASSPHRASE` and raises its timeout, since the
+  vault and package CLIs each pay a real KDF.
+- README's security model rewritten: what is encrypted, and what is explicitly
+  not protected.
+
+### Security
+
+- Every sealed object is bound to a context string, so a ciphertext cannot be
+  moved between records, identities, modalities, or recipients. A moved envelope
+  fails authentication instead of decrypting into the wrong slot.
+- Authentication failures are uniform: modified ciphertext, wrong key, and wrong
+  context are indistinguishable to the verifier and reported identically.
+- Keyring iteration counts are validated on read, so a tampered header cannot
+  request a cheap derivation.
+- Ciphertext length no longer reveals plaintext length beyond a 256-byte bucket.
+- Digest comparison is constant-time.
+- **Unchanged:** the package `signature` field is still a shared-secret hash, not
+  a digital signature. It detects alteration; it does not prove origin.
+- **Unchanged:** BSR2 is unreviewed research crypto. Upstream's `SECURITY.md`
+  says not to use it as the sole protection for credentials, identity records, or
+  recovery secrets. That caveat is inherited, not softened.
+
+### Migration
+
+- Legacy plaintext **vaults** load and are migrated to sealed storage on first
+  write.
+- Legacy plaintext **templates** load, flagged
+  `storage_protection: unprotected_legacy_plaintext`, and are re-sealed on next
+  write.
+- Pre-BSR2 **packages are refused**, not opened. Their payloads were never
+  encrypted and there is no key to recover; they must be re-created.
+- Expect roughly a minute per passphrase unlock, and about three minutes for
+  `init` (it derives both the passphrase and recovery wrappers). The KDF is slow
+  on purpose; this is not a hang.
+- **Losing both the passphrase and the recovery code is unrecoverable by
+  design.**
+
+---
+
+## [0.6.0-beta] - 2026-08-02
+
+Video FaceID, with liveness as an enforced gate. Still zero dependencies: the
+AVI container is parsed and written by hand with `struct`.
+
+### Added
+
+- Uncompressed AVI support in `LabID_Beta/core/video.py`: RIFF chunk walking,
+  `hdrl`/`strf` stream-format parsing, 8-bit palette and 24-bit BGR frame
+  decoding, bottom-up and top-down row order, per-row stride padding,
+  interleaved `rec ` records, plus a writer used to generate samples and to
+  prove the reader against bytes this module laid out itself.
+- `probe_avi_grayscale` for reporting resolution and frame count.
+- Video FaceID templates in `LabID_Beta/core/video_features.py`: key-frame
+  selection, per-frame face descriptors aggregated across the clip, and
+  frame-to-frame motion statistics.
+- A `video` modality wired through enroll and verify, inferred automatically
+  from an `.avi` extension.
+- **Liveness gate.** A recording of a still photograph scores a near-perfect
+  face match, so liveness is enforced as a pass/fail gate rather than blended
+  into the similarity score. A static clip returns `LIVENESS_FAILED` even when
+  its face score clears the threshold. `--allow-static` overrides the gate and
+  reports the raw score.
+- Static-recording enrollment is refused by default, so a photograph cannot be
+  baked into a template and make the verification-time gate meaningless.
+- `record-video` CLI command: assembles two or more same-size PGM/PNG frames
+  into an AVI recording usable for enrollment or verification. Camera capture
+  needs a platform-specific driver, which would mean a dependency, so the
+  recording path starts from frames already on disk.
+- `probe-video` CLI command.
+- 4 video demo samples: a live enrollment clip, a matching clip, a
+  different-subject clip that also moves, and a static photo replay.
+- 18 new tests (15 codec/template/liveness, 3 end-to-end video flow),
+  including an AVI assembled byte by byte inside the test so a matching bug in
+  both the reader and the writer would still be caught. Repository total is now
+  **91 passing tests**.
+
+### Changed
+
+- Verification reports carry a `liveness` block and a
+  `candidate_video_sha256`, and `result` can now be `LIVENESS_FAILED`.
+- The "far" video sample genuinely moves, so it exercises a face-score
+  rejection instead of being stopped by the liveness gate first.
+- `test_samples_are_written_to_the_requested_directory` no longer asserts an
+  exact sample count, which broke on every new modality; it now checks that all
+  four sample formats are present and that every file lands in the requested
+  directory.
+- CI smoke tests exercise video FaceID, the recording round trip, the photo
+  replay rejection, and the static-enrollment refusal plus its override.
+
+---
+
+## [0.5.0-beta] - 2026-08-02
+
+LabID now supports three stdlib-only biometric modalities instead of just the
+original grayscale face path.
+
+### Added
+
+- Real PNG support in `LabID_Beta/core/png.py`: chunk parsing, CRC validation,
+  zlib decompression, all five PNG scanline filters, and grayscale conversion
+  for grayscale, RGB, RGBA, grayscale+alpha, and indexed images.
+- Real WAV PCM support in `LabID_Beta/core/wave_tools.py`: 8/16/24/32-bit
+  decode, stereo-to-mono downmix, and 16-bit mono output, all without `audioop`
+  so the code still runs on Python 3.13.
+- Pure-Python DSP in `LabID_Beta/core/dsp.py`: framing, Hann window, radix-2
+  FFT, power spectrum, mel filterbank, DCT-II / MFCCs, RMS, zero-crossing rate,
+  and autocorrelation pitch estimation.
+- Voice templates and verification based on MFCC summary statistics, pitch,
+  energy, and zero-crossing rate.
+- Fingerprint templates and verification based on normalized intensity,
+  orientation/coherence fields, and minutiae-like ridge ending / bifurcation
+  proxy grids.
+- Multi-modal LabID dispatch so enroll/verify now handle `face`, `voice`, and
+  `fingerprint` through one CLI.
+- Demo samples for all three modalities: face PGM/PNG, voice WAV, and
+  fingerprint PNG.
+- 4 new LabID regression/integration tests. Repository total is now 73 passing
+  tests across the three suites.
+
+### Changed
+
+- LabID face templates now accept PNG as well as PGM.
+- Verification reports now record generic candidate source hashes plus
+  modality-specific image/audio hashes.
+- Fingerprint uses a stricter default threshold (`0.975`) than face/voice
+  (`0.94`), because its score geometry is tighter and should not be forced into
+  the same threshold bucket.
+- CI smoke tests now exercise face PNG, voice WAV, and fingerprint PNG flows.
+
+---
+
+## [0.4.0-beta] - 2026-08-02
+
+First release where "beta" reflects the state of the code rather than a label.
+Every fix below was reproduced against the previous code before being changed,
+and each one has a regression test that fails without the fix.
+
+### Fixed
+
+**IdentityVault — duplicate records from label normalization**
+
+Stored labels pass through `safe_label()`, which collapses internal runs of
+whitespace. Lookups compared against `label.strip()`, which does not. Any label
+containing a double space therefore never matched an existing record, so
+duplicate detection failed open and `upsert_record` appended a new record on
+every call instead of updating in place. `get_record_by_label` then raised
+`KeyError` for a label that was visibly present in the file.
+
+**IdentityVault — batch writes were not atomic**
+
+`upsert_records` mutated the in-memory vault as it walked the batch and saved
+only at the end. An invalid item at position N raised after items 0..N-1 had
+already been applied, and because the save never ran the caller silently lost
+that work with no indication of how far the batch got. All items are now
+validated before anything is mutated. Missing `kind`, `label` or `value` fields
+are also reported explicitly instead of raising `KeyError`.
+
+**LabID — identity ids silently collapsed onto one another**
+
+`safe_identity_id` stripped disallowed characters instead of rejecting them, so
+`ja/son`, `ja son` and `ja*son` all became `jason`, and `../../etc/passwd`
+became `etcpasswd`. Since the id builds the record and template filenames, two
+distinct identities silently shared one record and one biometric template.
+Invalid ids are now rejected with the offending characters named, and there is a
+length limit.
+
+**LabID — re-enrollment destroyed the existing template**
+
+`enroll_identity` wrote the identity record and biometric template with no
+existence check, so enrolling an id that already existed replaced both without
+warning and destroyed the only stored copy of that identity's template.
+Re-enrollment now fails unless `--overwrite` is passed.
+
+**LabID — generated samples were written to the current directory**
+
+`make-samples` wrote its PGM files into whatever directory the CLI happened to
+be invoked from, which scattered artifacts and made them easy to commit by
+accident. They now go to `data/samples/`.
+
+**LabID — storage paths could not be reconfigured**
+
+Modules imported `IDENTITY_DIR`, `TEMPLATE_DIR` and `REPORT_DIR` into their own
+namespace at import time, which froze the storage location on first import.
+Paths are now resolved through the settings module at call time.
+
+**LabID — new records claimed to be updated before they existed**
+
+`build_identity_record` called `utc_now()` separately for `created_at` and
+`updated_at`. The two calls can straddle a second boundary, making a brand-new
+record look like it had already been modified. Both fields now share one
+timestamp.
+
+**Identity-bound packages — digest comparisons were not constant time**
+
+Passphrase, voice, face, fingerprint, signature, payload and custody-chain
+checks all compared SHA-256 digests with `==`, which short-circuits at the first
+differing character and leaks how much of a guess was correct through timing.
+All of them now use `hmac.compare_digest` via `crypto.digests_equal`.
+
+**Identity-bound packages — malformed input crashed the validators**
+
+`verify_signature` raised `TypeError` on a package with no `signature`,
+`verify_chain` raised `KeyError` on a truncated custody event, and
+`identity_authorized` raised `KeyError` on a package with no
+`recipient_policy`. Functions whose contract is to return a boolean now report
+invalid input as invalid.
+
+**Identity-bound packages — unopenable packages could be created**
+
+`create_package` accepted an empty recipient list, an unknown mode, a
+non-string message, and a `THRESHOLD` count outside the recipient range,
+producing packages that no identity could ever open. These are now rejected at
+creation time.
+
+**Identity-bound packages — importing a module created directories**
+
+`identity.py`, `package.py` and `audit.py` called `mkdir` at module scope, so
+merely importing them left untracked `identities/`, `packages/` and `logs/`
+directories in the working tree. Directories are created when something is
+actually written.
+
+**Repository — the test suites could not be run**
+
+`IdentityVault_beta/tests` failed with `ModuleNotFoundError` from the repository
+root and `ImportError: Start directory is not importable` from inside its own
+directory, so the suite could not be executed at all. Package markers and a
+`conftest.py` now make every suite importable from either location.
+
+### Added
+
+- `run_tests.py`, a single entry point that runs all three suites. The three
+  application trees use different import roots, so no one `unittest discover`
+  call could collect them.
+- 65 regression tests across the three suites (73 total, all passing) covering
+  every fix above. The repository previously had 8 tests, neither suite of which
+  could actually be executed.
+- GitHub Actions CI: the full suite on Python 3.9 through 3.13, a `ruff` lint
+  job, and a smoke-test job that exercises the real CLI paths end to end
+  (enroll, verify, refused re-enrollment, refused duplicate label, package demo)
+  and fails if the tests leave artifacts in the working tree.
+- `pyproject.toml` with project metadata and a `ruff` configuration selecting
+  the rule families that catch real defects.
+- `utc_stamp()` replaces an unused `local_stamp()` helper that returned a naive
+  local timestamp.
+
+### Notes
+
+Storage in this beta is plaintext by design. These tools provide
+identity-based authorization, integrity checking, custody tracking and audit
+logging, not confidentiality. Factor hashes are unsalted single-pass SHA-256,
+which is fine for a workflow demo and not a secure credential store; a
+production version needs a slow salted KDF such as Argon2 or scrypt, along with
+protected biometric templates and liveness detection.
