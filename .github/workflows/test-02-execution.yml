@@ -5,11 +5,16 @@
 #   workflow in this repository.
 # Settings / parameters: Triggers only on push/pull_request to `main` when the diff touches
 #   `02_Execution/**`. Python version pinned to 3.14. Working directory scoped to `02_Execution`.
-# Edge cases: If `02_Execution/requirements.txt` does not exist, the install step is skipped rather
-#   than failing. If no tests are collected, pytest exits non-zero (code 5) and the job is
-#   reported as failed.
-# Known limitations: Does not cache pip dependencies. Does not run lint/type-check steps.
-#   Does not build or publish artifacts.
+#   PYTHONPATH is set to the working directory itself so that top-level packages inside
+#   `02_Execution` (e.g. biometrics, crypto, vault, common, packages) can be imported absolutely
+#   by test files, matching how the project is run locally.
+# Edge cases: If no tests are collected, pytest exits non-zero (code 5) and the job is
+#   reported as failed. If a test file itself has a genuine bug, PYTHONPATH will not mask it -
+#   only import-path resolution is fixed here.
+# Known limitations: Does not install project dependencies from requirements.txt - only
+#   pytest itself is installed. If the project under test imports third-party packages,
+#   those tests will fail with ModuleNotFoundError. Does not cache pip dependencies.
+#   Does not run lint/type-check steps. Does not build or publish artifacts.
 # Examples: Editing a file under `02_Execution/` and pushing to `main` triggers this workflow;
 #   editing a file under any other top-level folder does not.
 
@@ -38,11 +43,12 @@ jobs:
         with:
           python-version: '3.14'
 
-      - name: Install dependencies
+      - name: Install pytest
         run: |
           python -m pip install --upgrade pip
           pip install pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run tests
-        run: pytest -q
+        run: |
+          export PYTHONPATH="$PWD:$PYTHONPATH"
+          pytest -q
