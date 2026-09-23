@@ -1,27 +1,19 @@
-# Purpose: Run the AIO Launcher's test suite whenever code under aio-launcher-prerelease changes.
-# Communication / relationships: Runs automatically on GitHub Actions when changes are pushed
-#   or a pull request is opened against files under aio-launcher-prerelease. Can also be triggered manually
-#   from the GitHub Actions tab regardless of what changed, via workflow_dispatch. Reports
-#   pass/fail status back to the commit/PR/run in the GitHub Actions tab; does not notify or
-#   call any other workflow in this repository.
-# Settings / parameters: Triggers on push/pull_request to `main` when the diff touches
-#   `aio-launcher-prerelease/**`, or at any time via manual "Run workflow" button. Python version pinned to
-#   3.14. Working directory scoped to `aio-launcher-prerelease`. PYTHONPATH is set to the working directory
-#   itself so that top-level packages inside `aio-launcher-prerelease` can be imported absolutely by test
-#   files, matching how the project is run locally.
-# Edge cases: pytest exit code 5 ("no tests collected") is treated as a pass, so projects
-#   without a test suite report green instead of failing. Genuine test failures (exit code 1)
-#   and collection/import errors (exit code 2) still fail the job. A commit that only touches
-#   files outside `aio-launcher-prerelease` will not auto-trigger this workflow - use "Run workflow" in the
-#   Actions tab to force a run.
-# Known limitations: Does not install project dependencies from requirements.txt - only
-#   pytest itself is installed. If the project under test imports third-party packages,
-#   those tests will fail with ModuleNotFoundError. Does not cache pip dependencies.
-#   Does not run lint/type-check steps. Does not build or publish artifacts. Because exit
-#   code 5 passes, a project that silently loses all its tests will still report green.
-# Examples: Editing a file under `aio-launcher-prerelease/` and pushing to `main` triggers this workflow
-#   automatically; using "Run workflow" in the Actions tab triggers it regardless of what
-#   changed.
+# Purpose: Run the AIO Launcher's test suite when code under aio-launcher-prerelease changes.
+# Communication / relationships: Runs on GitHub Actions when files under aio-launcher-prerelease change,
+#   when this workflow file itself changes, or on manual dispatch from the Actions tab.
+#   Reports pass/fail back to the commit/PR; does not call any other workflow.
+# Settings / parameters: Triggers on push/pull_request to `main` touching `aio-launcher-prerelease/**` or
+#   `.github/workflows/test-aio-launcher-prerelease.yml`, plus manual `workflow_dispatch`. Python pinned to 3.14.
+#   Working directory scoped to `aio-launcher-prerelease`. PYTHONPATH set to that directory so top-level
+#   packages inside it import absolutely, matching local runs.
+# Edge cases: pytest exit code 5 ("no tests collected") is treated as a pass so projects
+#   without a test suite report green. Real failures (exit 1) and collection/import errors
+#   (exit 2) still fail the job.
+# Known limitations: Installs only pytest, not project dependencies. Does not cache pip,
+#   lint, type-check, or build artifacts. A project that silently loses all its tests will
+#   still report green because of the exit-5 rule.
+# Examples: Editing anything under `aio-launcher-prerelease/` and pushing triggers this run; editing this
+#   workflow file also triggers it, so changes can be validated immediately.
 
 name: Test AIO Launcher (prerelease)
 
@@ -30,10 +22,12 @@ on:
     branches: [main]
     paths:
       - 'aio-launcher-prerelease/**'
+      - '.github/workflows/test-aio-launcher-prerelease.yml'
   pull_request:
     branches: [main]
     paths:
       - 'aio-launcher-prerelease/**'
+      - '.github/workflows/test-aio-launcher-prerelease.yml'
   workflow_dispatch:
 
 jobs:
