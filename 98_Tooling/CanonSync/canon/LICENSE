@@ -1,0 +1,42 @@
+# ==========================================================================
+# Managed by CanonSync — canonical LICENSE template (whole mode)
+# Source of truth: canon/LICENSE · Do not hand-edit inside a synced repo.
+# ==========================================================================
+
+LICENSE — PLACEHOLDER
+
+This file is a canonical LICENSE template synced by CanonSync in "whole"
+mode, meaning it REPLACES the entire LICENSE file in each target repo.
+
+It is disabled by default in canonsync.config.json ("enabled": false) so
+that CanonSync never overwrites a repo's license until you deliberately turn
+it on. Before enabling it:
+
+  1. Replace this entire file with your actual license text.
+  2. Confirm the same terms are correct for every repo you sync to — whole
+     mode makes no per-repo exceptions.
+  3. Set "enabled": true for the "license" item in canonsync.config.json.
+
+Authoritative licensing terms and governance for this ecosystem are
+maintained separately. Refer to your governance/licensing repository for
+the definitive terms before publishing this file.
+
+# ==========================================================================
+# Notes on why this file is NOT expanded like gitignore/gitattributes/
+# editorconfig masters
+# --------------------------------------------------------------------------
+# Those three are technical config templates: adding more community-standard
+# patterns is objectively safe, since an unused rule for an OS/editor/
+# language you don't touch is simply inert.
+#
+# A LICENSE is a legally operative document. There is no generic "more
+# complete" version to expand this into without either:
+#   (a) fabricating legal terms that don't reflect your actual ecosystem's
+#       licensing model, or
+#   (b) defaulting to a standard OSI license (MIT/Apache-2.0/GPL/etc.) that
+#       may not match the subscription / official-use / governed-participation
+#       structure a project is actually built around.
+#
+# Either of those risks silently shipping incorrect legal terms across every
+# repo CanonSync touches in whole mode. So this stays a placeholder here.
+# ==========================================================================

@@ -1,0 +1,354 @@
+"""
+Markdown and manifest generators for ReadmeBuilder.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from analysis import (
+    build_feature_list,
+    build_primary_entrypoint,
+    collect_python_analysis,
+    detect_project_traits,
+    infer_value_statement,
+)
+from constants import (
+    ANALYSIS_OUTPUT_FILENAME,
+    APP_NAME,
+    APP_VERSION,
+    AUTHOR,
+    DEFAULT_EXCLUDE_DIRS,
+    DEFAULT_EXCLUDE_FILES,
+    DEFAULT_EXCLUDE_SUFFIXES,
+    MANIFEST_OUTPUT_FILENAME,
+    README_OUTPUT_FILENAME,
+    REPOSITORY_NAME,
+    REPOSITORY_URL,
+)
+from filesystem import (
+    build_tree,
+    collect_extension_counts,
+    collect_top_level_components,
+    detect_existing_readme,
+    detect_license,
+    detect_version_file,
+    humanize_project_name,
+)
+
+
+def build_requirements_lines(traits: dict, python_analysis: dict) -> list[str]:
+    """
+    Build simple GitHub-facing requirements.
+    """
+    lines: list[str] = []
+
+    if traits.get("uses_python"):
+        lines.append("- Python 3.9+ recommended")
+
+    if traits.get("has_requirements_file"):
+        lines.append("- See `requirements.txt` for dependencies")
+    elif traits.get("has_pyproject"):
+        lines.append("- See `pyproject.toml` for project configuration")
+    elif traits.get("uses_python") and not python_analysis.get("possible_external_imports"):
+        lines.append("- No obvious third-party Python dependencies detected")
+
+    if python_analysis.get("possible_external_imports"):
+        lines.append("- Possible third-party imports detected. Review `README_ANALYSIS.md` for details.")
+
+    if not lines:
+        lines.append("- Requirements should be documented here if applicable")
+
+    return lines
+
+
+def build_usage_block(traits: dict, python_analysis: dict) -> str:
+    """
+    Build GitHub-facing usage section.
+    """
+    entrypoint = build_primary_entrypoint(python_analysis)
+
+    chunks: list[str] = []
+
+    if traits.get("has_gui_signals"):
+        chunks.append("### GUI\n\n")
+
+        if entrypoint:
+            chunks.append("```bash\n")
+            chunks.append(f"py {entrypoint}\n")
+            chunks.append("```\n\n")
+        else:
+            chunks.append("Run the appropriate GUI entry point for this project.\n\n")
+
+    if traits.get("has_cli_signals") or entrypoint:
+        chunks.append("### CLI\n\n")
+
+        if entrypoint:
+            chunks.append("```bash\n")
+            chunks.append(f"py {entrypoint}\n")
+            chunks.append("```\n")
+        else:
+            chunks.append("```bash\n")
+            chunks.append("py path_to_script.py\n")
+            chunks.append("```\n")
+
+    if not chunks:
+        chunks.append("Usage instructions should be added here.\n")
+
+    return "".join(chunks)
+
+
+def build_readme_markdown(root: Path, files: list[Path], created: str) -> str:
+    """
+    Build a GitHub-focused README_DRAFT.md.
+    """
+    project_name = humanize_project_name(root)
+    python_analysis = collect_python_analysis(root, files)
+    traits = detect_project_traits(files, python_analysis)
+    license_file = detect_license(root)
+    version_file = detect_version_file(root)
+
+    value_statement = infer_value_statement(project_name, traits)
+    features = build_feature_list(traits, python_analysis)
+    requirements = build_requirements_lines(traits, python_analysis)
+
+    chunks: list[str] = []
+
+    chunks.append(f"# {project_name}\n\n")
+    chunks.append(f"{value_statement}\n\n")
+
+    chunks.append("## What It Does\n\n")
+    chunks.append(
+        "This project can be used as a local utility or codebase component. "
+        "Review this generated README and adjust the description so it clearly "
+        "explains the project purpose, target users, and workflow.\n\n"
+    )
+
+    chunks.append("## Features\n\n")
+    for feature in features:
+        chunks.append(f"- {feature}\n")
+
+    chunks.append("\n## Requirements\n\n")
+    for line in requirements:
+        chunks.append(f"{line}\n")
+
+    chunks.append("\n## Usage\n\n")
+    chunks.append(build_usage_block(traits, python_analysis))
+
+    chunks.append("\n## Project Structure\n\n")
+    chunks.append("```text\n")
+    chunks.append(build_tree(root))
+    chunks.append("\n```\n")
+
+    chunks.append("\n## Documentation Notes\n\n")
+    chunks.append(
+        "- This README was generated automatically as a GitHub-facing starting point.\n"
+        "- Review the wording before publishing.\n"
+        "- Detailed scan data is available in `README_ANALYSIS.md`.\n"
+    )
+
+    chunks.append("\n## Version\n\n")
+
+    if version_file:
+        chunks.append(f"Version information may be available in `{version_file}`.\n")
+    else:
+        chunks.append("Version information should be added here if applicable.\n")
+
+    chunks.append("\n## License\n\n")
+
+    if license_file:
+        chunks.append(f"See `{license_file}` for licensing information.\n")
+    else:
+        chunks.append("Add license information here.\n")
+
+    chunks.append("\n---\n\n")
+    chunks.append(f"Generated by {APP_NAME} v{APP_VERSION}.\n")
+
+    return "".join(chunks)
+
+
+def build_analysis_markdown(root: Path, files: list[Path], created: str) -> str:
+    """
+    Build README_ANALYSIS.md with technical scan details.
+    """
+    project_name = humanize_project_name(root)
+    extension_counts = collect_extension_counts(files)
+    components = collect_top_level_components(root, files)
+    python_analysis = collect_python_analysis(root, files)
+    traits = detect_project_traits(files, python_analysis)
+
+    chunks: list[str] = []
+
+    chunks.append(f"# {project_name} README Analysis\n\n")
+    chunks.append(
+        "This file contains technical scan details generated by ReadmeBuilder. "
+        "It is intended for project review and documentation support, not as the main GitHub README.\n\n"
+    )
+
+    chunks.append("## Scan Metadata\n\n")
+    chunks.append(f"- Generated: `{created}`\n")
+    chunks.append(f"- Project root: `{root}`\n")
+    chunks.append(f"- Files scanned: `{len(files)}`\n")
+    chunks.append(f"- Existing README detected: `{'yes' if detect_existing_readme(root) else 'no'}`\n")
+
+    license_file = detect_license(root)
+    version_file = detect_version_file(root)
+
+    chunks.append(f"- License file detected: `{license_file if license_file else 'no'}`\n")
+    chunks.append(f"- Version/config file detected: `{version_file if version_file else 'no'}`\n")
+
+    chunks.append("\n## Detected Traits\n\n")
+    for key, value in traits.items():
+        chunks.append(f"- `{key}`: `{value}`\n")
+
+    chunks.append("\n## Detected File Types\n\n")
+    if extension_counts:
+        for suffix, count in sorted(extension_counts.items()):
+            chunks.append(f"- `{suffix}`: {count}\n")
+    else:
+        chunks.append("- No files detected\n")
+
+    chunks.append("\n## Project Components\n\n")
+    if components:
+        for component in components:
+            chunks.append(f"### `{component['name']}`\n\n")
+            chunks.append(f"- Files detected: `{component['file_count']}`\n")
+
+            if component["extensions"]:
+                text = ", ".join(
+                    f"`{suffix}` ({count})"
+                    for suffix, count in component["extensions"].items()
+                )
+                chunks.append(f"- File types: {text}\n")
+
+            if component["examples"]:
+                chunks.append("- Example files:\n")
+                for example in component["examples"]:
+                    chunks.append(f"  - `{example}`\n")
+
+            chunks.append("\n")
+    else:
+        chunks.append("No major components detected.\n")
+
+    chunks.append("## Python Entry Points\n\n")
+    entrypoints = python_analysis.get("entrypoints", [])
+
+    if entrypoints:
+        for entry in entrypoints:
+            chunks.append(f"- `{entry['path']}`\n")
+    else:
+        chunks.append("- None detected\n")
+
+    chunks.append("\n## Python Module Summary\n\n")
+    modules = python_analysis.get("module_summaries", [])
+
+    if modules:
+        for module in modules:
+            chunks.append(f"### `{module['path']}`\n\n")
+
+            if module.get("module_docstring"):
+                chunks.append(f"{module['module_docstring']}\n\n")
+
+            if module.get("classes"):
+                chunks.append("Classes detected:\n")
+                for class_name in module["classes"]:
+                    chunks.append(f"- `{class_name}`\n")
+                chunks.append("\n")
+
+            if module.get("functions"):
+                chunks.append("Functions detected:\n")
+                for function_name in module["functions"]:
+                    chunks.append(f"- `{function_name}`\n")
+                chunks.append("\n")
+    else:
+        chunks.append("- None detected\n")
+
+    chunks.append("## Detected Python Imports\n\n")
+
+    chunks.append("### Standard Library Imports\n\n")
+    standard_library = python_analysis.get("standard_library_imports", [])
+
+    if standard_library:
+        for name in standard_library:
+            chunks.append(f"- `{name}`\n")
+    else:
+        chunks.append("- None detected\n")
+
+    chunks.append("\n### Possible External Imports\n\n")
+    possible_external = python_analysis.get("possible_external_imports", [])
+
+    if possible_external:
+        for name in possible_external:
+            chunks.append(f"- `{name}`\n")
+        chunks.append("\n")
+        chunks.append("> These are detected import names and should be reviewed manually.\n")
+    else:
+        chunks.append("- None detected\n")
+
+    chunks.append("\n### Internal Imports\n\n")
+    internal = python_analysis.get("internal_imports", [])
+
+    if internal:
+        for name in internal:
+            chunks.append(f"- `{name}`\n")
+    else:
+        chunks.append("- None detected\n")
+
+    chunks.append("\n## Generated By\n\n")
+    chunks.append(f"{APP_NAME} v{APP_VERSION}\n\n")
+    chunks.append(f"Author: {AUTHOR}\n\n")
+    chunks.append(f"Part of: {REPOSITORY_NAME}\n\n")
+    chunks.append(f"Repository: {REPOSITORY_URL}\n")
+
+    return "".join(chunks)
+
+
+def build_manifest(root: Path, files: list[Path], created: str) -> dict:
+    """
+    Build JSON manifest metadata.
+    """
+    extension_counts = collect_extension_counts(files)
+    components = collect_top_level_components(root, files)
+    python_analysis = collect_python_analysis(root, files)
+    traits = detect_project_traits(files, python_analysis)
+
+    return {
+        "created": created,
+        "app_name": APP_NAME,
+        "version": APP_VERSION,
+        "author": AUTHOR,
+        "repository_name": REPOSITORY_NAME,
+        "repository_url": REPOSITORY_URL,
+        "root": str(root),
+        "output_readme": README_OUTPUT_FILENAME,
+        "output_analysis": ANALYSIS_OUTPUT_FILENAME,
+        "output_manifest": MANIFEST_OUTPUT_FILENAME,
+        "files_scanned": len(files),
+        "extension_counts": dict(sorted(extension_counts.items())),
+        "components": components,
+        "traits": traits,
+        "python_analysis": python_analysis,
+        "excluded_dirs": sorted(DEFAULT_EXCLUDE_DIRS),
+        "excluded_files": sorted(DEFAULT_EXCLUDE_FILES),
+        "excluded_suffixes": sorted(DEFAULT_EXCLUDE_SUFFIXES),
+    }
+
+
+def write_outputs(root: Path, files: list[Path], created: str) -> tuple[Path, Path, Path]:
+    """
+    Write README_DRAFT.md, README_ANALYSIS.md, and README_BUILDER_MANIFEST.json.
+    """
+    readme_path = root / README_OUTPUT_FILENAME
+    analysis_path = root / ANALYSIS_OUTPUT_FILENAME
+    manifest_path = root / MANIFEST_OUTPUT_FILENAME
+
+    readme_markdown = build_readme_markdown(root, files, created)
+    analysis_markdown = build_analysis_markdown(root, files, created)
+    manifest = build_manifest(root, files, created)
+
+    readme_path.write_text(readme_markdown, encoding="utf-8")
+    analysis_path.write_text(analysis_markdown, encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    return readme_path, analysis_path, manifest_path

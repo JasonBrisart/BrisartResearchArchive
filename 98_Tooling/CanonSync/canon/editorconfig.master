@@ -1,0 +1,142 @@
+# ==========================================================================
+# Managed by CanonSync — canonical .editorconfig (block mode)
+# Source of truth: canon/editorconfig.master · Do not hand-edit inside a synced repo.
+# ==========================================================================
+
+# ==========================================================================
+# Canonical .editorconfig  --  SINGLE SOURCE OF TRUTH
+# --------------------------------------------------------------------------
+# This is the one file to edit. CanonSync copies the block below into a
+# managed region inside every repo's .editorconfig. See https://editorconfig.org
+#
+# Do NOT hand-edit the managed block inside an individual repo -- your edit
+# will be overwritten on the next sync. Edit THIS file, then run the sync.
+# Anything a repo adds OUTSIDE its managed block is preserved untouched.
+#
+# Add your own project-specific overrides in each repo BELOW the managed
+# block (under the "repo-specific overrides" separator), not here.
+#
+# This template is intentionally generic (no project/ecosystem-specific
+# names) so it can be dropped into ANY repo regardless of stack. Sections
+# are labeled by language/tool so it's easy to scan, trim, or extend.
+# Indent sizes below follow each language's own dominant style convention
+# (e.g. tabs for Go/Makefile, 4 spaces for Python, 2 spaces for JS/YAML/
+# JSON) rather than forcing one indent size onto every file type.
+# ==========================================================================
+
+# root = true stops EditorConfig from searching parent directories above
+# this repo for another .editorconfig, so nothing outside the repo (e.g.
+# a personal global config) can silently override these rules.
+root = true
+
+# --- Defaults for every file ---
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# ==========================================================================
+# Language-specific overrides
+# ==========================================================================
+
+# --- Python (PEP 8: 4 spaces) ---
+[*.{py,pyi,pyw}]
+indent_size = 4
+
+# --- JavaScript / TypeScript / web config (2 spaces is the common convention) ---
+[*.{js,mjs,cjs,jsx,ts,tsx,json,jsonc,yml,yaml,toml,html,htm,css,scss,sass,less}]
+indent_size = 2
+
+# --- Markdown / docs ---
+# trim_trailing_whitespace is turned off here because Markdown uses two
+# trailing spaces at end-of-line as a deliberate "hard line break" syntax;
+# stripping it would silently break intentional formatting.
+[*.{md,mdx,rst}]
+indent_size = 2
+trim_trailing_whitespace = false
+
+# --- Shell scripts ---
+[*.{sh,bash,zsh}]
+indent_size = 2
+
+# --- Windows-native scripts ---
+# CRLF matches native Windows line endings for cmd.exe / PowerShell.
+[*.{bat,cmd,ps1}]
+end_of_line = crlf
+indent_size = 4
+
+# --- Makefiles ---
+# Make requires literal tab characters to introduce recipe lines; using
+# spaces here isn't just a style choice; it will break the Makefile.
+[{Makefile,makefile,*.mk}]
+indent_style = tab
+
+# --- Go (gofmt enforces tabs) ---
+[*.go]
+indent_style = tab
+
+# --- Java / Kotlin ---
+[*.{java,kt,kts}]
+indent_size = 4
+
+# --- C / C++ / C# ---
+[*.{c,h,cpp,hpp,cc,hh,cs}]
+indent_size = 4
+
+# --- Rust (rustfmt default) ---
+[*.rs]
+indent_size = 4
+
+# --- Ruby ---
+[*.rb]
+indent_size = 2
+
+# --- PHP ---
+[*.php]
+indent_size = 4
+
+# --- Swift ---
+[*.swift]
+indent_size = 4
+
+# --- SQL ---
+[*.sql]
+indent_size = 2
+
+# --- XML ---
+[*.xml]
+indent_size = 2
+
+# --- CSV / TSV data (no meaningful indentation, but keep line endings sane) ---
+[*.{csv,tsv}]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# --- Common exact-match config filenames (opt-in, uncomment per-repo if used) ---
+# [{package.json,.travis.yml,.eslintrc,.prettierrc}]
+# indent_size = 2
+
+# --- Diff/patch files (opt-in) ---
+# Never touch whitespace inside a diff -- it's semantically part of the
+# patch. Uncomment if this repo ever commits .diff/.patch files.
+# [*.{diff,patch}]
+# trim_trailing_whitespace = false
+# insert_final_newline = false
+
+# --- Minified / generated / vendored assets (opt-in) ---
+# Uncomment per-repo for files that are machine-generated and shouldn't
+# be reformatted or have EditorConfig rules applied at all.
+# [*.min.{js,css}]
+# indent_style = unset
+# indent_size = unset
+# trim_trailing_whitespace = unset
+
+# ==========================================================================
+# --- repo-specific overrides (not managed) ---
+# Anything a repo needs beyond the shared block goes below this line --
+# CanonSync will never touch it.
+# ==========================================================================

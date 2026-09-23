@@ -1,0 +1,5 @@
+{
+  "open_after_build": true,
+  "check_updates_startup": true,
+  "auto_install_updates": true
+}

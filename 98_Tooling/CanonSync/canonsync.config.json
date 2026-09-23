@@ -1,0 +1,35 @@
+{
+  "app": "CanonSync",
+  "version": "1.2.0",
+  "description": "Declares which canonical files are synced into every repo, and how. 'block' mode injects a managed region and preserves each repo's own rules around it. 'whole' mode replaces the entire destination file (used for files with no repo-specific part, like LICENSE).",
+  "items": [
+    {
+      "name": "gitignore",
+      "source": "canon/gitignore.master",
+      "dest": ".gitignore",
+      "mode": "block",
+      "enabled": true
+    },
+    {
+      "name": "editorconfig",
+      "source": "canon/editorconfig.master",
+      "dest": ".editorconfig",
+      "mode": "block",
+      "enabled": true
+    },
+    {
+      "name": "gitattributes",
+      "source": "canon/gitattributes.master",
+      "dest": ".gitattributes",
+      "mode": "block",
+      "enabled": true
+    },
+    {
+      "name": "license",
+      "source": "canon/LICENSE",
+      "dest": "LICENSE",
+      "mode": "whole",
+      "enabled": false
+    }
+  ]
+}
