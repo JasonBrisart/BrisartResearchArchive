@@ -1,22 +1,24 @@
 # Purpose: Run the framework execution layer's test suite whenever code under 02_Execution changes.
 # Communication / relationships: Runs automatically on GitHub Actions when changes are pushed
-#   or a pull request is opened against files under 02_Execution. Reports pass/fail status
-#   back to the commit/PR in the GitHub Actions tab; does not notify or call any other
-#   workflow in this repository.
-# Settings / parameters: Triggers only on push/pull_request to `main` when the diff touches
-#   `02_Execution/**`. Python version pinned to 3.14. Working directory scoped to `02_Execution`.
-#   PYTHONPATH is set to the working directory itself so that top-level packages inside
-#   `02_Execution` (e.g. biometrics, crypto, vault, common, packages) can be imported absolutely
-#   by test files, matching how the project is run locally.
+#   or a pull request is opened against files under 02_Execution. Can also be triggered manually
+#   from the GitHub Actions tab regardless of what changed, via workflow_dispatch. Reports
+#   pass/fail status back to the commit/PR/run in the GitHub Actions tab; does not notify or
+#   call any other workflow in this repository.
+# Settings / parameters: Triggers on push/pull_request to `main` when the diff touches
+#   `02_Execution/**`, or at any time via manual "Run workflow" button. Python version pinned to
+#   3.14. Working directory scoped to `02_Execution`. PYTHONPATH is set to the working directory
+#   itself so that top-level packages inside `02_Execution` can be imported absolutely by test
+#   files, matching how the project is run locally.
 # Edge cases: If no tests are collected, pytest exits non-zero (code 5) and the job is
-#   reported as failed. If a test file itself has a genuine bug, PYTHONPATH will not mask it -
-#   only import-path resolution is fixed here.
+#   reported as failed. A commit that only touches files outside `02_Execution` will not
+#   auto-trigger this workflow - use "Run workflow" in the Actions tab to force a run.
 # Known limitations: Does not install project dependencies from requirements.txt - only
 #   pytest itself is installed. If the project under test imports third-party packages,
 #   those tests will fail with ModuleNotFoundError. Does not cache pip dependencies.
 #   Does not run lint/type-check steps. Does not build or publish artifacts.
-# Examples: Editing a file under `02_Execution/` and pushing to `main` triggers this workflow;
-#   editing a file under any other top-level folder does not.
+# Examples: Editing a file under `02_Execution/` and pushing to `main` triggers this workflow
+#   automatically; using "Run workflow" in the Actions tab triggers it regardless of what
+#   changed.
 
 name: Test Execution Layer
 
@@ -29,6 +31,7 @@ on:
     branches: [main]
     paths:
       - '02_Execution/**'
+  workflow_dispatch:
 
 jobs:
   test:
