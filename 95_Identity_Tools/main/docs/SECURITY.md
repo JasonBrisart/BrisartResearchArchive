@@ -108,7 +108,7 @@ The following releases receive security fixes:
 
 | Release | Line | Support status | Security fixes |
 | --- | --- | --- | --- |
-| LTS-2028 (1.3.x) | Long-Term Support | Supported through 1 January 2029 | ✅ |
+| LTS-2028 (1.3.x) | Long-Term Support | Supported through 31 December 2028 | ✅ |
 | Latest release on `main` | Current | Supported | ✅ |
 | Pre-1.3.0 and superseded releases | — | End of Support | ❌ |
 
