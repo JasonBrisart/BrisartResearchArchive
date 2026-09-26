@@ -26,8 +26,8 @@ Edge cases:
   fails validation before any request is sent.
 
 Known limitations:
-- /tooling is the last known location of the published registry block;
-  if that page moves, change REGISTRY_PAGE_URL.
+- The AIO Launcher prerelease location on GitHub is the current registry
+  target; if that path moves, change REGISTRY_PAGE_URL.
 - The registry page is read up to 64 KiB, so the markers must appear
   within that limit.
 
@@ -42,14 +42,17 @@ import re
 import sys
 from pathlib import Path
 
-REGISTRY_PAGE_URL = "https://brisartresearcharchive.com/tooling"
+REGISTRY_PAGE_URL = (
+    "https://github.com/JasonBrisart/BrisartResearchArchive/"
+    "blob/main/aio-launcher-prerelease/"
+)
 APP_REGISTRY_ID = "brisart_research_archive"
-
 REGISTRY_START_MARKER = "<!--BRISART_REGISTRY_START-->"
 REGISTRY_END_MARKER = "<!--BRISART_REGISTRY_END-->"
 
 EXECUTION_DIR = Path(__file__).resolve().parents[2]
 LOCAL_VERSION_FILE = EXECUTION_DIR / "version.txt"
+
 APP_DIR = Path(os.getenv("APPDATA", str(Path.home()))) / "Brisart Research Archive"
 UPDATES_DIR = APP_DIR / "updates"
 BACKUPS_DIR = APP_DIR / "updates" / "backups"
@@ -62,7 +65,9 @@ BACKUPS_DIR = APP_DIR / "updates" / "backups"
 # might otherwise get backed up/overwritten unnecessarily.
 PROTECTED_NAMES = {"__pycache__", ".git", ".venv", "venv", "updates"}
 
-ALLOWED_REMOTE_HOSTS = {"brisartresearcharchive.com"}
+ALLOWED_REMOTE_HOSTS = {
+    "github.com",
+}
 
 # Files that existed in earlier releases but have since been removed from
 # the Archive. The installer copies files overwrite-only, so without this
@@ -76,9 +81,10 @@ OBSOLETE_RELEASE_PATHS = (
     "services/tooling_manager.py",
     "services/tool_update_notify.py",
 )
-USER_AGENT = "BrisartResearchArchive-Updater/3.0"
 
+USER_AGENT = "BrisartResearchArchive-Updater/3.0"
 VERSION_PATTERN = re.compile(r"^[vV]?(\d+)\.(\d+)\.(\d+)(?:[\s\-].*)?$")
+
 VERSION_TIMEOUT_SECONDS = 15
 DOWNLOAD_TIMEOUT_SECONDS = 120
 MAX_REGISTRY_RESPONSE_BYTES = 65_536

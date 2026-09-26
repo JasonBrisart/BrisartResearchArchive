@@ -6,29 +6,39 @@ All notable changes to Brisart Research Archive are documented here.
 ## [0.9.2 ALPHA] - 2026-09-26
 
 ### Removed
+
 - Removed the Tooling page, Tooling registry system, Tooling installer subsystem, Tooling update notifications, and Tooling startup update checks.
 - Removed all Tooling navigation references. The sidebar now contains Dashboard, Frameworks, Results, Archive, and Settings.
 - Brisart Research Archive now focuses on framework execution, analysis, documentation, settings, and Archive self-updating.
 
 ### Added
+
 - **Obsolete-file removal on update** (`services/updater/install.py`, `services/updater/constants.py`): installs were overwrite-only, so existing installations would have kept the removed Tooling modules forever. `OBSOLETE_RELEASE_PATHS` lists them, and `remove_obsolete_files()` deletes them after the pre-install backup. Entries that are absolute, contain `..`, resolve outside the application folder, or are not regular files are skipped.
 - **Trust-anchor guard** (`services/trust_anchor.py`, `services/updater/orchestration.py`): `is_configured()` detects the placeholder public key. While the placeholder is in place, update checks return `trust_anchor_unconfigured` without contacting the network, instead of downloading a release and reporting it as forged.
 - **`docs/KNOWN_ISSUES.md`**: restored. It was referenced throughout the code but missing. It now uses the standard bug report template.
 - **Tests** (`tests/test_merged.py`, 41 to 50 tests): file-header standard enforcement, sidebar contents, absence of Tooling modules, registry URL allowlisting, trust-anchor guard, and obsolete-file removal safety.
 
 ### Changed
+
 - **Every Python file (52)** now begins with the standard header: `File:` path, then Purpose, Communication / relationships, Settings / parameters, Edge cases, Known limitations, and Examples. The header test enforces it.
-- **Registry URL** (`services/updater/constants.py`): moved from a GitHub tree URL back to `https://brisartresearcharchive.com/tooling`, consistent with self-hosted distribution.
+- **Registry URL** (`services/updater/constants.py`): corrected to point to the AIO Launcher prerelease repository location:
+
+  https://github.com/JasonBrisart/BrisartResearchArchive/blob/main/aio-launcher-prerelease/
+
+  The previous changelog entry incorrectly stated that the updater registry had been redirected back to the Brisart Research Archive website tooling page. It has not been; it now points to the AIO Launcher prerelease location above, not the website tooling page.
+- **Updater host allowlist** (`services/updater/constants.py`): `ALLOWED_REMOTE_HOSTS` updated to allow `github.com` so registry lookups against the corrected URL pass host validation.
 - **Quiet startup check** (`services/updater/gui_integration.py`): the unattended startup check no longer reports `current`, `local_newer`, `trust_anchor_unconfigured`, `registry_error`, `network_error`, or `http_error`. Verification failures are still always shown, and the manual Check Updates button still reports every outcome.
 - `services/updater/download.py` now imports `services.rsa_signing` explicitly, matching the namespace-package convention.
 
 ### Fixed
+
 - **Startup crash** (`config/registries.py`): 12 stray backslashes in type annotations and one dictionary lookup caused `SyntaxError: unexpected character after line continuation character` on launch.
-- **Updater could never reach its registry**: the GitHub URL's host was not in `ALLOWED_REMOTE_HOSTS`, so every check failed URL validation before sending a request.
-- **Startup switched to the Settings page**: failed unattended checks called `set_update_text()`, which navigates to Settings. With the bad URL, this happened on every launch, and it would also happen on every launch of an offline machine.
+- **Updater could never reach its registry**: the registry host was not in `ALLOWED_REMOTE_HOSTS`, so every check failed URL validation before sending a request.
+- **Startup switched to the Settings page**: failed unattended checks called `set_update_text()`, which navigates to Settings. With a misconfigured registry URL or host allowlist, this happened on every launch, and it would also happen on every launch of an offline machine.
 - Removed stale Tooling and `services/__init__.py` references from module documentation.
 
 ### Notes
+
 - `services/trust_anchor.py` still ships the placeholder key. Generate a keypair offline with `python signing/sign_release.py generate-keys` and paste the printed public key before publishing signed releases.
 - Run the test suite with `python tests/test_merged.py`. `tests/` has no `__init__.py`, so `python -m unittest tests.test_merged` does not work.
 
