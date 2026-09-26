@@ -1,45 +1,45 @@
 """
-services/updater/gui_integration.py
-Tkinter-facing entry points. This is the only file most of the app
-actually talks to -- controllers/system_controller.py imports from
-here, and gui/main_window.py calls startup_check() once at launch.
+File: services/updater/gui_integration.py
 
-Settings read from the app object (all tk.BooleanVar, all optional --
-missing/None defaults to the safe/expected value):
+Purpose:
+Provide the Tkinter-facing updater entry points: the manual Check
+Updates button, the automatic startup check, and update-output display.
 
-  - enable_update_checks : master switch. If False, NOTHING in this
-                            file ever contacts the registry -- not the
-                            manual "Check Updates" button, not the
-                            automatic startup check.
+Communication / relationships:
+- controllers/system_controller.py imports check_updates(),
+  set_update_text(), and update_check_is_running().
+- gui/main_window.py schedules startup_check() once after launch.
+- Uses services/updater/orchestration.py, services/updater/notify.py,
+  and services/updater/tk_helpers.py.
 
-  - auto_install_updates : if True, both the automatic startup check
-                            AND the manual "Check Updates" button
-                            install a verified update immediately, with
-                            no prompt -- the checkbox itself is the
-                            user's standing confirmation.
+Settings / parameters:
+- enable_update_checks: master switch. When off, nothing here contacts
+  the registry.
+- auto_install_updates: when on, verified updates install immediately
+  with no prompt, for both manual and startup checks.
+- notify_on_update: with auto-install off, asks Yes/No before
+  downloading; with auto-install on, shows a changelog popup after
+  installing.
+- STARTUP_SILENT_STATUSES: outcomes the startup check never shows.
 
-  - notify_on_update      : if True (and auto_install_updates is
-                            False), the user is asked with a Yes/No
-                            dialog, BEFORE anything is downloaded,
-                            whether to download and install an
-                            available update. Answering "No" simply
-                            means it will be offered again next time --
-                            nothing is remembered or suppressed. If
-                            True (and auto_install_updates is also
-                            True), an "Update Installed" popup with a
-                            changelog is shown right after an automatic
-                            install completes. If False, install
-                            outcomes are never announced either way.
+Edge cases:
+- The startup check is a complete no-op when both auto-install and
+  notify are off; only the manual button can check then.
+- Only one check runs at a time; a second request is refused.
+- Work runs on a background thread and UI updates are scheduled with
+  after(0).
+- The startup check stays silent for STARTUP_SILENT_STATUSES (current
+  version, unconfigured trust anchor, registry, network, and HTTP
+  errors). Verification failures are always shown.
+- Missing Tk variables are treated as enabled.
 
-  AUTOMATIC STARTUP CHECK, specifically:
-  With auto_install_updates OFF and notify_on_update OFF, the user has
-  explicitly asked for zero automatic activity -- no background
-  checking, no silent downloading, nothing. In that combination,
-  startup_check() is a complete no-op: it does not contact the
-  registry at all. The ONLY way an update check happens is the user
-  manually pressing "Check Updates", which always works as long as
-  enable_update_checks is on -- that's an explicit action, not
-  something happening on their behalf.
+Known limitations:
+- set_update_text() switches to the Settings page to find update_box,
+  so any shown report moves the user off the current page.
+
+Examples:
+- check_updates(app)
+- startup_check(app)
 """
 from __future__ import annotations
 
@@ -52,6 +52,22 @@ from services.updater.orchestration import check_and_maybe_install
 from services.updater.tk_helpers import app_is_alive, ask_yes_no_on_ui_thread, schedule_on_ui_thread, widget_is_alive
 
 _update_lock = threading.Lock()
+
+# Outcomes the unattended startup check never reports on screen. Showing
+# the report calls set_update_text(), which switches the window to the
+# Settings page, so network or configuration failures here would yank the
+# user away from the Dashboard on every launch (every launch at all on an
+# offline or air-gapped machine). The manual "Check Updates" button still
+# reports all of these. Security failures (verification_failed) are
+# deliberately NOT in this set.
+STARTUP_SILENT_STATUSES = frozenset({
+    "current",
+    "local_newer",
+    "trust_anchor_unconfigured",
+    "registry_error",
+    "network_error",
+    "http_error",
+})
 
 
 def update_checks_enabled(app: Any) -> bool:
@@ -228,8 +244,8 @@ def _run_check(app: Any, *, silent_when_nothing_new: bool) -> None:
             _update_lock.release()
 
         status = result.get("status")
-        if silent_when_nothing_new and status in {"current", "local_newer"}:
-            return  # nothing to report on an unattended startup check
+        if silent_when_nothing_new and status in STARTUP_SILENT_STATUSES:
+            return  # nothing actionable to report on an unattended startup check
         schedule_on_ui_thread(app, lambda: set_update_text(app, report))
         context = "install" if status in {"installed", "exe_swap_pending"} else "check"
         maybe_notify_result(app, result, context=context)

@@ -1,8 +1,31 @@
 """
-services/updater/http_utils.py
+File: services/updater/http_utils.py
 
-Shared HTTP helpers: URL/host allowlisting (HTTPS-only, no credentials),
-request construction, and bounded response reads.
+Purpose:
+Build HTTPS-only, host-allowlisted requests and read bounded responses
+for the updater.
+
+Communication / relationships:
+- Used by services/updater/registry.py and services/updater/download.py.
+- Reads ALLOWED_REMOTE_HOSTS and USER_AGENT from
+  services/updater/constants.py.
+
+Settings / parameters:
+- validate_remote_url(url, allowed_hosts=None) accepts an override set.
+- Requests send User-Agent, Accept, and Cache-Control: no-cache.
+
+Edge cases:
+- Rejects non-HTTPS URLs, hosts not on the allowlist, and URLs carrying
+  credentials.
+- The final URL after redirects is validated again.
+- A declared or actual body larger than the limit is rejected.
+
+Known limitations:
+- Hostnames must match exactly; subdomains such as www. are not allowed
+  unless listed.
+
+Examples:
+- request = build_request(REGISTRY_PAGE_URL, "text/html")
 """
 
 from __future__ import annotations

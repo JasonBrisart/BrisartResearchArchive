@@ -1,17 +1,43 @@
 """
-frameworks/TFL/config.py
-Assembles TFL's runtime config dict and the "official default startup"
-option set from the single source of truth in frameworks/TFL/settings.py.
+File: frameworks/TFL/config.py
 
-This module holds NO tunable literals of its own anymore -- every value
-below is read from settings.py, so behavior is edited THERE, not here.
-get_raw_config() returns the base experiment parameters;
-apply_default_options() layers on the official default run behavior
-(first 20 stimuli only, extra stimuli OFF, perturbations OFF, probes ON,
-delayed reentry ON) and stamps run_mode/mode_description;
-get_default_config() is the convenience combination of the two, and is
-what the GUI options screen and the headless engine builder both start
-from.
+Purpose:
+Assemble the TFL runtime config and the official default startup
+options entirely from frameworks/TFL/settings.py. This module holds no
+tunable values of its own.
+
+Communication / relationships:
+- Reads frameworks/TFL/settings.py.
+- frameworks/TFL/session_gui.py calls apply_default_options().
+- frameworks/TFL/options_screen.py uses it for Restore Defaults.
+- frameworks/TFL/trial_builder.py imports DEFAULT_FEEDBACK_LEVELS and
+  DEFAULT_PERTURBATION_TYPES.
+- app/headless.py and tests/test_merged.py call get_default_config().
+- frameworks/TFL/framework.py exposes lazy wrappers.
+
+Settings / parameters:
+- DEFAULT_CONFIG keys: trial_duration_sec, num_trials, trials_per_block,
+  blocks, affect_scale, probe_interval, delayed_reentry_interval,
+  random_seed, feedback_levels, perturbation_interval,
+  perturbation_types.
+- apply_default_options() adds enable_extra_stimuli,
+  enable_perturbations, enable_probes, enable_delayed_reentry, run_mode,
+  and mode_description.
+
+Edge cases:
+- apply_default_options(config) merges onto a fresh raw config and then
+  overwrites all four toggles with their defaults; toggles already in
+  the passed config are not preserved. The options screen applies user
+  toggles afterwards.
+- Lists are copied, so callers cannot mutate the settings module.
+
+Known limitations:
+- No validation happens here; frameworks/TFL/trial_builder.py validates.
+- To change behavior, edit frameworks/TFL/settings.py, not this file.
+
+Examples:
+- config = get_default_config()
+- config["enable_perturbations"] = True
 """
 from __future__ import annotations
 from . import settings

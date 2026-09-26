@@ -1,12 +1,30 @@
 """
-gui/pages/dashboard_page.py
-The Dashboard page: a deliberately minimal landing area with quick-access
-cards for the main sections (Frameworks/Results/Archive/Settings) and a
-couple of quick actions (run the selected framework, analyze results).
-Registered as the "Dashboard" page in
-config.registries.get_page_registry() and is the DEFAULT_PAGE shown at
-launch. Intentionally sparse so future dashboard cards can be added here
-without touching the sidebar, page registry, or application shell.
+File: gui/pages/dashboard_page.py
+
+Purpose:
+Render the Dashboard, the default landing page, with navigation
+shortcuts and quick actions.
+
+Communication / relationships:
+- Registered as "Dashboard" in config/registries.get_page_registry();
+  DEFAULT_PAGE shown at launch.
+- Buttons call app.show_page(), app.start_selected_framework(), and
+  app.analyze_tfl().
+
+Settings / parameters:
+- Cards occupy grid rows 2 through 4.
+
+Edge cases:
+- Run Selected Framework launches app.selected_framework (the saved
+  default_framework), not a framework chosen on this page.
+- Analyze Results runs TFL analysis regardless of the selected framework.
+
+Known limitations:
+- The third card is a placeholder.
+- Analyze Results is TFL-specific.
+
+Examples:
+- app.show_page("Dashboard")
 """
 from __future__ import annotations
 def render(app):

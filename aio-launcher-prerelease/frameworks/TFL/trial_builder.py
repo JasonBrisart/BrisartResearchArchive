@@ -1,18 +1,42 @@
 """
-frameworks/TFL/trial_builder.py
-Builds the complete, ordered TFL trial sequence from a config and a
-stimulus set. Normalizes and validates every config field (blocks,
-feedback levels, perturbation types, intervals, seed), assigns each trial
-its block/feedback/prior/probe/perturbation properties, and shuffles the
-stimulus pool deterministically from random_seed so a given seed always
-yields the same sequence. Delayed-reentry trials reuse the exact stimulus
-content of their declared recurrence-source trial, so the relationship
-recorded in recurrence_source_trial always holds. Pure logic, no I/O.
+File: frameworks/TFL/trial_builder.py
 
-VALID_BLOCKS and VALID_FEEDBACK_LEVELS are read from
-frameworks/TFL/settings.py (the single source of truth for TFL's
-tunable behavior) instead of being hardcoded here as a second, separate
-copy that could silently drift out of sync with it.
+Purpose:
+Build the complete, ordered, deterministic TFL trial sequence from a
+config and a stimulus set. Pure logic, no I/O.
+
+Communication / relationships:
+- Imports defaults from frameworks/TFL/config.py and VALID_BLOCKS and
+  VALID_FEEDBACK_LEVELS from frameworks/TFL/settings.py.
+- Stamps framework.FRAMEWORK_ID onto every trial.
+- Called by frameworks/TFL/session_gui.py, app/headless.py, the lazy
+  wrappers in frameworks/TFL/framework.py, and tests/test_merged.py.
+
+Settings / parameters:
+- Config keys read, with fallbacks: blocks, trials_per_block,
+  num_trials, random_seed (2026), probe_interval (4),
+  delayed_reentry_interval (6), perturbation_interval (5),
+  feedback_levels, perturbation_types, enable_probes (True),
+  enable_delayed_reentry (True), enable_perturbations (False), run_mode.
+- Per-block feedback: affect is neutral; belief is confirmatory with an
+  alternating A/B prior; contradiction cycles through feedback_levels.
+
+Edge cases:
+- A delayed-reentry trial copies the stimulus of trial N minus the
+  interval, so recurrence_source_trial always holds. The first reentry
+  happens only after one full interval.
+- The stimulus pool is reshuffled after every full pass.
+- Unsupported blocks or feedback levels raise ValueError.
+- The total trial count is capped at trials_per_block * len(blocks).
+- Boolean config values accept strings such as "yes" or "off".
+
+Known limitations:
+- Perturbation types are not validated against known instructions;
+  unknown types get a generic instruction at display time.
+- The block index wraps modulo the block count if it overflows.
+
+Examples:
+- trials = build_trials(get_default_config(), stimuli)
 """
 from __future__ import annotations
 import random

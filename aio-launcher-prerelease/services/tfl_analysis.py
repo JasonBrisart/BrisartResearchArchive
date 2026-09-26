@@ -1,17 +1,33 @@
 """
-services/tfl_analysis.py
-TFL-specific analysis wrappers that bridge the GUI
-(controllers/system_controller.py) to the headless TFL analysis layer
-(frameworks/TFL/analysis.py) without the controller importing the
-framework directly.
+File: services/tfl_analysis.py
 
-Framework-specific by design: if another framework (SST, PFT, ...) later
-needs the same GUI bridge, it should get its own <framework>_analysis.py
-module rather than overloading this one. Split out of the old
-services/__init__.py, which mixed this TFL-only logic into the generic
-services package initializer -- so that (a) the name reflects that these
-are TFL-only, and (b) the services package no longer needs an
-__init__.py at all.
+Purpose:
+Bridge the GUI controller to the headless TFL analysis layer
+(frameworks/TFL/analysis.py) so the controller never imports framework
+internals directly.
+
+Communication / relationships:
+- Called by controllers/system_controller.py: analyze_tfl(),
+  set_analysis_text(), fallback_csv_summary(), open_tfl_csv().
+- Writes reports into app.analysis_box on the Results page.
+
+Settings / parameters:
+- Always works on tfl_output_latest.csv.
+
+Edge cases:
+- set_analysis_text() is a no-op when the Results page is not showing.
+- open_tfl_csv() raises FileNotFoundError when no output exists; the
+  controller turns that into a dialog.
+- fallback_csv_summary() returns readable messages instead of raising.
+
+Known limitations:
+- TFL only. A future framework should get its own
+  <framework>_analysis.py rather than extending this module.
+- Analysis runs on the UI thread.
+
+Examples:
+- analyze_tfl(app)
+- open_tfl_csv(app)
 """
 from __future__ import annotations
 from pathlib import Path

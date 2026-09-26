@@ -1,13 +1,36 @@
 """
-services/updater/exe_swap.py
+File: services/updater/exe_swap.py
 
-Frozen-executable self-update: a running .exe cannot overwrite itself
-while executing, so this backs up the current exe and launches a
-detached batch script that waits out the file lock, swaps the new
-(already-verified) exe into place, and optionally relaunches it.
+Purpose:
+Self-update a frozen executable. A running .exe cannot overwrite itself,
+so this backs up the current executable and launches a detached batch
+script that waits for the file lock, swaps in the already-verified
+executable, and optionally relaunches it.
 
-Only relevant if this app is ever distributed as a compiled .exe --
-harmless and unused when running from source.
+Communication / relationships:
+- Called by services/updater/orchestration.py for "exe" assets when
+  running frozen.
+- Uses BACKUPS_DIR and is_frozen() from services/updater/constants.py.
+
+Settings / parameters:
+- apply_exe_update(verified_exe_path, current_version, relaunch=True).
+- The script retries deletion up to 20 times, one second apart, and is
+  written as apply_update.bat next to the new executable.
+
+Edge cases:
+- Percent signs in paths are doubled so cmd.exe does not treat them as
+  variables.
+- Raises RuntimeError when not running frozen or not on Windows.
+- The script deletes itself after running.
+
+Known limitations:
+- Windows only; unused when running from source.
+- The caller must exit promptly so the file lock is released.
+- If the lock is still held after 20 seconds, the old executable stays
+  in place; the backup is kept either way.
+
+Examples:
+- apply_exe_update(verified_path, current_version="0.9.2")
 """
 
 from __future__ import annotations

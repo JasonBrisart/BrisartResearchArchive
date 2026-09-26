@@ -1,22 +1,42 @@
 """
-frameworks/TFL/framework.py
-TFL framework identity, metadata, paths, experiment constants, and output
-schema -- the single module config.registries discovers (via
-FRAMEWORK_METADATA) to register TFL, and the stable public surface other
-layers import from.
+File: frameworks/TFL/framework.py
 
-BASE_STIMULUS_LIMIT / PREDICTION_PROMPT / PREDICTION_CHOICES /
-SESSION_INTRO_TEXT are re-exported from frameworks/TFL/settings.py, THE
-single place to edit TFL's tunable behavior. This module's own copies
-were removed so there is exactly one source of truth for these values
-instead of two that could silently drift apart.
+Purpose:
+Define TFL's identity and FRAMEWORK_METADATA for discovery, its output
+paths, re-exported constants, CSV schema, and lazy re-export wrappers.
 
-The lazy re-export wrappers at the bottom (apply_default_options,
-load_stimuli, build_trials, analyze_output, ...) forward to the real
-implementations in config.py / stimuli.py / trial_builder.py /
-feedback.py / analysis.py without importing them at module-load time, so
-one broken submodule can't break framework discovery itself -- discovery
-only needs FRAMEWORK_METADATA, which is defined here directly.
+Communication / relationships:
+- config/registries.py discovers TFL through FRAMEWORK_METADATA.
+- The metadata points services/framework_service.py at
+  frameworks.TFL.session_gui.TFLGuiSession.
+- Re-exports constants from frameworks/TFL/settings.py and the schema
+  from frameworks/shared/schema.py.
+- Resolves output paths through config/runtime.py.
+
+Settings / parameters:
+- FRAMEWORK_ID "TFL", FRAMEWORK_NAME "Temporal Feedback Loop", status
+  "Available".
+- runner_module "frameworks.TFL.session_gui", runner_class
+  "TFLGuiSession".
+- BASE_STIMULUS_LIMIT, PREDICTION_PROMPT, PREDICTION_CHOICES, and
+  SESSION_INTRO_TEXT are re-exported from frameworks/TFL/settings.py.
+
+Edge cases:
+- The wrappers import their submodules lazily, so one broken submodule
+  cannot break framework discovery.
+- The output directory is resolved on every call, so settings changes
+  apply without a restart.
+
+Known limitations:
+- Changing status away from "Available" hides the Run button and blocks
+  launch.
+- The re-exported constants are defined in frameworks/TFL/settings.py;
+  edit them there.
+
+Examples:
+- from frameworks.TFL import framework
+- framework.FRAMEWORK_METADATA["runner_class"]
+- framework.analyze_output()
 """
 from __future__ import annotations
 from pathlib import Path

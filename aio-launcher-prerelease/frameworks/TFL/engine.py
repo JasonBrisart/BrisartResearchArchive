@@ -1,16 +1,50 @@
 """
-frameworks/TFL/engine.py
-TFL session engine -- the headless, testable brain of the framework. All
-trial state, timing, validation, and recording live here with zero
-Tkinter dependency, so it can be driven by unit tests (via
-engine.timing.NullSchedulerTimer) or by a real GUI (via
-engine.timing.MonotonicTimer bound to Tk's .after()). The GUI layer
-(screen.py + session_gui.py) only renders whatever state this class
-reports; it never owns trial logic itself.
+File: frameworks/TFL/engine.py
 
-The timed-stage countdown falls back to TRIAL_DURATION_SEC from
-frameworks/TFL/settings.py (the single source of truth for TFL's
-tunable behavior) when a config does not carry its own trial_duration_sec.
+Purpose:
+Run one TFL session headlessly: stage progression, timing, response
+validation and locking, output-row construction, and completion. No
+Tkinter dependency.
+
+Communication / relationships:
+- Uses TimerInterface from engine/timing.py.
+- Uses feedback.determine_feedback() for each recorded row.
+- Falls back to settings.TRIAL_DURATION_SEC when the config has no
+  trial_duration_sec.
+- Driven by frameworks/TFL/session_gui.py and frameworks/TFL/screen.py
+  in the GUI, and by app/headless.py and tests/test_merged.py headlessly.
+- Rows are saved and analyzed by frameworks/TFL/analysis.py.
+
+Settings / parameters:
+- TFLSessionEngine(config, trials, timer, participant_id="",
+  session_id=None, on_trial_recorded=None, on_stage_advanced=None).
+- TIMED_STAGES: prediction and behavioral_choice.
+- Per-trial stage order: prediction, affect, optional perturbation,
+  optional content_probe, behavioral_choice.
+- Generated session IDs use YYYYMMDD-HHMMSS-<8 hex characters>.
+
+Edge cases:
+- Duplicate or late submissions are rejected through input_locked and
+  stage checks.
+- Stale timer callbacks are ignored through timer_token.
+- A timeout records a blank response with the matching *_timed_out flag
+  and fires on_stage_advanced so the GUI redraws.
+- Exceptions raised inside on_trial_recorded or on_stage_advanced are
+  swallowed so a broken hook never stops a session.
+- Invalid choices return False without advancing. Affect must be an
+  integer from 0 to 100.
+
+Known limitations:
+- finish_session() increments the completion counter on every call;
+  tests rely on this.
+- Only prediction and behavioral_choice are timed.
+- Reaction times use the injected timer, not wall-clock time.
+
+Examples:
+- engine.start_trial()
+- engine.submit_prediction("A")
+- engine.submit_affect(60)
+- engine.submit_behavioral_choice("B")
 """
 from __future__ import annotations
 import uuid

@@ -1,8 +1,40 @@
 """
-services/rsa_signing.py
+File: services/rsa_signing.py
 
-Pure-Python RSA key generation and RSASSA-PKCS1-v1_5 signing/verification
-(SHA-256). Standard library only. No pip installs.
+Purpose:
+Provide pure-Python RSA key generation and RSASSA-PKCS1-v1_5 SHA-256
+signing and verification. Standard library only.
+
+Communication / relationships:
+- services/updater/download.py calls verify().
+- services/trust_anchor.py calls public_key_from_dict().
+- signing/sign_release.py calls generate_keypair(), sign(),
+  public_key_to_dict(), private_key_to_dict(), and
+  private_key_from_dict().
+
+Settings / parameters:
+- Public exponent 65537; generate_keypair() defaults to 2048 bits.
+- Miller-Rabin primality testing uses 40 rounds.
+- Keys serialize to dictionaries of hex strings.
+
+Edge cases:
+- verify() returns False, never raises, for signatures of the wrong
+  length or out of range.
+- generate_prime() rejects sizes below 8 bits.
+- The final comparison uses secrets.compare_digest().
+
+Known limitations:
+- Signing arithmetic is not constant-time.
+- Key generation is slow in pure Python.
+- Private keys are not encrypted at rest.
+- The release workflow signs the 32-byte SHA-256 digest of the file,
+  which PKCS#1 encoding hashes again; signer and verifier both follow
+  this convention, so it must not change on only one side.
+
+Examples:
+- public_key, private_key = generate_keypair(2048)
+- signature = sign(message, private_key)
+- verify(message, signature, public_key)
 """
 
 import hashlib

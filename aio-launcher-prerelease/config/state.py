@@ -1,8 +1,36 @@
 """
-Central Tk-backed application state.
+File: config/state.py
 
-Owns the Tk variables backing persisted settings, read by controllers
-and pages via BrisartSuiteApp's proxy properties.
+Purpose:
+Own the Tk variables that back persisted settings for the live GUI
+session.
+
+Communication / relationships:
+- Created once by gui/main_window.py, after load_settings().
+- Exposed through BrisartSuiteApp proxy properties: selected_framework,
+  status_text, output_folder, enable_update_checks, notify_on_update,
+  auto_install_updates, and theme.
+- Read by controllers/system_controller.py, gui/pages/settings_page.py,
+  and services/updater/.
+
+Settings / parameters:
+- AppState(root, execution_dir, settings).
+- status_text starts as "Ready.".
+
+Edge cases:
+- Missing keys fall back to values matching config/runtime.DEFAULT_SETTINGS.
+- Values are only coerced with str() or bool(); full normalization
+  happens in config/runtime.py.
+
+Known limitations:
+- Requires a Tk root, so it is excluded from the headless dependency
+  audit in tests/test_merged.py.
+- Changes are not written to disk until SystemController.save_config()
+  runs.
+
+Examples:
+- state = AppState(root=app, execution_dir=EXECUTION_DIR, settings=load_settings())
+- state.selected_framework.get()
 """
 from __future__ import annotations
 

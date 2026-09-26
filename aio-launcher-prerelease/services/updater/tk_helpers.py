@@ -1,8 +1,31 @@
 """
-services/updater/tk_helpers.py
-Small, dependency-free Tkinter liveness/threading helpers, kept in their
-own file specifically so both notify.py and gui_integration.py can
-import from here without creating a circular import between them.
+File: services/updater/tk_helpers.py
+
+Purpose:
+Provide small Tkinter liveness and threading helpers, kept in their own
+module so notify.py and gui_integration.py can share them without a
+circular import.
+
+Communication / relationships:
+- Used by services/updater/gui_integration.py and
+  services/updater/notify.py.
+
+Settings / parameters:
+- ask_yes_no_on_ui_thread(app, title, message) blocks the calling worker
+  thread until the user answers a dialog shown on the UI thread.
+
+Edge cases:
+- Every helper returns False when the app window no longer exists.
+- ask_yes_no_on_ui_thread() returns False, meaning do not install, if
+  the dialog cannot be scheduled or raises TclError.
+
+Known limitations:
+- ask_yes_no_on_ui_thread() must never be called from the UI thread
+  itself; it would deadlock waiting for its own callback.
+
+Examples:
+- schedule_on_ui_thread(app, callback)
+- ask_yes_no_on_ui_thread(app, "Update Available", "Install now?")
 """
 from __future__ import annotations
 

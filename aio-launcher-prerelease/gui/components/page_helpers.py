@@ -1,45 +1,57 @@
 """
-gui/components/page_helpers.py
-UIController -- the small mixin every page renders through, mixed into
-BrisartSuiteApp (see gui/main_window.py) so page modules can call
-app.page_shell(title, subtitle) to get a scrollable page container, and
-app.add_card(root, row, title, body, actions) to drop a standard
-info/action card into it. Every page module in gui/pages/ depends on
-both; neither holds any state of its own beyond what it builds fresh on
-each call.
+File: gui/components/page_helpers.py
 
-MOUSEWHEEL SCROLLING
-The general page area is scrolled by a single root-level handler in
-gui/main_window.py (_on_global_mousewheel), which resolves the widget
-under the cursor via winfo_containing() on live screen coordinates
-rather than trusting Tk's internal pointer cache -- necessary because a
-touchpad two-finger gesture moves the cursor zero pixels, leaving that
-cache stale. This module contributes three supporting pieces:
-  - mousewheel_units(): converts a raw <MouseWheel> delta into a signed
-    unit count, guaranteeing at least one unit for any nonzero delta
-    (trackpads send deltas well below 120, which integer-divide to zero).
-  - widget_is_or_contains_text(): lets the handler defer to a Text
-    widget's own native scrolling (Activity Log, Update Output, Results
-    analysis box) instead of competing with it.
-  - bind_text_widget_scroll_passthrough(): a Text widget has a built-in
-    class-level <MouseWheel> binding that swallows the event even when
-    the widget has nothing to scroll, blocking the page underneath from
-    scrolling. This binds an instance-level handler (which runs before
-    class bindings) that forwards the wheel to the page canvas when the
-    Text content is already fully visible, and otherwise steps aside.
-  - bind_scrolling_recursively(): a supplementary per-widget binding
-    layer, confirmed working for a physical mouse wheel, kept as a
-    defensive fallback.
-Touchpad scrolling over the general page area remains an open issue even
-with the global handler; see docs/KNOWN_ISSUES.md for status.
+Purpose:
+Provide the UIController mixin (page_shell and add_card) that every
+page renders through, plus the scrolling and text-wrapping helpers.
 
-DYNAMIC TEXT WRAPPING
-Tk's wraplength is a fixed pixel value it never recomputes on resize, so
-a label sized for a wide window clips instead of reflowing when the
-window is narrower. bind_dynamic_wraplength(label, container) binds
-<Configure> on the container to recompute the label's wraplength from
-the container's current width on every resize. Applied to page_shell()'s
-subtitle and add_card()'s body label, which cover most body text.
+Communication / relationships:
+- Mixed into gui/main_window.BrisartSuiteApp.
+- Every module in gui/pages/ calls app.page_shell() and app.add_card().
+- gui/main_window.py uses mousewheel_units() and
+  widget_is_or_contains_text() in its global wheel handler.
+- gui/pages/settings_page.py and gui/pages/results_page.py call
+  bind_text_widget_scroll_passthrough().
+- Uses Card from gui/widgets/card.py.
+
+Settings / parameters:
+- MIN_DYNAMIC_WRAPLENGTH (220): lowest wraplength applied while a
+  container briefly reports a near-zero width during layout.
+- page_shell() places the scrollable canvas on self._page_canvas so the
+  global wheel handler knows which canvas to scroll.
+- add_card(root, row, title, body, actions): actions is a list of
+  (label, command, is_primary) tuples.
+
+Edge cases:
+- mousewheel_units() guarantees at least one unit for any nonzero
+  delta, since trackpads send deltas below 120.
+- The Text passthrough forwards the wheel to the page only when the Text
+  content is already fully visible; otherwise Tk's own Text scrolling
+  runs.
+- Wraplength is recalculated after idle, so rebuilt pages wrap
+  correctly immediately.
+- Every bind uses add="+" and is guarded against TclError.
+
+Known limitations:
+- Touchpad two-finger scrolling over the general page area still does
+  not work; see docs/KNOWN_ISSUES.md.
+- Fix history, in chronological order:
+  Fix 1: hover-gated Enter/Leave binding; failed because the canvas is
+  fully covered by its own child widgets.
+  Fix 2: small trackpad deltas truncated to zero; fixed by
+  mousewheel_units().
+  Fix 3 and Fix 4: routing the wheel by keyboard focus; insufficient.
+  Fix 5: per-widget instance binding (bind_scrolling_recursively());
+  fixed the physical mouse wheel.
+  Fix 6: global root handler in gui/main_window.py that resolves the
+  widget under the cursor with winfo_containing(); current primary
+  mechanism.
+  Fix 7: Text widgets swallowed the wheel even when their content fit;
+  fixed by bind_text_widget_scroll_passthrough().
+
+Examples:
+- root = app.page_shell("Results", "Run analysis tools.")
+- app.add_card(root, 2, "Title", "Body", [("Run", app.analyze_tfl, True)])
 """
 from __future__ import annotations
 import tkinter as tk

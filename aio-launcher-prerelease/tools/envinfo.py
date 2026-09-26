@@ -1,32 +1,33 @@
 """
-tools/envinfo.py
-One-shot environment snapshot for bug reports. Run this and paste its
-output directly into the **Environment:** field of a KNOWN_ISSUES.md
-entry (see docs/KNOWN_ISSUES.md for the standard bug report template).
+File: tools/envinfo.py
 
-Talks to: nothing else in the codebase. Standalone, dependency-free,
-safe to run from anywhere -- it only reads OS/Python/Tk metadata.
-Never modifies anything and never sends data anywhere.
+Purpose:
+Print a one-shot environment snapshot for bug reports. Paste the output
+into the Environment field of a docs/KNOWN_ISSUES.md entry.
 
-What each line reports, and why it's in the standard bug template:
-  - OS / OS version / OS build : which OS and build is running.
-    Relevant any time a bug might be OS- or driver-specific.
-  - Machine / Processor        : CPU architecture as reported by the
-    OS (e.g. AMD64, ARM64, x86_64). Matters on any machine where the
-    installed Python build's own architecture might not match the
-    OS/CPU's native architecture -- see the "Python" line below.
-  - Python version / build     : exact interpreter version and
-    architecture bit-ness of the PYTHON PROCESS ITSELF, which is not
-    always the same as the OS/CPU architecture above. On any platform
-    that supports running one CPU architecture's binaries under
-    emulation on another (e.g. x64 binaries on an ARM64 OS, or vice
-    versa), a mismatch between this line and the Machine/Processor
-    line above is exactly the kind of detail that can explain
-    platform-specific bugs.
-  - Tcl/Tk version             : the GUI toolkit version bundled with
-    this Python install. Every gui/* file in this project depends on
-    Tkinter directly, so this version is directly relevant to any GUI
-    bug report.
+Communication / relationships:
+- Standalone; talks to nothing else in the codebase. Reads only OS,
+  Python, and Tk metadata, never modifies anything, and never sends
+  data anywhere.
+
+Settings / parameters:
+- Reports OS name, release, and build; machine and processor
+  architecture; Python version, bitness, and implementation; and the
+  Tcl/Tk version.
+
+Edge cases:
+- If Tkinter is unavailable, the Tk line explains why instead of
+  crashing.
+- The GUI popup is skipped silently when no display is available; the
+  console output is enough.
+
+Known limitations:
+- A mismatch between the Python bitness and the machine architecture
+  (for example x64 Python on an ARM64 OS) is reported but not
+  interpreted.
+
+Examples:
+- python tools/envinfo.py
 """
 from __future__ import annotations
 

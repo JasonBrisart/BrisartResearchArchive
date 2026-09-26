@@ -1,9 +1,38 @@
 """
-services/updater/constants.py
+File: services/updater/constants.py
 
-Shared constants for the update system: registry location, marker
-comments, local paths, size/count limits, and the frozen-executable
-check. Nothing in this file has any side effects or does any I/O.
+Purpose:
+Hold the shared updater constants: registry location and markers, local
+paths, size and time limits, the obsolete-file list, and the frozen
+executable check. No side effects and no I/O.
+
+Communication / relationships:
+- Imported by every module in services/updater/.
+
+Settings / parameters:
+- REGISTRY_PAGE_URL: the page holding the release registry JSON. Its
+  host must be in ALLOWED_REMOTE_HOSTS.
+- APP_REGISTRY_ID "brisart_research_archive"; REGISTRY_START_MARKER and
+  REGISTRY_END_MARKER.
+- UPDATES_DIR and BACKUPS_DIR live under APPDATA.
+- PROTECTED_NAMES: never backed up or overwritten.
+- ALLOWED_REMOTE_HOSTS: exact hostnames the updater may contact.
+- OBSOLETE_RELEASE_PATHS: files deleted from existing installations
+  after a successful backup.
+- Timeouts: 15 s for the registry, 120 s for downloads.
+
+Edge cases:
+- A REGISTRY_PAGE_URL whose host is not listed in ALLOWED_REMOTE_HOSTS
+  fails validation before any request is sent.
+
+Known limitations:
+- /tooling is the last known location of the published registry block;
+  if that page moves, change REGISTRY_PAGE_URL.
+- The registry page is read up to 64 KiB, so the markers must appear
+  within that limit.
+
+Examples:
+- from services.updater.constants import REGISTRY_PAGE_URL
 """
 
 from __future__ import annotations
@@ -34,6 +63,19 @@ BACKUPS_DIR = APP_DIR / "updates" / "backups"
 PROTECTED_NAMES = {"__pycache__", ".git", ".venv", "venv", "updates"}
 
 ALLOWED_REMOTE_HOSTS = {"brisartresearcharchive.com"}
+
+# Files that existed in earlier releases but have since been removed from
+# the Archive. The installer copies files overwrite-only, so without this
+# list an existing installation would keep these modules forever. Each
+# entry is a path relative to the application directory, using forward
+# slashes. Removal happens only after the pre-install backup is written.
+OBSOLETE_RELEASE_PATHS = (
+    "config/tooling_catalog.py",
+    "config/tooling_state.py",
+    "gui/pages/tooling_page.py",
+    "services/tooling_manager.py",
+    "services/tool_update_notify.py",
+)
 USER_AGENT = "BrisartResearchArchive-Updater/3.0"
 
 VERSION_PATTERN = re.compile(r"^[vV]?(\d+)\.(\d+)\.(\d+)(?:[\s\-].*)?$")

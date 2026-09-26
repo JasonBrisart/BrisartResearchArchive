@@ -1,75 +1,42 @@
-# docs/KNOWN_ISSUES.md
-Brisart Research Archive -- known, currently unresolved issues.
-Standard bug report format going forward -- every entry uses this
-template, filled in completely, kept as short as the facts allow. To
-gather the **Environment:** field for a new entry, run `tools/envinfo.py`
-from the repository root (on any OS -- it is not Windows-specific) and
-paste its output directly into that field.
+# Known Issues
 
-## [OPEN/FIXED]: <short title>
+Standing record of currently unresolved bugs in Brisart Research Archive.
+Every entry uses the standard bug report template. Resolved issues move to
+docs/CHANGELOG.md under the release that fixed them.
 
-**Reported:** <date>
-**Severity:** Critical / High / Medium / Low
-**Environment:** OS, version, architecture, hardware, relevant software versions
-**Component:** <file/module/feature affected>
-
-**Steps to Reproduce:**
-1. ...
-2. ...
-3. ...
-
-**Expected behavior:** what should happen
-**Actual behavior:** what actually happens
-
-**Tried / Ruled out:** what's been attempted so far, and why each didn't work
-**Next step:** the single concrete action that would move this forward
+To fill in the **Environment** field, run `python tools/envinfo.py` and paste
+its output.
 
 ---
 
-## [OPEN]: Touchpad (Precision Touchpad) scrolling doesn't work over
-## the general page area -- only the Scrollbar itself responds
+## KI-001: Touchpad scrolling does not scroll the general page area
 
-**Reported:** 2026-08-27
-**Severity:** Medium
-**Environment:**
-```
-OS: Windows 11 (build 10.0.26200)
-Machine / Processor: ARM64 / ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc
-Python: 3.14.7 (64bit, CPython)
-Tkinter: Tcl 9.0.4 / Tk 9.0
-```
-Python is confirmed running natively for this machine's architecture
-(not under emulation) -- `platform.machine()` matches the OS's native
-architecture directly, ruling out an emulation-layer explanation.
-**Component:** `gui/components/page_helpers.py`, `gui/main_window.py`
-(mouse wheel scroll handling)
+- **Title:** Touchpad two-finger scrolling does not scroll page content outside the scrollbar
+- **Reported date:** 2026-08-27 (0.8.0 ALPHA)
+- **Severity:** Medium (usability; a physical mouse wheel and the scrollbar both work)
+- **Environment:** Not recorded in this file. Run `python tools/envinfo.py` on the affected machine and paste the output here.
+- **Component:** `gui/main_window.py` (`_on_global_mousewheel`), `gui/components/page_helpers.py`
 
-**Steps to Reproduce:**
-1. Open any page with more content than fits in the window.
-2. Rest the cursor over any widget that is NOT the Scrollbar (a Label, Card, Button, etc.).
-3. Perform a two-finger scroll gesture on the touchpad.
+### Steps to Reproduce
+1. Launch the Archive with `python main.py`.
+2. Open a page taller than the window, such as Settings.
+3. Place the pointer over page content (a card or label, not a text box or the scrollbar).
+4. Perform a two-finger scroll gesture on the touchpad.
 
-**Expected behavior:** The page scrolls, same as it does with a physical mouse wheel.
-**Actual behavior:** Nothing happens. Scrolling only works while the cursor is directly over the Scrollbar itself.
+### Expected behavior
+The page scrolls, the same way it does with a physical mouse wheel.
 
-**Tried / Ruled out:** hover-gated bind/unbind, `bind_all` with a
-delta-to-units fix, focus-following, direct per-widget instance
-binding, and a global root-level handler using `winfo_containing()`
-for live cursor resolution -- all confirmed still not working on the
-actual machine. This rules out the issue being about which widget
-receives the event at the Tkinter level. Also now confirmed Python
-itself is running natively on this machine's architecture, not under
-emulation -- ruling out the emulation-layer branch of the original
-hypothesis. Remaining candidates: the touchpad driver or the OS's
-input-translation layer behaving differently on this
-architecture/device regardless of emulation, or this specific Tcl/Tk
-version (a newer major version than the more commonly used 8.6) having
-different touchpad-event handling.
+### Actual behavior
+Nothing scrolls. Dragging the scrollbar and using a physical mouse wheel both work.
 
-**Next step:** Bind a temporary `print(event)` on
-`<MouseWheel>`/`<Motion>` at the Tk root and launch from a terminal to
-see if the event ever arrives at all during a touchpad gesture over a
-non-Scrollbar widget. If nothing prints, the fix belongs outside this
-codebase entirely (OS/driver level). If something does print, but with
-an unusual widget target or zeroed fields, that narrows it to a Tcl/Tk
-dispatch quirk specific to this Tcl/Tk version.
+### Tried / Ruled out
+Listed in chronological order:
+1. **Fix 1:** Hover-gated `<Enter>`/`<Leave>` binding on the canvas. Ruled out; the canvas is fully covered by its own child widgets, so it never receives the events.
+2. **Fix 2:** Small deltas truncated to zero. Fixed with `mousewheel_units()`, which guarantees at least one unit for any nonzero delta. This did not resolve touchpad scrolling.
+3. **Fix 3 and Fix 4:** Routing the wheel by keyboard focus. Insufficient.
+4. **Fix 5:** Per-widget instance binding (`bind_scrolling_recursively()`). Fixed the physical mouse wheel; the touchpad is still unaffected.
+5. **Fix 6:** Global root-level handler that resolves the widget under the pointer with `winfo_containing()`. This is the current primary mechanism; the touchpad is still unaffected.
+6. **Fix 7:** Text widgets swallowed the wheel when their content fit. Fixed with `bind_text_widget_scroll_passthrough()`. This fix was unrelated to the touchpad.
+
+### Next step
+Proposed: temporarily log every event that reaches `_on_global_mousewheel` (`event.delta`, `event.num`, `event.widget`, and the `winfo_containing()` result) while performing the touchpad gesture. This shows whether Tk receives any `<MouseWheel>` event from the touchpad driver at all. If none arrives, the fix is outside the handler, for example in the driver's scrolling mode or in Tk's event delivery.

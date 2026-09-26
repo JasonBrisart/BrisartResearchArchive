@@ -1,5 +1,49 @@
 [
   {
+    "created": "2026-09-26 00:39:55 -0400",
+    "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\aio-launcher-prerelease",
+    "profile": "archive",
+    "export_dir": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\aio-launcher-prerelease\\PROJECT_CONTEXT_EXPORTS\\project_context_20260926_003955",
+    "included_count": 54,
+    "skipped_count": 16,
+    "total_included_bytes": 346126,
+    "git_branch": "",
+    "git_commit_short": ""
+  },
+  {
+    "created": "2026-09-26 00:31:33 -0400",
+    "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\aio-launcher-prerelease",
+    "profile": "archive",
+    "export_dir": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\aio-launcher-prerelease\\PROJECT_CONTEXT_EXPORTS\\project_context_20260926_003133",
+    "included_count": 54,
+    "skipped_count": 10,
+    "total_included_bytes": 345966,
+    "git_branch": "",
+    "git_commit_short": ""
+  },
+  {
+    "created": "2026-09-26 00:21:05 -0400",
+    "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\aio-launcher-prerelease",
+    "profile": "archive",
+    "export_dir": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\aio-launcher-prerelease\\PROJECT_CONTEXT_EXPORTS\\project_context_20260926_002105",
+    "included_count": 54,
+    "skipped_count": 5,
+    "total_included_bytes": 350529,
+    "git_branch": "",
+    "git_commit_short": ""
+  },
+  {
+    "created": "2026-09-25 23:54:09 -0400",
+    "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\aio-launcher-prerelease",
+    "profile": "archive",
+    "export_dir": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive\\aio-launcher-prerelease\\PROJECT_CONTEXT_EXPORTS\\project_context_20260925_235409",
+    "included_count": 60,
+    "skipped_count": 0,
+    "total_included_bytes": 390431,
+    "git_branch": "",
+    "git_commit_short": ""
+  },
+  {
     "created": "2026-09-23 17:29:24 -0400",
     "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartResearchArchive",
     "profile": "archive",
@@ -502,50 +546,6 @@
     "included_count": 670,
     "skipped_count": 0,
     "total_included_bytes": 208842,
-    "git_branch": "",
-    "git_commit_short": ""
-  },
-  {
-    "created": "2026-09-19 13:10:32 -0400",
-    "root": "C:\\Users\\Jason\\Downloads\\1 (1)\\TFL_Curriculum",
-    "profile": "archive",
-    "export_dir": "C:\\Users\\Jason\\Downloads\\1 (1)\\TFL_Curriculum\\PROJECT_CONTEXT_EXPORTS\\project_context_20260919_131032",
-    "included_count": 119,
-    "skipped_count": 0,
-    "total_included_bytes": 366182,
-    "git_branch": "",
-    "git_commit_short": ""
-  },
-  {
-    "created": "2026-09-19 12:07:05 -0400",
-    "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartInstitutional\\Alternative_Curriculums\\TFL_K12_Curriculum",
-    "profile": "archive",
-    "export_dir": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartInstitutional\\Alternative_Curriculums\\TFL_K12_Curriculum\\PROJECT_CONTEXT_EXPORTS\\project_context_20260919_120705",
-    "included_count": 105,
-    "skipped_count": 5,
-    "total_included_bytes": 245275,
-    "git_branch": "",
-    "git_commit_short": ""
-  },
-  {
-    "created": "2026-09-19 11:57:23 -0400",
-    "root": "C:\\Users\\Jason\\Downloads\\TFL_Curriculum\\TFL_Curriculum",
-    "profile": "archive",
-    "export_dir": "C:\\Users\\Jason\\Downloads\\TFL_Curriculum\\TFL_Curriculum\\PROJECT_CONTEXT_EXPORTS\\project_context_20260919_115723",
-    "included_count": 211,
-    "skipped_count": 0,
-    "total_included_bytes": 561623,
-    "git_branch": "",
-    "git_commit_short": ""
-  },
-  {
-    "created": "2026-09-19 11:50:05 -0400",
-    "root": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartInstitutional\\Alternative_Curriculums\\TFL_K12_Curriculum",
-    "profile": "archive",
-    "export_dir": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartInstitutional\\Alternative_Curriculums\\TFL_K12_Curriculum\\PROJECT_CONTEXT_EXPORTS\\project_context_20260919_115005",
-    "included_count": 105,
-    "skipped_count": 0,
-    "total_included_bytes": 245275,
     "git_branch": "",
     "git_commit_short": ""
   }

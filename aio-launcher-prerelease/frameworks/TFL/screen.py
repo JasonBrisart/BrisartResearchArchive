@@ -1,10 +1,42 @@
 """
-frameworks/TFL/screen.py
-TFL trial screen -- pure presentation layer. Renders whatever
-TFLSessionEngine reports and forwards user input back into the engine
-(session.engine.submit_*). This module owns zero trial state; the engine
-(engine.py) is the single source of truth. That separation is what makes
-the engine unit-testable without Tkinter.
+File: frameworks/TFL/screen.py
+
+Purpose:
+Render TFL trials. This is a pure presentation layer: it shows whatever
+the engine reports and forwards input to engine.submit_*(). It owns no
+trial state.
+
+Communication / relationships:
+- Called through TFLGuiSession.render() in frameworks/TFL/session_gui.py.
+- Reads session.engine.
+- Uses feedback.make_perturbation_instruction().
+- On completion, calls analysis.save_rows() and
+  analysis.remove_autosave_file(), then session.after_finish_in_host_app(),
+  which opens the Results page and runs analysis.
+- Uses Card from gui/widgets/card.py, with a fallback.
+
+Settings / parameters:
+- WINDOW_PADDING 22, CONTENT_WRAP_LENGTH 860, HEADER_WRAP_LENGTH 900.
+- PREDICTION_CHOICES ("A", "B"); PROBE_CHOICES ("A", "B", "U").
+- The countdown label refreshes every 250 ms.
+
+Edge cases:
+- validate_session() raises AttributeError before anything is drawn if
+  the session adapter lacks required attributes or methods.
+- The countdown loop stops as soon as its label is destroyed, so it
+  never leaks after() calls onto a later screen.
+- The affect slider drives a DoubleVar and displays a rounded IntVar,
+  avoiding the "expected integer" TclError while dragging.
+- If the final save fails, the autosave checkpoint is left in place and
+  the failure is shown.
+
+Known limitations:
+- The screen is fully rebuilt on every stage change.
+- Fixed wraplengths do not reflow on resize.
+- The final save runs inside the completion render.
+
+Examples:
+- render_trial(session)
 """
 from __future__ import annotations
 import tkinter as tk

@@ -1,21 +1,42 @@
 """
-frameworks/TFL/session_gui.py
-TFLGuiSession -- thin adapter wiring TFLSessionEngine to a live Tk window.
+File: frameworks/TFL/session_gui.py
 
-Startup flow:
-    1. start() creates the Toplevel window and immediately shows the
-       pre-session options screen (options_screen.render_options).
-    2. The user toggles Extra Stimuli / Perturbations / Probes / Delayed
-       Reentry, then clicks "Start Session".
-    3. begin_session() builds stimuli/trials/engine from the (possibly
-       edited) config and starts the first trial.
+Purpose:
+Provide TFLGuiSession, the adapter that wires TFLSessionEngine to a Tk
+window: participant prompt, options screen, engine construction,
+autosave, cancel, and hand-off back to the host app.
 
-All trial logic lives in engine.py and is fully covered by headless tests
-(see tests/test_merged.py, driven through app/headless.py).
+Communication / relationships:
+- Launched by services/framework_service.py, which instantiates the
+  runner_class named in frameworks/TFL/framework.py with the app.
+- Renders through options_screen.render_options() and
+  screen.render_trial().
+- Autosaves through analysis.autosave_rows().
+- Logs through app.log(); after completion calls app.show_page("Results")
+  and app.analyze_tfl().
 
-AUTOSAVE_INTERVAL_TRIALS is read from frameworks/TFL/settings.py (the
-single source of truth for TFL's tunable behavior) rather than being
-hardcoded here.
+Settings / parameters:
+- TFLGuiSession(app=None, participant_id="").
+- Window 980x720, minimum 900x650; kept topmost for 200 ms when opened.
+- AUTOSAVE_INTERVAL_TRIALS comes from frameworks/TFL/settings.py.
+
+Edge cases:
+- With app=None, a hidden Tk root is created and the session runs its
+  own mainloop.
+- A blank or cancelled participant ID is allowed.
+- Failures rendering the options screen or building trials show an
+  error dialog instead of leaving a blank window.
+- The cancel prompt reports how many trials were already completed.
+- An autosave failure is logged and the run continues.
+
+Known limitations:
+- A cancelled run produces no final output file; only trials captured
+  by the last autosave remain on disk.
+- The participant prompt appears before the options window.
+
+Examples:
+- TFLGuiSession(app).start()
+- TFLGuiSession().start()
 """
 from __future__ import annotations
 import tkinter as tk

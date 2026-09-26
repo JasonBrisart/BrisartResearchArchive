@@ -1,11 +1,38 @@
 """
-services/updater/install.py
+File: services/updater/install.py
 
-Real in-place installation for source (zip) releases: extracts a
-verified archive, backs up the current application files, then
-overwrites them with the release. Everything here only ever runs on a
-path already returned by download.download_and_verify_release() --
-i.e. already hash- and signature-verified.
+Purpose:
+Install a verified source ZIP release: extract it, back up the current
+application, overwrite files with the release, and remove files that
+earlier releases shipped but the Archive no longer uses.
+
+Communication / relationships:
+- services/updater/orchestration.py calls apply_zip_update() only with a
+  path already verified by services/updater/download.py.
+- Uses paths and lists from services/updater/constants.py and versions
+  from services/updater/versioning.py.
+
+Settings / parameters:
+- Extraction folder: UPDATES_DIR/extracted_<zip stem>.
+- Backup folder: BACKUPS_DIR/v<version>_<timestamp>.
+- PROTECTED_NAMES are skipped for both backup and copy.
+- OBSOLETE_RELEASE_PATHS are removed after the backup and copy steps.
+
+Edge cases:
+- A ZIP that wraps everything in one top-level folder is unwrapped.
+- Obsolete-path entries that are absolute, contain "..", resolve
+  outside the application folder, or are not regular files are skipped.
+- Missing obsolete files are ignored.
+
+Known limitations:
+- Copying is overwrite-only. Files dropped from a release are deleted
+  only if they are listed in OBSOLETE_RELEASE_PATHS.
+- No automatic rollback; restore manually from the backup folder.
+- A restart is required after installing.
+
+Examples:
+- result = apply_zip_update(verified_zip, current_version="0.9.2")
+- remove_obsolete_files(app_dir)
 """
 
 from __future__ import annotations
@@ -16,7 +43,13 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from services.updater.constants import BACKUPS_DIR, EXECUTION_DIR, PROTECTED_NAMES, UPDATES_DIR
+from services.updater.constants import (
+    BACKUPS_DIR,
+    EXECUTION_DIR,
+    OBSOLETE_RELEASE_PATHS,
+    PROTECTED_NAMES,
+    UPDATES_DIR,
+)
 from services.updater.versioning import read_local_version, version_slug
 
 
@@ -25,6 +58,7 @@ class InstallResult:
     backup_dir: Path
     applied_files: tuple[Path, ...]
     restart_required: bool = True
+    removed_files: tuple[Path, ...] = ()
 
 
 def find_release_root(extract_dir: Path) -> Path:
@@ -75,6 +109,35 @@ def apply_extracted_update(source_root: Path, app_dir: Path) -> list[Path]:
     return applied
 
 
+def remove_obsolete_files(app_dir: Path, obsolete_paths=OBSOLETE_RELEASE_PATHS) -> list[Path]:
+    """Deletes files listed in OBSOLETE_RELEASE_PATHS from app_dir.
+    Entries that are absolute, contain '..', resolve outside app_dir, or
+    point at anything other than a regular file are skipped, never
+    deleted. Missing files are ignored. Returns the files removed."""
+    removed: list[Path] = []
+    root = Path(app_dir).resolve()
+    for entry in obsolete_paths:
+        text = str(entry).replace("\\", "/").strip()
+        parts = [part for part in text.split("/") if part]
+        if not parts or text.startswith("/") or ":" in parts[0] or ".." in parts:
+            continue
+        target = root.joinpath(*parts)
+        try:
+            resolved = target.resolve()
+        except OSError:
+            continue
+        if root not in resolved.parents:
+            continue
+        if not resolved.is_file():
+            continue
+        try:
+            resolved.unlink()
+        except OSError:
+            continue
+        removed.append(resolved)
+    return removed
+
+
 def apply_zip_update(verified_zip_path: Path, app_dir: Path | None = None, current_version: str = "") -> InstallResult:
     """Extracts a verified zip release, backs up the current app, and
     overwrites it with the release's files. Raises on any failure --
@@ -92,4 +155,10 @@ def apply_zip_update(verified_zip_path: Path, app_dir: Path | None = None, curre
     source_root = find_release_root(extract_dir)
     backup_dir = backup_application(app_dir, current_version or read_local_version())
     applied = apply_extracted_update(source_root, app_dir)
-    return InstallResult(backup_dir=backup_dir, applied_files=tuple(applied), restart_required=True)
+    removed = remove_obsolete_files(app_dir)
+    return InstallResult(
+        backup_dir=backup_dir,
+        applied_files=tuple(applied),
+        restart_required=True,
+        removed_files=tuple(removed),
+    )

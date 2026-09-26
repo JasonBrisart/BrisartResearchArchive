@@ -1,70 +1,44 @@
 """
-gui/pages/settings_page.py
-The Settings page: application info, output directory config, the
-Updates card, and the Activity Log. Registered as the "Settings" page
-in config.registries.get_page_registry() and rendered by
-gui.main_window.BrisartSuiteApp.show_page("Settings"). Every widget
-here reads/writes directly off the live Tk variables owned by
-config.state.AppState (via BrisartSuiteApp's proxy properties), so
-values persist across page navigation without this module holding any
-state of its own -- destroy/rebuild on every show_page() call is safe.
+File: gui/pages/settings_page.py
 
-DEPENDENCY RULE (Enable update checks <-> the two settings below it):
-"Automatically download and install updates" and "Notify me about
-updates" are only ever meaningful while "Enable update checks" itself
-is on -- with it off, the app never contacts the registry at all (see
-services/updater/gui_integration.py), so those two settings would do
-nothing anyway. To make that dependency visible and impossible to
-misconfigure:
-  - Unchecking "Enable update checks" immediately force-unchecks BOTH
-    dependent checkboxes (if either was checked) and greys them out
-    (Tk "disabled" state) so they cannot be re-checked while update
-    checks remain off.
-  - Re-checking "Enable update checks" re-enables (un-greys) both
-    checkboxes, but does NOT restore whatever checked state they had
-    before -- they come back unchecked, requiring the user to
-    deliberately opt back in to auto-install/notify rather than having
-    it silently reactivate.
-  - This sync is enforced by _apply_update_checks_enabled_state(),
-    wired to the "Enable update checks" checkbox's command= callback
-    AND called once unconditionally at the end of render(), so the
-    correct greyed/ungreyed state is always shown immediately after
-    navigating to this page, even if the setting was changed elsewhere
-    or loaded from disk in a disabled state.
+Purpose:
+Render the Settings page: application info, output directory, update
+preferences, update output, and the persistent Activity Log.
 
-ACTIVITY LOG PERSISTENCE AND DISPLAY ORDER, specifically:
-The Activity Log box is populated on every render() call by reading
-config.activity_log.load_activity_log() -- the on-disk, rolling
-100-entry history written by controllers/log_controller.py's log()
-method. This is what makes prior-session activity visible again after
-closing and reopening the app, instead of the box always starting
-blank. If no history exists yet (very first launch, or the log file
-was never written to), a single placeholder line is shown instead of
-an empty box.
+Communication / relationships:
+- Registered as "Settings" in config/registries.get_page_registry().
+- Binds directly to AppState variables through the app proxy
+  properties, so values survive page rebuilds.
+- Buttons call app.browse_output_folder(), app.open_output_folder(), and
+  app.check_updates().
+- Reads config/activity_log.load_activity_log().
+- services/updater/gui_integration.set_update_text() writes into
+  app.update_box, navigating here first if needed.
 
-Newest entry always on top: load_activity_log() returns persisted
-history oldest-first/newest-last (that on-disk storage format is
-unchanged -- see config/activity_log.py's docstring).
-_populate_activity_log() REVERSES that list before inserting it into
-the Text box, so the most recent persisted entry displays at the very
-top -- consistent with how controllers/log_controller.py's
-_write_log_widget() inserts every NEW entry during the live session
-(also at the top, via "1.0", not "end"). app.log_box.see("1.0") (not
-"end") keeps the view scrolled to the top -- where the newest entry
-always is -- immediately after this page renders.
+Settings / parameters:
+- Dependency rule: "Automatically download and install updates" and
+  "Notify me about updates" only matter while "Enable update checks" is
+  on.
+- The Activity Log shows up to 100 persisted entries, newest first.
 
-MOUSE WHEEL OVER update_box / log_box, specifically:
-Both Text boxes on this page (the "Update output" box and the Activity
-Log box) call bind_text_widget_scroll_passthrough() right after
-creation. Without it, scrolling while the cursor happens to be resting
-over either box does NOTHING AT ALL whenever that box's own content is
-short enough to already be fully visible -- Tk's built-in, automatic
-Text-widget scroll binding still intercepts and swallows the wheel
-event even when it has nothing to scroll internally, which blocks it
-from ever reaching the page-level scroll handler in gui/main_window.py
-that would otherwise have scrolled the page underneath. See that
-helper's docstring in gui/components/page_helpers.py (FIX 7) for the
-full mechanism.
+Edge cases:
+- Unchecking "Enable update checks" force-unchecks and disables both
+  dependent options. Re-enabling it does not restore their previous
+  values; the user must opt back in.
+- The dependency state is re-applied on every render, so the page is
+  always correct even after settings load from disk.
+- An empty history shows "Activity log ready.".
+- Both Text boxes use the scroll passthrough (Fix 7 in
+  gui/components/page_helpers.py).
+
+Known limitations:
+- There is no Save button; changes are written when the app closes or
+  when another action calls save_config().
+- Output-folder text typed into the entry is validated only when saved;
+  unsafe values fall back to "outputs".
+
+Examples:
+- app.show_page("Settings")
 """
 from __future__ import annotations
 

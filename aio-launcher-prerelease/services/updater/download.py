@@ -1,13 +1,37 @@
 """
-services/updater/download.py
+File: services/updater/download.py
 
-Downloads a release archive and verifies it -- this is the trust gate
-that everything in install.py and exe_swap.py depends on. Verification
-requires BOTH a matching SHA256 hash AND a valid RSA signature checked
-against the public key embedded in services/trust_anchor.py (never a
-key fetched from the registry page). A fully compromised website can
-forge a matching hash trivially, but cannot forge a valid signature
-without the offline private key.
+Purpose:
+Download a release and verify it. This is the trust gate for
+install.py and exe_swap.py: a release must match its SHA-256 and carry a
+valid RSA signature against the public key embedded in
+services/trust_anchor.py.
+
+Communication / relationships:
+- Receives a RegistryEntry from services/updater/registry.py.
+- Uses services/updater/http_utils.py, services/updater/archive_safety.py,
+  services/trust_anchor.get_public_key(), and services/rsa_signing.verify().
+- Returns the verified path to services/updater/orchestration.py.
+
+Settings / parameters:
+- Saves to UPDATES_DIR/BrisartResearchArchive_<version>.zip or .exe.
+- Streams in 1 MiB chunks with a 120-second timeout.
+
+Edge cases:
+- An existing download whose hash already matches is reused.
+- Data streams to a .part file that is deleted on any failure.
+- Size limits are enforced from both Content-Length and actual bytes.
+- ZIP assets with an unexpected Content-Type are rejected.
+- A redirect to a host outside the allowlist is rejected.
+- A hash mismatch or invalid signature raises VerificationError; a
+  failed download is never handed back to the caller.
+
+Known limitations:
+- No resume support.
+- Progress is reported only through emit() lines.
+
+Examples:
+- path = download_and_verify_release(entry, emit=print)
 """
 
 from __future__ import annotations
@@ -20,7 +44,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from services import rsa_signing
+import services.rsa_signing as rsa_signing
 from services.trust_anchor import get_public_key
 from services.updater.archive_safety import sha256_of_file, validate_zip_archive
 from services.updater.constants import (

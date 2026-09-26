@@ -1,12 +1,38 @@
 """
-TFL pre-session options screen.
+File: frameworks/TFL/options_screen.py
 
-Lets a user toggle Extra Stimuli, Perturbations, Probes, and Delayed
-Reentry before a run starts, using the same config keys the engine and
-trial_builder already understand (enable_extra_stimuli,
-enable_perturbations, enable_probes, enable_delayed_reentry). This is
-the GUI equivalent of the console options_menu() toggles, wired
-through TFLGuiSession.begin_session() instead of a text prompt loop.
+Purpose:
+Render the pre-session Run Options screen, where the user toggles Extra
+Stimuli, Perturbations, Probes, and Delayed Reentry before a TFL run.
+
+Communication / relationships:
+- render_options(session) is called by frameworks/TFL/session_gui.py.
+- Writes toggle values into session.config.
+- Start Session calls session.begin_session(); Cancel calls
+  session.cancel().
+- Restore Defaults uses frameworks/TFL/config.apply_default_options().
+- Uses COLORS and FONT_HEAD from gui/theme.py and Card from
+  gui/widgets/card.py, with local fallbacks.
+
+Settings / parameters:
+- TOGGLE_DEFINITIONS: (config key, title, description) for each toggle.
+- The mode label reads "Default TFL" when all toggles match the
+  defaults, otherwise "Modified TFL".
+
+Edge cases:
+- Returns silently if the session window is missing or destroyed.
+- Rebuilds the screen from scratch on every call.
+- Falls back to built-in colors and a plain Card when the GUI modules
+  cannot be imported.
+- A TclError while reading a toggle leaves that config key unchanged.
+
+Known limitations:
+- Only the four toggles are editable; timing, intervals, and the seed
+  are set in frameworks/TFL/settings.py.
+- Label wraplengths are fixed at 760 and 860 pixels.
+
+Examples:
+- render_options(session)
 """
 from __future__ import annotations
 import tkinter as tk

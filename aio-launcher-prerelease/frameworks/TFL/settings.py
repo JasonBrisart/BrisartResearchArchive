@@ -1,35 +1,47 @@
 """
-frameworks/TFL/settings.py
-THE single place to edit TFL's behavior.
+File: frameworks/TFL/settings.py
 
-Every tunable knob that controls how a TFL run is structured, timed,
-scored, and defaulted lives here as a plain module-level constant. The
-rest of the TFL package reads its values from this module rather than
-hardcoding its own copy, so changing TFL's behavior means editing THIS
-file and nothing else:
+Purpose:
+Hold every tunable TFL behavior setting in one place. Changing how a
+TFL run is structured, timed, scored, or defaulted means editing this
+file and nothing else.
 
-  - frameworks/TFL/config.py        builds DEFAULT_CONFIG and the
-                                    "official default startup" option set
-                                    entirely from the constants below.
-  - frameworks/TFL/framework.py     re-exports BASE_STIMULUS_LIMIT and the
-                                    prompt/intro text from here, so the
-                                    framework's public surface stays a
-                                    single source of truth.
-  - frameworks/TFL/trial_builder.py validates blocks/feedback levels
-                                    against VALID_BLOCKS / VALID_FEEDBACK_LEVELS
-                                    defined here.
-  - frameworks/TFL/engine.py        uses TRIAL_DURATION_SEC as the timed-
-                                    stage countdown length.
-  - frameworks/TFL/session_gui.py   uses AUTOSAVE_INTERVAL_TRIALS as the
-                                    checkpoint cadence.
+Communication / relationships:
+- frameworks/TFL/config.py builds DEFAULT_CONFIG and the default
+  startup options from these constants.
+- frameworks/TFL/framework.py re-exports BASE_STIMULUS_LIMIT and the
+  prompt and intro text.
+- frameworks/TFL/trial_builder.py validates against VALID_BLOCKS and
+  VALID_FEEDBACK_LEVELS.
+- frameworks/TFL/engine.py uses TRIAL_DURATION_SEC.
+- frameworks/TFL/session_gui.py uses AUTOSAVE_INTERVAL_TRIALS.
+- A pure-data leaf module: imports nothing from the TFL package or
+  Tkinter, so it can never create a circular import.
 
-This module is deliberately a pure-data LEAF: it imports nothing from the
-rest of the TFL package (or from Tkinter), so importing it can never
-create a circular import and it stays safe to read from the headless
-engine and its tests. The bulky 60-item stimulus LIBRARY is content, not
-settings, and intentionally stays in frameworks/TFL/stimuli.py -- so the
-full edit surface for TFL is exactly two files: this one for behavior,
-that one for stimulus content.
+Settings / parameters:
+- TRIAL_DURATION_SEC 12; AUTOSAVE_INTERVAL_TRIALS 5.
+- NUM_TRIALS 120; TRIALS_PER_BLOCK 40; BLOCKS affect, belief,
+  contradiction.
+- PROBE_INTERVAL 4; DELAYED_REENTRY_INTERVAL 6; PERTURBATION_INTERVAL 5.
+- RANDOM_SEED 2026; AFFECT_MIN 0; AFFECT_MAX 100; BASE_STIMULUS_LIMIT 20.
+- FEEDBACK_LEVELS, PERTURBATION_TYPES, default run-option toggles,
+  RUN_MODE, DEFAULT_MODE_DESCRIPTION, prompts, and intro text.
+
+Edge cases:
+- An interval of 0 disables that feature entirely.
+- The trial builder caps a run at TRIALS_PER_BLOCK * len(BLOCKS).
+- A new block or feedback level must also be added to VALID_BLOCKS or
+  VALID_FEEDBACK_LEVELS, or the trial builder rejects it.
+
+Known limitations:
+- Stimulus content lives in frameworks/TFL/stimuli.py, not here.
+- Editing values changes run structure, but the recorded run_mode label
+  stays "default_tfl" unless RUN_MODE is changed too.
+- frameworks/TFL/screen.py defines its own button choice tuples.
+
+Examples:
+- TRIAL_DURATION_SEC = 15
+- PERTURBATION_INTERVAL = 0
 """
 from __future__ import annotations
 # ============================================================

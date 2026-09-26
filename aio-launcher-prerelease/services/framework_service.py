@@ -1,3 +1,40 @@
+"""
+File: services/framework_service.py
+
+Purpose:
+Resolve a framework from the registry and launch its GUI runner,
+isolating every import and startup failure so a broken framework never
+takes down the Archive GUI.
+
+Communication / relationships:
+- FrameworkService(app) is created by gui/main_window.py.
+- Called by SystemController.start_framework() and
+  SystemController.start_selected_framework().
+- Looks frameworks up through config/registries.get_framework().
+- Imports the framework's runner_module, instantiates runner_class(app),
+  and calls its start() method.
+- Reports through tkinter message boxes and app.log().
+
+Settings / parameters:
+- A framework can launch only when its status is "Available" and both
+  runner_module and runner_class are set.
+
+Edge cases:
+- A blank ID, unknown ID, reserved framework, missing runner metadata,
+  import failure, missing or non-callable runner class, constructor
+  failure, missing start() method, or exception inside start() each
+  shows a dialog and is logged; none crashes the GUI.
+- importlib.invalidate_caches() runs before each runner import.
+
+Known limitations:
+- The runner constructor must accept the app as its only positional
+  argument.
+- Uses modal dialogs, so it has no headless mode.
+
+Examples:
+- FrameworkService(app).start_framework("TFL")
+"""
+
 from __future__ import annotations
 
 import importlib

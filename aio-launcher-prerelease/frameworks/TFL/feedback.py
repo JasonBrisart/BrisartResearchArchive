@@ -1,12 +1,37 @@
 """
-frameworks/TFL/feedback.py
-TFL feedback logic and instruction text. determine_feedback() maps a
-trial's prediction plus its configured feedback level to (correct_answer,
-contradiction) -- the pair the engine records on every row and that
-analysis.feedback_carryover_report() later buckets trials by. The
-remaining helpers are display-only: show_feedback() for headless/CLI runs
-and make_perturbation_instruction() for the short instruction shown on a
-perturbation trial in both console and GUI. No file I/O, no state.
+File: frameworks/TFL/feedback.py
+
+Purpose:
+Map a trial's prediction and feedback level to (correct_answer,
+contradiction), and provide display helpers for console feedback and
+perturbation instructions. No file I/O and no state.
+
+Communication / relationships:
+- frameworks/TFL/engine.py calls determine_feedback() for every row.
+- frameworks/TFL/screen.py calls make_perturbation_instruction().
+- frameworks/TFL/analysis.py buckets trials by the recorded
+  contradiction value.
+- frameworks/TFL/framework.py exposes lazy wrappers.
+
+Settings / parameters:
+- Feedback levels: neutral, confirmatory, mildly_contradictory,
+  strongly_contradictory.
+- Perturbation types with instructions: head_turn, posture_shift,
+  scene_shift, breath_reset.
+
+Edge cases:
+- A blank or timed-out prediction returns ("", "").
+- "neutral" returns ("", "none"); an empty level returns ("", "").
+- An unknown level returns (prediction, "none").
+- An unknown perturbation type returns a generic instruction.
+
+Known limitations:
+- show_feedback() prints to the console only and is not used by the GUI.
+- Instruction text lives here rather than in frameworks/TFL/settings.py.
+
+Examples:
+- determine_feedback("A", "strongly_contradictory") returns ("B", "strong")
+- make_perturbation_instruction("breath_reset")
 """
 from __future__ import annotations
 def opposite_choice(choice: str) -> str:

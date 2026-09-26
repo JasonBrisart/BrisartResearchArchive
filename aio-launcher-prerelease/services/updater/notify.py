@@ -1,32 +1,37 @@
 """
-services/updater/notify.py
-User-facing notifications for update check/install outcomes.
+File: services/updater/notify.py
 
-Two categories of popup, with very different rules:
+Purpose:
+Show user-facing popups for update outcomes.
 
-  - SECURITY events (a failed signature/hash verification) ALWAYS show,
-    regardless of any user setting. If something tried to tamper with
-    the update source, the user must be told -- no toggle silences
-    this, ever.
+Communication / relationships:
+- services/updater/gui_integration.py calls maybe_notify_result() after
+  each check and imports notify_on_update_enabled().
+- Uses app_is_alive() and schedule_on_ui_thread() from
+  services/updater/tk_helpers.py.
 
-  - INSTALL-OUTCOME events (an install actually completed, or an exe
-    swap was staged) are gated by "Notify me about updates"
-    (notify_on_update_enabled). This applies whether the install was
-    manual (user said "Yes" to the Yes/No prompt) or fully automatic
-    (auto_install_updates is on):
-      * notify ON  -> a popup summarizing the install, with changelog.
-      * notify OFF -> completely silent. No popup, no changelog. The
-        only sign anything happened is the version number itself
-        changing the next time the app is opened -- by design, for
-        users who want background updating with zero interruption.
+Settings / parameters:
+- notify_on_update gates install-outcome popups, for both the manual
+  Yes/No path and the automatic install path.
+- show_notification(app, title, message, kind): kind is "info",
+  "warning", or "error".
 
-  - The "would you like to download and install this now?" prompt
-    (manual/non-auto-install path only) is NOT handled here -- it's a
-    synchronous Yes/No dialog raised directly from the background
-    worker via services.updater.gui_integration's confirm_install
-    callback, shown BEFORE anything is downloaded. That prompt is only
-    ever offered when auto_install_updates is off in the first place,
-    so it doesn't overlap with the auto-install notify gating above.
+Edge cases:
+- Security events (status "verification_failed") always show,
+  regardless of any setting.
+- "installed" and "exe_swap_pending" show a popup with the changelog
+  only when notify is on; otherwise they are silent.
+- "declined" and "downloaded" never show a popup.
+- Popups are scheduled on the UI thread, so this is safe to call from a
+  worker thread.
+
+Known limitations:
+- The Yes/No prompt before downloading is raised from
+  gui_integration.py, not here.
+- The context argument is accepted but does not change behavior.
+
+Examples:
+- maybe_notify_result(app, result, context="check")
 """
 from __future__ import annotations
 

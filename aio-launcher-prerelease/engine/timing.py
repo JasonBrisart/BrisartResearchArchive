@@ -1,15 +1,38 @@
 """
-Shared timing abstractions for framework session engines.
+File: engine/timing.py
 
-This is the OpenClaw-branch idea generalized: instead of one timer
-class living inside frameworks/TFL, it lives here so every future
-framework engine (SST, PFT, PCT, RIET, IRE) can reuse the same
-schedule/cancel/now contract without copy-pasting it per framework.
+Purpose:
+Provide the shared timer contract for framework session engines:
+TimerInterface (the contract), MonotonicTimer (real GUI scheduling),
+and NullSchedulerTimer (a deterministic virtual clock for tests).
 
-TimerInterface is the contract. MonotonicTimer drives real GUI
-scheduling (e.g. Tk's .after()). NullSchedulerTimer is a deterministic
-virtual clock used by headless engine tests - no real time passes,
-and a test manually advances the clock and fires scheduled callbacks.
+Communication / relationships:
+- frameworks/TFL/engine.py consumes any TimerInterface.
+- frameworks/TFL/session_gui.py builds a MonotonicTimer bound to its
+  Toplevel's after() and after_cancel().
+- app/headless.py and tests/test_merged.py use NullSchedulerTimer.
+- Intended for reuse by future framework engines.
+
+Settings / parameters:
+- MonotonicTimer(schedule_fn=None, cancel_fn=None); now() uses
+  time.monotonic().
+- NullSchedulerTimer: the clock starts at 0.0; advance(seconds) moves
+  it; fire(handle) runs one scheduled callback.
+
+Edge cases:
+- schedule() without a schedule_fn raises RuntimeError.
+- cancel(None) is a no-op.
+- fire() on a cancelled or unknown handle does nothing.
+- NullSchedulerTimer ignores delay_ms; callbacks run only through fire().
+
+Known limitations:
+- No repeating timers.
+- NullSchedulerTimer does not fire callbacks automatically when
+  advance() passes their deadline.
+
+Examples:
+- timer = NullSchedulerTimer(); handle = timer.schedule(12000, callback); timer.fire(handle)
+- MonotonicTimer(schedule_fn=window.after, cancel_fn=window.after_cancel)
 """
 from __future__ import annotations
 

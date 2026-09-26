@@ -1,36 +1,43 @@
 """
-controllers/log_controller.py
-LogController -- the mixin every part of the app calls through for
-status/logging: app.log(text) is the single entry point used by
-system_controller.py, framework_service.py, the updater, and every page
-action that reports success/failure back to the user.
+File: controllers/log_controller.py
 
-Every call to log() does three things:
-  1. Updates the status bar text (self.status_text), if present.
-  2. Writes a timestamped line into whichever on-screen Text widgets
-     currently exist (log_box on the Settings page, home_log_box on the
-     Dashboard if one is ever added). This is purely visual and resets
-     to empty every time those pages are destroyed/rebuilt on
-     navigation, since Tk widgets don't survive that.
-  3. Appends the same timestamped line to the PERSISTENT activity log on
-     disk (config/activity_log.py), which is what makes activity visible
-     again after the app is closed and reopened -- see that module's
-     docstring for the on-disk format and the 100-entry rolling-window
-     cap. gui/pages/settings_page.py reads that same file to
-     pre-populate the Activity Log box with history from previous
-     sessions.
+Purpose:
+Provide app.log(text), the single logging entry point for the whole
+application. Every call updates the status text, writes a timestamped
+line into any live Activity Log widget, and persists the same line to
+disk.
 
-Widget references (log_box, etc.) are checked for liveness before every
-write, since page modules destroy/rebuild their widgets on every
-navigation -- a stale reference from a page the user has since navigated
-away from must never raise or silently attach itself to a dead widget.
+Communication / relationships:
+- Mixed into gui/main_window.BrisartSuiteApp.
+- Called by controllers/system_controller.py,
+  services/framework_service.py, frameworks/TFL/session_gui.py, and
+  page-render failures in gui/main_window.py.
+- Persists through config/activity_log.append_activity_log_entry().
+- Timestamps come from services/timestamps.py.
+- Writes into log_box (gui/pages/settings_page.py) and home_log_box
+  (reserved for a future Dashboard log).
 
-Display order: the Activity Log shows the newest entry at the TOP. New
-lines are inserted at "1.0" (not "end"), so trim_text_widget_lines()
-caps growth by deleting the oldest content from the BOTTOM, and
-gui.see("1.0") keeps the view pinned to the newest entry. The on-disk
-store (config/activity_log.py) keeps its own oldest-first order and is
-reversed for display by settings_page._populate_activity_log().
+Settings / parameters:
+- MAX_LOG_LINES (3000): caps the on-screen widget, independent of the
+  100-entry cap on the persisted file.
+- New lines are inserted at "1.0", so the newest entry is always at the
+  top; trimming removes the oldest lines from the bottom.
+
+Edge cases:
+- Widget references are checked for liveness before every write, since
+  pages are destroyed and rebuilt on navigation. Dead references are
+  deleted, never written to.
+- TclError during a write is swallowed.
+- Lines are persisted to disk even when no widget currently exists.
+
+Known limitations:
+- No current page creates home_log_box.
+- The on-screen log resets on every page rebuild; the Settings page
+  repopulates it from the persisted history.
+
+Examples:
+- app.log("TFL session started: 20260926-101500-a1b2c3d4")
+- append_log_line(text_widget, "Manual note")
 """
 from __future__ import annotations
 import tkinter as tk

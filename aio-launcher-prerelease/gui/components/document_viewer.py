@@ -1,7 +1,34 @@
 """
-Lightweight local .txt/.md document viewer, opened from the Archive
-page. Read-only by design: this is for browsing README/notes/release
-docs inside the GUI, not for editing them.
+File: gui/components/document_viewer.py
+
+Purpose:
+Open a local .txt or .md document in a read-only viewer window from the
+Archive page.
+
+Communication / relationships:
+- open_local_doc(app) is called through SystemController.open_local_doc(),
+  wired to the Archive page button.
+- Uses COLORS and FONT_MONO from gui/theme.py.
+
+Settings / parameters:
+- ALLOWED_SUFFIXES: .txt and .md.
+- MAX_DOCUMENT_BYTES: 5,000,000.
+- The file dialog starts in app.execution_dir; the viewer opens at
+  900x680.
+
+Edge cases:
+- Cancelling the file dialog does nothing.
+- Unsupported suffixes, oversized files, and decode errors show an
+  error dialog.
+- UTF-8 files with a byte-order mark are accepted.
+
+Known limitations:
+- Markdown is shown as raw text, not rendered.
+- Read-only; one document per window.
+- Files that are not UTF-8 are rejected.
+
+Examples:
+- open_local_doc(app)
 """
 from __future__ import annotations
 

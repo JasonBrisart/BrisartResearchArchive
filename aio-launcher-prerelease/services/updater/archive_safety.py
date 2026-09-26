@@ -1,9 +1,31 @@
 """
-services/updater/archive_safety.py
+File: services/updater/archive_safety.py
 
-Zip archive validation: signature check, path-traversal / zip-slip
-protection, zip-bomb protection (member count, uncompressed size cap,
-per-member compression ratio cap). Also file hashing (SHA256).
+Purpose:
+Validate downloaded ZIP archives (signature bytes, path traversal,
+zip-bomb limits, integrity) and compute SHA-256 file hashes.
+
+Communication / relationships:
+- services/updater/download.py calls validate_zip_archive() and
+  sha256_of_file().
+- Limits come from services/updater/constants.py.
+
+Settings / parameters:
+- MAX_DOWNLOAD_BYTES 250 MiB; MAX_ZIP_MEMBERS 25,000;
+  MAX_UNCOMPRESSED_ZIP_BYTES 2 GiB; MAX_COMPRESSION_RATIO 250.
+
+Edge cases:
+- Rejects member names that are empty, absolute, contain "..", start
+  with a drive letter, or contain NUL.
+- Rejects entries that claim data but have a compressed size of zero.
+- Runs zipfile.testzip() to catch corrupted members.
+
+Known limitations:
+- Hashing reads the file in 1 MiB chunks; very large files take time.
+
+Examples:
+- validate_zip_archive(path)
+- sha256_of_file(path)
 """
 
 from __future__ import annotations

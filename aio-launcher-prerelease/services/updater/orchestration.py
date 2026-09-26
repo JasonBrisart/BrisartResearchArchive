@@ -1,39 +1,40 @@
 """
-services/updater/orchestration.py
-Ties the registry/download/install pieces together into complete
-operations.
+File: services/updater/orchestration.py
 
-  - startup_update_check(emit): check + download-only, never installs
-    and never asks anything. Kept for any caller that explicitly wants
-    "just tell me if there's something new, don't touch my files and
-    don't prompt anyone."
+Purpose:
+Tie the registry, download, and install steps together into complete
+update operations.
 
-  - check_and_maybe_install(emit, auto_install, confirm_install): the
-    single function behind BOTH the "Check Updates" button and the
-    automatic startup check. Always checks the registry. What happens
-    next depends on `auto_install`:
+Communication / relationships:
+- services/updater/gui_integration.py calls check_and_maybe_install().
+- Uses services/trust_anchor.is_configured(),
+  services/updater/registry.py, services/updater/download.py,
+  services/updater/install.py, services/updater/exe_swap.py, and
+  services/updater/versioning.py.
 
-      * auto_install=True: downloads, verifies, and installs
-        immediately. No prompt is ever shown (the checkbox itself was
-        the user's confirmation).
+Settings / parameters:
+- check_and_maybe_install(emit, auto_install=False, confirm_install=None):
+  with auto_install, downloads, verifies, and installs without asking;
+  with confirm_install, asks before downloading and returns "declined"
+  on No; with neither, downloads and verifies but does not install.
+- startup_update_check(emit): check and download only; never installs
+  or prompts.
+- Result dictionaries carry status, local_version, remote_version,
+  downloaded_file, message, and changelog.
 
-      * auto_install=False and `confirm_install` is provided: BEFORE
-        downloading anything, calls confirm_install(remote_version) --
-        a synchronous, blocking callback the GUI wires up to a Yes/No
-        dialog. If it returns True, the release is downloaded,
-        verified, and installed. If it returns False, nothing is
-        downloaded and status "declined" is returned -- the same
-        release will simply be offered again next time (on next
-        startup, or the next manual check), since the local version
-        file hasn't changed.
+Edge cases:
+- When the trust anchor is still the placeholder, both entry points
+  return status "trust_anchor_unconfigured" before any network request.
+- An "exe" asset while running from source, or a "zip" asset while
+  frozen, returns "asset_mismatch" and is not applied.
+- Exceptions are mapped to registry_error, verification_failed,
+  http_error, network_error, validation_error, or unexpected_error.
 
-      * auto_install=False and `confirm_install` is None: preserves
-        the original silent behavior -- downloads and verifies in the
-        background, but never installs and never prompts. Status
-        "downloaded" is returned. This is what happens today when the
-        user has turned off "Notify me about updates" -- no
-        interruption, but the app still keeps a verified release ready
-        the moment they change their mind.
+Known limitations:
+- After an "installed" result the application must be restarted.
+
+Examples:
+- result = check_and_maybe_install(print, auto_install=True)
 """
 from __future__ import annotations
 
@@ -43,6 +44,7 @@ from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error
 
+from services.trust_anchor import is_configured as trust_anchor_is_configured
 from services.updater.constants import is_frozen
 from services.updater.download import download_and_verify_release
 from services.updater.exe_swap import apply_exe_update
@@ -107,11 +109,30 @@ def _apply_verified_release(
     result = apply_zip_update(verified_path, current_version=local_version)
     emit(f"Backup written to: {result.backup_dir}")
     emit(f"Files updated: {len(result.applied_files)}")
+    if result.removed_files:
+        emit(f"Obsolete files removed: {len(result.removed_files)}")
     emit("Restart the application to run the new version.")
     return build_update_result(
         status="installed", local_version=local_version, remote_version=remote_version,
         downloaded_file=verified_path, changelog=entry.changelog,
         message=f"Update installed. Backup: {result.backup_dir}. Files updated: {len(result.applied_files)}. Restart required.",
+    )
+
+
+TRUST_ANCHOR_UNCONFIGURED_MESSAGE = (
+    "Update checks are unavailable because services/trust_anchor.py still "
+    "contains the placeholder public key. Generate a signing key offline "
+    "with 'python signing/sign_release.py generate-keys', paste the printed "
+    "PUBLIC_KEY_DICT into services/trust_anchor.py, and ship that build "
+    "before publishing signed releases."
+)
+
+
+def _unconfigured_result(local_version: str) -> dict[str, Any]:
+    return build_update_result(
+        status="trust_anchor_unconfigured",
+        local_version=local_version,
+        message=TRUST_ANCHOR_UNCONFIGURED_MESSAGE,
     )
 
 
@@ -134,6 +155,8 @@ def startup_update_check(emit: Callable[[str], None] = default_emit) -> dict[str
     callers that explicitly want a "just tell me" check with zero side
     effects on the application's own files and zero UI interaction."""
     local_version = read_local_version(emit)
+    if not trust_anchor_is_configured():
+        return _unconfigured_result(local_version)
     try:
         entry = fetch_registry_entry()
         remote_version = canonical_version(entry.version)
@@ -165,6 +188,8 @@ def check_and_maybe_install(
     docstring for the full behavior matrix of auto_install/confirm_install.
     """
     local_version = read_local_version(emit)
+    if not trust_anchor_is_configured():
+        return _unconfigured_result(local_version)
     try:
         entry = fetch_registry_entry()
         remote_version = canonical_version(entry.version)

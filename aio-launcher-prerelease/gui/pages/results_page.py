@@ -1,23 +1,34 @@
 """
-gui/pages/results_page.py
-The Results page: run/refresh TFL analysis, open the generated CSV,
-and display the analysis report in a scrollable Text box
-(analysis_box). Registered as the "Results" page in
-config.registries.get_page_registry(). services.set_analysis_text()
-(see services/__init__.py) writes new report text directly into
-analysis_box on every "Run TFL Analysis" click; this module only ever
-sets its initial placeholder content.
+File: gui/pages/results_page.py
 
-MOUSE WHEEL OVER analysis_box, specifically:
-Calls bind_text_widget_scroll_passthrough() right after creating
-analysis_box, for the same reason as gui/pages/settings_page.py's
-update_box/log_box: Tk's built-in, automatic Text-widget scroll
-binding intercepts and swallows the wheel event even when the box's
-own content is already fully visible (nothing to scroll internally),
-which otherwise blocks the event from ever reaching the page-level
-scroll handler in gui/main_window.py. See
-gui.components.page_helpers.bind_text_widget_scroll_passthrough()'s
-docstring (FIX 7) for the full mechanism.
+Purpose:
+Render the Results page: run TFL analysis, open the latest CSV, and
+display the analysis report.
+
+Communication / relationships:
+- Registered as "Results" in config/registries.get_page_registry().
+- Buttons call app.analyze_tfl(), app.open_tfl_csv(), and
+  app.start_selected_framework().
+- services/tfl_analysis.set_analysis_text() writes each new report into
+  app.analysis_box; this page sets only the placeholder text.
+- frameworks/TFL/session_gui.py opens this page after a completed run.
+
+Settings / parameters:
+- app.analysis_box: a 30-line Text widget at grid row 4.
+
+Edge cases:
+- bind_text_widget_scroll_passthrough() lets the wheel scroll the page
+  when the report fits inside the box (Fix 7 in
+  gui/components/page_helpers.py).
+- Placeholder instructions are shown until analysis runs.
+
+Known limitations:
+- TFL only.
+- Plain-text report; no charts.
+
+Examples:
+- app.show_page("Results")
+- app.analyze_tfl()
 """
 import tkinter as tk
 

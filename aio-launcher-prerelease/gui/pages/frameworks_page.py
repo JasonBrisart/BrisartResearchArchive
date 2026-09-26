@@ -1,33 +1,39 @@
 """
-gui/pages/frameworks_page.py
-The Frameworks page: one card per framework in
-config.registries.FRAMEWORK_REGISTRY, one card per row (matching
-gui/pages/tooling_page.py's single-column layout), partitioned into
-"Available" (top) and "Available to Download" (bottom) groups, each
-sorted alphabetically by name. Registered as the "Frameworks" page in
-config.registries.get_page_registry().
+File: gui/pages/frameworks_page.py
 
-This is a pure re-partition of FRAMEWORK_REGISTRY on every render, not a
-persisted ordering -- when a framework's status changes, the group it
-leaves closes up (grid positions are recomputed fresh every render).
+Purpose:
+Render one card per registered framework, split into an "Available"
+group at the top and an "Available to Download" group at the bottom,
+each sorted alphabetically by name.
 
-Wording mirrors gui/pages/tooling_page.py for consistency between the two
-"top group / bottom group" pages:
-  - Tooling: "Installed" / "Available to Download".
-  - Frameworks: "Available" / "Available to Download"; anything in the
-    bottom group shows "Not installed." in its card body, matching
-    Tooling's wording, rather than the framework's raw "status" text
-    (e.g. "Coming Soon"). That raw status field still determines WHICH
-    group a framework falls into (_is_available() checks the literal
-    "available" value); only the displayed wording differs.
+Communication / relationships:
+- Registered as "Frameworks" in config/registries.get_page_registry().
+- Reads config/registries.FRAMEWORK_REGISTRY on every render.
+- Run calls app.start_framework(framework_id), which reaches
+  services/framework_service.py through SystemController.
+- Results calls app.show_page("Results").
 
-Button state per framework:
-  - Available: "Run" + "Results". "Run" calls app.start_framework(fid)
-    directly for this card's specific framework, independent of
-    app.selected_framework (which the Dashboard's "Run Selected
-    Framework" button reads).
-  - Available to Download: a single disabled button showing
-    NOT_YET_AVAILABLE_LABEL.
+Settings / parameters:
+- NOT_YET_AVAILABLE_LABEL: "Available to Download".
+- A framework belongs to the top group when its status is "available"
+  (case-insensitive).
+- The features line shows the first four features.
+
+Edge cases:
+- Groups are recomputed on every render; nothing is persisted.
+- The divider appears only when both groups are non-empty.
+- Unavailable frameworks show "Not installed." and a disabled button,
+  whatever their raw status text (for example "Coming Soon").
+
+Known limitations:
+- Run launches that card's framework directly, independent of
+  app.selected_framework.
+- The fixed 950-pixel wraplength does not reflow on resize.
+- Reserved frameworks cannot actually be downloaded yet; the label
+  describes future behavior.
+
+Examples:
+- app.show_page("Frameworks")
 """
 from __future__ import annotations
 import tkinter as tk
@@ -100,8 +106,8 @@ def _build_framework_card(app, root, row: int, framework: dict) -> None:
     tk.Label(
         card, text=framework["name"], bg=COLORS["panel"], fg=COLORS["text"], font=FONT_HEAD,
     ).grid(row=1, column=0, sticky="w", pady=(8, 0))
-    # Body text matches tooling_page.py's wording: "Not installed." for
-    # anything not currently available, instead of a description-only line.
+    # Anything not currently available gets an explicit "Not installed."
+    # line under its description so the card never reads as runnable.
     body_text = framework["description"]
     if not is_available:
         body_text = f"{body_text}\n\nNot installed."

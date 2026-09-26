@@ -1,47 +1,46 @@
 """
-config/activity_log.py
-Persistent Activity Log storage. Keeps the most recent
-MAX_PERSISTED_ENTRIES timestamped activity lines on disk (under
-APPDATA, alongside user_settings.json -- see config/runtime.APP_DIR),
-so the Activity Log on the Settings page shows what happened in
-previous sessions, not just the current one, until the cap is reached
--- at which point the oldest entries are dropped one-for-one to make
-room for new ones (a fixed-size rolling window, not an ever-growing
-file).
+File: config/activity_log.py
 
-Talks to:
-  - controllers/log_controller.py: LogController.log() calls
-    append_activity_log_entry() with every logged message, in addition
-    to writing it into the live on-screen Text widgets. This is the
-    only writer.
-  - gui/pages/settings_page.py: render() calls load_activity_log()
-    once, every time the Settings page is built, to populate the
-    Activity Log Text box with history from prior sessions before any
-    new entries from the current session are appended on top. This is
-    the only reader.
+Purpose:
+Persist the most recent Activity Log lines to disk so the Settings page
+shows what happened in previous sessions, not only the current one.
 
-Persistence model, specifically:
-  - MAX_PERSISTED_ENTRIES (100): once this many entries exist, appending
-    a new one drops the single oldest entry first, so the file holds at
-    most 100 entries at any time -- a rolling window across however
-    many sessions it took to reach that count, not a per-session cap.
-  - Storage format: a JSON array of strings, oldest first / newest
-    last -- the same order they should be displayed in a
-    top-to-bottom scrolling log. Each string is a fully-formatted line
-    that already includes its own "[YYYY-MM-DD HH:MM:SS] " prefix
-    (matching exactly what LogController writes into the Text widgets),
-    so the persisted file and the live widget always show identical
-    text for the same event -- there is no separate timestamp field.
-  - Writes use the same atomic pattern as config/runtime.py (write to
-    a .tmp file, then os.replace() over the real file) so a crash or
-    forced close mid-write can never corrupt the log into something
-    that fails to load next launch -- worst case, only the newest
-    entry is lost, never the whole file.
-  - Every public function here is best-effort and never raises: a
-    corrupt or missing log file returns an empty list rather than
-    failing page render, and a failed append is silently swallowed
-    rather than being allowed to crash whatever action was being
-    logged in the first place.
+Communication / relationships:
+- Reads APP_DIR from config/runtime.py.
+- Only writer: controllers/log_controller.py, through
+  append_activity_log_entry(), on every LogController.log() call.
+- Only reader: gui/pages/settings_page.py, through load_activity_log(),
+  every time the Settings page is built.
+
+Settings / parameters:
+- MAX_PERSISTED_ENTRIES (100): a rolling window across sessions. Once
+  the cap is reached, each new entry drops the single oldest entry.
+- ACTIVITY_LOG_FILE: APP_DIR/activity_log.json.
+- ACTIVITY_LOG_TEMP_FILE: APP_DIR/activity_log.json.tmp.
+- Storage format: a JSON array of strings, oldest first, newest last.
+  Each string already carries its own "[YYYY-MM-DD HH:MM:SS] " prefix,
+  identical to what LogController writes into the on-screen widgets.
+
+Edge cases:
+- A missing, unreadable, or corrupt file returns an empty list and never
+  raises, so a broken log can never stop the Settings page rendering.
+- A failed append is swallowed, so logging can never crash the action
+  being logged.
+- Writes go to a .tmp file first and then replace the real file, so a
+  crash mid-write loses at most the newest entry, never the whole log.
+- Blank entries are ignored. Files holding more than the cap are trimmed
+  on load.
+
+Known limitations:
+- Every append rewrites the whole file, which is fine at 100 entries.
+- There is no locking between two running copies of the Archive; they
+  can overwrite each other's newest entries.
+- Newest-first display order is handled by gui/pages/settings_page.py,
+  not here.
+
+Examples:
+- append_activity_log_entry("[2026-09-26 10:00:00] Application settings saved.")
+- history = load_activity_log()
 """
 from __future__ import annotations
 

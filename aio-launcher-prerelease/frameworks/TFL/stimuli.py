@@ -1,14 +1,36 @@
 """
-frameworks/TFL/stimuli.py
-The embedded TFL stimulus library and its validation. EMBEDDED_STIMULI is
-a fixed set of 60 ambiguous-sentence stimuli, each with two competing
-interpretations, carried in-process so a run needs no filesystem or
-network lookup. load_stimuli() returns validated copies (callers cannot
-mutate the embedded definitions); validate_stimuli() rejects malformed,
-empty, or duplicate-id collections; apply_stimulus_limit() trims to the
-first BASE_STIMULUS_LIMIT (20) items unless the config enables extra
-stimuli. FALLBACK_STIMULI is a backward-compatible alias for
-EMBEDDED_STIMULI.
+File: frameworks/TFL/stimuli.py
+
+Purpose:
+Provide the embedded 60-item TFL stimulus library, its validation, and
+the baseline stimulus limit.
+
+Communication / relationships:
+- load_stimuli() and apply_stimulus_limit() are used by
+  frameworks/TFL/session_gui.py, app/headless.py, the lazy wrappers in
+  frameworks/TFL/framework.py, and tests/test_merged.py.
+- Reads BASE_STIMULUS_LIMIT through frameworks/TFL/framework.py.
+
+Settings / parameters:
+- REQUIRED_STIMULUS_FIELDS: stimulus_id, cue, ambiguous_text,
+  interpretation_a, interpretation_b.
+- EMBEDDED_STIMULI: S001 through S060.
+- FALLBACK_STIMULI: backward-compatible alias for EMBEDDED_STIMULI.
+- Only the first 20 stimuli are used unless enable_extra_stimuli is set.
+
+Edge cases:
+- validate_stimuli() rejects non-list collections, empty collections,
+  non-dictionary rows, blank fields, and duplicate IDs.
+- Values are stripped, and new dictionaries are returned so callers
+  cannot mutate the embedded definitions.
+
+Known limitations:
+- Content is editable only in source; there is no external stimulus
+  file.
+- Several stimuli reuse the same ambiguity (glasses, bank, binoculars).
+
+Examples:
+- stimuli = apply_stimulus_limit(load_stimuli(), config)
 """
 
 from __future__ import annotations

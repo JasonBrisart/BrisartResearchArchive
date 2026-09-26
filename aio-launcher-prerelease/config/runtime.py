@@ -1,16 +1,53 @@
 """
-config/runtime.py
-Persistent application settings: normalization, path validation, atomic
-JSON storage, recovery, and persistence, all pure standard library.
+File: config/runtime.py
 
-WINDOW SIZE DEFAULTS
-DEFAULT_SETTINGS window_width/window_height default to 800x600 so the app
-opens at a reasonable, non-bloated size. MIN_WINDOW_WIDTH/MIN_WINDOW_HEIGHT
-are set to the same 800x600 so normalize_int() never clamps the default
-back up. Both this file's MIN_WINDOW_WIDTH/HEIGHT and gui/main_window.py's
-hardcoded self.minsize() call (a second, independent Tk-level floor) must
-stay in sync, or a smaller default gets silently overridden by whichever
-floor is larger.
+Purpose:
+Load, normalize, validate, and atomically persist application settings,
+and resolve output directories. Pure standard library.
+
+Communication / relationships:
+- gui/main_window.py calls load_settings() at startup.
+- controllers/system_controller.py uses normalize_settings(),
+  save_settings(), and get_output_folder().
+- config/activity_log.py reads APP_DIR.
+- frameworks/TFL/framework.py and frameworks/TFL/analysis.py call
+  get_framework_output_dir().
+
+Settings / parameters:
+- APP_DIR: %APPDATA%/Brisart Research Archive, falling back to the home
+  directory when APPDATA is not set.
+- SETTINGS_FILE: user_settings.json, with .tmp and .bak companions.
+- DEFAULT_SETTINGS: default_framework "TFL", theme "dark",
+  output_folder "outputs" (relative to APP_DIR), enable_update_checks,
+  notify_on_update, and auto_install_updates all True, window 800x600.
+- MIN_WINDOW_WIDTH/MIN_WINDOW_HEIGHT (800x600) must stay in sync with
+  the minsize() call in gui/main_window.py, or whichever floor is larger
+  silently overrides the other.
+- MAX_WINDOW_WIDTH/MAX_WINDOW_HEIGHT: 7680x4320.
+- ALLOWED_THEMES: {"dark"}.
+
+Edge cases:
+- An unreadable or invalid settings file is moved aside to
+  user_settings.invalid.json (or .invalid.N.json) and defaults are used.
+- A stale .tmp file is promoted when the main file is missing and the
+  temp file is valid; otherwise it is deleted.
+- A legacy config/user_settings.json is migrated once.
+- Unsafe output-folder text (reserved Windows names, control characters,
+  trailing dots or spaces, invalid characters, stray colons) falls back
+  to "outputs".
+- Boolean settings accept strings such as "yes", "off", or "enabled".
+- Framework IDs are reduced to letters, digits, "-" and "_", then
+  uppercased.
+
+Known limitations:
+- Only the dark theme exists.
+- Output-path validation applies Windows filename rules on every OS.
+- Window size is saved, but gui/main_window.py always opens at 800x600.
+
+Examples:
+- settings = load_settings()
+- save_settings(settings)
+- output_dir = get_framework_output_dir("TFL")
 """
 from __future__ import annotations
 import json

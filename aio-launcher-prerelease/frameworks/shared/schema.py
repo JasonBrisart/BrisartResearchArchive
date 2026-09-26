@@ -1,11 +1,33 @@
 """
-Shared trial-row schema.
-Uses the fuller field set (includes *_timed_out and completion_status)
-so the engine can distinguish a timeout from an active response.
+File: frameworks/shared/schema.py
 
-session_id/participant_id/started_at_iso/completed_at_iso were added so
-multiple participants and multiple sessions can be told apart in output
-data - previously every run wrote to the same identity-less CSV.
+Purpose:
+Define DEFAULT_TRIAL_FIELDNAMES, the shared column order for framework
+trial rows written to CSV.
+
+Communication / relationships:
+- frameworks/TFL/framework.py re-exports it as CSV_FIELDNAMES.
+- frameworks/TFL/analysis.py uses it to validate and write rows.
+- frameworks/TFL/engine.py builds rows with exactly these keys.
+
+Settings / parameters:
+- 34 columns, including session_id and participant_id identity fields,
+  prediction_timed_out and behavioral_timed_out flags,
+  completion_status, and trial_started_at_iso/trial_completed_at_iso.
+
+Edge cases:
+- analysis.validate_rows() rejects any row containing a field that is
+  not in this list.
+- The list order is the CSV header order.
+
+Known limitations:
+- The columns are TFL-shaped; future frameworks may need their own
+  schema.
+- Renaming or reordering columns breaks compatibility with CSVs already
+  produced.
+
+Examples:
+- from frameworks.shared.schema import DEFAULT_TRIAL_FIELDNAMES
 """
 
 DEFAULT_TRIAL_FIELDNAMES = [
