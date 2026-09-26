@@ -1,6 +1,19 @@
 # ==================================================
 # The Brisart Ecosystem
 # Pure Python / Local First / Dependency Free
+# Single root .gitignore for the Brisart Research Archive
+# ==================================================
+#
+# Layout:
+#   1. Global rules (apply everywhere)
+#   2. Shared tooling artifacts (written into any folder)
+#   3. Per-folder rules, scoped to their own path so a generic folder
+#      name (data/, exports/, models/) never swallows research or
+#      curriculum content elsewhere in the archive.
+
+
+# ==================================================
+# 1. GLOBAL
 # ==================================================
 
 # ---------------------------------------------------------------------------
@@ -10,12 +23,19 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pyd
 
 # Distribution / packaging
 build/
 dist/
 *.egg-info/
 .eggs/
+*.spec
+
+# Compiled executables and native libraries
+*.exe
+*.dll
+*.dylib
 
 # Type checkers / linters / test caches
 .mypy_cache/
@@ -51,13 +71,18 @@ Thumbs.db
 desktop.ini
 
 # ---------------------------------------------------------------------------
-# Local Secrets
+# Local Secrets / Keys
 # ---------------------------------------------------------------------------
 .env
 .env.local
 .env.development
 .env.production
 .env.test
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
 
 # ---------------------------------------------------------------------------
 # Generic Cache / Temp / Logs
@@ -67,6 +92,8 @@ tmp/
 temp/
 *.tmp
 *.temp
+*.bak
+*.part
 *.lock
 logs/
 *.log
@@ -81,8 +108,21 @@ logs/
 *.db
 
 # ---------------------------------------------------------------------------
+# Self-updater staging (AIO Launcher and Project Context Helper)
+# ---------------------------------------------------------------------------
+updates/
+apply_update.bat
+staged_update.exe
+download.zip
+
+
+# ==================================================
+# 2. SHARED TOOLING ARTIFACTS
+# (tools that write output into whatever folder they are pointed at)
+# ==================================================
+
+# ---------------------------------------------------------------------------
 # Project Context Helper
-# (shared export tool used across Brisart Ecosystem projects)
 # ---------------------------------------------------------------------------
 PROJECT_CONTEXT_EXPORTS/
 PROJECT_CONTEXT.md
@@ -91,54 +131,142 @@ PROJECT_MANIFEST.json
 PROJECT_SUMMARY.txt
 PROJECT_SNAPSHOT.zip
 
+# Per-machine application state (any depth)
+app_settings.json
+build_history.json
+custom_profiles.json
+last_export_settings.json
 
-# ==================================================
+# ---------------------------------------------------------------------------
 # ArchiveSnapshot
-# ==================================================
+# ---------------------------------------------------------------------------
 
-# Dated snapshot storage created inside archived source folders
+# Snapshot store (current name, plus legacy name from earlier builds)
+ARCHIVE_SNAPSHOT/
 ARCHIVE_TIMELINE/
 
-# GUI application settings (per-machine, not part of source)
+# GUI settings and headless daily automation (per-machine, not source)
 ARCHIVE_SNAPSHOT_SETTINGS.json
-
-# Headless daily automation config/state/log (per-machine, not source)
 DAILY_SNAPSHOT_CONFIG.json
 DAILY_SNAPSHOT_STATE.json
 DAILY_SNAPSHOT_LOG.md
 
-# Project Context Helper inbox contents (staged files, not source)
+# Staged inbox and Project Context Helper handoff folders
 SNAPSHOT_ACTIVE/
+PROJECT_CONTEXT_HELPER/
+PROJECT_CONTEXT_INDEX.json
+
+# ---------------------------------------------------------------------------
+# AutoExeBuilder
+# ---------------------------------------------------------------------------
+auto_exe_output/
+
+# ---------------------------------------------------------------------------
+# ReadmeBuilder (generated drafts, never the real README.md)
+# ---------------------------------------------------------------------------
+README_DRAFT.md
+README_ANALYSIS.md
+README_BUILDER_MANIFEST.json
+
+# ---------------------------------------------------------------------------
+# ReleaseNoteBuilder (generated drafts)
+# RELEASE_NOTES.md is intentionally NOT ignored so finalized notes can be
+# committed.
+# ---------------------------------------------------------------------------
+CHANGELOG_DRAFT.md
+RELEASE_MANIFEST.json
 
 
 # ==================================================
-# BrisartAI
+# 3. PER-FOLDER RULES
 # ==================================================
 
-# Runtime data
-conversation_memory.sqlite3
-session_memory.sqlite3
-brisart_ai_index.sqlite3
+# ---------------------------------------------------------------------------
+# 95_Identity_Tools (main and LTS-2028)
+# ---------------------------------------------------------------------------
+# Runtime data/ directories under biometrics/, vault/, and packages/ hold
+# real identity records, sealed biometric templates, the biometrics
+# keyring, verification and audit reports, sealed vault files, sealed
+# packages, and demo packages. None of it belongs in version control.
+# Paths are CWD-relative, so match data/ at any depth inside this folder.
+95_Identity_Tools/**/data/
+
+# Key material and sealed identity artifacts (defense in depth)
+95_Identity_Tools/**/keyring.json
+95_Identity_Tools/**/device_key.json
+95_Identity_Tools/**/*_passphrase.txt
+*.identity
+*.ibp
+
+# Demo package folders created outside data/ by a custom output path
+95_Identity_Tools/**/DEMO_DO_NOT_USE_*/
+
+# Synthetic capture output
+95_Identity_Tools/**/*.brvid
+
+# ---------------------------------------------------------------------------
+# 96_Operating_System (BrisartOS)
+# ---------------------------------------------------------------------------
+# System API creates module_data/ and logs/ in the working directory.
+96_Operating_System/**/module_data/
+module_data/
+
+# Boot sector and floppy images (build/ is already ignored globally)
+96_Operating_System/**/*.img
+96_Operating_System/**/*.vfd
+
+# ---------------------------------------------------------------------------
+# 97_Encryption
+# ---------------------------------------------------------------------------
+# No extra rules needed. results/ is intentionally tracked: it is the
+# published research test evidence (research_test_results.csv/.json/.md),
+# and the suite writes nothing else. Caches are covered globally.
+
+# ---------------------------------------------------------------------------
+# 98_Tooling/BrisartAI
+# ---------------------------------------------------------------------------
+# Runtime databases (also covered by *.sqlite3, listed for clarity)
+98_Tooling/BrisartAI/conversation_memory.sqlite3
+98_Tooling/BrisartAI/session_memory.sqlite3
+98_Tooling/BrisartAI/brisart_ai_index.sqlite3
 
 # Exported knowledge archives
-exports/
-archive_exports/
-knowledge_exports/
+98_Tooling/BrisartAI/exports/
+98_Tooling/BrisartAI/archive_exports/
+98_Tooling/BrisartAI/knowledge_exports/
 
-# Future AI models
-models/
-downloads/
+# Future AI models and downloads
+98_Tooling/BrisartAI/models/
+98_Tooling/BrisartAI/downloads/
 
-# Future plugin cache
-plugins/cache/
+# Future plugin, crawl, and scan caches
+98_Tooling/BrisartAI/plugins/cache/
+98_Tooling/BrisartAI/crawl_cache/
+98_Tooling/BrisartAI/web_cache/
+98_Tooling/BrisartAI/scan_cache/
 
-# Future crawl cache
-crawl_cache/
-web_cache/
+# ---------------------------------------------------------------------------
+# aio-launcher-prerelease (Brisart Research Archive AIO Launcher)
+# ---------------------------------------------------------------------------
+# Release signing private key -- NEVER commit
+aio-launcher-prerelease/signing/keys/
+private_key.json
 
-# Future scan cache
-scan_cache/
-ProjectContextHelper/build_history.json
-ProjectContextHelper/last_export_settings.json
-ProjectContextHelper/app_settings.json
-98_Tooling/ProjectContextHelper/build_history.json
+# Legacy / local settings and activity history
+aio-launcher-prerelease/user_settings.json
+aio-launcher-prerelease/user_settings.json.tmp
+aio-launcher-prerelease/user_settings.invalid*.json
+aio-launcher-prerelease/activity_log.json
+aio-launcher-prerelease/activity_log.json.tmp
+
+# Framework run output
+aio-launcher-prerelease/outputs/
+tfl_output_*.csv
+tfl_autosave_*.csv
+
+
+# ==================================================
+# CanonSync
+# If CanonSync is run against this repo, it injects its managed block
+# between the markers below and preserves everything above untouched.
+# ==================================================
