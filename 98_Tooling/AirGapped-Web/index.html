@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AirGapped-Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="app/assets/style.css">
+</head>
+<body>
+<header>
+    <h1>AirGapped-Web</h1>
+    <p>Portable offline website records.</p>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="app/pages/websites.html">Websites</a>
+        <a href="app/pages/archiver.html">Archiver</a>
+        <a href="app/pages/imports.html">Imports</a>
+        <a href="app/pages/search.html">Search</a>
+        <a href="app/pages/sitemap.html">Site Map</a>
+    </nav>
+</header>
+<main>
+    <div id="archive-summary"></div>
+    <section class="panel">
+        <h2>Offline Website Records</h2>
+        <p>AirGapped-Web preserves websites as local files, metadata records, page indexes, and dated snapshots.</p>
+    </section>
+    <section class="panel">
+        <h2>Start Here</h2>
+        <p><a href="app/pages/archiver.html">Crawl a website into your offline database</a></p>
+        <p><a href="app/pages/websites.html">Browse Websites</a></p>
+        <p><a href="app/pages/search.html">Search Pages</a></p>
+        <p><a href="app/pages/imports.html">View Imports</a></p>
+    </section>
+</main>
+<footer>AirGapped-Web runs entirely from local files.</footer>
+<script src="archive/catalog/archive-data.js"></script>
+<script src="app/modules/core.js"></script>
+<script src="app/modules/archive-summary.js"></script>
+<script>
+    AGW.renderArchiveSummary("archive-summary");
+</script>
+</body>
+</html>

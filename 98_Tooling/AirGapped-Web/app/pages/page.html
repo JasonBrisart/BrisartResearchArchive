@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Page - AirGapped-Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header>
+    <h1>Page Record</h1>
+    <p>Preserved page metadata and offline content.</p>
+    <nav>
+        <a href="../../index.html">Home</a>
+        <a href="websites.html">Websites</a>
+        <a href="archiver.html">Archiver</a>
+        <a href="imports.html">Imports</a>
+        <a href="search.html">Search</a>
+        <a href="sitemap.html">Site Map</a>
+    </nav>
+</header>
+<main>
+    <div id="page-detail"></div>
+</main>
+<footer>Pages are stored offline.</footer>
+<script src="../../archive/catalog/archive-data.js"></script>
+<script src="../modules/core.js"></script>
+<script src="../modules/page-detail.js"></script>
+<script>AGW.renderPageDetail("page-detail");</script>
+</body>
+</html>

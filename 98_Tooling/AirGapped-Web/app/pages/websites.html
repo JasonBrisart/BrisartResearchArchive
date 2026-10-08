@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Websites - AirGapped-Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header>
+    <h1>Websites</h1>
+    <p>Browse preserved websites stored inside this offline record system.</p>
+    <nav>
+        <a href="../../index.html">Home</a>
+        <a href="websites.html">Websites</a>
+        <a href="archiver.html">Archiver</a>
+        <a href="imports.html">Imports</a>
+        <a href="search.html">Search</a>
+        <a href="sitemap.html">Site Map</a>
+    </nav>
+</header>
+<main>
+    <div id="website-list"></div>
+</main>
+<footer>Website records are loaded from local data + crawled archives.</footer>
+<script src="../../archive/catalog/archive-data.js"></script>
+<script src="../modules/core.js"></script>
+<script src="../modules/website-list.js"></script>
+<script>AGW.renderAllWebsites("website-list");</script>
+</body>
+</html>

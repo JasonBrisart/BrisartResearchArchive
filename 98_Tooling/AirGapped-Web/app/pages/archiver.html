@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Archiver - AirGapped-Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header>
+    <h1>Archiver</h1>
+    <p>Crawl a website and store it into your offline database.</p>
+    <nav>
+        <a href="../../index.html">Home</a>
+        <a href="websites.html">Websites</a>
+        <a href="archiver.html">Archiver</a>
+        <a href="imports.html">Imports</a>
+        <a href="search.html">Search</a>
+        <a href="sitemap.html">Site Map</a>
+    </nav>
+</header>
+<main>
+    <div id="archiver"></div>
+</main>
+<footer>Crawling needs internet once; viewing afterward does not.</footer>
+<script src="../../archive/catalog/archive-data.js"></script>
+<script src="../modules/core.js"></script>
+<script src="../modules/zip.js"></script>
+<script src="../modules/archiver.js"></script>
+<script>AGW.renderArchiver("archiver");</script>
+</body>
+</html>
