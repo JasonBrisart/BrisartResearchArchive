@@ -3,27 +3,77 @@ File: gui/build_tab.py
 
 Purpose
 -------
-Defines create_build_tab for 98_Tooling/ProjectContextHelper/gui.
+Build folder selection, built-in profile selection, export execution, and last-export-folder
+  controls.
+
+Implemented responsibilities:
+- create_build_tab: Bind folder/profile widgets to shared state, register the profile-change
+  callback, create build/open buttons, and define their session-local callbacks.
+- browse: Open a directory chooser; on a nonempty selection, update selected_folder and
+  status_text.
+- refresh_profile_description: Respond to profile variable writes by applying built-in defaults
+  and updating the explanatory profile label.
+- build: Set building status, execute run_project_build, display stopped/failed/completed
+  dialogs, and optionally open the completed export folder.
+- open_last_export: Show a no-export message when this session has no successful build;
+  otherwise open state.last_export_dir.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tkinter, tkinter, core.constants, gui.builders, gui.dialogs.
+Internal imports and exchanged symbols:
+- core.constants: VALID_PROFILES.
+- gui.builders: GuiState, apply_profile_defaults, profile_description, run_project_build.
+- gui.dialogs: open_folder, show_build_complete, show_error, show_info, show_warning.
+
+Consumers in the supplied source:
+- gui/main_gui.py imports create_build_tab.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Uses GuiState and the shared builder. Changing the built-in profile applies preset defaults;
+  open_after_build controls post-build folder opening.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- create_build_tab(parent: tk.Frame, window: tk.Tk, state: GuiState) -> None
+- browse() -> None
+- refresh_profile_description(*_args) -> None
+- build() -> None
+- open_last_export() -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+An empty folder selection is rejected downstream. ValueError produces a build-stopped warning;
+  other build exceptions show an error. Opening the last export requires a prior successful
+  build in this session.
+
+Canceling the folder chooser leaves state unchanged. The profile trace is attached after widget
+  construction. A failed build does not replace the last successful session export path.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Builds run synchronously and can block the desktop interface. Last-export-folder state is
+  session-local, separate from persisted export history.
+
+The button remains a synchronous callback; update_idletasks refreshes pending display work but
+  does not turn the export into background execution.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    import tkinter as tk
+    from gui.builders import make_gui_state
+    from gui.build_tab import create_build_tab
+
+    window = tk.Tk()
+    state = make_gui_state()
+    frame = tk.Frame(window)
+    frame.pack(fill="both", expand=True)
+    create_build_tab(frame, window, state)
+    window.mainloop()
+
+    This constructs the component in an existing Tk application. For the complete
+    four-tab interface, use python run.py rather than running this module directly.
 """
 
 import tkinter as tk

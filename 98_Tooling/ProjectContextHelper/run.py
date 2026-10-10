@@ -3,62 +3,49 @@ File: run.py
 
 Purpose
 -------
-Project Context Helper - Entry Point
-This is the ONLY file meant to be run directly. Everything else lives
-in a purpose-built subfolder:
-    core/      the scan + export engine
-    services/  storage.py (all settings/profile/history persistence,
-               consolidated into one file) + updater.py (self-updates)
-    cli/       the argparse-based command-line interface
-    gui/       the tkinter desktop interface
-    docs/      CHANGELOG.md, README.md, and ARCHITECTURE.md
+Launch Project Context Helper within Brisart Research Archive through the shared CLI dispatcher;
+  no root argument opens the desktop GUI.
+
+The module-level main guard calls the imported cli.cli.main only during direct execution.
 
 Communication / relationships
 -----------------------------
-Direct module imports: pathlib, sys, cli.cli.
+Internal imports and exchanged symbols:
+- cli.cli: main.
+
+Consumers in the supplied source:
+No direct application-module importer is present in the supplied source; entry points/tests may
+  be invoked through their execution guards or discovery.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Reads command-line arguments through cli.cli; inserts its own directory into sys.path before
+  importing the dispatcher.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+The main guard prevents launch when imported. CLI validation and GUI failures are handled
+  downstream.
+
+Importing run.py changes sys.path but does not call main unless __name__ is __main__.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Source launch imports tkinter through the CLI even for command-line operations; a Python
+  installation with tkinter is needed.
+
+The entry point does not package dependencies or detect an absent graphical display; those
+  failures arise during imports/GUI creation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
 
-Additional module documentation
--------------------------------
-Project Context Helper - Entry Point
-This is the ONLY file meant to be run directly. Everything else lives
-in a purpose-built subfolder:
-    core/      the scan + export engine
-    services/  storage.py (all settings/profile/history persistence,
-               consolidated into one file) + updater.py (self-updates)
-    cli/       the argparse-based command-line interface
-    gui/       the tkinter desktop interface
-    docs/      CHANGELOG.md, README.md, and ARCHITECTURE.md
-
-Usage:
-    python run.py                      Launch the desktop GUI
-    python run.py <folder>             Build a context export for <folder>
-    python run.py <folder> --profile standard
-    python run.py <folder> --git-state
-    python run.py <folder> --save-profile "My Profile"
-    python run.py <folder> --load-profile "My Profile"
+    python run.py
+    python run.py "/path/to/project" --profile archive --no-zip
+    python run.py "/path/to/project" --profile standard --remember-settings
     python run.py --list-profiles
-    python run.py --delete-profile "My Profile"
-    python run.py --check-updates
-    python run.py --help               Show all available CLI options
-
-See docs/ARCHITECTURE.md for the full folder layout and docs/README.md
-for a quick-start guide.
+    python run.py --help
 """
 
 from pathlib import Path

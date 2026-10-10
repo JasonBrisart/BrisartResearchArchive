@@ -3,45 +3,154 @@ File: services/storage.py
 
 Purpose
 -------
-Storage
-Single consolidated module for every piece of persisted application
-state that is not part of a build's own output files.
+Centralize preferences, last-used export settings, custom profiles, and export history
+  persistence for Project Context Helper in Brisart Research Archive.
+
+Implemented responsibilities:
+- application_dir: Resolve persisted state beside sys.executable for frozen mode or two
+  directories above storage.py for source mode.
+- _atomic_write: Create the parent, write a PID-named sibling temp file, flush/fsync, replace
+  the destination, and attempt temp cleanup before reraising caught failures.
+- app_settings_path: Return app_settings.json beneath an explicit app_dir or the resolved
+  application directory.
+- load_preferences: Return defaults for missing/unreadable/invalid-JSON preferences; otherwise
+  read three keys with bool coercion into AppPreferences.
+- save_preferences: Serialize AppPreferences to JSON via _atomic_write and suppress write
+  exceptions.
+- last_settings_path: Return last_export_settings.json beneath an explicit app_dir or the
+  application directory.
+- save_last_settings: Serialize ScanSettings to the last-settings file using the atomic writer;
+  suppress failures because settings memory is a convenience feature.
+- load_last_settings: Return None for missing, unreadable, unparseable, or unconvertible saved
+  settings; otherwise reconstruct ScanSettings.
+- clear_last_settings: Attempt to unlink the last-settings file when present; suppress
+  filesystem failures.
+- profiles_path: Return custom_profiles.json beneath the chosen application directory.
+- is_reserved_name: Trim/lowercase the requested name and check it against the two built-in
+  profile names.
+- _load_all_profiles: Read the custom-profile JSON object and its profiles dictionary; return an
+  empty dictionary for missing/unreadable/invalid shapes.
+- _save_all_profiles: Wrap the profile mapping under a profiles key and atomically serialize it;
+  errors propagate.
+- list_profiles: Return sorted keys from the saved profile mapping.
+- profile_exists: Trim the name and test exact case-sensitive membership in saved profiles.
+- save_profile: Trim the name, reject empty/reserved names, merge serialized settings into the
+  existing mapping, and atomically write it; an existing exact name is overwritten.
+- load_profile: Trim and look up the name, then reconstruct ScanSettings; return None for
+  absent/unconvertible entries.
+- delete_profile: Trim and remove an exact saved name, write the remaining mapping, and return
+  True; return False if absent.
+- history_path: Return build_history.json beneath the chosen application directory.
+- load_history: Read JSON history; instantiate HistoryEntry for each item, skipping constructor
+  TypeError records; missing/unreadable/invalid JSON returns an empty list.
+- save_history: Serialize HistoryEntry objects as a JSON list through _atomic_write; errors
+  propagate.
+- append_history_entry: Load history, prepend the new entry, retain at most MAX_HISTORY_ENTRIES,
+  persist, and return the retained list.
+- recent_entries: Return the first limit entries of loaded history using list slicing.
+- clear_history: Persist an empty history list without deleting any export outputs.
 
 Communication / relationships
 -----------------------------
-Direct module imports: __future__, dataclasses, pathlib, json, os, sys, core.constants, core.models.
+Internal imports and exchanged symbols:
+- core.constants: APP_SETTINGS_FILENAME, BUILD_HISTORY_FILENAME, CUSTOM_PROFILES_FILENAME,
+  LAST_SETTINGS_FILENAME, MAX_HISTORY_ENTRIES, PROFILE_ARCHIVE, PROFILE_STANDARD.
+- core.models: ScanSettings.
+
+Consumers in the supplied source:
+- cli/cli.py imports this module through services.
+- core/builder.py imports HistoryEntry, append_history_entry.
+- gui/about_tab.py imports HistoryEntry, application_dir, clear_history, recent_entries.
+- gui/builders.py imports AppPreferences, load_preferences, save_preferences,
+  load_last_settings, save_last_settings.
+- gui/profiles_section.py imports this module through services.
+- services/updater.py imports application_dir.
 
 Settings / parameters
 ---------------------
-Module-level named settings: RESERVED_PROFILE_NAMES. See their definitions below for values.
+Source data lives beside run.py; frozen data lives beside the executable. Stores four JSON
+  files. History is capped at 50 entries; recent_entries defaults to 10.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- application_dir() -> Path
+- _atomic_write(path: Path, text: str) -> None
+- app_settings_path(app_dir: Path | None=None) -> Path
+- load_preferences(app_dir: Path | None=None) -> AppPreferences
+- save_preferences(preferences: AppPreferences, app_dir: Path | None=None) -> None
+- last_settings_path(app_dir: Path | None=None) -> Path
+- save_last_settings(settings: ScanSettings, app_dir: Path | None=None) -> None
+- load_last_settings(app_dir: Path | None=None) -> ScanSettings | None
+- clear_last_settings(app_dir: Path | None=None) -> None
+- profiles_path(app_dir: Path | None=None) -> Path
+- is_reserved_name(name: str) -> bool
+- _load_all_profiles(app_dir: Path | None=None) -> dict[str, dict]
+- _save_all_profiles(profiles: dict[str, dict], app_dir: Path | None=None) -> None
+- list_profiles(app_dir: Path | None=None) -> list[str]
+- profile_exists(name: str, app_dir: Path | None=None) -> bool
+- save_profile(name: str, settings: ScanSettings, app_dir: Path | None=None) -> None
+- load_profile(name: str, app_dir: Path | None=None) -> ScanSettings | None
+- delete_profile(name: str, app_dir: Path | None=None) -> bool
+- history_path(app_dir: Path | None=None) -> Path
+- load_history(app_dir: Path | None=None) -> list[HistoryEntry]
+- save_history(entries: list[HistoryEntry], app_dir: Path | None=None) -> None
+- append_history_entry(entry: HistoryEntry, app_dir: Path | None=None) -> list[HistoryEntry]
+- recent_entries(limit: int=10, app_dir: Path | None=None) -> list[HistoryEntry]
+- clear_history(app_dir: Path | None=None) -> None
+
+Module constants and expressions:
+- RESERVED_PROFILE_NAMES = {PROFILE_STANDARD, PROFILE_ARCHIVE}
+
+AppPreferences record fields:
+- open_after_build: bool = False
+- check_updates_startup: bool = False
+- auto_install_updates: bool = False
+
+HistoryEntry record fields:
+- created: str (required constructor field)
+- root: str (required constructor field)
+- profile: str (required constructor field)
+- export_dir: str (required constructor field)
+- included_count: int (required constructor field)
+- skipped_count: int (required constructor field)
+- total_included_bytes: int (required constructor field)
+- git_branch: str = ''
+- git_commit_short: str = ''
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Atomic-write helper flushes/fsyncs a sibling temporary file before os.replace and attempts
+  cleanup on caught failures. Many convenience loaders/writers fall back or suppress errors;
+  custom-profile writes can propagate errors.
+
+load_preferences catches file/JSON errors but assumes the decoded value has .get; a valid JSON
+  list/null can still raise. bool("false") is True. load_history skips constructor TypeError
+  items but does not validate the entire decoded container or field types.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+No cross-process locking or transactional multi-file persistence. Hard termination can leave
+  temporary files. Preference loading assumes a JSON object and truth-coerces values. Silent
+  fallbacks can hide corrupted state or failed saves.
+
+The PID-only temporary filename can collide between concurrent writes in the same process. Read-
+  modify-write profile/history operations can lose concurrent updates. No automatic recovery of
+  a malformed state file is implemented.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
 
-Additional module documentation
--------------------------------
-Storage
-Single consolidated module for every piece of persisted application
-state that is not part of a build's own output files.
+    from pathlib import Path
+    from tempfile import TemporaryDirectory
+    from core.constants import settings_for_profile
+    from services import storage
 
-Sections in this file, each self-contained but sharing the same
-application_dir() helper and the same atomic-write helper:
-  1. Shared application_dir() / _atomic_write() helpers
-  2. App Preferences      (app_settings.json)
-  3. Last Used Settings   (last_export_settings.json) -- always-on GUI memory
-  4. Custom Profiles      (custom_profiles.json)       -- named, explicit Save/Load/Delete
-  5. Build History        (build_history.json)         -- Recent Exports list
-
-No external dependencies.
+    with TemporaryDirectory() as directory:
+        app_dir = Path(directory)
+        storage.save_profile("Review", settings_for_profile("archive"), app_dir)
+        assert storage.list_profiles(app_dir) == ["Review"]
+        assert storage.load_profile(" Review ", app_dir).profile == "archive"
+        assert storage.delete_profile("Review", app_dir) is True
 """
 
 from __future__ import annotations

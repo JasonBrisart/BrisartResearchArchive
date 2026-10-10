@@ -3,34 +3,123 @@ File: core/git_state.py
 
 Purpose
 -------
-Git Repository State
+Inspect local Git metadata using standard-library parsing without invoking a Git executable;
+  provide optional branch, HEAD, working-tree, and first-parent history information.
+
+Implemented responsibilities:
+- find_git_dir: Check only root/.git; return the directory directly or resolve a gitdir pointer
+  file relative to root; unreadable/invalid pointers return None.
+- read_head_ref: Read HEAD; return (branch, None) for a symbolic ref while preserving slash-
+  containing names, or (None, object_id) for detached HEAD; unreadable/empty HEAD returns (None,
+  None).
+- is_valid_sha: Accept only strings of 4 through 40 hexadecimal characters; this is a shape
+  check, not proof that the object exists or its content is authentic.
+- resolve_branch_sha: Try the loose refs/heads/<branch> file, then an exact matching packed-refs
+  entry; accept only shape-valid object IDs and otherwise return None.
+- read_loose_object: Validate the object-ID shape, read/decompress objects/<first
+  two>/<remaining characters>, split its header/content, and return (object_type, content);
+  missing/invalid data returns None.
+- parse_commit_object: Decode commit bytes with UTF-8 replacement, separate headers/message, and
+  return tree, parent IDs, author, committer, and stripped message fields.
+- parse_tree_object: Walk binary mode/name/NUL/20-byte-SHA entries and return (mode, name,
+  sha_hex) tuples; stop on malformed delimiters or truncated object IDs.
+- git_blob_sha1: Hash the exact Git blob header plus caller-supplied bytes, producing the SHA-1
+  used for working-file comparison against HEAD.
+- walk_tree: Recursively expand loose tree objects into relative-path/blob-ID mappings;
+  accumulate warnings for unavailable trees and excluded submodule gitlinks.
+- compute_working_tree_status: Build HEAD blob paths, walk nonexcluded working files, hash
+  tracked bytes, identify missing tracked paths and untracked files, and return status plus
+  warnings. Entirely unavailable tree data yields an unverified None result.
+- collect_recent_commits: Walk first-parent loose commit objects up to limit; format short IDs
+  and subject lines; stop with warnings for cycles, unavailable objects, or a noncommit object.
+- build_git_state: Combine root Git discovery, HEAD resolution, optional working-tree
+  comparison, and first-parent history into GitState; catch unexpected parser errors and return
+  a warning-bearing record.
 
 Communication / relationships
 -----------------------------
-Direct module imports: __future__, dataclasses, pathlib, hashlib, zlib.
+Internal imports and exchanged symbols:
+This file imports no other application modules; its implementation uses the standard library.
+
+Consumers in the supplied source:
+- core/builder.py imports build_git_state.
+- core/exporters.py imports GitState.
 
 Settings / parameters
 ---------------------
-Module-level named settings: GIT_DIRNAME, HEAD_FILENAME, PACKED_REFS_FILENAME, TREE_DIR_MODES, TREE_SUBMODULE_MODE, HEADS_REF_PREFIX. See their definitions below for values.
+Accepts a project root, directory/file exclusions, and a commit limit (default 5). Uses SHA-1
+  blob comparison and loose-object parsing.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- find_git_dir(root: Path) -> Path | None
+- read_head_ref(git_dir: Path) -> tuple[str | None, str | None]
+- is_valid_sha(value: str) -> bool
+- resolve_branch_sha(git_dir: Path, branch: str) -> str | None
+- read_loose_object(git_dir: Path, sha: str) -> tuple[str, bytes] | None
+- parse_commit_object(content: bytes) -> dict
+- parse_tree_object(content: bytes) -> list[tuple[str, str, str]]
+- git_blob_sha1(data: bytes) -> str
+- walk_tree(git_dir: Path, tree_sha: str, prefix: str='') -> tuple[dict[str, str], list[str]]
+- compute_working_tree_status(root: Path, git_dir: Path, tree_sha: str, exclude_dirs: set[str],
+  exclude_files: set[str]) -> tuple[bool | None, str, list[str], list[str], list[str]]
+- collect_recent_commits(git_dir: Path, head_sha: str, limit: int=5) -> tuple[list[str],
+  list[str]]
+- build_git_state(root: Path, exclude_dirs: set[str] | None=None, exclude_files: set[str] |
+  None=None, commit_limit: int=5) -> GitState
+
+Module constants and expressions:
+- GIT_DIRNAME = '.git'
+- HEAD_FILENAME = 'HEAD'
+- PACKED_REFS_FILENAME = 'packed-refs'
+- TREE_DIR_MODES = ('40000', '040000')
+- TREE_SUBMODULE_MODE = '160000'
+- HEADS_REF_PREFIX = 'refs/heads/'
+
+GitState record fields:
+- is_git_repo: bool (required constructor field)
+- branch: str | None = None
+- head_commit: str | None = None
+- head_commit_short: str | None = None
+- is_dirty: bool | None = None
+- dirty_status: str = 'unknown'
+- modified_files: tuple[str, ...] = field(default_factory=tuple)
+- untracked_files: tuple[str, ...] = field(default_factory=tuple)
+- recent_commits: tuple[str, ...] = field(default_factory=tuple)
+- detection_method: str = 'loose_object_parse'
+- warnings: tuple[str, ...] = field(default_factory=tuple)
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Supports a .git directory or gitdir pointer at the selected root. Missing/packed objects produce
+  warnings; unavailable dirty status can be None. Commit cycles stop history traversal.
+
+Detached HEAD has no branch. A nonpositive history limit yields no recent commits. Missing
+  tracked paths are marked deleted after exclusions are applied; consequently excluded tracked
+  files can be reported as deleted. An unreadable tracked file adds a warning without
+  necessarily forcing is_dirty=None.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Does not search parent directories, parse packfiles, interpret .gitignore, or compare the index.
+  Linked worktree common-directory resolution and SHA-256 repositories are not implemented.
+  Partial subtree warnings can coexist with a dirty/clean result; do not treat that result as
+  full Git verification.
+
+Loose-object parsing does not validate object size headers or recompute object IDs. Tree
+  recursion has no visited-object cycle guard. Raw-byte working-file comparison does not
+  implement Git filters, file-mode/index semantics, or full symlink handling.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
 
-Additional module documentation
--------------------------------
-Git Repository State
+    from pathlib import Path
+    from core.git_state import build_git_state
 
-Pure Python, no external dependencies, no subprocess calls into a
-git binary. Extras/optional feature: opt-in, off by default.
+    state = build_git_state(Path("/path/to/repository"), commit_limit=5)
+    print(state.branch, state.head_commit_short, state.is_dirty)
+    for warning in state.warnings:
+        print(warning)
 """
 
 from __future__ import annotations

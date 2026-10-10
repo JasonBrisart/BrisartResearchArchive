@@ -3,27 +3,69 @@ File: core/builder.py
 
 Purpose
 -------
-Defines create_context for 98_Tooling/ProjectContextHelper/core.
+Orchestrate root validation, optional Git inspection, scanning, output rendering, ZIP creation,
+  and best-effort export history recording.
+
+Implemented responsibilities:
+- create_context: Resolve/validate root; inspect Git when requested; create output paths; scan;
+  write context, manifest, summary, and settings; optionally ZIP original sources; append best-
+  effort history; return BuildResult.
 
 Communication / relationships
 -----------------------------
-Direct module imports: pathlib, json, core.constants, core.exporters, core.git_state, services.storage, core.models, core.scanner, core.utils.
+Internal imports and exchanged symbols:
+- core.constants: CONTEXT_FILENAME, MANIFEST_FILENAME, SETTINGS_FILENAME, SNAPSHOT_FILENAME,
+  SUMMARY_FILENAME.
+- core.exporters: build_manifest, build_context_markdown, build_summary_text,
+  create_snapshot_zip.
+- core.git_state: build_git_state.
+- services.storage: HistoryEntry, append_history_entry.
+- core.models: BuildResult, ScanSettings.
+- core.scanner: collect_included_files.
+- core.utils: timestamp_now, timestamp_slug, validate_root.
+
+Consumers in the supplied source:
+- cli/cli.py imports create_context.
+- gui/builders.py imports create_context.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Accepts a root Path and optional ScanSettings; returns BuildResult. Omitting settings constructs
+  ScanSettings directly, not the archive preset.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- create_context(root: Path, settings: ScanSettings | None=None) -> BuildResult
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Validates the root before building. History-write failures are suppressed after export creation.
+  A completeness failure stops rendering, although the output directory may already exist.
+
+A configured absolute output_dir_name or parent traversal is not rejected here. The output
+  directory is created before scanning; custom output directory names are not automatically
+  added to exclusions. Two builds in the same second can reuse a timestamped directory.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Outputs are written sequentially, not transactionally. Files can change between scanning,
+  rendering, and ZIP creation. Timestamp folder names have one-second resolution.
+
+The default ScanSettings() has empty extension sets, so a direct create_context(root) call is
+  not equivalent to an interface archive export. History is stored beside the application, not
+  in the selected project root.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    from pathlib import Path
+    from core.builder import create_context
+    from core.constants import settings_for_profile
+
+    settings = settings_for_profile("archive")
+    settings.include_snapshot_zip = False
+    result = create_context(Path("/path/to/project"), settings)
+    print(result.context_path, result.included_count)
 """
 
 from pathlib import Path

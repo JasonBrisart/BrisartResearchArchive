@@ -3,30 +3,74 @@ File: gui/scroll_frame.py
 
 Purpose
 -------
-Scrollable Frame
-A small reusable helper that wraps a tab's content in a vertically
-scrollable area.
-No external dependencies; pure tkinter.
+Create a reusable vertically scrollable tkinter content frame for Options and Extras.
+
+Implemented responsibilities:
+- create_scrollable_area: Create a canvas, vertical scrollbar, and embedded content frame; wire
+  resize/scroll callbacks and return the content frame for callers to populate.
+- on_content_configure: Update the canvas scrollregion from its current item bounding box after
+  content geometry changes.
+- on_canvas_configure: Resize the embedded content window to match the canvas event width.
+- on_mousewheel: Convert MouseWheel delta to integer scroll units using delta/120 and scroll the
+  canvas vertically.
+- on_mousewheel_linux_up: Scroll the canvas upward by one unit for Button-4 events.
+- on_mousewheel_linux_down: Scroll the canvas downward by one unit for Button-5 events.
+- bind_wheel: Install global MouseWheel/Button-4/Button-5 handlers when the pointer enters the
+  canvas.
+- unbind_wheel: Remove the global wheel bindings when the pointer leaves the canvas.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tkinter.
+Internal imports and exchanged symbols:
+This file imports no other application modules; its implementation uses the standard library.
+
+Consumers in the supplied source:
+- gui/extras_tab.py imports create_scrollable_area.
+- gui/options_tab.py imports create_scrollable_area.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Receives a parent frame and returns the content frame. Canvas size/configure events synchronize
+  content width and scroll region.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- create_scrollable_area(parent: tk.Frame) -> tk.Frame
+- on_content_configure(_event=None) -> None
+- on_canvas_configure(event) -> None
+- on_mousewheel(event) -> None
+- on_mousewheel_linux_up(_event) -> None
+- on_mousewheel_linux_down(_event) -> None
+- bind_wheel(_event=None) -> None
+- unbind_wheel(_event=None) -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Mouse-wheel bindings are installed on canvas entry and removed on exit. Handles MouseWheel and
+  Linux Button-4/Button-5 events.
+
+A MouseWheel delta smaller than 120 can truncate to zero scroll units. Global wheel handlers are
+  installed/removed on canvas enter/leave, not per child widget.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Uses global bind_all/unbind_all, which can affect other widgets. MouseWheel delta scaling
+  assumes 120-unit steps and is not tuned for every platform/device.
+
+unbind_all removes all handlers for the event sequence, not only this component's callback.
+  Multiple scrollable components can interfere with each other's global bindings.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    import tkinter as tk
+    from gui.scroll_frame import create_scrollable_area
+
+    window = tk.Tk()
+    content = create_scrollable_area(window)
+    for index in range(30):
+        tk.Label(content, text=f"Export option {index}").pack(anchor="w")
+    window.mainloop()
 """
 
 import tkinter as tk

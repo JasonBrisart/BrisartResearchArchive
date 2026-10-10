@@ -3,27 +3,72 @@ File: gui/dialogs.py
 
 Purpose
 -------
-Defines open_folder, show_error, show_warning, show_info, ask_yes_no, format_git_line, show_build_complete for 98_Tooling/ProjectContextHelper/gui.
+Wrap tkinter messages, folder opening, and build-complete formatting shared by desktop tabs.
+
+Implemented responsibilities:
+- open_folder: Try Windows os.startfile; if unavailable display the path, and if opening fails
+  display an error dialog.
+- show_error: Display a tkinter error messagebox with the supplied title and message.
+- show_warning: Display a tkinter warning messagebox with the supplied title and message.
+- show_info: Display a tkinter informational messagebox with the supplied title and message.
+- ask_yes_no: Display a confirmation messagebox and return the user's boolean choice.
+- format_git_line: Format BuildResult branch/commit and dirty/clean/unverified status for a
+  completion dialog; omit the line when both identifiers are absent.
+- show_build_complete: Display output folder, optional Git line, included/skipped counts, and
+  optional snapshot path from BuildResult.
 
 Communication / relationships
 -----------------------------
-Direct module imports: pathlib, os, tkinter, core.models.
+Internal imports and exchanged symbols:
+- core.models: BuildResult.
+
+Consumers in the supplied source:
+- gui/about_tab.py imports ask_yes_no, open_folder, show_error, show_info.
+- gui/build_tab.py imports open_folder, show_build_complete, show_error, show_info,
+  show_warning.
+- gui/profiles_section.py imports ask_yes_no, show_error, show_info, show_warning.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Accepts dialog titles/messages, folder Paths, or BuildResult. Git formatting distinguishes
+  dirty, clean, and unverified.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- open_folder(path: Path) -> None
+- show_error(title: str, message: str) -> None
+- show_warning(title: str, message: str) -> None
+- show_info(title: str, message: str) -> None
+- ask_yes_no(title: str, message: str) -> bool
+- format_git_line(result: BuildResult) -> str
+- show_build_complete(result: BuildResult) -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+No Git branch/commit yields no Git summary. Missing os.startfile falls back to displaying the
+  path; other opening errors show an error dialog.
+
+BuildResult.snapshot_path=None omits the ZIP line. Git is_dirty=None is displayed as unverified,
+  not clean.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Automatic folder opening uses Windows os.startfile. On other platforms the helper displays the
+  folder path rather than launching a file manager. Dialogs require a tkinter GUI context.
+
+The completion dialog reports BuildResult metadata only; it does not independently reopen/verify
+  the output files.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    import tkinter as tk
+    from gui.dialogs import show_info
+
+    window = tk.Tk()
+    window.withdraw()
+    show_info("Project Context Helper", "Export review completed.")
+    window.destroy()
 """
 
 from pathlib import Path

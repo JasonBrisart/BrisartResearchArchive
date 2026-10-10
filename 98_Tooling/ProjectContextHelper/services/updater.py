@@ -3,27 +3,160 @@ File: services/updater.py
 
 Purpose
 -------
-Defines is_frozen, UpdateInfo, InstallResult, normalize_version, is_newer_version, version_slug, strip_release_tag_prefix, find_latest_release_payload for 98_Tooling/ProjectContextHelper/services.
+Implement the existing legacy GitHub release check, optional download/digest verification,
+  source backup/apply, and Windows executable replacement paths.
+
+Implemented responsibilities:
+- is_frozen: Return the truth value of sys.frozen, defaulting to False.
+- normalize_version: Keep digits/dots, convert numeric segments to an integer tuple, and return
+  (0,) when none remain.
+- is_newer_version: Compare the two normalized integer tuples with Python tuple ordering.
+- version_slug: Retain alphanumeric characters, dots, hyphens, and underscores for update path
+  components; use latest when nothing remains.
+- strip_release_tag_prefix: Remove the configured prefix only when the tag starts with it;
+  otherwise return the original tag.
+- find_latest_release_payload: Return the first release dictionary whose tag_name starts with
+  the requested prefix; do not sort or independently compare all versions.
+- resolve_asset: Select the first EXE asset in frozen mode or first ZIP asset in source mode;
+  return URL/kind/digest, or empty URL with kind none when no match exists.
+- check_for_updates: Fetch/decode the configured releases list with a User-Agent and timeout,
+  choose a matching tag/asset, compare versions, and return UpdateInfo; network/other exceptions
+  become failure messages.
+- verify_digest: Skip missing/malformed/unsupported digests; for sha256:<hex>, hash downloaded
+  bytes and raise ValueError when the expected value differs.
+- download_update: Require a download URL, create staging, download bytes, optionally verify
+  digest, write download.zip, extract it, and return staging; BadZipFile becomes a descriptive
+  ValueError.
+- find_release_root: Ignore download.zip; unwrap one sole child directory when present,
+  otherwise use the extraction directory itself.
+- backup_application: Create a version/timestamp backup directory and copy nonprotected top-
+  level application entries, ignoring nested __pycache__ directories.
+- apply_extracted_update: Walk source files, skip protected top-level paths/cache/download.zip,
+  create destination parents, overwrite with copy2, and return applied destination paths.
+- apply_staged_update: Resolve the staged source root, back up the application, copy updated
+  files, and return InstallResult with restart_required=True.
+- install_update: Reject non-ZIP asset kinds, download/stage the ZIP, and apply it using
+  APP_VERSION as the backup version.
+- backup_exe: Copy the target executable into a version/timestamp-named backup file and return
+  that path.
+- stage_exe_update: Download executable bytes to staged_update.exe beneath staging, optionally
+  verify a supplied digest, and return the staged path.
+- _escape_batch_path: Double literal percent characters before embedding filesystem paths in a
+  Windows batch script.
+- build_apply_batch_script: Write apply_update.bat with source/target/relaunch variables, up to
+  20 deletion attempts, a move, optional relaunch, and self-deletion; return its path.
+- launch_apply_script: Reject non-Windows platforms; launch cmd.exe with detached/new-process-
+  group flags so replacement can outlive the GUI process.
+- apply_exe_update: Choose the running frozen executable when no target is supplied, back it up,
+  write/launch the swap script, and return the script path; caller must exit for replacement.
+- open_releases_page: Open the configured or supplied release URL through the default web
+  browser.
 
 Communication / relationships
 -----------------------------
-Direct module imports: __future__, dataclasses, pathlib, datetime, hashlib, io, json, shutil, subprocess, sys, urllib.error, urllib.request, webbrowser, zipfile, core.constants, services.storage.
+Internal imports and exchanged symbols:
+- core.constants: APP_NAME, APP_VERSION, EXPORTS_DIRNAME, RELEASE_TAG_PREFIX, RELEASES_LIST_URL,
+  RELEASES_URL, STAGED_EXE_FILENAME.
+- services.storage: application_dir.
+
+Consumers in the supplied source:
+- cli/cli.py imports apply_exe_update, apply_staged_update, check_for_updates, download_update,
+  open_releases_page, stage_exe_update.
+- gui/about_tab.py imports apply_exe_update, apply_staged_update, check_for_updates,
+  download_update, is_frozen, open_releases_page, stage_exe_update.
 
 Settings / parameters
 ---------------------
-Module-level named settings: UPDATES_DIRNAME, BACKUPS_DIRNAME, PROTECTED_NAMES. See their definitions below for values.
+Uses release endpoints/tag prefix from core.constants. Check timeout defaults to 6 seconds, ZIP
+  download to 60, and executable staging to 180. PROTECTED_NAMES excludes selected top-level
+  folders/files from backup/apply.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- is_frozen() -> bool
+- normalize_version(value: str) -> tuple[int, ...]
+- is_newer_version(latest: str, current: str) -> bool
+- version_slug(value: str) -> str
+- strip_release_tag_prefix(tag_name: str, tag_prefix: str=RELEASE_TAG_PREFIX) -> str
+- find_latest_release_payload(releases: list[dict], tag_prefix: str) -> dict | None
+- resolve_asset(payload: dict) -> tuple[str, str, str]
+- check_for_updates(timeout_seconds: int=6) -> UpdateInfo
+- verify_digest(data: bytes, digest: str) -> None
+- download_update(info: UpdateInfo, dest_dir: Path | None=None, timeout_seconds: int=60) -> Path
+- find_release_root(extract_dir: Path) -> Path
+- backup_application(app_dir: Path, current_version: str, backup_root: Path | None=None) -> Path
+- apply_extracted_update(source_root: Path, app_dir: Path) -> list[Path]
+- apply_staged_update(staged_dir: Path, app_dir: Path | None=None, current_version:
+  str=APP_VERSION) -> InstallResult
+- install_update(info: UpdateInfo, app_dir: Path | None=None, dest_dir: Path | None=None,
+  timeout_seconds: int=60) -> InstallResult
+- backup_exe(target_exe_path: Path, current_version: str, backup_root: Path | None=None) -> Path
+- stage_exe_update(info: UpdateInfo, dest_dir: Path | None=None, timeout_seconds: int=180) ->
+  Path
+- _escape_batch_path(value: str) -> str
+- build_apply_batch_script(new_exe_path: Path, target_exe_path: Path, relaunch: bool=True) ->
+  Path
+- launch_apply_script(script_path: Path) -> None
+- apply_exe_update(staged_exe_path: Path, target_exe_path: Path | None=None, current_version:
+  str=APP_VERSION, relaunch: bool=True) -> Path
+- open_releases_page(url: str=RELEASES_URL) -> None
+
+Module constants and expressions:
+- UPDATES_DIRNAME = 'updates'
+- BACKUPS_DIRNAME = 'backups'
+- PROTECTED_NAMES = {UPDATES_DIRNAME, EXPORTS_DIRNAME, '__pycache__', '.git', 'download.zip'}
+
+UpdateInfo record fields:
+- update_available: bool (required constructor field)
+- current_version: str (required constructor field)
+- latest_version: str (required constructor field)
+- message: str (required constructor field)
+- release_url: str (required constructor field)
+- download_url: str = ''
+- asset_kind: str = 'zip'
+- asset_digest: str = ''
+
+InstallResult record fields:
+- backup_dir: Path (required constructor field)
+- staged_dir: Path (required constructor field)
+- applied_files: tuple[Path, ...] (required constructor field)
+- restart_required: bool = True
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+No compatible asset returns asset_kind="none". Invalid ZIP downloads raise ValueError. SHA256
+  mismatches raise ValueError when a supported digest is supplied. Executable script launch
+  rejects non-Windows platforms.
+
+Missing/unsupported digest means verification is skipped. A staging directory can retain files
+  from a prior attempt. find_release_root unwraps only one sole directory. backup/apply can fail
+  after partially copying files.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This is a network-dependent legacy feature, not the archive distribution migration.
+  Missing/unsupported digests skip verification. Source updates overwrite files without removing
+  obsolete ones or rolling back automatically; state files are not all protected. Version
+  comparison is numeric extraction, not full semantic-version parsing.
+
+ZIP extraction and application copying do not constitute a trusted-package validation process.
+  Version normalization strips nonnumeric text rather than honoring prerelease semantics. The
+  batch script does not check move success before relaunch and uses delayed expansion, which can
+  affect paths containing exclamation marks.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    from services.updater import normalize_version, verify_digest
+    import hashlib
+
+    assert normalize_version("3.1.4") == (3, 1, 4)
+    fixture = b"local fixture"
+    verify_digest(fixture, "sha256:" + hashlib.sha256(fixture).hexdigest())
+
+    The example performs no network access or installation. Actual legacy release
+    checking is invoked by python run.py --check-updates. Installation commands
+    modify application files and are intentionally not part of this example.
 """
 
 from __future__ import annotations

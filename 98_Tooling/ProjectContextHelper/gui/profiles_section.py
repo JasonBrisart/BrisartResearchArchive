@@ -3,27 +3,77 @@ File: gui/profiles_section.py
 
 Purpose
 -------
-Defines create_custom_profiles_section for 98_Tooling/ProjectContextHelper/gui.
+Create named custom profile Save, Load, Delete, and Refresh controls on the Extras tab.
+
+Implemented responsibilities:
+- create_custom_profiles_section: Build profile-name selection and Save/Load/Delete/Refresh
+  buttons with callbacks that use storage and GUI settings conversion.
+- refresh_names: Reload saved profile names and replace the combobox's available values.
+- save_current: Trim/validate the name, reject built-in names, validate current GUI settings,
+  confirm overwrite, save through storage, refresh names, and display success.
+- load_selected: Require a name, load settings or report missing data, apply the loaded profile
+  to GUI state, and display confirmation.
+- delete_selected: Require a name, confirm deletion, remove the profile, refresh names, and
+  clear selection on success.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tkinter, tkinter, core.constants, gui.builders, gui.dialogs, services.
+Internal imports and exchanged symbols:
+- core.constants: PROFILE_ARCHIVE, PROFILE_STANDARD.
+- gui.builders: GuiState, apply_custom_profile_to_state, build_settings_from_state.
+- gui.dialogs: ask_yes_no, show_error, show_info, show_warning.
+- services: storage.
+
+Consumers in the supplied source:
+- gui/extras_tab.py imports create_custom_profiles_section.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Uses GuiState, GUI settings conversion, and services.storage. Names are trimmed; built-in names
+  are reserved case-insensitively.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- create_custom_profiles_section(parent: tk.Frame, state: GuiState) -> None
+- refresh_names() -> None
+- save_current() -> None
+- load_selected() -> None
+- delete_selected() -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Empty names and invalid settings show warnings. Existing profiles require overwrite
+  confirmation. Missing profiles show errors; deletion requires confirmation.
+
+Reserved-name checking is case-insensitive, but stored custom names are case-sensitive.
+  Save/load trim whitespace. GUI save/delete callbacks catch selected validation errors, not
+  every filesystem exception.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Custom profile names remain case-sensitive after trimming. GUI serialization does not retain
+  every hidden ScanSettings field. Some storage I/O errors are not caught by these callbacks.
+
+Profile deletion changes only the named profile record, not last-used settings or export
+  history. Loading changes the current GUI settings but does not immediately persist last-used
+  settings.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    import tkinter as tk
+    from gui.builders import make_gui_state
+    from gui.profiles_section import create_custom_profiles_section
+
+    window = tk.Tk()
+    state = make_gui_state()
+    frame = tk.Frame(window)
+    frame.pack(fill="both", expand=True)
+    create_custom_profiles_section(frame, state)
+    window.mainloop()
+
+    This constructs the component in an existing Tk application. For the complete
+    four-tab interface, use python run.py rather than running this module directly.
 """
 
 import tkinter as tk

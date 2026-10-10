@@ -3,27 +3,63 @@ File: gui/options_tab.py
 
 Purpose
 -------
-Defines create_options_tab for 98_Tooling/ProjectContextHelper/gui.
+Create scrollable export-size/output controls and output-section/preference checkboxes.
+
+Implemented responsibilities:
+- create_options_tab: Create a scrollable settings panel with output folder, decimal-MB limits,
+  detail cap, and ten bound output/preference checkboxes.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tkinter, gui.builders, gui.scroll_frame.
+Internal imports and exchanged symbols:
+- gui.builders: GuiState.
+- gui.scroll_frame: create_scrollable_area.
+
+Consumers in the supplied source:
+- gui/main_gui.py imports create_options_tab.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Binds output folder, decimal-MB size limits, skipped-detail limit, ZIP, redaction, hashes, line
+  counts, tree, index, contents, timestamps, and folder-opening controls to GuiState.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- create_options_tab(parent: tk.Frame, state: GuiState) -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Input validation occurs when settings are built, not while typing. Scroll support is delegated
+  to gui.scroll_frame.
+
+The output-folder field is stripped at build time and defaults to EXPORTS_DIRNAME when blank.
+  The Open Export Folder checkbox is an application preference, not a serialized ScanSettings
+  field.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Does not expose extension/exclusion sets, require_complete_source, or the Git history limit.
+  Redaction does not remove original content from ZIP snapshots.
+
+The options UI does not validate output path containment or update exclusion rules when the
+  output folder name changes.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    import tkinter as tk
+    from gui.builders import make_gui_state
+    from gui.options_tab import create_options_tab
+
+    window = tk.Tk()
+    state = make_gui_state()
+    frame = tk.Frame(window)
+    frame.pack(fill="both", expand=True)
+    create_options_tab(frame, state)
+    window.mainloop()
+
+    This constructs the component in an existing Tk application. For the complete
+    four-tab interface, use python run.py rather than running this module directly.
 """
 
 import tkinter as tk

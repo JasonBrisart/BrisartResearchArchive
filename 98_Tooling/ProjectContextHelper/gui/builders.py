@@ -3,27 +3,134 @@ File: gui/builders.py
 
 Purpose
 -------
-Defines GuiState, bytes_to_mb_text, make_bool_var, wire_preference_autosave, make_gui_state, profile_description, apply_settings_to_state, apply_profile_defaults for 98_Tooling/ProjectContextHelper/gui.
+Bridge tkinter state to ScanSettings, restore preferences/last successful build settings,
+  validate GUI inputs, and execute exports.
+
+Implemented responsibilities:
+- bytes_to_mb_text: Convert integer bytes to decimal MB text, omitting an unnecessary fractional
+  suffix for integral MB values.
+- make_bool_var: Construct a tkinter BooleanVar from a truth-coerced input value.
+- wire_preference_autosave: Register write traces on folder-opening, startup-check, and auto-
+  install variables; each change writes a complete AppPreferences record.
+- make_gui_state: Load archive defaults, app preferences, and last saved export settings;
+  initialize tkinter variables and wire preference autosave; leave folder/session-export state
+  empty.
+- profile_description: Return the standard/archive explanatory label or Unknown profile for an
+  unsupported string.
+- apply_settings_to_state: Copy the GUI-exposed output settings into tkinter variables; this
+  does not itself change profile_var or expose every ScanSettings field.
+- apply_profile_defaults: Resolve the current profile variable to its built-in preset and copy
+  the exposed settings into state.
+- apply_custom_profile_to_state: Set profile_var first, allowing the preset trace to fire, then
+  reapply loaded exposed values so custom settings win.
+- parse_mb_to_bytes: Parse decimal MB text, reject nonnumeric/nonfinite/nonpositive results, and
+  convert by multiplying by 1000000 and truncating to int.
+- parse_nonnegative_int: Parse a whole-number string and clamp negatives to zero; invalid
+  integer syntax raises a labeled ValueError.
+- build_settings_from_state: Start with the selected built-in preset, overlay exposed GUI
+  controls, validate size/detail inputs, and return ScanSettings.
+- run_project_build: Require a selected folder, build validated settings, call create_context,
+  remember the returned export directory in session state, and save last-used settings after
+  success.
+- persist: Nested preference trace callback: read the three current BooleanVars and pass a new
+  AppPreferences record to save_preferences.
 
 Communication / relationships
 -----------------------------
-Direct module imports: __future__, dataclasses, pathlib, tkinter, services.storage, core.constants, core.builder, core.models.
+Internal imports and exchanged symbols:
+- services.storage: AppPreferences, load_preferences, save_preferences, load_last_settings,
+  save_last_settings.
+- core.constants: DEFAULT_PROFILE, EXPORTS_DIRNAME, PROFILE_ARCHIVE, PROFILE_STANDARD,
+  settings_for_profile.
+- core.builder: create_context.
+- core.models: BuildResult, ScanSettings.
+
+Consumers in the supplied source:
+- gui/about_tab.py imports GuiState.
+- gui/build_tab.py imports GuiState, apply_profile_defaults, profile_description,
+  run_project_build.
+- gui/extras_tab.py imports GuiState.
+- gui/main_gui.py imports make_gui_state.
+- gui/options_tab.py imports GuiState.
+- gui/profiles_section.py imports GuiState, apply_custom_profile_to_state,
+  build_settings_from_state.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+GuiState holds tkinter variables. GUI sizes use decimal MB (1000000 bytes). Profile defaults
+  come from core.constants; preference changes autosave and successful builds save last-used
+  export settings.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- bytes_to_mb_text(value: int) -> str
+- make_bool_var(value: bool) -> tk.BooleanVar
+- wire_preference_autosave(state: GuiState) -> None
+- make_gui_state() -> GuiState
+- profile_description(profile: str) -> str
+- apply_settings_to_state(state: GuiState, settings: ScanSettings) -> None
+- apply_profile_defaults(state: GuiState) -> None
+- apply_custom_profile_to_state(state: GuiState, settings: ScanSettings) -> None
+- parse_mb_to_bytes(value: str, label: str) -> int
+- parse_nonnegative_int(value: str, label: str) -> int
+- build_settings_from_state(state: GuiState) -> ScanSettings
+- run_project_build(state: GuiState) -> BuildResult
+- persist(*_args) -> None
+
+GuiState record fields:
+- selected_folder: tk.StringVar (required constructor field)
+- profile_var: tk.StringVar (required constructor field)
+- output_dir_var: tk.StringVar (required constructor field)
+- max_file_mb_var: tk.StringVar (required constructor field)
+- max_total_mb_var: tk.StringVar (required constructor field)
+- skipped_limit_var: tk.StringVar (required constructor field)
+- include_zip_var: tk.BooleanVar (required constructor field)
+- redact_var: tk.BooleanVar (required constructor field)
+- include_hashes_var: tk.BooleanVar (required constructor field)
+- include_line_counts_var: tk.BooleanVar (required constructor field)
+- include_tree_var: tk.BooleanVar (required constructor field)
+- include_index_var: tk.BooleanVar (required constructor field)
+- include_contents_var: tk.BooleanVar (required constructor field)
+- include_skipped_details_var: tk.BooleanVar (required constructor field)
+- include_git_state_var: tk.BooleanVar (required constructor field)
+- timestamped_folder_var: tk.BooleanVar (required constructor field)
+- open_after_build_var: tk.BooleanVar (required constructor field)
+- check_updates_startup_var: tk.BooleanVar (required constructor field)
+- auto_install_var: tk.BooleanVar (required constructor field)
+- custom_profile_var: tk.StringVar (required constructor field)
+- status_text: tk.StringVar (required constructor field)
+- last_export_dir: Path | None = None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Rejects nonnumeric, nonfinite, and nonpositive size inputs. Negative skipped-detail limits clamp
+  to zero. Loading a custom profile reapplies its values after the profile-change callback.
+
+The selected project folder is not restored from saved export settings. Setting profile_var can
+  trigger the Build tab preset-reset trace; custom profile loading compensates by applying
+  values afterward. Positive fractional bytes below one truncate to zero and are rejected.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+The GUI does not expose every ScanSettings field. Rebuilding settings from the selected preset
+  can discard hidden custom fields. Unsaved edits are not automatically persisted as last-used
+  export settings.
+
+GUI conversion rebuilds settings from a preset; custom extension/exclusion sets and a custom Git
+  history limit are not retained by that conversion. Persistence failures may be suppressed by
+  storage.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    import tkinter as tk
+    from gui.builders import make_gui_state, build_settings_from_state
+
+    window = tk.Tk()
+    state = make_gui_state()
+    settings = build_settings_from_state(state)
+    print(settings.profile, settings.max_file_bytes)
+    window.destroy()
 """
 
 from __future__ import annotations

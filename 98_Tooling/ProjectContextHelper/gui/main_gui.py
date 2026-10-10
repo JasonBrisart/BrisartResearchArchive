@@ -3,27 +3,57 @@ File: gui/main_gui.py
 
 Purpose
 -------
-Defines run_gui for 98_Tooling/ProjectContextHelper/gui.
+Create the desktop window, shared GUI state, four-tab notebook, status bar, and startup update
+  callback.
+
+Implemented responsibilities:
+- run_gui: Create the Tk window, shared state, four notebook tabs, status bar, and delayed
+  startup-check callback, then enter mainloop.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tkinter, tkinter, core.constants, gui.builders, gui.build_tab, gui.options_tab, gui.extras_tab, gui.about_tab.
+Internal imports and exchanged symbols:
+- core.constants: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
+- gui.builders: make_gui_state.
+- gui.build_tab: create_build_tab.
+- gui.options_tab: create_options_tab.
+- gui.extras_tab: create_extras_tab.
+- gui.about_tab: create_about_tab.
+
+Consumers in the supplied source:
+- cli/cli.py imports run_gui.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Window starts at 860x760 with a 780x680 minimum. Tabs are Build, Options, Extras, and About;
+  startup callback is scheduled after 500 milliseconds.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- run_gui() -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+The update callback checks its preference before performing network work. The main guard allows
+  direct module execution when package imports are resolvable.
+
+The delayed callback is registered after tab construction and runs inside the same event loop.
+  Missing tkinter/display errors are not caught by run_gui.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Requires tkinter and a graphical display. Startup/build/update work is not moved to a worker
+  thread. Use run.py as the supported source entry point.
+
+No background worker, cancellation flow, or GUI startup exception wrapper is implemented here.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    python run.py
+
+    This enters run.py -> cli.cli.main -> run_cli -> run_gui when no root or
+    standalone management action is supplied.
 """
 
 import tkinter as tk

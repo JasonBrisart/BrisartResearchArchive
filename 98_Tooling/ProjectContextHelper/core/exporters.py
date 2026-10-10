@@ -3,27 +3,100 @@ File: core/exporters.py
 
 Purpose
 -------
-Defines escape_table_cell, source_completeness_report, git_state_report, append_git_state_markdown, build_manifest, append_source_completeness_markdown, build_context_markdown, build_summary_text for 98_Tooling/ProjectContextHelper/core.
+Render the Markdown context, JSON manifest, plaintext summary, completeness report, and optional
+  snapshot ZIP from scan results.
+
+Implemented responsibilities:
+- escape_table_cell: Replace backticks with apostrophes, escape pipe characters, flatten
+  newlines, and remove carriage returns before inserting display values into Markdown
+  tables/code spans.
+- source_completeness_report: Filter scan skips to the four configured failure reasons and
+  return required/status/counts/failure records; PASS depends on those skips, not all repository
+  files.
+- git_state_report: Return None for absent Git metadata or dataclasses.asdict for an existing
+  GitState.
+- append_git_state_markdown: Append the Git section to a caller-owned chunk list; render
+  disabled/not-detected cases, branch/HEAD/status, escaped path/history lists, and parser
+  warnings.
+- build_manifest: Return the machine-readable export dictionary with application metadata,
+  serialized settings, scan summary, completeness, Git metadata, and all inclusion/skip records.
+- append_source_completeness_markdown: Append the completeness summary and, for FAIL, an escaped
+  table of every blocking eligible-file record.
+- build_context_markdown: Assemble the Markdown export from enabled sections; compute skip
+  counts, render tree/index, and reread included files through safe_read when contents are
+  enabled.
+- build_summary_text: Return a plaintext overview of settings, optional Git state, counts,
+  completeness, extension totals, and skip-reason totals.
+- create_snapshot_zip: Open a ZIP in overwrite mode with deflate compression, add four generated
+  outputs at its root, and add each original included file under project_files/<relative path>.
 
 Communication / relationships
 -----------------------------
-Direct module imports: collections, dataclasses, pathlib, zipfile, core.constants, core.git_state, core.models, core.scanner, core.utils.
+Internal imports and exchanged symbols:
+- core.constants: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_NAME, REPOSITORY_URL.
+- core.git_state: GitState.
+- core.models: ScanResult, ScanSettings.
+- core.scanner: SOURCE_COMPLETENESS_FAILURE_REASONS, build_tree.
+- core.utils: language_hint, safe_read.
+
+Consumers in the supplied source:
+- core/builder.py imports build_manifest, build_context_markdown, build_summary_text,
+  create_snapshot_zip.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Receives the root, ScanResult, ScanSettings, creation timestamp, and optional GitState. Output
+  sections follow the supplied toggles.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- escape_table_cell(value: str) -> str
+- source_completeness_report(scan: ScanResult, settings: ScanSettings) -> dict
+- git_state_report(git_state: GitState | None) -> dict | None
+- append_git_state_markdown(chunks: list[str], git_state: GitState | None) -> None
+- build_manifest(root: Path, scan: ScanResult, settings: ScanSettings, created: str, git_state:
+  GitState | None=None) -> dict
+- append_source_completeness_markdown(chunks: list[str], scan: ScanResult, settings:
+  ScanSettings) -> None
+- build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings, created: str,
+  git_state: GitState | None=None) -> str
+- build_summary_text(root: Path, scan: ScanResult, settings: ScanSettings, created: str,
+  git_state: GitState | None=None) -> str
+- create_snapshot_zip(zip_path: Path, context_path: Path, manifest_path: Path, summary_path:
+  Path, settings_path: Path, scan: ScanResult, root: Path) -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Table values escape pipes and flatten newlines; backticks become apostrophes. Missing Git data
+  and completeness failures are represented explicitly. Skipped details are capped only in
+  Markdown.
+
+An empty scan renders a no-files message instead of an index table. Negative skipped-details
+  limits are clamped to zero in rendering. The manifest retains all skips even when the Markdown
+  table is capped.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Markdown redaction does not redact original files in the ZIP. Files are read again during
+  rendering/ZIP creation; hashes and captured content can diverge if sources change. Markdown
+  escaping is not a general sanitization boundary.
+
+Embedded file contents use fixed triple-backtick fences; source text containing the same fence
+  can disrupt rendered Markdown. Hashes describe original source bytes, not redacted Markdown.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    from pathlib import Path
+    from core.constants import settings_for_profile
+    from core.scanner import collect_included_files
+    from core.exporters import build_manifest
+
+    root = Path("/path/to/project").resolve()
+    settings = settings_for_profile("archive")
+    scan = collect_included_files(root, settings)
+    manifest = build_manifest(root, scan, settings, "example build")
+    print(manifest["source_completeness"]["status"])
 """
 
 from collections import Counter

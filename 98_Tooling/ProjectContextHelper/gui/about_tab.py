@@ -3,27 +3,96 @@ File: gui/about_tab.py
 
 Purpose
 -------
-Defines create_about_tab for 98_Tooling/ProjectContextHelper/gui.
+Build application information, recent-export history controls, and legacy update
+  preferences/actions for the desktop About tab.
+
+Implemented responsibilities:
+- create_about_tab: Construct app information, a history tree and buttons, update
+  preferences/status, and nested update handlers; return startup_update_check for scheduling by
+  main_gui.
+- format_git_cell: Format persisted history branch/short-commit as branch@commit, using a
+  detached marker when necessary; return an empty cell when both fields are absent.
+- refresh_history: Clear the displayed tree and entry lookup, request the newest 20 persisted
+  exports, and insert rows or a no-exports placeholder.
+- open_selected_export: Resolve the selected history row to its export directory; report a
+  missing selection/folder or delegate opening to dialogs.open_folder.
+- clear_export_history: Ask for confirmation, clear persisted history without deleting export
+  folders, and refresh the tree.
+- perform_exe_update: Stage the executable, report download errors, stop when auto-install is
+  disabled, ask before installation, launch the replacement script, then destroy the GUI and
+  exit.
+- perform_script_update: Stage a ZIP update, stop for review when auto-install is disabled,
+  otherwise back up/apply it and display the backup/file count plus restart notice.
+- perform_auto_update: Check release status, return when no update exists, report incompatible
+  assets, and dispatch available assets to the EXE or source handler.
+- startup_update_check: Run perform_auto_update only when the saved startup-check preference is
+  enabled.
 
 Communication / relationships
 -----------------------------
-Direct module imports: pathlib, sys, tkinter, tkinter, core.constants, gui.builders, gui.dialogs, services.storage, services.updater.
+Internal imports and exchanged symbols:
+- core.constants: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
+- gui.builders: GuiState.
+- gui.dialogs: ask_yes_no, open_folder, show_error, show_info.
+- services.storage: HistoryEntry, application_dir, clear_history, recent_entries.
+- services.updater: apply_exe_update, apply_staged_update, check_for_updates, download_update,
+  is_frozen, open_releases_page, stage_exe_update.
+
+Consumers in the supplied source:
+- gui/main_gui.py imports create_about_tab.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Receives parent, window, and GuiState; returns the startup update-check callback. Displays up to
+  20 history entries. Startup checks and installation follow separate preferences.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- create_about_tab(parent: tk.Frame, window: tk.Tk, state: GuiState)
+- format_git_cell(entry: HistoryEntry) -> str
+- refresh_history() -> None
+- open_selected_export() -> None
+- clear_export_history() -> None
+- perform_exe_update(info) -> None
+- perform_script_update(info) -> None
+- perform_auto_update() -> None
+- startup_update_check() -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Missing export folders show an error. Clearing history does not delete exports. Missing
+  compatible update assets stop download; update failures are reported in the GUI.
+
+The no-history placeholder has no HistoryEntry lookup and cannot open an export. EXE
+  installation asks for confirmation even with auto-install enabled; source auto-install applies
+  without that additional prompt.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Network/update work runs synchronously on the GUI thread. Digest verification is conditional in
+  the updater, despite stronger wording in some UI messages. Legacy GitHub endpoints remain
+  unchanged.
+
+The source staging dialog mentions restarting, but startup_update_check only checks the
+  configured release path; restart alone does not apply an already-staged ZIP. UI checksum
+  wording is stronger than the updater guarantee when no supported digest exists.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    import tkinter as tk
+    from gui.builders import make_gui_state
+    from gui.about_tab import create_about_tab
+
+    window = tk.Tk()
+    state = make_gui_state()
+    frame = tk.Frame(window)
+    frame.pack(fill="both", expand=True)
+    create_about_tab(frame, window, state)
+    window.mainloop()
+
+    This constructs the component in an existing Tk application. For the complete
+    four-tab interface, use python run.py rather than running this module directly.
 """
 
 from pathlib import Path

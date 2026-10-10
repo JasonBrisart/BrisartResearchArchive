@@ -3,27 +3,125 @@ File: core/scanner.py
 
 Purpose
 -------
-Defines FileMeta, relative_string, safe_size, build_file_meta, can_read_text_file, exclusion_reason, is_configured_source_file, skip_record for 98_Tooling/ProjectContextHelper/core.
+Select eligible source/text files, record inclusion and skip metadata, enforce configured
+  completeness, and render a folder tree.
+
+Implemented responsibilities:
+- relative_string: Return the path relative to root as a string; if it is not lexically
+  relative, return the full path string instead.
+- safe_size: Read stat().st_size; return None on OSError so the scanner can record
+  size_unavailable.
+- build_file_meta: Capture a candidate's path, relative display path, size, lowercased suffix,
+  and lowercased filename in FileMeta.
+- can_read_text_file: Attempt a UTF-8 read with replacement decoding; return False on any read
+  exception. This tests accessibility, not strict UTF-8 validity.
+- exclusion_reason: Check lexical root membership, excluded directory components, excluded
+  filenames, and excluded suffixes in that order; return the first reason or None.
+- is_configured_source_file: Match lowercased suffix or exact filename against
+  include_extensions, then test filename endings for configured compound extensions.
+- skip_record: Convert FileMeta plus a reason string into an immutable SkipRecord, preserving an
+  unavailable size as None.
+- should_include_file: Build metadata; reject nonfiles, intentional exclusions, unsupported
+  extensions, unavailable sizes, oversized files, and unreadable embedded text; return inclusion
+  flag, optional skip, and metadata.
+- source_completeness_failures: Return only skip records whose reason belongs to
+  SOURCE_COMPLETENESS_FAILURE_REASONS.
+- build_source_failure_message: Format the blocking file list with reason/byte size and
+  remediation text for a required-completeness ValueError.
+- build_file_record: Construct immutable file metadata; compute SHA256 and line count only when
+  enabled; failed utility reads may leave those optional values None.
+- collect_included_files: Traverse sorted root.rglob candidates; collect skips and eligible
+  files within total-byte budget; raise on required completeness failures; otherwise return
+  immutable tuples in ScanResult.
+- build_tree: Render a separate directory-first, case-insensitive-name-sorted folder tree using
+  exclusion rules; mark ancestor symlink loops and avoid descending into them.
+- walk: Nested tree-rendering callback: track resolved ancestor directories, filter entries,
+  append connectors/loop labels, and recursively expand nonloop directories.
 
 Communication / relationships
 -----------------------------
-Direct module imports: __future__, dataclasses, pathlib, core.models, core.utils.
+Internal imports and exchanged symbols:
+- core.models: FileRecord, ScanResult, ScanSettings, SkipRecord.
+- core.utils: count_lines, sha256_file.
+
+Consumers in the supplied source:
+- core/builder.py imports collect_included_files.
+- core/exporters.py imports SOURCE_COMPLETENESS_FAILURE_REASONS, build_tree.
 
 Settings / parameters
 ---------------------
-Module-level named settings: SKIP_OUTSIDE_ROOT, SKIP_EXTENSION_NOT_INCLUDED, SKIP_FILE_TOO_LARGE, SKIP_TOTAL_SIZE_LIMIT, SKIP_SIZE_UNAVAILABLE, SKIP_READ_UNAVAILABLE, SOURCE_COMPLETENESS_FAILURE_REASONS. See their definitions below for values.
+Uses ScanSettings extension/name matching, exclusions, byte limits, hash/line toggles, and
+  require_complete_source. Four failure reasons count toward completeness: file_too_large,
+  total_size_limit, size_unavailable, read_unavailable.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- relative_string(path: Path, root: Path) -> str
+- safe_size(path: Path) -> int | None
+- build_file_meta(path: Path, root: Path) -> FileMeta
+- can_read_text_file(path: Path) -> bool
+- exclusion_reason(path: Path, root: Path, settings: ScanSettings) -> str | None
+- is_configured_source_file(meta: FileMeta, settings: ScanSettings) -> bool
+- skip_record(meta: FileMeta, reason: str) -> SkipRecord
+- should_include_file(path: Path, root: Path, settings: ScanSettings) -> tuple[bool, SkipRecord
+  | None, FileMeta]
+- source_completeness_failures(skipped_records: list[SkipRecord]) -> list[SkipRecord]
+- build_source_failure_message(failures: list[SkipRecord]) -> str
+- build_file_record(meta: FileMeta, settings: ScanSettings) -> FileRecord
+- collect_included_files(root: Path, settings: ScanSettings) -> ScanResult
+- build_tree(root: Path, settings: ScanSettings) -> str
+- walk(directory: Path, prefix: str='', visited: frozenset[Path]=frozenset()) -> None
+
+Module constants and expressions:
+- SKIP_OUTSIDE_ROOT = 'outside_root'
+- SKIP_EXTENSION_NOT_INCLUDED = 'extension_not_included'
+- SKIP_FILE_TOO_LARGE = 'file_too_large'
+- SKIP_TOTAL_SIZE_LIMIT = 'total_size_limit'
+- SKIP_SIZE_UNAVAILABLE = 'size_unavailable'
+- SKIP_READ_UNAVAILABLE = 'read_unavailable'
+- SOURCE_COMPLETENESS_FAILURE_REASONS = {SKIP_FILE_TOO_LARGE, SKIP_TOTAL_SIZE_LIMIT,
+  SKIP_SIZE_UNAVAILABLE, SKIP_READ_UNAVAILABLE}
+
+FileMeta record fields:
+- path: Path (required constructor field)
+- relative_path: str (required constructor field)
+- size_bytes: int | None (required constructor field)
+- suffix: str (required constructor field)
+- name_lower: str (required constructor field)
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Directory and filename exclusions are case-insensitive. Compound extensions match filename
+  endings. Tree rendering detects ancestor symlink loops and tolerates directory-read failures.
+
+Exactly-at-limit files fit because size checks use >. A total-budget skip does not stop
+  traversal; later smaller files can still fit. With include_file_contents=False the
+  accessibility probe is not run. Failed hash/line utilities return None without adding a
+  completeness failure.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Completeness is scoped to configured eligible files, not the entire repository. Intentional
+  exclusions and unsupported extensions do not fail it. The tree can include files absent from
+  the file index. No immutable filesystem snapshot or general resolved-path containment
+  guarantee is provided.
+
+The root.rglob traversal visits excluded-directory descendants before rejecting their files; it
+  does not prune those directories at traversal entry. The tree uses exclusions but not
+  eligibility/byte limits, so it is not an inclusion inventory.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    from pathlib import Path
+    from core.constants import settings_for_profile
+    from core.scanner import collect_included_files, build_tree
+
+    root = Path("/path/to/project").resolve()
+    settings = settings_for_profile("archive")
+    scan = collect_included_files(root, settings)
+    print(len(scan.included_records), scan.total_included_bytes)
+    print(build_tree(root, settings))
 """
 
 from __future__ import annotations

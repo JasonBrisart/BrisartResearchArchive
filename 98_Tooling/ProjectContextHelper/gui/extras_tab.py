@@ -3,27 +3,62 @@ File: gui/extras_tab.py
 
 Purpose
 -------
-Defines create_extras_tab for 98_Tooling/ProjectContextHelper/gui.
+Create the scrollable Extras tab containing optional Git State and custom profile controls.
+
+Implemented responsibilities:
+- create_extras_tab: Create a scrollable container, explanatory text, an Include Git State
+  checkbox bound to shared state, and the custom profile section.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tkinter, gui.builders, gui.profiles_section, gui.scroll_frame.
+Internal imports and exchanged symbols:
+- gui.builders: GuiState.
+- gui.profiles_section: create_custom_profiles_section.
+- gui.scroll_frame: create_scrollable_area.
+
+Consumers in the supplied source:
+- gui/main_gui.py imports create_extras_tab.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Receives a parent frame and GuiState. Git State is opt-in and off in both built-in presets.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- create_extras_tab(parent: tk.Frame, state: GuiState) -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Delegates profile validation and management to gui.profiles_section and scrolling to
+  gui.scroll_frame.
+
+Saved last-used settings or a custom profile can restore Git State as enabled even though both
+  built-in presets disable it.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Git State inherits the parser limitations in core.git_state. The introductory UI text does not
+  describe all hidden ScanSettings fields.
+
+The introductory statement that nothing here is enabled by a preset does not mean custom
+  profiles cannot restore previously enabled optional settings.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    import tkinter as tk
+    from gui.builders import make_gui_state
+    from gui.extras_tab import create_extras_tab
+
+    window = tk.Tk()
+    state = make_gui_state()
+    frame = tk.Frame(window)
+    frame.pack(fill="both", expand=True)
+    create_extras_tab(frame, state)
+    window.mainloop()
+
+    This constructs the component in an existing Tk application. For the complete
+    four-tab interface, use python run.py rather than running this module directly.
 """
 
 import tkinter as tk

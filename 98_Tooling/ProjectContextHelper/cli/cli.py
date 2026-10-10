@@ -3,27 +3,90 @@ File: cli/cli.py
 
 Purpose
 -------
-Defines build_parser, settings_from_args, run_update_check, run_profile_list, run_profile_delete, run_cli, main for 98_Tooling/ProjectContextHelper/cli.
+Parse export, profile-management, and legacy update commands, then dispatch to the builder or
+  desktop GUI.
+
+Implemented responsibilities:
+- build_parser: Construct the argparse parser with an optional root, built-in profile selection,
+  export overrides, named-profile actions, and legacy update actions; return the parser without
+  parsing arguments.
+- settings_from_args: Start from the requested built-in preset, replace it with remembered/named
+  settings when available, then apply explicit overrides; return the resulting ScanSettings
+  without exporting.
+- run_update_check: Print release status; return when no update/asset exists; optionally open
+  the release page, or download and apply a source/EXE update. Installation failures print a
+  message and exit 1; successful EXE replacement exits 0.
+- run_profile_list: Read saved custom profile names through storage and print a list or the no-
+  profiles message.
+- run_profile_delete: Delete a trimmed profile name through storage and print whether a record
+  was removed.
+- run_cli: Parse process arguments; handle listing, deletion, and update actions in that order;
+  launch the GUI when no export root remains; otherwise build, optionally save settings/profile,
+  and print output paths/counts.
+- main: Delegate directly to run_cli; this is the dispatcher imported by run.py.
 
 Communication / relationships
 -----------------------------
-Direct module imports: pathlib, argparse, sys, core.constants, core.builder, core.utils, gui.main_gui, services, services.updater.
+Internal imports and exchanged symbols:
+- core.constants: APP_NAME, APP_VERSION, DEFAULT_PROFILE, VALID_PROFILES, settings_for_profile.
+- core.builder: create_context.
+- core.utils: normalize_extension.
+- gui.main_gui: run_gui.
+- services: storage.
+- services.updater: apply_exe_update, apply_staged_update, check_for_updates, download_update,
+  open_releases_page, stage_exe_update.
+
+Consumers in the supplied source:
+- run.py imports main.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Built-in profile defaults are followed by optional last-used settings, a named custom profile,
+  and explicit CLI overrides. Size limits must be positive; negative detail/history limits are
+  clamped to zero.
+
+Function signatures (nested callbacks are scoped to their enclosing function):
+- build_parser() -> argparse.ArgumentParser
+- settings_from_args(args)
+- run_update_check(open_page_when_available: bool=False, install: bool=False) -> None
+- run_profile_list() -> None
+- run_profile_delete(name: str) -> None
+- run_cli() -> None
+- main() -> None
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+A missing custom profile prints a warning. Expected build errors exit with status 1. Update
+  application errors are caught separately. With no root, standalone management commands return
+  instead of opening the GUI.
+
+When both --git-state and --no-git-state are present, the latter wins because it is applied
+  last. --extensions replaces the extension set; repeated exclusions extend existing sets. With
+  no root, an earlier list/delete action returns before later actions are reached.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+There is no CLI flag for every ScanSettings field. The CLI imports the GUI at module load.
+  Unexpected filesystem failures outside the handled exception classes can propagate.
+
+No positive enabling flags are provided for hashes/contents/etc. after a standard preset
+  disables them. --save-profile without a root does not save a profile; it falls through to GUI
+  launch. Profile persistence filesystem failures can propagate beyond the ValueError handler.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing run.py:
+
+    python run.py "/path/to/project" --profile archive --no-zip
+    python run.py "/path/to/project" --max-file-bytes 4000000 --max-total-bytes 150000000
+    python run.py "/path/to/project" --save-profile "Review"
+    python run.py "/path/to/project" --load-profile "Review" --no-redact
+    python run.py --list-profiles
+    python run.py --delete-profile "Review"
+
+    --no-redact deliberately disables Markdown redaction. ZIP members are original
+    source bytes regardless of that flag. --open-releases alone is not a standalone
+    action: it is consulted by the update-check flow.
 """
 
 from pathlib import Path
