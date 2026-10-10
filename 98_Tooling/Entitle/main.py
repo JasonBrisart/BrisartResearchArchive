@@ -1,5 +1,33 @@
 #!/usr/bin/env python3
 """
+File: main.py
+
+Purpose
+-------
+Entitle — single command-line entry point.
+
+Communication / relationships
+-----------------------------
+Direct module imports: importlib, sys, entitle.bootstrap, version.
+
+Settings / parameters
+---------------------
+Module-level named settings: COMMAND_MODULES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle — single command-line entry point.
 
 Usage:
@@ -20,6 +48,7 @@ used completely unmodified) onto sys.path, then dispatches to the appropriate
 Adding a new CLI command is a matter of adding one entry to COMMAND_MODULES below;
 no other part of this file needs to change.
 """
+
 import importlib
 import sys
 
@@ -68,3 +97,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

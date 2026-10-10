@@ -1,4 +1,31 @@
-"""Round-trip and correctness tests for biometrics.codecs.*"""
+"""
+File: biometrics/tests/test_codec_and_dsp_support.py
+
+Purpose
+-------
+Round-trip and correctness tests for biometrics.codecs.*
+
+Communication / relationships
+-----------------------------
+Direct module imports: tempfile, unittest, wave, zlib, pathlib, biometrics.codecs.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import tempfile
 import unittest
 import wave as _stdlib_wave
@@ -206,3 +233,4 @@ class WaveToolsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

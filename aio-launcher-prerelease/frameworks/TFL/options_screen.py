@@ -1,11 +1,13 @@
 """
 File: frameworks/TFL/options_screen.py
 
-Purpose:
+Purpose
+-------
 Render the pre-session Run Options screen, where the user toggles Extra
 Stimuli, Perturbations, Probes, and Delayed Reentry before a TFL run.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - render_options(session) is called by frameworks/TFL/session_gui.py.
 - Writes toggle values into session.config.
 - Start Session calls session.begin_session(); Cancel calls
@@ -14,26 +16,31 @@ Communication / relationships:
 - Uses COLORS and FONT_HEAD from gui/theme.py and Card from
   gui/widgets/card.py, with local fallbacks.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - TOGGLE_DEFINITIONS: (config key, title, description) for each toggle.
 - The mode label reads "Default TFL" when all toggles match the
   defaults, otherwise "Modified TFL".
 
-Edge cases:
+Edge cases
+----------
 - Returns silently if the session window is missing or destroyed.
 - Rebuilds the screen from scratch on every call.
 - Falls back to built-in colors and a plain Card when the GUI modules
   cannot be imported.
 - A TclError while reading a toggle leaves that config key unchanged.
 
-Known limitations:
+Known limitations
+-----------------
 - Only the four toggles are editable; timing, intervals, and the seed
   are set in frameworks/TFL/settings.py.
 - Label wraplengths are fixed at 760 and 860 pixels.
 
-Examples:
+Examples
+--------
 - render_options(session)
 """
+
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
@@ -186,3 +193,4 @@ def render_options(session: Any) -> None:
 
 
 __all__ = ["render_options", "TOGGLE_DEFINITIONS"]
+

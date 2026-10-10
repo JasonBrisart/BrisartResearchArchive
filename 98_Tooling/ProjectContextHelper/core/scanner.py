@@ -1,3 +1,31 @@
+"""
+File: core/scanner.py
+
+Purpose
+-------
+Defines FileMeta, relative_string, safe_size, build_file_meta, can_read_text_file, exclusion_reason, is_configured_source_file, skip_record for 98_Tooling/ProjectContextHelper/core.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, dataclasses, pathlib, core.models, core.utils.
+
+Settings / parameters
+---------------------
+Module-level named settings: SKIP_OUTSIDE_ROOT, SKIP_EXTENSION_NOT_INCLUDED, SKIP_FILE_TOO_LARGE, SKIP_TOTAL_SIZE_LIMIT, SKIP_SIZE_UNAVAILABLE, SKIP_READ_UNAVAILABLE, SOURCE_COMPLETENESS_FAILURE_REASONS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -234,3 +262,4 @@ def build_tree(root: Path, settings: ScanSettings) -> str:
                 walk(entry, prefix + extension, visited)
     walk(root)
     return "\n".join(lines)
+

@@ -1,12 +1,14 @@
 """
 File: frameworks/TFL/config.py
 
-Purpose:
+Purpose
+-------
 Assemble the TFL runtime config and the official default startup
 options entirely from frameworks/TFL/settings.py. This module holds no
 tunable values of its own.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Reads frameworks/TFL/settings.py.
 - frameworks/TFL/session_gui.py calls apply_default_options().
 - frameworks/TFL/options_screen.py uses it for Restore Defaults.
@@ -15,7 +17,8 @@ Communication / relationships:
 - app/headless.py and tests/test_merged.py call get_default_config().
 - frameworks/TFL/framework.py exposes lazy wrappers.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - DEFAULT_CONFIG keys: trial_duration_sec, num_trials, trials_per_block,
   blocks, affect_scale, probe_interval, delayed_reentry_interval,
   random_seed, feedback_levels, perturbation_interval,
@@ -24,21 +27,25 @@ Settings / parameters:
   enable_perturbations, enable_probes, enable_delayed_reentry, run_mode,
   and mode_description.
 
-Edge cases:
+Edge cases
+----------
 - apply_default_options(config) merges onto a fresh raw config and then
   overwrites all four toggles with their defaults; toggles already in
   the passed config are not preserved. The options screen applies user
   toggles afterwards.
 - Lists are copied, so callers cannot mutate the settings module.
 
-Known limitations:
+Known limitations
+-----------------
 - No validation happens here; frameworks/TFL/trial_builder.py validates.
 - To change behavior, edit frameworks/TFL/settings.py, not this file.
 
-Examples:
+Examples
+--------
 - config = get_default_config()
 - config["enable_perturbations"] = True
 """
+
 from __future__ import annotations
 from . import settings
 # Backward-compatible aliases: other modules (e.g. trial_builder.py) still
@@ -90,3 +97,4 @@ def apply_default_options(config: dict | None = None) -> dict:
     return config
 def get_default_config() -> dict:
     return apply_default_options(get_raw_config())
+

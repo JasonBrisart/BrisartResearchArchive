@@ -25,14 +25,14 @@ distinction is implemented, so every other function in this module can
 just call read_bits() or read_huffman_symbol() without re-deriving it.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Intended as a drop-in replacement for zlib.decompress(data) at
   io/binary_readers.py's PDF stream-decompression call site.
 - Imports nothing from elsewhere in brisart_ai; pure integer/byte
   arithmetic, no dependency on zlib, gzip, or any compression library.
 
 Settings / parameters
-----------------------
+---------------------
 - _FIXED_LITERAL_LENGTHS / _FIXED_DISTANCE_LENGTHS: the fixed Huffman
   code-length tables defined directly by RFC 1951 section 3.2.6 (used
   for DEFLATE block type 1, "fixed Huffman codes") -- not tunable.
@@ -64,7 +64,16 @@ Edge cases
   BrisartAI's own PDF-decompression use case never produces one and
   silently ignoring it would risk a wrong (rather than a failing)
   decompression.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from typing import Dict, List, Tuple
@@ -358,3 +367,4 @@ __all__ = [
     "brisart_inflate",
     "brisart_zlib_decompress",
 ]
+

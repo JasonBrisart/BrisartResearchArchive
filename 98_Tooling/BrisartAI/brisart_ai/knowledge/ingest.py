@@ -7,13 +7,13 @@ Local file/folder ingestion: reads every supported file and adds each
 to the index.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/service.py: BrisartService.import_paths() is the sole caller.
 - Calls brisart_ai.io.readers.iter_supported_files()/read_file(),
   brisart_ai.util.file_hash(), and index.add_source().
 
 Settings / parameters
-----------------------
+---------------------
 - No module-level constants.
 
 Edge cases
@@ -21,7 +21,16 @@ Edge cases
 - Empty text skipped and not counted.
 - Hash failure logged but doesn't block indexing.
 - Any read/index failure caught and logged per-file.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from typing import Iterable
@@ -66,3 +75,4 @@ def ingest_paths(paths: Iterable[str], index) -> int:
 
 
 __all__ = ["ingest_paths"]
+

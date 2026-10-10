@@ -1,4 +1,33 @@
-"""Modal dialog helpers shared across the three tabs.
+"""
+File: gui/widgets/dialogs.py
+
+Purpose
+-------
+Modal dialog helpers shared across the three tabs.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, tkinter, tkinter, gui.core.constants, biometrics.engine.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Modal dialog helpers shared across the three tabs.
 
 None of these dialogs touch the application/service layer or the BSR2 KDF --
 they only collect input or display text. The slow work a dialog's result feeds
@@ -217,3 +246,4 @@ class ModalityPathDialog(tk.Toplevel):
     def _on_cancel(self):
         self.result = None
         self.destroy()
+

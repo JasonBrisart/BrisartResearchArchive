@@ -1,5 +1,32 @@
-"""End-to-end test that templates are actually sealed (not stored in the
-clear) and that a wrong master key cannot open them."""
+"""
+File: biometrics/tests/test_sealed_biometrics_flow.py
+
+Purpose
+-------
+End-to-end test that templates are actually sealed (not stored in the
+clear) and that a wrong master key cannot open them.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, secrets, tempfile, unittest, pathlib, biometrics.engine, biometrics.identity.identity_store, biometrics.samples.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import json
 import secrets
 import tempfile
@@ -77,3 +104,4 @@ class SealedTemplateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

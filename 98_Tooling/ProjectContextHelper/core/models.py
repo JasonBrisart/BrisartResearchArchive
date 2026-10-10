@@ -1,3 +1,31 @@
+"""
+File: core/models.py
+
+Purpose
+-------
+Defines ScanSettings, FileRecord, SkipRecord, ScanResult, BuildResult for 98_Tooling/ProjectContextHelper/core.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, dataclasses, pathlib, typing.
+
+Settings / parameters
+---------------------
+Module-level named settings: _SETTINGS_SET_FIELDS, _SETTINGS_INT_FIELDS, _SETTINGS_BOOL_FIELDS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from __future__ import annotations
 from dataclasses import (
     asdict,
@@ -160,3 +188,4 @@ class BuildResult:
     git_branch: str | None = None
     git_commit_short: str | None = None
     git_is_dirty: bool | None = None
+

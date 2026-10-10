@@ -1,4 +1,33 @@
-"""Generate deterministic known-answer vectors for BSR2 regression tests.
+"""
+File: tests/generate_test_vectors.py
+
+Purpose
+-------
+Generate deterministic known-answer vectors for BSR2 regression tests.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, json, sys, pathlib, unittest.mock, brisart_security_envelope, brisart_security_drbg, brisart_security_envelope, brisart_security_primitives.
+
+Settings / parameters
+---------------------
+Module-level named settings: REPOSITORY_ROOT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Generate deterministic known-answer vectors for BSR2 regression tests.
 
 Production envelope generation uses fresh operating-system entropy. This vector
 generator injects zero entropy strictly to freeze the deterministic envelope
@@ -95,3 +124,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

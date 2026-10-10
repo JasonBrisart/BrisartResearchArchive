@@ -1,4 +1,32 @@
 """
+File: core/git_state.py
+
+Purpose
+-------
+Git Repository State
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, dataclasses, pathlib, hashlib, zlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: GIT_DIRNAME, HEAD_FILENAME, PACKED_REFS_FILENAME, TREE_DIR_MODES, TREE_SUBMODULE_MODE, HEADS_REF_PREFIX. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Git Repository State
 
 Pure Python, no external dependencies, no subprocess calls into a
@@ -409,3 +437,4 @@ def build_git_state(
         )
     except Exception as exc:
         return GitState(is_git_repo=True, warnings=(f"git state detection failed unexpectedly: {exc}",))
+

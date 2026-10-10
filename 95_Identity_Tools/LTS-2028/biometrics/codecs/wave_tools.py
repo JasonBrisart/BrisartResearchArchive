@@ -1,4 +1,33 @@
-"""WAV audio reading and writing for the voice modality.
+"""
+File: biometrics/codecs/wave_tools.py
+
+Purpose
+-------
+WAV audio reading and writing for the voice modality.
+
+Communication / relationships
+-----------------------------
+Direct module imports: struct, wave.
+
+Settings / parameters
+---------------------
+Module-level named settings: SUPPORTED_SAMPLE_WIDTHS, MAX_DURATION_SECONDS, MAX_SAMPLE_RATE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+WAV audio reading and writing for the voice modality.
 
 Uses only the ``wave`` and ``struct`` modules from the Python standard
 library -- no third-party audio libraries. Samples are always normalised to
@@ -7,6 +36,7 @@ consumer (``dsp.py``, ``voice_features.py``) works on a single channel of
 integers and should not need to know how many channels or what sample width
 the original file used.
 """
+
 import struct
 import wave
 
@@ -123,3 +153,4 @@ def write_wave(path, sample_rate: int, samples: list, sample_width: int = 2) -> 
         handle.setsampwidth(sample_width)
         handle.setframerate(sample_rate)
         handle.writeframes(raw)
+

@@ -7,12 +7,12 @@ The left-hand nav: app name/version header, five core action buttons,
 and a status line showing indexed source counts.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/app.py: builds one Sidebar with an actions dict.
 - Imports brisart_ai.ui.theme and brisart_ai.version_info.
 
 Settings / parameters
-----------------------
+---------------------
 - actions: dict mapping button key to handler.
 - theme.SIDEBAR_WIDTH.
 
@@ -20,7 +20,16 @@ Edge cases
 ----------
 - set_status() only displays numbers it is handed.
 - Each button's key is bound as a default argument in its command lambda.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import tkinter as tk
@@ -76,3 +85,4 @@ class Sidebar(ttk.Frame):
 
 
 __all__ = ["Sidebar"]
+

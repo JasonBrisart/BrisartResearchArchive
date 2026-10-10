@@ -1,11 +1,13 @@
 """
 File: gui/pages/results_page.py
 
-Purpose:
+Purpose
+-------
 Render the Results page: run TFL analysis, open the latest CSV, and
 display the analysis report.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Registered as "Results" in config/registries.get_page_registry().
 - Buttons call app.analyze_tfl(), app.open_tfl_csv(), and
   app.start_selected_framework().
@@ -13,23 +15,28 @@ Communication / relationships:
   app.analysis_box; this page sets only the placeholder text.
 - frameworks/TFL/session_gui.py opens this page after a completed run.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - app.analysis_box: a 30-line Text widget at grid row 4.
 
-Edge cases:
+Edge cases
+----------
 - bind_text_widget_scroll_passthrough() lets the wheel scroll the page
   when the report fits inside the box (Fix 7 in
   gui/components/page_helpers.py).
 - Placeholder instructions are shown until analysis runs.
 
-Known limitations:
+Known limitations
+-----------------
 - TFL only.
 - Plain-text report; no charts.
 
-Examples:
+Examples
+--------
 - app.show_page("Results")
 - app.analyze_tfl()
 """
+
 import tkinter as tk
 
 from gui.components.page_helpers import bind_text_widget_scroll_passthrough
@@ -77,3 +84,4 @@ def render(app):
         "4. Inspect or export results.\n",
     )
     bind_text_widget_scroll_passthrough(app.analysis_box, app)
+

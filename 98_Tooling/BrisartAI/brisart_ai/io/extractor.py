@@ -8,7 +8,7 @@ HTMLTextExtractor is a brisart_ai.native.brisart_markup.BrisartMarkupParser
 subclass.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/web/fetcher.py: calls html_to_text() on every fetched page.
 - brisart_ai/io/readers.py: calls html_to_text()/csv_to_text().
 - Imports brisart_ai.native.brisart_markup.BrisartMarkupParser (replacing
@@ -16,7 +16,7 @@ Communication / relationships
   (replacing urllib.parse.urljoin()) -- see brisart_ai/native/README.md.
 
 Settings / parameters
-----------------------
+---------------------
 - SKIP_TAGS / BLOCK_TAGS: tags never emitted as text / newline-boundary tags.
 - REFERENCE_MARKER_TAGS / REFERENCE_MARKER_CLASSES: <sup> citation markers
   are skipped.
@@ -26,7 +26,16 @@ Edge cases
 - <sup class="reference">[3]</sup> is skipped, scoped narrowly to <sup>.
 - csv_to_text() falls back to naive comma-to-pipe split on malformed CSV.
 - html_to_text() wraps feed()/close() in try/except.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import csv
@@ -180,3 +189,4 @@ def csv_to_text(source: str) -> str:
         if line:
             output.append(line.replace(",", " | "))
     return "\n".join(output)
+

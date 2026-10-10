@@ -1,4 +1,33 @@
-"""Voice feature extraction: a WAV recording reduced to a fixed-length vector.
+"""
+File: biometrics/features/voice_features.py
+
+Purpose
+-------
+Voice feature extraction: a WAV recording reduced to a fixed-length vector.
+
+Communication / relationships
+-----------------------------
+Direct module imports: biometrics.codecs, biometrics.features.similarity.
+
+Settings / parameters
+---------------------
+Module-level named settings: FRAME_SIZE, HOP_SIZE, BAND_COUNT, DCT_COEFFICIENT_COUNT, FEATURE_VECTOR_LENGTH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Voice feature extraction: a WAV recording reduced to a fixed-length vector.
 
 The pipeline is deliberately classical rather than learned, because this
 project has no dependency on a machine-learning library and no training data
@@ -13,6 +42,7 @@ None of this claims to be state-of-the-art speaker verification. It is a
 transparent, fully auditable, dependency-free feature set suitable for the
 threshold-based matching this project performs.
 """
+
 from biometrics.codecs import dsp, wave_tools
 from biometrics.features.similarity import distance_similarity
 
@@ -83,3 +113,4 @@ def compare(vector_a: list, vector_b: list) -> float:
     if len(vector_a) != len(vector_b):
         raise VoiceFeatureError("feature vectors must be the same length.")
     return distance_similarity(vector_a, vector_b)
+

@@ -1,4 +1,31 @@
-"""Tests for biometrics.reports.report_writer."""
+"""
+File: biometrics/tests/test_report_writer.py
+
+Purpose
+-------
+Tests for biometrics.reports.report_writer.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, tempfile, unittest, pathlib, biometrics.reports, biometrics.reports.report_writer.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import json
 import tempfile
 import unittest
@@ -54,3 +81,4 @@ class ReportWriterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

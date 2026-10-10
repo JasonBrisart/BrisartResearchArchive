@@ -7,13 +7,13 @@ Turns ranked documents into an answer by extracting the most relevant
 sentences and presenting them directly, followed by a plain source list.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/core/conversation.py: calls synthesize().
 - Imports brisart_ai.intent.{INTENT_COMPARISON, INTENT_EXPLANATION,
   INTENT_STATISTIC, detect_intent} and brisart_ai.util.{split_sentences, tokenize}.
 
 Settings / parameters
-----------------------
+---------------------
 - max_sources (6) / max_sentences (10).
 - _HAS_QUANTITY / _HAS_COMPARISON_SIGNAL / _HAS_REASON_SIGNAL.
 
@@ -21,7 +21,16 @@ Edge cases
 ----------
 - Boosts only apply to sentences sharing at least one query term.
 - Chosen sentences de-duplicated by normalized key.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import collections
@@ -208,3 +217,4 @@ __all__ = [
     "format_source", "query_wants_comparison", "query_wants_quantity",
     "query_wants_reason", "sentence_score", "synthesize",
 ]
+

@@ -1,23 +1,27 @@
 """
 File: services/updater/download.py
 
-Purpose:
+Purpose
+-------
 Download a release and verify it. This is the trust gate for
 install.py and exe_swap.py: a release must match its SHA-256 and carry a
 valid RSA signature against the public key embedded in
 services/trust_anchor.py.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Receives a RegistryEntry from services/updater/registry.py.
 - Uses services/updater/http_utils.py, services/updater/archive_safety.py,
   services/trust_anchor.get_public_key(), and services/rsa_signing.verify().
 - Returns the verified path to services/updater/orchestration.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - Saves to UPDATES_DIR/BrisartResearchArchive_<version>.zip or .exe.
 - Streams in 1 MiB chunks with a 120-second timeout.
 
-Edge cases:
+Edge cases
+----------
 - An existing download whose hash already matches is reused.
 - Data streams to a .part file that is deleted on any failure.
 - Size limits are enforced from both Content-Length and actual bytes.
@@ -26,11 +30,13 @@ Edge cases:
 - A hash mismatch or invalid signature raises VerificationError; a
   failed download is never handed back to the caller.
 
-Known limitations:
+Known limitations
+-----------------
 - No resume support.
 - Progress is reported only through emit() lines.
 
-Examples:
+Examples
+--------
 - path = download_and_verify_release(entry, emit=print)
 """
 
@@ -181,3 +187,4 @@ def download_and_verify_release(entry: RegistryEntry, emit: Callable[[str], None
     emit(f"Bytes downloaded: {total_bytes}")
     emit(f"Saved to: {output_file}")
     return output_file
+

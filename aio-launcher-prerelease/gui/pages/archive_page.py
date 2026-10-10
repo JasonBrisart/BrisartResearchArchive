@@ -1,32 +1,39 @@
 """
 File: gui/pages/archive_page.py
 
-Purpose:
+Purpose
+-------
 Render the Archive page: a single card that opens the local document
 viewer for README files, framework notes, release notes, and protocol
 drafts.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Registered as "Archive" in config/registries.get_page_registry().
 - Rendered by gui/main_window.BrisartSuiteApp.show_page("Archive").
 - The button calls app.open_local_doc(), which reaches
   gui/components/document_viewer.py through SystemController.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - The card sits at grid row 2; rows 0 and 1 hold the page title and
   subtitle from page_shell().
 
-Edge cases:
+Edge cases
+----------
 - The page is destroyed and rebuilt on every navigation and holds no
   state of its own.
 
-Known limitations:
+Known limitations
+-----------------
 - There is no document index or browser; the user picks files through
   the file dialog.
 
-Examples:
+Examples
+--------
 - app.show_page("Archive")
 """
+
 def render(app):
     root = app.page_shell(
         "Archive",
@@ -41,3 +48,4 @@ def render(app):
         ),
         [("Open Document", app.open_local_doc, True)],
     )
+

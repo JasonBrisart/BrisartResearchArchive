@@ -1,4 +1,34 @@
 """
+File: services/storage.py
+
+Purpose
+-------
+Storage
+Single consolidated module for every piece of persisted application
+state that is not part of a build's own output files.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, dataclasses, pathlib, json, os, sys, core.constants, core.models.
+
+Settings / parameters
+---------------------
+Module-level named settings: RESERVED_PROFILE_NAMES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Storage
 Single consolidated module for every piece of persisted application
 state that is not part of a build's own output files.
@@ -13,6 +43,7 @@ application_dir() helper and the same atomic-write helper:
 
 No external dependencies.
 """
+
 from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -304,3 +335,4 @@ def recent_entries(limit: int = 10, app_dir: Path | None = None) -> list[History
 
 def clear_history(app_dir: Path | None = None) -> None:
     save_history([], app_dir)
+

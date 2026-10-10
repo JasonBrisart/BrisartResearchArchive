@@ -1,7 +1,33 @@
-"""Tests for common.integrity_ledger: the external, hash-chained checkpoint
+"""
+File: common/tests/test_integrity_ledger.py
+
+Purpose
+-------
+Tests for common.integrity_ledger: the external, hash-chained checkpoint
 ledger used to narrow (not close) the edit-then-revert blind spot shared by
 every other tamper-evidence mechanism in this repository.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tempfile, unittest, pathlib, common, common.integrity_ledger.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
 """
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -202,3 +228,4 @@ class HistoryAndListTrackedTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

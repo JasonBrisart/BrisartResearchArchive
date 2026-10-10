@@ -1,34 +1,41 @@
 """
 File: tools/envinfo.py
 
-Purpose:
+Purpose
+-------
 Print a one-shot environment snapshot for bug reports. Paste the output
 into the Environment field of a docs/KNOWN_ISSUES.md entry.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Standalone; talks to nothing else in the codebase. Reads only OS,
   Python, and Tk metadata, never modifies anything, and never sends
   data anywhere.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - Reports OS name, release, and build; machine and processor
   architecture; Python version, bitness, and implementation; and the
   Tcl/Tk version.
 
-Edge cases:
+Edge cases
+----------
 - If Tkinter is unavailable, the Tk line explains why instead of
   crashing.
 - The GUI popup is skipped silently when no display is available; the
   console output is enough.
 
-Known limitations:
+Known limitations
+-----------------
 - A mismatch between the Python bitness and the machine architecture
   (for example x64 Python on an ARM64 OS) is reported but not
   interpreted.
 
-Examples:
+Examples
+--------
 - python tools/envinfo.py
 """
+
 from __future__ import annotations
 
 import platform
@@ -76,3 +83,4 @@ if __name__ == "__main__":
         root.destroy()
     except Exception:
         pass  # console output above is enough if a GUI popup isn't available
+

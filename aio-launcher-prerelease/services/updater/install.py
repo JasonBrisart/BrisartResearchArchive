@@ -1,36 +1,42 @@
 """
 File: services/updater/install.py
 
-Purpose:
+Purpose
+-------
 Install a verified source ZIP release: extract it, back up the current
 application, overwrite files with the release, and remove files that
 earlier releases shipped but the Archive no longer uses.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - services/updater/orchestration.py calls apply_zip_update() only with a
   path already verified by services/updater/download.py.
 - Uses paths and lists from services/updater/constants.py and versions
   from services/updater/versioning.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - Extraction folder: UPDATES_DIR/extracted_<zip stem>.
 - Backup folder: BACKUPS_DIR/v<version>_<timestamp>.
 - PROTECTED_NAMES are skipped for both backup and copy.
 - OBSOLETE_RELEASE_PATHS are removed after the backup and copy steps.
 
-Edge cases:
+Edge cases
+----------
 - A ZIP that wraps everything in one top-level folder is unwrapped.
 - Obsolete-path entries that are absolute, contain "..", resolve
   outside the application folder, or are not regular files are skipped.
 - Missing obsolete files are ignored.
 
-Known limitations:
+Known limitations
+-----------------
 - Copying is overwrite-only. Files dropped from a release are deleted
   only if they are listed in OBSOLETE_RELEASE_PATHS.
 - No automatic rollback; restore manually from the backup folder.
 - A restart is required after installing.
 
-Examples:
+Examples
+--------
 - result = apply_zip_update(verified_zip, current_version="0.9.2")
 - remove_obsolete_files(app_dir)
 """
@@ -162,3 +168,4 @@ def apply_zip_update(verified_zip_path: Path, app_dir: Path | None = None, curre
         restart_required=True,
         removed_files=tuple(removed),
     )
+

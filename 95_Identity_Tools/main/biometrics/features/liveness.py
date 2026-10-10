@@ -1,7 +1,8 @@
 """
 File: biometrics/features/liveness.py
 
-PURPOSE
+Purpose
+-------
 Reintroduces a liveness/anti-spoofing GATE for the video modality, filling
 the gap explicitly documented in biometrics/README.md's Status section
 ("there is currently no liveness or anti-spoofing check for any modality --
@@ -35,7 +36,8 @@ existing "Research-grade" framing (biometrics/README.md's Status section):
 this closes the specific "one repeated still frame" gap, not the general
 liveness/anti-spoofing problem.
 
-COMMUNICATION RELATIONSHIPS
+Communication / relationships
+-----------------------------
 - biometrics.engine.verification.verify_modality calls assess_liveness()
   for the "video" modality only, BEFORE trusting the similarity score,
   using the exact same decoded frame list biometrics.codecs.video.decode()
@@ -85,7 +87,24 @@ EDGE-CASE BEHAVIOR
 - Frames of mismatched dimensions: raises LivenessError before any
   comparison is attempted, rather than letting a bytes-length mismatch
   produce a confusing IndexError deep inside the comparison loop.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_LIVENESS_THRESHOLD, MIN_FRAMES_FOR_LIVENESS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from biometrics.codecs import image_tools
 
 DEFAULT_LIVENESS_THRESHOLD = 0.75
@@ -151,3 +170,4 @@ def assess_liveness(
         "threshold": threshold,
         "is_live": motion_energy >= threshold,
     }
+

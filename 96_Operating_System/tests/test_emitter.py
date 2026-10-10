@@ -1,5 +1,5 @@
 """
-tests/test_emitter.py
+File: tests/test_emitter.py
 
 Purpose
 -------
@@ -11,8 +11,8 @@ here would silently produce a boot sector that either does the wrong thing
 on real hardware or fails the `tests/boot_sector_test.py` emulator with a
 confusing "unsupported opcode" error far from the actual mistake.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 `Emitter` is not currently imported by `brisartos/boot/make_boot_image.py`
 (that file inlines its own raw byte literals instead), but it models the
 same 8086 instruction subset that both `make_boot_image.py` and
@@ -23,12 +23,11 @@ boot-image refactor without silently drifting from what the emulator (and
 real firmware) actually expects.
 
 Settings / parameters
-----------------------
+---------------------
 No constructor parameters exist on `Emitter`; each test constructs a fresh
 instance so that byte-buffer state never leaks between test cases.
 
 Edge-case behavior
--------------------
 - `get_code()` must return an immutable `bytes` object (not the internal
   mutable `bytearray`), so callers cannot accidentally mutate an emitter's
   internal state through the value they read back.
@@ -37,7 +36,24 @@ Edge-case behavior
 - `emit()` accepts a variable number of raw byte values directly and must
   preserve call order exactly, since instruction encoding is
   order-sensitive.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_emitter.py
 """
+
 import unittest
 
 from _support import add_brisartos_dir_to_syspath
@@ -127,3 +143,4 @@ class EmitterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

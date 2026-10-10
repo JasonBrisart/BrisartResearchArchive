@@ -1,8 +1,9 @@
 """
 File: hardware/card_readers/pcsc_reader.py
 
-Purpose:
-    A ReaderBase implementation for any PC/SC-compliant smart card
+Purpose
+-------
+A ReaderBase implementation for any PC/SC-compliant smart card
     reader, containing every piece of logic this project can implement
     in pure Python with zero OS calls: reader-name matching, retry
     policy, GET_UID APDU construction, status-word validation, and hex
@@ -19,8 +20,9 @@ Purpose:
     of it. See hardware/README.md, "Why the OS binding is not shipped,"
     for why that line is drawn here specifically.
 
-Communication relationships:
-    Called by: hardware.hardware_manager.HardwareManager, once
+Communication / relationships
+-----------------------------
+Called by: hardware.hardware_manager.HardwareManager, once
     registered via hardware.registry.register() (not automatic -- see
     hardware/README.md), and constructed with a PCSCBinding instance the
     operator supplies.
@@ -73,7 +75,24 @@ Edge-case behavior:
       hardware/tests/test_device_contract.py can exercise this entire
       class's logic (retry, APDU construction, status-word checking)
       against a fake in-memory binding with zero OS involvement at all.
+
+Settings / parameters
+---------------------
+Module-level named settings: CONNECT_RETRY_COUNT, _GET_UID_APDU, _STATUS_OK. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from hardware.base.pcsc_binding import PCSCBinding, PCSCBindingError
 from hardware.base.reader_base import ReaderBase
 from hardware.exceptions import DeviceConnectionError
@@ -216,3 +235,4 @@ class PCSCReader(ReaderBase):
         raise CardAbsentError(
             f"no card detected on {self.name}: {last_exception}"
         )
+

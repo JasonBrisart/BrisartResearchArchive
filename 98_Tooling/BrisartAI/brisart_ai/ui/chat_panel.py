@@ -7,19 +7,28 @@ The scrollable transcript plus single-line input box that makes up the
 center of the BrisartAI window.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/app.py: constructs ChatPanel and calls append_*().
 - Imports brisart_ai.ui.theme for every color/font constant used.
 
 Settings / parameters
-----------------------
+---------------------
 - on_submit: callback invoked with stripped, non-empty input text.
 
 Edge cases
 ----------
 - The transcript is read-only outside of append().
 - append() auto-scrolls to the bottom after every message.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import tkinter as tk
@@ -96,3 +105,4 @@ class ChatPanel(ttk.Frame):
 
 
 __all__ = ["ChatPanel"]
+

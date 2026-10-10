@@ -1,4 +1,33 @@
-"""The threading core shared by all three tabs.
+"""
+File: gui/core/busy.py
+
+Purpose
+-------
+The threading core shared by all three tabs.
+
+Communication / relationships
+-----------------------------
+Direct module imports: queue, threading, tkinter, tkinter, gui.core.constants.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+The threading core shared by all three tabs.
 
 BSR2's password KDF is deliberately slow (tens of seconds to a couple of
 minutes per call -- see docs/BSR2_INTEGRATION.md). Every operation that touches
@@ -82,3 +111,4 @@ def run_in_background(parent, work, on_success, on_error=None, message="Working.
             messagebox.showerror(APP_TITLE, str(payload), parent=parent)
 
     parent.after(100, poll)
+

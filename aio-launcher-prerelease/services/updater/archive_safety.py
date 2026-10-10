@@ -1,29 +1,35 @@
 """
 File: services/updater/archive_safety.py
 
-Purpose:
+Purpose
+-------
 Validate downloaded ZIP archives (signature bytes, path traversal,
 zip-bomb limits, integrity) and compute SHA-256 file hashes.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - services/updater/download.py calls validate_zip_archive() and
   sha256_of_file().
 - Limits come from services/updater/constants.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - MAX_DOWNLOAD_BYTES 250 MiB; MAX_ZIP_MEMBERS 25,000;
   MAX_UNCOMPRESSED_ZIP_BYTES 2 GiB; MAX_COMPRESSION_RATIO 250.
 
-Edge cases:
+Edge cases
+----------
 - Rejects member names that are empty, absolute, contain "..", start
   with a drive letter, or contain NUL.
 - Rejects entries that claim data but have a compressed size of zero.
 - Runs zipfile.testzip() to catch corrupted members.
 
-Known limitations:
+Known limitations
+-----------------
 - Hashing reads the file in 1 MiB chunks; very large files take time.
 
-Examples:
+Examples
+--------
 - validate_zip_archive(path)
 - sha256_of_file(path)
 """
@@ -108,3 +114,4 @@ def sha256_of_file(path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+

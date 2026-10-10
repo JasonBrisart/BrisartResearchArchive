@@ -1,4 +1,34 @@
-"""Tests for gui.tabs.tab_packages.PackagesTab -- the Packages-tab slice of
+"""
+File: gui/tests/test_tab_packages.py
+
+Purpose
+-------
+Tests for gui.tabs.tab_packages.PackagesTab -- the Packages-tab slice of
+KI-002's remaining gap ("gui/tabs/*.py ... still has no direct coverage").
+
+Communication / relationships
+-----------------------------
+Direct module imports: hashlib, secrets, unittest.
+
+Settings / parameters
+---------------------
+Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for gui.tabs.tab_packages.PackagesTab -- the Packages-tab slice of
 KI-002's remaining gap ("gui/tabs/*.py ... still has no direct coverage").
 
 Scope is limited to the tab's own pure logic: the passphrase-text-to-master-
@@ -19,6 +49,7 @@ convention already used throughout packages/tests/.
 Requires a real Tk root and skips cleanly on a headless runner with no
 display, matching the convention used throughout gui/tests/.
 """
+
 import hashlib
 import secrets
 import unittest
@@ -118,3 +149,4 @@ class PackagesTabTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

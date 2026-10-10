@@ -1,4 +1,32 @@
 """
+File: entitle/bootstrap.py
+
+Purpose
+-------
+Entitle Bootstrap
+
+Communication / relationships
+-----------------------------
+Direct module imports: sys, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: REPO_ROOT, VENDOR_DIR. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Bootstrap
 
 Adds the sibling ``vendor/`` directory (BrisartSecurityResearch, used completely
@@ -14,6 +42,7 @@ Every Entitle entry point (the CLI in ``main.py``, the GUI in ``gui/app.py``, an
 ``examples/protected_app_example.py``) calls ``ensure_bsr_on_path()`` before
 importing anything from ``entitle.bsr_adapter``.
 """
+
 import sys
 from pathlib import Path
 
@@ -38,3 +67,4 @@ def ensure_bsr_on_path():
     if vendor_path not in sys.path:
         sys.path.insert(0, vendor_path)
     _done = True
+

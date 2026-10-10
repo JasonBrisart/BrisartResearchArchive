@@ -1,11 +1,13 @@
 """
 File: gui/pages/settings_page.py
 
-Purpose:
+Purpose
+-------
 Render the Settings page: application info, output directory, update
 preferences, update output, and the persistent Activity Log.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Registered as "Settings" in config/registries.get_page_registry().
 - Binds directly to AppState variables through the app proxy
   properties, so values survive page rebuilds.
@@ -15,13 +17,15 @@ Communication / relationships:
 - services/updater/gui_integration.set_update_text() writes into
   app.update_box, navigating here first if needed.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - Dependency rule: "Automatically download and install updates" and
   "Notify me about updates" only matter while "Enable update checks" is
   on.
 - The Activity Log shows up to 100 persisted entries, newest first.
 
-Edge cases:
+Edge cases
+----------
 - Unchecking "Enable update checks" force-unchecks and disables both
   dependent options. Re-enabling it does not restore their previous
   values; the user must opt back in.
@@ -31,15 +35,18 @@ Edge cases:
 - Both Text boxes use the scroll passthrough (Fix 7 in
   gui/components/page_helpers.py).
 
-Known limitations:
+Known limitations
+-----------------
 - There is no Save button; changes are written when the app closes or
   when another action calls save_config().
 - Output-folder text typed into the entry is validated only when saved;
   unsafe values fall back to "outputs".
 
-Examples:
+Examples
+--------
 - app.show_page("Settings")
 """
+
 from __future__ import annotations
 
 import tkinter as tk
@@ -240,3 +247,4 @@ def render(app):
     _populate_activity_log(app.log_box)
     app.log_box.see("1.0")
     bind_text_widget_scroll_passthrough(app.log_box, app)
+

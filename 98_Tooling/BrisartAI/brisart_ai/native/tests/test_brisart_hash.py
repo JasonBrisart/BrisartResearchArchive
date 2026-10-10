@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/native/brisart_hash.py -- BrisartHash256 vs. real hashlib.sha256()."""
+"""
+File: brisart_ai/native/tests/test_brisart_hash.py
+
+Purpose
+-------
+Tests for brisart_ai/native/brisart_hash.py -- BrisartHash256 vs. real hashlib.sha256().
+
+Communication / relationships
+-----------------------------
+Direct module imports: hashlib, unittest, brisart_ai.native.brisart_hash.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import hashlib
 import unittest
 from brisart_ai.native.brisart_hash import BrisartHash256, brisart_sha256, brisart_stable_hash
@@ -67,3 +94,4 @@ class TestBrisartHash256(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,4 +1,34 @@
-"""The Packages tab: create, add/remove recipients on, open, and inspect the
+"""
+File: gui/tabs/tab_packages.py
+
+Purpose
+-------
+The Packages tab: create, add/remove recipients on, open, and inspect the
+custody chain of Identity-Bound Packages.
+
+Communication / relationships
+-----------------------------
+Direct module imports: hashlib, json, os, subprocess, sys, tkinter, pathlib, tkinter, gui.core.constants, gui.core.busy, gui.widgets.dialogs, packages, packages.custody, packages.demo, packages.package.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+The Packages tab: create, add/remove recipients on, open, and inspect the
 custody chain of Identity-Bound Packages.
 
 Two demo entry points are provided, both backed by the single shared
@@ -18,6 +48,7 @@ tab can never drift apart from each other:
                                can inspect (and try tampering with) real
                                artifacts firsthand.
 """
+
 import hashlib
 import json
 import os
@@ -377,3 +408,4 @@ class PackagesTab(ttk.Frame):
                 subprocess.run(["xdg-open", str(folder)], check=False)
         except OSError:
             pass
+

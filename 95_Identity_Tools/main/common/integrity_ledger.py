@@ -1,7 +1,9 @@
 """
 File: common/integrity_ledger.py
-Purpose:
-    An external, hash-chained ledger of periodic file checkpoints, used to
+
+Purpose
+-------
+An external, hash-chained ledger of periodic file checkpoints, used to
     narrow (not close) the "edit a sealed file, then revert it to its
     original bytes before anyone checks" blind spot that every tamper-
     evidence mechanism already in this repository (BSR2's authentication
@@ -77,8 +79,9 @@ implying more than they deliver):
       common.hashing.sha256_bytes/sha256_file already plays everywhere
       else in this codebase (vault file records, biometrics attachments).
 
-Communication relationships:
-    Called by:
+Communication / relationships
+-----------------------------
+Called by:
         - tools/integrity_checkpoint.py (new CLI script), which exposes
           checkpoint/status/history/verify as command-line subcommands
           meant to be invoked by an operator or an OS-level scheduler
@@ -148,7 +151,24 @@ Edge-case behavior:
       derive or protect a secret, exactly as with every other plaintext
       integrity fingerprint already present in this repository (vault
       file-record metadata, biometrics attachment metadata).
+
+Settings / parameters
+---------------------
+Module-level named settings: LEDGER_FORMAT, GENESIS_PREVIOUS_HASH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import json
 from pathlib import Path
 
@@ -345,3 +365,4 @@ def list_tracked_paths(ledger_path):
     recorded in the ledger at ledger_path, sorted."""
     state = _load_state(ledger_path)
     return sorted({entry.get("target_path") for entry in state["entries"] if entry.get("target_path")})
+

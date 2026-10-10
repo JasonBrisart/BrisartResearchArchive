@@ -1,4 +1,35 @@
-"""Tests for crypto.attempt_store: the container-field adapter between
+"""
+File: crypto/tests/test_attempt_store.py
+
+Purpose
+-------
+Tests for crypto.attempt_store: the container-field adapter between
+crypto.throttle.AttemptLimiter and the on-disk JSON containers (vault.json,
+biometrics keyring.json) that persist unlock-attempt state.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, crypto, crypto.throttle.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for crypto.attempt_store: the container-field adapter between
 crypto.throttle.AttemptLimiter and the on-disk JSON containers (vault.json,
 biometrics keyring.json) that persist unlock-attempt state.
 
@@ -8,6 +39,7 @@ default, so lockout/backoff behavior is exercised deterministically and fast
 -- consistent with crypto/tests/test_throttle.py's own approach. Fast: no
 KDF involved anywhere in this file.
 """
+
 import unittest
 
 from crypto import attempt_store
@@ -103,3 +135,4 @@ class AttemptStoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,3 +1,31 @@
+"""
+File: gui/profiles_section.py
+
+Purpose
+-------
+Defines create_custom_profiles_section for 98_Tooling/ProjectContextHelper/gui.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, tkinter, core.constants, gui.builders, gui.dialogs, services.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -109,3 +137,4 @@ def create_custom_profiles_section(
     tk.Button(button_row, text="Load Selected", command=load_selected).pack(side="left", padx=(8, 0))
     tk.Button(button_row, text="Delete Selected", command=delete_selected).pack(side="left", padx=(8, 0))
     tk.Button(button_row, text="Refresh List", command=refresh_names).pack(side="left", padx=(8, 0))
+

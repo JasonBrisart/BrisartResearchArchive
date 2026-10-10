@@ -1,4 +1,35 @@
-"""Tests for gui.widgets.path_panel.PathSelectionPanel: the shared
+"""
+File: gui/tests/test_path_panel.py
+
+Purpose
+-------
+Tests for gui.widgets.path_panel.PathSelectionPanel: the shared
+file/folder/drive picker used by both the Vault "Files / Folders / Drives"
+sub-tab and the Biometrics "File Attachments" sub-tab.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest.
+
+Settings / parameters
+---------------------
+Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for gui.widgets.path_panel.PathSelectionPanel: the shared
 file/folder/drive picker used by both the Vault "Files / Folders / Drives"
 sub-tab and the Biometrics "File Attachments" sub-tab.
 
@@ -12,6 +43,7 @@ Requires a real Tk root (a Listbox cannot be constructed without one) and
 skips cleanly on a headless runner with no display, matching the convention
 used in test_busy.py.
 """
+
 import unittest
 
 
@@ -116,3 +148,4 @@ class PathSelectionPanelTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,3 +1,31 @@
+"""
+File: core/constants.py
+
+Purpose
+-------
+Defines apply_common_defaults, apply_standard_preset, apply_archive_preset, settings_for_profile for 98_Tooling/ProjectContextHelper/core.
+
+Communication / relationships
+-----------------------------
+Direct module imports: core.models.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_NAME, REPOSITORY_URL, RELEASES_URL, RELEASES_LIST_URL, RELEASE_TAG_PREFIX, EXPORTS_DIRNAME, CONTEXT_FILENAME, MANIFEST_FILENAME, SUMMARY_FILENAME, SNAPSHOT_FILENAME, SETTINGS_FILENAME, BUILD_HISTORY_FILENAME, MAX_HISTORY_ENTRIES, APP_SETTINGS_FILENAME, LAST_SETTINGS_FILENAME, CUSTOM_PROFILES_FILENAME, STAGED_EXE_FILENAME, DEFAULT_GIT_STATE_COMMIT_LIMIT, PROFILE_STANDARD, PROFILE_ARCHIVE, DEFAULT_PROFILE, VALID_PROFILES, DEFAULT_EXTENSIONS, ARCHIVE_EXTENSIONS, DEFAULT_EXCLUDE_DIRS, DEFAULT_EXCLUDE_FILES, DEFAULT_EXCLUDE_SUFFIXES, DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_TOTAL_BYTES, ARCHIVE_MAX_FILE_BYTES, ARCHIVE_MAX_TOTAL_BYTES, STANDARD_SKIPPED_DETAILS_LIMIT, ARCHIVE_SKIPPED_DETAILS_LIMIT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from core.models import ScanSettings
 
 APP_NAME = "Project Context Helper"
@@ -127,3 +155,4 @@ def settings_for_profile(profile: str) -> ScanSettings:
     if profile == PROFILE_ARCHIVE:
         return apply_archive_preset(settings)
     raise ValueError(f"Invalid profile: {profile}")
+

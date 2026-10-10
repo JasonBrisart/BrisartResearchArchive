@@ -1,4 +1,34 @@
 """
+File: brisartos/runtime/brisart_platform.py
+
+Purpose
+-------
+BrisartOS Platform Abstraction
+Pure Python.
+No dependencies.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 BrisartOS Platform Abstraction
 Pure Python.
 No dependencies.
@@ -6,7 +36,6 @@ No dependencies.
 This file represents the future-hardware strategy.
 Modules should target the BrisartOS module ABI, not raw CPU or firmware details.
 """
-
 
 class PlatformInfo:
     def __init__(self):

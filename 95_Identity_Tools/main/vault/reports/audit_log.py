@@ -1,8 +1,9 @@
 """
 File: vault/reports/audit_log.py
 
-Purpose:
-    Append-only audit trail for vault mutation and lifecycle events. Every
+Purpose
+-------
+Append-only audit trail for vault mutation and lifecycle events. Every
     time a vault record is created, updated, deleted, or the vault itself is
     unlocked/locked, this module writes one small, independent JSON file
     describing that event. The vault's primary store only ever holds the
@@ -16,8 +17,9 @@ Purpose:
     what changed and when should never need to unlock the vault or handle
     any secret material to do so.
 
-Communication relationships:
-    Called by:
+Communication / relationships
+-----------------------------
+Called by:
         - vault/core/*.py record-mutation paths (create/update/delete),
           which call record_event() once a mutation has been durably
           written to the vault store, so the audit entry reflects a
@@ -79,7 +81,24 @@ Edge-case behavior:
       not exist yet -- a vault that has never recorded an event has no
       audit directory at all, and callers should treat that the same as
       "no entries" rather than a failure.
+
+Settings / parameters
+---------------------
+Module-level named settings: AUDIT_FORMAT, _SUFFIX_BYTES, _VALID_ACTIONS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import secrets
 from pathlib import Path
 
@@ -155,3 +174,4 @@ def list_entries(audit_dir, record_id: str = None) -> list:
     if record_id is None:
         return paths
     return [path for path in paths if f"_{record_id}_" in path.name]
+

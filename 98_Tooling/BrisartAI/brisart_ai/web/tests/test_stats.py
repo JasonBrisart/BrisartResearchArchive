@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/web/stats.py -- CrawlStats."""
+"""
+File: brisart_ai/web/tests/test_stats.py
+
+Purpose
+-------
+Tests for brisart_ai/web/stats.py -- CrawlStats.
+
+Communication / relationships
+-----------------------------
+Direct module imports: io, unittest, contextlib, brisart_ai.web.stats.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import io
 import unittest
 from contextlib import redirect_stdout
@@ -36,3 +63,4 @@ class TestCrawlStats(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -6,18 +6,27 @@ Purpose
 Defines FetchResult, the single return value of one URL fetch attempt.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/web/fetcher.py: constructs FetchResult.
 - brisart_ai/web/crawler.py: reads its fields.
 
 Settings / parameters
-----------------------
+---------------------
 - url, status, content_type, title, text, links, error.
 
 Edge cases
 ----------
 - A non-empty error does not guarantee every other field is blank.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,3 +44,4 @@ class FetchResult:
     text: str
     links: List[str]
     error: str = ""
+

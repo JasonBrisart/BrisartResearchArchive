@@ -1,4 +1,35 @@
-"""Tests for VaultService.upsert_file/upsert_file_bytes/get_file/get_file_bytes:
+"""
+File: vault/tests/test_file_records.py
+
+Purpose
+-------
+Tests for VaultService.upsert_file/upsert_file_bytes/get_file/get_file_bytes:
+arbitrary raw-file encryption, independent of extension, kind, or any
+assumption about the file's content shape.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib, vault.store.vault_service.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for VaultService.upsert_file/upsert_file_bytes/get_file/get_file_bytes:
 arbitrary raw-file encryption, independent of extension, kind, or any
 assumption about the file's content shape.
 
@@ -11,6 +42,7 @@ run BSR2's deliberately slow passphrase derivation" comment) -- this is not
 a new cost introduced by this feature, only the same accepted cost applied
 to a new code path.
 """
+
 import secrets
 import tempfile
 import unittest
@@ -94,3 +126,4 @@ class FileRecordTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

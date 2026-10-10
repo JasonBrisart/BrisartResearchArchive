@@ -1,9 +1,39 @@
-"""Tests for vault.records.record_model.
+"""
+File: vault/tests/test_record_model.py
+
+Purpose
+-------
+Tests for vault.records.record_model.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, vault.records.record_model.
+
+Settings / parameters
+---------------------
+Module-level named settings: _ALGORITHM. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for vault.records.record_model.
 
 Uses a hand-built envelope-shaped dict (which crypto.envelope.is_envelope
 accepts) so these tests never need to run the KDF or seal anything for real --
 they exercise the record model's shape/validation logic directly.
 """
+
 import unittest
 
 from vault.records.record_model import (
@@ -133,3 +163,4 @@ class PublicSummaryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

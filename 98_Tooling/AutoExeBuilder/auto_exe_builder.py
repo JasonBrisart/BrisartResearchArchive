@@ -1,7 +1,34 @@
 #!/usr/bin/env python3
 """
+File: auto_exe_builder.py
+
+Purpose
+-------
 AutoExeBuilder
---------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, argparse, sys, build_profiles, constants, filesystem, generators, project_scanner, pyinstaller_backend.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+AutoExeBuilder
 
 A lightweight no-dependency Python utility that helps turn local Python projects
 into distributable executables through a clean GUI or CLI workflow.

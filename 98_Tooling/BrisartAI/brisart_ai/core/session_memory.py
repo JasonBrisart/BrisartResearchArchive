@@ -6,14 +6,14 @@ Purpose
 A tiny SQLite-backed rolling log of recent chat topics.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/core/conversation.py: recent_topics() / add().
 - brisart_ai/ui/service.py: constructs the single SessionMemory instance.
 - Imports brisart_ai.io.input_cleaner.normalize_shellish_input() and
   brisart_ai.util.now_ts()/tokenize().
 
 Settings / parameters
-----------------------
+---------------------
 - check_same_thread=False.
 - _compress(): tokenizes, caps at 12 terms, falls back to 140 chars.
 - recent_topics(limit=6).
@@ -22,7 +22,16 @@ Edge cases
 ----------
 - add() drops rows that compress to nothing.
 - Content capped at 400 chars at the SQL layer.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -84,3 +93,4 @@ class SessionMemory:
 
     def close(self) -> None:
         self.conn.close()
+

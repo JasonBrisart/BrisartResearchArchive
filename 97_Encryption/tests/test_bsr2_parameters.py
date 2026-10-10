@@ -1,4 +1,30 @@
-"""Reproducibility checks for the committed BSR2 fixed parameters."""
+"""
+File: tests/test_bsr2_parameters.py
+
+Purpose
+-------
+Reproducibility checks for the committed BSR2 fixed parameters.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, brisart_security_primitives, tools.generate_bsr2_parameters.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
 
 import unittest
 
@@ -46,3 +72,4 @@ class BSR2ParameterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

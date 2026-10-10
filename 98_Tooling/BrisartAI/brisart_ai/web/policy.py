@@ -7,7 +7,7 @@ Internet-access safety policy: refuse local/private network destinations
 outright, and honor robots.txt for every public host BrisartAI crawls.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/web/crawler.py: builds one RobotsCache() per crawl.
 - brisart_ai/web/fetcher.py, brisart_ai/web/search.py: import USER_AGENT.
 - Imports brisart_ai.version_info.__version__.
@@ -18,7 +18,7 @@ Communication / relationships
   (urllib.request/urllib.error) are unchanged.
 
 Settings / parameters
-----------------------
+---------------------
 - USER_AGENT: version-stamped via version_info.py.
 - ROBOTS_TIMEOUT (8s) / MAX_ROBOTS_BYTES (512,000).
 
@@ -27,7 +27,16 @@ Edge cases
 - Missing/unreachable/malformed robots.txt -> ALLOWED, not blocked.
 - is_local_or_private_host() runs before any network access.
 - BrisartRobotsPolicy mirrors urllib.robotparser's simpler algorithm.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import ipaddress
@@ -155,3 +164,4 @@ class RobotsCache:
 
 
 __all__ = ["MAX_ROBOTS_BYTES", "ROBOTS_TIMEOUT", "RobotsCache", "USER_AGENT", "is_local_or_private_host", "is_localhost"]
+

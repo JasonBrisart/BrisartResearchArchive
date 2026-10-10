@@ -10,7 +10,7 @@ classified into a coarse intent, and each intent carries BOOST and
 PENALTY vocabularies.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/knowledge/ranker.py: detect_intent(),
   is_bare_generic_concept_title(), name_candidates(), score_intent().
 - brisart_ai/web/crawler.py: describe_intent(), detect_intent(),
@@ -23,7 +23,7 @@ Communication / relationships
   re and typing.
 
 Settings / parameters
-----------------------
+---------------------
 - ALL_INTENTS: founder, inventor, statistic, explanation, comparison,
   general.
 - _KNOWN_COMPANIES: hand-maintained company-name set.
@@ -37,7 +37,16 @@ Edge cases
 - looks_like_person_name() is a narrow shape test.
 - name_candidates() offers a URL's last path segment as an extra
   candidate.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -449,3 +458,4 @@ __all__ = [
     "looks_like_person_name", "name_candidates", "penalty_terms", "score_intent",
     "wants_date", "wants_person",
 ]
+

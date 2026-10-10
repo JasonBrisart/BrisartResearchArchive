@@ -19,7 +19,7 @@ cryptographic primitive from scratch (that risk profile belongs to
 BSR2 in the Identity Tools project, a genuinely different situation).
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Intended as a drop-in replacement for hashlib.sha256(...).hexdigest()
   at every current call site (util.stable_hash(), util.file_hash(),
   web/crawler.py's content_exists() hashing).
@@ -27,7 +27,7 @@ Communication / relationships
   pure-integer arithmetic (no external hash/crypto library at all).
 
 Settings / parameters
-----------------------
+---------------------
 - _INITIAL_HASH: the eight 32-bit initial hash values (fractional parts
   of the square roots of the first 8 primes), fixed by the SHA-256
   specification -- not tunable, not a design choice.
@@ -52,7 +52,16 @@ Edge cases
   addition, exactly matching modulo-2^32 addition -- Python integers
   are arbitrary precision, so this mask is REQUIRED, not optional
   defensive code.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from typing import List
@@ -212,3 +221,4 @@ if __name__ == "__main__":
 
 
 __all__ = ["BrisartHash256", "brisart_sha256", "brisart_stable_hash"]
+

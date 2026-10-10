@@ -1,6 +1,33 @@
 """
+File: ui/app_settings.py
+
+Purpose
+-------
 ui.app_settings
-----------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, json, pathlib, engine.app_info, engine.settings.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ui.app_settings
 
 Loading and saving ArchiveSnapshot's GUI application settings.
 
@@ -69,3 +96,4 @@ def save_app_settings(settings: AppSettings) -> None:
         json.dumps(settings.to_jsonable(), indent=2),
         encoding="utf-8",
     )
+

@@ -1,5 +1,29 @@
 """
+File: constants.py
+
+Purpose
+-------
 ReadmeBuilder constants.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_NAME, REPOSITORY_URL, README_OUTPUT_FILENAME, ANALYSIS_OUTPUT_FILENAME, MANIFEST_OUTPUT_FILENAME, DEFAULT_EXCLUDE_DIRS, DEFAULT_EXCLUDE_FILES, DEFAULT_EXCLUDE_SUFFIXES, PYTHON_STDLIB_APPROX, MAX_TREE_ITEMS, MAX_IMPORT_SCAN_FILES, MAX_ENTRYPOINTS, MAX_MODULE_SUMMARIES, MAX_FUNCTIONS_PER_MODULE, MAX_CLASSES_PER_MODULE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
 
 APP_NAME = "ReadmeBuilder"

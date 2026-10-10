@@ -1,4 +1,34 @@
-"""Tests for the crypto.attempt_store wiring inside
+"""
+File: vault/tests/test_unlock_throttle.py
+
+Purpose
+-------
+Tests for the crypto.attempt_store wiring inside
+vault.store.vault_service.VaultService.unlock()/unlock_with_recovery_code().
+
+Communication / relationships
+-----------------------------
+Direct module imports: tempfile, unittest, pathlib, crypto, crypto.throttle, vault.store.vault_file, vault.store.vault_service.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for the crypto.attempt_store wiring inside
 vault.store.vault_service.VaultService.unlock()/unlock_with_recovery_code().
 
 SLOW: setUpClass() creates one real vault (VaultService.create(), which pays
@@ -12,6 +42,7 @@ correct unlock) to confirm genuine failure/success are recorded correctly,
 and one more confirms a recovery-code unlock clears a counter a prior
 passphrase failure had incremented.
 """
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -110,3 +141,4 @@ class VaultUnlockThrottleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

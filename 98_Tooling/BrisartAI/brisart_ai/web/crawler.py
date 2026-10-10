@@ -9,7 +9,7 @@ hosts and off-topic disambiguation pages, respect robots.txt, fetch and
 de-duplicate content, and add the survivors to the index.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/service.py: web_search_and_ingest() is the entry point.
 - Imports brisart_ai.blocklist.*, brisart_ai.intent.*,
   brisart_ai.knowledge.ranker.phrase_match_adjust,
@@ -21,7 +21,7 @@ Communication / relationships
   brisart_ai/native/README.md for verification.
 
 Settings / parameters
-----------------------
+---------------------
 - DEFAULT_DELAY_SECONDS (1.0).
 - INTENT_WEIGHT (2) / PHRASE_MATCH_BONUS (4).
 - _INTENT_HINTS.
@@ -31,7 +31,16 @@ Edge cases
 - _stem(): crude suffix stripper.
 - Article-slug bonus checks both "-" and "_".
 - content_exists() swallows any exception, returns False.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import queue
@@ -425,3 +434,4 @@ __all__ = [
     "explain_ranking", "rank_results", "score_result",
     "search_keyword_fallback", "web_search_and_ingest",
 ]
+

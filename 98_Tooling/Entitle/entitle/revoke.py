@@ -1,4 +1,32 @@
 """
+File: entitle/revoke.py
+
+Purpose
+-------
+Entitle Revoke
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, json, .record_types, .records.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Revoke
 
 Offline revocation for Entitle entitlements.
@@ -18,6 +46,7 @@ Example:
         --issuer JasonBrisart --product EntitleDemo --reason "key compromise" \\
         --store records/entitle_records.log
 """
+
 import argparse
 import json
 
@@ -145,3 +174,4 @@ def main(argv=None):
     args = parser.parse_args(argv)
     args.func(args)
     return 0
+

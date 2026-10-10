@@ -13,7 +13,7 @@ unescaped ampersands, mismatched nesting) and must degrade gracefully
 rather than raise.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Intended as a drop-in base class replacement: a subclass overriding
   handle_starttag(tag, attrs), handle_endtag(tag), handle_data(data),
   and optionally handle_startendtag(tag, attrs), calling feed(html) and
@@ -23,7 +23,7 @@ Communication / relationships
   other markup library.
 
 Settings / parameters
-----------------------
+---------------------
 - handle_startendtag() only fires when the SOURCE markup explicitly
   writes a trailing "/" ("<br/>"); a bare void element with no slash
   ("<br>", "<img src=x>") calls handle_starttag() like any other tag,
@@ -55,7 +55,16 @@ Edge cases
   or entity reference spanning a feed() boundary is buffered internally
   and completed on the next feed() call, mirroring
   html.parser.HTMLParser's own incremental-feed contract.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -327,3 +336,4 @@ if __name__ == "__main__":
 
 
 __all__ = ["BrisartMarkupParser", "brisart_unescape"]
+

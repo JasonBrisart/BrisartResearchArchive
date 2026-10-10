@@ -1,12 +1,14 @@
 """
 File: frameworks/TFL/settings.py
 
-Purpose:
+Purpose
+-------
 Hold every tunable TFL behavior setting in one place. Changing how a
 TFL run is structured, timed, scored, or defaulted means editing this
 file and nothing else.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - frameworks/TFL/config.py builds DEFAULT_CONFIG and the default
   startup options from these constants.
 - frameworks/TFL/framework.py re-exports BASE_STIMULUS_LIMIT and the
@@ -18,7 +20,8 @@ Communication / relationships:
 - A pure-data leaf module: imports nothing from the TFL package or
   Tkinter, so it can never create a circular import.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - TRIAL_DURATION_SEC 12; AUTOSAVE_INTERVAL_TRIALS 5.
 - NUM_TRIALS 120; TRIALS_PER_BLOCK 40; BLOCKS affect, belief,
   contradiction.
@@ -27,22 +30,26 @@ Settings / parameters:
 - FEEDBACK_LEVELS, PERTURBATION_TYPES, default run-option toggles,
   RUN_MODE, DEFAULT_MODE_DESCRIPTION, prompts, and intro text.
 
-Edge cases:
+Edge cases
+----------
 - An interval of 0 disables that feature entirely.
 - The trial builder caps a run at TRIALS_PER_BLOCK * len(BLOCKS).
 - A new block or feedback level must also be added to VALID_BLOCKS or
   VALID_FEEDBACK_LEVELS, or the trial builder rejects it.
 
-Known limitations:
+Known limitations
+-----------------
 - Stimulus content lives in frameworks/TFL/stimuli.py, not here.
 - Editing values changes run structure, but the recorded run_mode label
   stays "default_tfl" unless RUN_MODE is changed too.
 - frameworks/TFL/screen.py defines its own button choice tuples.
 
-Examples:
+Examples
+--------
 - TRIAL_DURATION_SEC = 15
 - PERTURBATION_INTERVAL = 0
 """
+
 from __future__ import annotations
 # ============================================================
 # Timing
@@ -129,3 +136,4 @@ SESSION_INTRO_TEXT = (
     "Use A or B only for prediction and behavioral choice.\n"
     "Affect rating must be 0-100."
 )
+

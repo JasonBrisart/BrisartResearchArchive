@@ -1,8 +1,9 @@
 """
 File: hardware/biometric/fingerprint_scanner.py
 
-Purpose:
-    A BiometricBase implementation for any fingerprint scanner reachable
+Purpose
+-------
+A BiometricBase implementation for any fingerprint scanner reachable
     through an organization-supplied biometric binding, containing every
     piece of logic this project can implement in pure Python with zero
     OS or SDK calls: device-name matching, retry policy, and validation
@@ -22,8 +23,9 @@ Purpose:
     readers. See hardware/README.md, "Why the biometric binding is not
     shipped," for why that line is drawn here specifically.
 
-Communication relationships:
-    Called by: hardware.hardware_manager.HardwareManager, once
+Communication / relationships
+-----------------------------
+Called by: hardware.hardware_manager.HardwareManager, once
     registered via hardware.registry.register() (not automatic -- see
     hardware/README.md), and constructed with a BiometricBinding
     instance the operator supplies.
@@ -86,7 +88,24 @@ Edge-case behavior:
       so this entire class's logic (retry, shape validation) is fully
       testable against a minimal fake binding with zero OS or SDK
       involvement at all.
+
+Settings / parameters
+---------------------
+Module-level named settings: CAPTURE_RETRY_COUNT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from hardware.base.biometric_base import BiometricBase
 from hardware.base.biometric_binding import (
     BiometricBinding,
@@ -244,3 +263,4 @@ class FingerprintScanner(BiometricBase):
                 f"binding.capture() returned {len(pixels)} pixel "
                 f"bytes; expected width*height = {width * height}."
             )
+

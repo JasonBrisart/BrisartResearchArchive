@@ -1,12 +1,41 @@
 """
+File: engine/app_info.py
+
+Purpose
+-------
 engine.app_info
----------------
+Application metadata and shared filenames for ArchiveSnapshot.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_NAME, APP_TAGLINE, STORE_DIRNAME, STORE_INDEX_FILENAME, STORE_LOG_FILENAME, SUMMARY_FILENAME, MANIFEST_FILENAME, HASHES_FILENAME, TREE_FILENAME, SETTINGS_FILENAME, ZIP_FILENAME, DIFF_FILENAME, APP_SETTINGS_FILENAME, DAILY_CONFIG_FILENAME, DAILY_LOG_FILENAME, DAILY_STATE_FILENAME, PROJECT_CONTEXT_ACTIVE_DIRNAME, PROJECT_CONTEXT_ACTIVE_SUBDIRNAME, PROJECT_CONTEXT_DEST_DIRNAME, PROJECT_CONTEXT_INDEX_FILENAME, PROJECT_CONTEXT_MD_FILENAME, PROJECT_CONTEXT_SUMMARY_FILENAME, PROJECT_CONTEXT_SETTINGS_FILENAME, PROJECT_CONTEXT_MANIFEST_FILENAME, PROJECT_CONTEXT_ZIP_FILENAME, PROJECT_CONTEXT_KNOWN_FILES, DEFAULT_EXCLUDED_DIRS, DEFAULT_EXCLUDED_FILES, DEFAULT_EXCLUDED_SUFFIXES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.app_info
 Application metadata and shared filenames for ArchiveSnapshot.
 
 This module is the single source of truth for application identity,
 generated filenames, storage paths, Project Context Helper bundle names,
 and default scan exclusions.
 """
+
 from __future__ import annotations
 
 APP_NAME = "ArchiveSnapshot"
@@ -114,3 +143,4 @@ DEFAULT_EXCLUDED_SUFFIXES = {
     ".pyc",
     ".pyo",
 }
+

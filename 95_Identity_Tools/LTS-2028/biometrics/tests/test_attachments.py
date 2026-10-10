@@ -1,4 +1,37 @@
-"""Tests for the generic file-attachment feature on biometrics identity
+"""
+File: biometrics/tests/test_attachments.py
+
+Purpose
+-------
+Tests for the generic file-attachment feature on biometrics identity
+records (biometrics/engine/attachments.py): sealing/opening arbitrary raw
+files, independent of the voice/fingerprint/video modality system,
+independent of file extension, and independent of any assumption about
+what the file's content looks like.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.identity.identity_record, biometrics.engine.attachments.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for the generic file-attachment feature on biometrics identity
 records (biometrics/engine/attachments.py): sealing/opening arbitrary raw
 files, independent of the voice/fingerprint/video modality system,
 independent of file extension, and independent of any assumption about
@@ -11,6 +44,7 @@ of how it was obtained, so a plain secrets.token_bytes(32) exercises the
 exact same sealing/opening code path a real device-key-derived master key
 would.
 """
+
 import secrets
 import tempfile
 import unittest
@@ -99,3 +133,4 @@ class AttachmentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

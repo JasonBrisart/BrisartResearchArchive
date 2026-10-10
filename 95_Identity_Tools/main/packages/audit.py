@@ -1,8 +1,9 @@
 """
 File: packages/audit.py
 
-Purpose:
-    External, append-only audit trail for Identity-Bound Package events.
+Purpose
+-------
+External, append-only audit trail for Identity-Bound Package events.
     Every package lifecycle event (created, a recipient added or removed,
     opened, an open denied, a custody violation detected) writes one small,
     independent JSON file describing that event, into a directory separate
@@ -19,8 +20,9 @@ Purpose:
     "who touched this package, and when" never requires unwrapping a
     content key or opening the package to do so.
 
-Communication relationships:
-    Called by:
+Communication / relationships
+-----------------------------
+Called by:
         - packages.package.create_package / add_recipient / remove_recipient
           / open_package, each of which calls record_event() once the
           corresponding package-state mutation has already succeeded, so an
@@ -85,7 +87,24 @@ Edge-case behavior:
       not exist yet -- a package that has never had an audit-recorded event
       has no audit directory at all, and callers should treat that the same
       as "no entries" rather than a failure.
+
+Settings / parameters
+---------------------
+Module-level named settings: AUDIT_FORMAT, _SUFFIX_BYTES, _VALID_ACTIONS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import secrets
 from pathlib import Path
 
@@ -158,3 +177,4 @@ def list_entries(audit_dir, package_id: str = None) -> list:
     if package_id is None:
         return paths
     return [path for path in paths if f"_{package_id}_" in path.name]
+

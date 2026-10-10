@@ -1,4 +1,33 @@
-"""Per-modality dispatch table: feature extraction, comparison, and thresholds.
+"""
+File: biometrics/engine/modalities.py
+
+Purpose
+-------
+Per-modality dispatch table: feature extraction, comparison, and thresholds.
+
+Communication / relationships
+-----------------------------
+Direct module imports: biometrics.features.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_THRESHOLDS, _MODALITIES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Per-modality dispatch table: feature extraction, comparison, and thresholds.
 
 ``enrollment.py`` and ``verification.py`` both need to answer "given a
 modality name, how do I turn raw input into a template, and how do I compare
@@ -11,6 +40,7 @@ Default match thresholds are deliberately conservative (biased toward
 rejecting a genuine match rather than accepting an impostor) since this is a
 research/reference implementation, not a tuned production biometric system.
 """
+
 from biometrics.features import fingerprint_features, video_features, voice_features
 
 DEFAULT_THRESHOLDS = {
@@ -89,3 +119,4 @@ def default_threshold(modality: str) -> float:
     """Return the default match-acceptance threshold for ``modality``."""
     _entry(modality)  # validates the modality name
     return DEFAULT_THRESHOLDS[modality]
+

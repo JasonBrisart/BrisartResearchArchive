@@ -7,12 +7,12 @@ Single source of truth for APP_NAME and __version__. Replaces the
 removed brisart_ai/__init__.py.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/app.py, brisart_ai/ui/sidebar.py: APP_NAME/__version__.
 - brisart_ai/web/policy.py: __version__ for USER_AGENT.
 
 Settings / parameters
-----------------------
+---------------------
 - APP_NAME (str): "BrisartAI".
 - __version__ (str): read from version.py at the project root.
   version.py is loaded directly by file path via importlib.util
@@ -31,7 +31,16 @@ Edge cases
   the same failure-tolerant contract the previous version.txt-reading
   implementation had.
 - Project root located relative to this file's own path (parents[1]).
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -60,3 +69,4 @@ def _read_version() -> str:
 __version__ = _read_version()
 
 __all__ = ["APP_NAME", "__version__"]
+

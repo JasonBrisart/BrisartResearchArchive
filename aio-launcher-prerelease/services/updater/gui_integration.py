@@ -1,18 +1,21 @@
 """
 File: services/updater/gui_integration.py
 
-Purpose:
+Purpose
+-------
 Provide the Tkinter-facing updater entry points: the manual Check
 Updates button, the automatic startup check, and update-output display.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - controllers/system_controller.py imports check_updates(),
   set_update_text(), and update_check_is_running().
 - gui/main_window.py schedules startup_check() once after launch.
 - Uses services/updater/orchestration.py, services/updater/notify.py,
   and services/updater/tk_helpers.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - enable_update_checks: master switch. When off, nothing here contacts
   the registry.
 - auto_install_updates: when on, verified updates install immediately
@@ -22,7 +25,8 @@ Settings / parameters:
   installing.
 - STARTUP_SILENT_STATUSES: outcomes the startup check never shows.
 
-Edge cases:
+Edge cases
+----------
 - The startup check is a complete no-op when both auto-install and
   notify are off; only the manual button can check then.
 - Only one check runs at a time; a second request is refused.
@@ -33,14 +37,17 @@ Edge cases:
   errors). Verification failures are always shown.
 - Missing Tk variables are treated as enabled.
 
-Known limitations:
+Known limitations
+-----------------
 - set_update_text() switches to the Settings page to find update_box,
   so any shown report moves the user off the current page.
 
-Examples:
+Examples
+--------
 - check_updates(app)
 - startup_check(app)
 """
+
 from __future__ import annotations
 
 import threading
@@ -307,3 +314,4 @@ def update_check_is_running() -> bool:
         return True
     _update_lock.release()
     return False
+

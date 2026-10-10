@@ -1,12 +1,14 @@
 """
 File: frameworks/TFL/session_gui.py
 
-Purpose:
+Purpose
+-------
 Provide TFLGuiSession, the adapter that wires TFLSessionEngine to a Tk
 window: participant prompt, options screen, engine construction,
 autosave, cancel, and hand-off back to the host app.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Launched by services/framework_service.py, which instantiates the
   runner_class named in frameworks/TFL/framework.py with the app.
 - Renders through options_screen.render_options() and
@@ -15,12 +17,14 @@ Communication / relationships:
 - Logs through app.log(); after completion calls app.show_page("Results")
   and app.analyze_tfl().
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - TFLGuiSession(app=None, participant_id="").
 - Window 980x720, minimum 900x650; kept topmost for 200 ms when opened.
 - AUTOSAVE_INTERVAL_TRIALS comes from frameworks/TFL/settings.py.
 
-Edge cases:
+Edge cases
+----------
 - With app=None, a hidden Tk root is created and the session runs its
   own mainloop.
 - A blank or cancelled participant ID is allowed.
@@ -29,15 +33,18 @@ Edge cases:
 - The cancel prompt reports how many trials were already completed.
 - An autosave failure is logged and the run continues.
 
-Known limitations:
+Known limitations
+-----------------
 - A cancelled run produces no final output file; only trials captured
   by the last autosave remain on disk.
 - The participant prompt appears before the options window.
 
-Examples:
+Examples
+--------
 - TFLGuiSession(app).start()
 - TFLGuiSession().start()
 """
+
 from __future__ import annotations
 import tkinter as tk
 from engine.timing import MonotonicTimer
@@ -292,3 +299,4 @@ class TFLGuiSession:
 
 
 __all__ = ["TFLGuiSession"]
+

@@ -1,10 +1,41 @@
-"""Tests for crypto.envelope: length-hiding padding, JSON canonicalisation,
+"""
+File: crypto/tests/test_envelope.py
+
+Purpose
+-------
+Tests for crypto.envelope: length-hiding padding, JSON canonicalisation,
+context binding, and uniform authentication failure.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, crypto.envelope, crypto.errors, crypto.rng, secrets.
+
+Settings / parameters
+---------------------
+Module-level named settings: _ALGORITHM. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for crypto.envelope: length-hiding padding, JSON canonicalisation,
 context binding, and uniform authentication failure.
 
 These use a random 32-byte master key plus a real crypto.rng generator, NOT a
 passphrase, so they exercise the full BSR2 seal/open path WITHOUT paying the
 slow KDF cost (envelope sealing is sponge-based, not KDF-based).
 """
+
 import unittest
 
 from crypto.envelope import (
@@ -132,3 +163,4 @@ class EnvelopeLimitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

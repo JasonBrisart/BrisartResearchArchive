@@ -1,4 +1,8 @@
 """
+File: brisartos/services/filesystem_service.py
+
+Purpose
+-------
 BrisartOS Filesystem Service
 Pure Python.
 No dependencies.
@@ -9,7 +13,28 @@ regardless of the filename supplied.
 This is the first built-in service with real behavior. Modules reach
 it through ModuleAPI.get_service("filesystem"), gated by the
 "service:filesystem" permission declared in MODULE_PERMISSIONS.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from pathlib import Path
 class FilesystemAccessError(Exception):
     pass

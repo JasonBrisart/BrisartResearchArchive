@@ -1,4 +1,32 @@
 """
+File: tests/test_bsr_integrity.py
+
+Purpose
+-------
+BSR2 vendor integrity test.
+
+Communication / relationships
+-----------------------------
+Direct module imports: hashlib, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: VENDOR_DIR, PINNED_HASHES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
 BSR2 vendor integrity test.
 
 The project's core claim is that the four BrisartSecurityResearch (BSR2) modules
@@ -16,6 +44,7 @@ To regenerate after a deliberate upstream update:
         [print(p.name, hashlib.sha256(p.read_bytes()).hexdigest()) \\
          for p in sorted(pathlib.Path('vendor').glob('brisart_security_*.py'))]"
 """
+
 import hashlib
 from pathlib import Path
 
@@ -62,3 +91,4 @@ class TestVendorIntegrity:
             f"vendor/ BSR2 modules {present} do not match the pinned set "
             f"{set(PINNED_HASHES)}."
         )
+

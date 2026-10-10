@@ -7,18 +7,27 @@ The single dark color palette, font tuples, and two spacing constants
 every widget in brisart_ai/ui/ shares.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Imported by every module in brisart_ai/ui/.
 - Imports nothing; pure constants, no Tk imports.
 
 Settings / parameters
-----------------------
+---------------------
 - BG_*/FG_* constants, FONT_*, PAD/PAD_SMALL, SIDEBAR_WIDTH.
 
 Edge cases
 ----------
 - None -- this module has no logic, only literal constants.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 BG_APP = "#1b1e23"
@@ -50,3 +59,4 @@ PAD = 8
 PAD_SMALL = 4
 
 SIDEBAR_WIDTH = 210
+

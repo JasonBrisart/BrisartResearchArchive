@@ -1,4 +1,33 @@
-"""Configurable research test runner for BrisartSecurityResearch.
+"""
+File: research/run_research_suite.py
+
+Purpose
+-------
+Configurable research test runner for BrisartSecurityResearch.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, argparse, csv, hashlib, json, math, platform, random, statistics, subprocess, sys, time, dataclasses, datetime, pathlib, typing, brisart_security_drbg, brisart_security_envelope, brisart_security_primitives.
+
+Settings / parameters
+---------------------
+Module-level named settings: REPOSITORY_ROOT, DEFAULT_CONFIG_PATH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Configurable research test runner for BrisartSecurityResearch.
 
 The suite measures deterministic behavior, tamper detection, diffusion, simple
 output statistics, collision observations, and throughput. Passing it does not
@@ -793,3 +822,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

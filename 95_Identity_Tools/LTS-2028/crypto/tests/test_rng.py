@@ -1,8 +1,38 @@
-"""Tests for crypto.rng.ManagedGenerator / new_generator.
+"""
+File: crypto/tests/test_rng.py
+
+Purpose
+-------
+Tests for crypto.rng.ManagedGenerator / new_generator.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, crypto.errors, crypto.rng.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for crypto.rng.ManagedGenerator / new_generator.
 
 Fast: seeds from secrets.token_bytes and expands via BSR2's sponge DRBG; no
 KDF involved.
 """
+
 import unittest
 
 from crypto.errors import Bsr2IntegrationError
@@ -61,3 +91,4 @@ class PersonalizationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

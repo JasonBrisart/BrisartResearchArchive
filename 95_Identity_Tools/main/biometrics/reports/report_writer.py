@@ -1,4 +1,33 @@
-"""Audit-trail reports for enrollment and verification events.
+"""
+File: biometrics/reports/report_writer.py
+
+Purpose
+-------
+Audit-trail reports for enrollment and verification events.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, pathlib, common.atomic_io, common.timestamps.
+
+Settings / parameters
+---------------------
+Module-level named settings: REPORT_FORMAT, _SUFFIX_BYTES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Audit-trail reports for enrollment and verification events.
 
 Every enroll or verify action that touches an identity is worth a durable
 record independent of the identity file itself: a security review of "who was
@@ -12,6 +41,7 @@ Reports never contain sealed template bytes or feature vectors, only
 identity ids, modality names, scores, and outcomes: enough to audit a
 decision without re-exposing the biometric data the decision was made about.
 """
+
 import secrets
 from pathlib import Path
 
@@ -113,3 +143,4 @@ def list_reports(report_dir, identity_id: str = None) -> list:
     if identity_id is None:
         return paths
     return [path for path in paths if f"_{identity_id}_" in path.name]
+

@@ -1,4 +1,31 @@
-"""Inspect a BrisartOS boot image using Python only."""
+"""
+File: brisartos/boot/inspect_image.py
+
+Purpose
+-------
+Inspect a BrisartOS boot image using Python only.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, sys.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from pathlib import Path
 import sys
 def main() -> None:
@@ -14,3 +41,4 @@ def main() -> None:
     print("first 64 bytes:", data[:64].hex(" "))
 if __name__ == "__main__":
     main()
+

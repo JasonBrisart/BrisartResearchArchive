@@ -1,4 +1,40 @@
 """
+File: run.py
+
+Purpose
+-------
+Project Context Helper - Entry Point
+This is the ONLY file meant to be run directly. Everything else lives
+in a purpose-built subfolder:
+    core/      the scan + export engine
+    services/  storage.py (all settings/profile/history persistence,
+               consolidated into one file) + updater.py (self-updates)
+    cli/       the argparse-based command-line interface
+    gui/       the tkinter desktop interface
+    docs/      CHANGELOG.md, README.md, and ARCHITECTURE.md
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, sys, cli.cli.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Project Context Helper - Entry Point
 This is the ONLY file meant to be run directly. Everything else lives
 in a purpose-built subfolder:
@@ -24,6 +60,7 @@ Usage:
 See docs/ARCHITECTURE.md for the full folder layout and docs/README.md
 for a quick-start guide.
 """
+
 from pathlib import Path
 import sys
 
@@ -33,3 +70,4 @@ from cli.cli import main
 
 if __name__ == "__main__":
     main()
+

@@ -1,10 +1,39 @@
 """
+File: gui/tabs/verify_tab.py
+
+Purpose
+-------
+Entitle GUI — Verify Tab
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, entitle.verify, entitle.paths, gui.widgets.
+
+Settings / parameters
+---------------------
+Module-level named settings: TAB_TITLE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle GUI — Verify Tab
 
 Verifies a protected entitlement container. Calls
 ``entitle.verify.verify_entitlement(...)`` directly -- the exact same function
 the ``python main.py verify ...`` CLI command uses.
 """
+
 from tkinter import ttk
 
 from entitle.verify import verify_entitlement
@@ -44,3 +73,4 @@ def build(parent, app):
         row=form.next_row(), column=0, columnspan=3, pady=12, sticky="w"
     )
     return form
+

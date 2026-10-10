@@ -6,20 +6,29 @@ Purpose
 The small modal prompts ui/app.py's sidebar actions need.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/app.py: calls ask_import_path(), ask_text(), ask_note(),
   constructs SettingsDialog.
 - brisart_ai/core/settings.py: SettingsDialog reads TOGGLE_LABELS.
 
 Settings / parameters
-----------------------
+---------------------
 - ask_import_path(): folder picker, falls back to file picker.
 - SettingsDialog(master, service, on_change=None).
 
 Edge cases
 ----------
 - ask_text()/ask_note() return "" (not None) on cancel.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import tkinter as tk
@@ -103,3 +112,4 @@ class SettingsDialog(tk.Toplevel):
 
 
 __all__ = ["ask_import_path", "ask_text", "ask_note", "SettingsDialog"]
+

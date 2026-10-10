@@ -1,6 +1,33 @@
-"""The Vault tab: init/unlock/lock a vault, manage JSON records, and
+"""
+File: gui/tabs/tab_vault.py
+
+Purpose
+-------
+The Vault tab: init/unlock/lock a vault, manage JSON records, and
 encrypt/decrypt arbitrary files, folders, or drives (any size, chunked
-transparently past BSR2's single-envelope limit)."""
+transparently past BSR2's single-envelope limit).
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, pathlib, tkinter, gui.core.constants, gui.core.busy, gui.widgets.dialogs, gui.widgets.path_panel, vault.config, vault.store.vault_file, vault.store.vault_service, vault.store.bulk_file_service.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 import json
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -445,3 +472,4 @@ class VaultTab(ttk.Frame):
             messagebox.showerror(APP_TITLE, str(exc), parent=self)
 
         run_in_background(self, work, on_success, on_error, "Decrypting and restoring...")
+

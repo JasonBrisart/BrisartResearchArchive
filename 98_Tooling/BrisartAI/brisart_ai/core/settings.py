@@ -6,7 +6,7 @@ Purpose
 Persistent research toggles, backed by data/research_settings.json.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/core/conversation.py: reads toggles via .get().
 - brisart_ai/ui/dialogs.py: SettingsDialog renders checkboxes.
 - brisart_ai/ui/service.py: constructs the single ResearchSettings instance.
@@ -14,7 +14,7 @@ Communication / relationships
   (replacing json.*) -- see native/README.md for verification.
 
 Settings / parameters
-----------------------
+---------------------
 - DEFAULT_SETTINGS_PATH: data/research_settings.json.
 - DEFAULT_SETTINGS: search_local_files/search_notes True,
   auto_web_research False.
@@ -24,7 +24,16 @@ Edge cases
 ----------
 - load() creates defaults if missing; swallows corrupt files.
 - Only known boolean keys accepted on load.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -150,3 +159,4 @@ __all__ = [
     "DEFAULT_SETTINGS", "DEFAULT_SETTINGS_PATH", "ResearchSettings",
     "SETTING_ALIASES", "TOGGLE_LABELS",
 ]
+

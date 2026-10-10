@@ -1,4 +1,34 @@
-"""Tkinter desktop GUI for BrisartIdentityTools: Vault, Biometrics, and
+"""
+File: app.py
+
+Purpose
+-------
+Tkinter desktop GUI for BrisartIdentityTools: Vault, Biometrics, and
+Packages in one window.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, tkinter, gui.core.constants, gui.tabs.tab_vault, gui.tabs.tab_biometrics, gui.tabs.tab_packages.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Tkinter desktop GUI for BrisartIdentityTools: Vault, Biometrics, and
 Packages in one window.
 
 Standard-library only (tkinter ships with Python), consistent with the rest of
@@ -88,3 +118,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

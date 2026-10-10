@@ -1,36 +1,42 @@
 """
 File: services/trust_anchor.py
 
-Purpose:
+Purpose
+-------
 Embed the updater's public verification key directly in the application
 and report whether a real key has been configured. The key is never
 fetched from the website, so a compromised website cannot forge a
 trusted release.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - services/updater/download.py calls get_public_key() to verify release
   signatures.
 - services/updater/orchestration.py calls is_configured() before any
   registry contact.
 - signing/sign_release.py prints the PUBLIC_KEY_DICT to paste here.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - PUBLIC_KEY_DICT: hex strings "e" and "n".
 - MIN_MODULUS_BITS (2047): the shortest modulus treated as a real key.
 
-Edge cases:
+Edge cases
+----------
 - The shipped placeholder ("n": "0x0") makes is_configured() return
   False; the updater then returns status "trust_anchor_unconfigured"
   without touching the network, instead of reporting every release as
   forged.
 - A malformed dictionary also makes is_configured() return False.
 
-Known limitations:
+Known limitations
+-----------------
 - Rotating the key requires shipping a new build, and releases signed
   with the old key then fail verification.
 - The private key must stay offline; only the public half belongs here.
 
-Examples:
+Examples
+--------
 - is_configured()
 - public_key = get_public_key()
 """
@@ -64,3 +70,4 @@ def is_configured() -> bool:
 
 
 __all__ = ["PUBLIC_KEY_DICT", "MIN_MODULUS_BITS", "get_public_key", "is_configured"]
+

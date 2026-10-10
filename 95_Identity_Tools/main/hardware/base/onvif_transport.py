@@ -1,8 +1,9 @@
 """
 File: hardware/base/onvif_transport.py
 
-Purpose:
-    Defines the contract for the ONE operation this project deliberately
+Purpose
+-------
+Defines the contract for the ONE operation this project deliberately
     does not implement for ONVIF cameras: opening a network connection
     and exchanging bytes with the camera itself. Every other piece of
     ONVIF logic -- SOAP envelope construction, WS-Security UsernameToken
@@ -24,8 +25,9 @@ Purpose:
     the same boundary hardware/base/pcsc_binding.py already draws for
     smart-card readers.
 
-Communication relationships:
-    Implemented by: an organization-supplied transport class (not part
+Communication / relationships
+-----------------------------
+Implemented by: an organization-supplied transport class (not part
     of this repository's shipped code), constructed and passed into
     hardware.cameras.onvif_camera.ONVIFCamera's constructor.
 
@@ -71,7 +73,24 @@ Edge-case behavior:
       violates organization policy by raising ONVIFTransportError; a
       refusal is indistinguishable to ONVIFCamera from any other
       transport-level failure.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from abc import ABC, abstractmethod
 
 
@@ -114,3 +133,4 @@ class ONVIFTransport(ABC):
         single pre-committed Authorization header value. Used by
         ONVIFCamera to retrieve snapshot bytes from a camera-provided
         snapshot URI."""
+

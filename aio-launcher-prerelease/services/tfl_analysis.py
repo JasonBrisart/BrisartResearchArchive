@@ -1,34 +1,41 @@
 """
 File: services/tfl_analysis.py
 
-Purpose:
+Purpose
+-------
 Bridge the GUI controller to the headless TFL analysis layer
 (frameworks/TFL/analysis.py) so the controller never imports framework
 internals directly.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Called by controllers/system_controller.py: analyze_tfl(),
   set_analysis_text(), fallback_csv_summary(), open_tfl_csv().
 - Writes reports into app.analysis_box on the Results page.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - Always works on tfl_output_latest.csv.
 
-Edge cases:
+Edge cases
+----------
 - set_analysis_text() is a no-op when the Results page is not showing.
 - open_tfl_csv() raises FileNotFoundError when no output exists; the
   controller turns that into a dialog.
 - fallback_csv_summary() returns readable messages instead of raising.
 
-Known limitations:
+Known limitations
+-----------------
 - TFL only. A future framework should get its own
   <framework>_analysis.py rather than extending this module.
 - Analysis runs on the UI thread.
 
-Examples:
+Examples
+--------
 - analyze_tfl(app)
 - open_tfl_csv(app)
 """
+
 from __future__ import annotations
 from pathlib import Path
 import tkinter as tk
@@ -79,3 +86,4 @@ def open_tfl_csv(app) -> None:
     else:
         subprocess.run(["xdg-open", str(path)], check=False)
 __all__ = ["set_analysis_text", "analyze_tfl", "fallback_csv_summary", "open_tfl_csv"]
+

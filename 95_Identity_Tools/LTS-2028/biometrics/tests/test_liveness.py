@@ -1,4 +1,34 @@
-"""Tests for biometrics.features.liveness and its integration into
+"""
+File: biometrics/tests/test_liveness.py
+
+Purpose
+-------
+Tests for biometrics.features.liveness and its integration into
+enrollment.py / verification.py.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.codecs, biometrics.engine, biometrics.features.liveness, biometrics.samples.
+
+Settings / parameters
+---------------------
+Module-level named settings: WIDTH, HEIGHT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for biometrics.features.liveness and its integration into
 enrollment.py / verification.py.
 
 Uses hand-built frame sequences (not the synthetic sample generator) so the
@@ -8,6 +38,7 @@ pixel-value shift between frames is unambiguously non-zero motion, without
 depending on sample_generator's seed-dependent drift (which can itself be
 zero for some seeds -- see sample_generator.generate_video_frames).
 """
+
 import secrets
 import tempfile
 import unittest
@@ -185,3 +216,4 @@ class VerificationLivenessGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

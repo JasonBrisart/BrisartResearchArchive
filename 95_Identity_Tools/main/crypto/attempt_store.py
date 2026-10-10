@@ -1,7 +1,9 @@
 """
 File: crypto/attempt_store.py
-Purpose:
-    Shared persistence adapter between crypto.throttle.AttemptLimiter (pure
+
+Purpose
+-------
+Shared persistence adapter between crypto.throttle.AttemptLimiter (pure
     in-memory backoff/lockout math) and the on-disk JSON containers that
     actually hold unlock state for this ecosystem: vault.json (vault/store/
     vault_file.py) and the biometrics keyring.json (biometrics/identity/
@@ -14,8 +16,9 @@ Purpose:
     open, so every unlock path in the ecosystem stores its throttle state
     the same way instead of each inventing its own container shape.
 
-Communication relationships:
-    Called by:
+Communication / relationships
+-----------------------------
+Called by:
         - vault.store.vault_service.VaultService.unlock() and
           .unlock_with_recovery_code(), which pass the whole in-memory
           vault-file state dict (the same dict vault.store.vault_file.
@@ -87,7 +90,24 @@ Edge-case behavior:
       caller's container may need other fields updated in the same write
       (e.g. vault_service.py also records an audit-log entry around the
       same save_state() call).
+
+Settings / parameters
+---------------------
+Module-level named settings: ATTEMPT_STATE_FIELD, _DEFAULT_LIMITER. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from crypto.throttle import AttemptLimiter
 
 ATTEMPT_STATE_FIELD = "unlock_attempts"
@@ -136,3 +156,4 @@ __all__ = [
     "record_success",
     "status",
 ]
+

@@ -1,31 +1,38 @@
 """
 File: gui/pages/dashboard_page.py
 
-Purpose:
+Purpose
+-------
 Render the Dashboard, the default landing page, with navigation
 shortcuts and quick actions.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Registered as "Dashboard" in config/registries.get_page_registry();
   DEFAULT_PAGE shown at launch.
 - Buttons call app.show_page(), app.start_selected_framework(), and
   app.analyze_tfl().
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - Cards occupy grid rows 2 through 4.
 
-Edge cases:
+Edge cases
+----------
 - Run Selected Framework launches app.selected_framework (the saved
   default_framework), not a framework chosen on this page.
 - Analyze Results runs TFL analysis regardless of the selected framework.
 
-Known limitations:
+Known limitations
+-----------------
 - The third card is a placeholder.
 - Analyze Results is TFL-specific.
 
-Examples:
+Examples
+--------
 - app.show_page("Dashboard")
 """
+
 from __future__ import annotations
 def render(app):
     root = app.page_shell(
@@ -70,3 +77,4 @@ def render(app):
             "page registry, framework system, or application shell."
         ),
     )
+

@@ -1,4 +1,33 @@
 """
+File: ui/__init__.py
+
+Purpose
+-------
+ui
+--
+
+Communication / relationships
+-----------------------------
+Direct module imports: .app.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 ui
 --
 
@@ -26,3 +55,4 @@ __all__ = [
     "ArchiveSnapshotApp",
     "run_gui",
 ]
+

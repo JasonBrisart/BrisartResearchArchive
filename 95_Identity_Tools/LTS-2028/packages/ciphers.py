@@ -1,4 +1,33 @@
-"""Low-level cryptographic operations for Identity-Bound Packages.
+"""
+File: packages/ciphers.py
+
+Purpose
+-------
+Low-level cryptographic operations for Identity-Bound Packages.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, crypto.context, crypto.envelope, crypto.rng.
+
+Settings / parameters
+---------------------
+Module-level named settings: CONTENT_KEY_BYTES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Low-level cryptographic operations for Identity-Bound Packages.
 
 An IBP separates the secret that protects the *payload* from the secrets
 that protect *access to that secret*, the same envelope-around-a-key pattern
@@ -18,6 +47,7 @@ there is no back door.
 Named ``ciphers.py`` rather than ``crypto.py`` specifically to avoid
 colliding with the top-level ``crypto/`` package this module imports from.
 """
+
 import secrets
 
 from crypto.context import key_slot_context, package_context
@@ -90,3 +120,4 @@ __all__ = [
     "unwrap_content_key",
     "wrap_content_key",
 ]
+

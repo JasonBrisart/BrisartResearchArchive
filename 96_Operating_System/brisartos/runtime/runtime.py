@@ -1,8 +1,33 @@
 """
+File: brisartos/runtime/runtime.py
+
+Purpose
+-------
 BrisartOS Runtime
 Pure Python.
 No dependencies.
+
+Communication / relationships
+-----------------------------
+Direct module imports: sys, pathlib, version, brisart_platform, system_api, module_loader, service_registry.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

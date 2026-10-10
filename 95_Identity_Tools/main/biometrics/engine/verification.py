@@ -1,4 +1,33 @@
-"""Verification: comparing fresh biometric input against a stored template.
+"""
+File: biometrics/engine/verification.py
+
+Purpose
+-------
+Verification: comparing fresh biometric input against a stored template.
+
+Communication / relationships
+-----------------------------
+Direct module imports: biometrics.codecs, biometrics.engine, biometrics.features.liveness, biometrics.identity.identity_record, crypto.context, crypto.envelope, crypto.errors.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Verification: comparing fresh biometric input against a stored template.
 
 The flow is the reverse of enrollment: open the sealed template for the
 requested modality (using the same context construction enrollment used, so
@@ -20,6 +49,7 @@ re-implemented here against the current BRVID-based video pipeline. Pass
 allow_static=True (wired to the CLI's --allow-static flag) to skip this gate
 entirely, for example to inspect a raw similarity score during debugging.
 """
+
 from biometrics.codecs import video as video_codec
 from biometrics.engine import modalities
 from biometrics.features.liveness import LivenessError, assess_liveness
@@ -167,3 +197,4 @@ def verify_identity(
         "results": results,
         "matched": matched,
     }
+

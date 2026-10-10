@@ -8,21 +8,30 @@ Replays the real BrisartAI web search path against live providers and
 shows why results survived.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Imports brisart_ai.intent.{describe_intent, detect_intent},
   brisart_ai.util.normalize_url, brisart_ai.web.crawler.*,
   brisart_ai.web.search.search_public_web.
 - Standalone script; run directly.
 
 Settings / parameters
-----------------------
+---------------------
 - REGRESSION_QUERIES: default 10-query set.
 - --query (repeatable), --limit (default 5), --delay (default 45s).
 
 Edge cases
 ----------
 - A KeyboardInterrupt returns exit code 130.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -171,3 +180,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

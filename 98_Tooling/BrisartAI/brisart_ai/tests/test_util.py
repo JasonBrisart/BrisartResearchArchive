@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/util.py -- shared tokenize/hash/URL/sentence toolbox."""
+"""
+File: brisart_ai/tests/test_util.py
+
+Purpose
+-------
+Tests for brisart_ai/util.py -- shared tokenize/hash/URL/sentence toolbox.
+
+Communication / relationships
+-----------------------------
+Direct module imports: hashlib, tempfile, unittest, pathlib, brisart_ai.util.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import hashlib
 import tempfile
 import unittest
@@ -111,3 +138,4 @@ class TestSameSite(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

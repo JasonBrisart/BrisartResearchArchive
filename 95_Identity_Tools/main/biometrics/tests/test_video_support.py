@@ -1,4 +1,31 @@
-"""Tests for biometrics.codecs.video and biometrics.features.video_features."""
+"""
+File: biometrics/tests/test_video_support.py
+
+Purpose
+-------
+Tests for biometrics.codecs.video and biometrics.features.video_features.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tempfile, unittest, pathlib, biometrics.codecs, biometrics.features, biometrics.samples.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -113,3 +140,4 @@ class VideoFeatureTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

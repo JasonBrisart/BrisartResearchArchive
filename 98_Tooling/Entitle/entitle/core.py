@@ -1,4 +1,32 @@
 """
+File: entitle/core.py
+
+Purpose
+-------
+Entitle Core
+
+Communication / relationships
+-----------------------------
+Direct module imports: datetime, json.
+
+Settings / parameters
+---------------------
+Module-level named settings: ENTITLEMENT_FORMAT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Core
 
 Offline software rights checking for entitlement records.
@@ -7,6 +35,7 @@ This module does not perform encryption directly.
 It expects protected entitlement containers to be opened through
 entitle.bsr_adapter.
 """
+
 import datetime
 import json
 
@@ -137,3 +166,4 @@ def evaluate_payload(payload, expected_product_id=None):
         if utc_now() > expiration:
             return EntitlementResult.denied_result("entitlement_expired", payload)
     return EntitlementResult.allowed_result(payload)
+

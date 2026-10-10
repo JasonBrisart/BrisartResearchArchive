@@ -1,6 +1,33 @@
 """
+File: ui/app.py
+
+Purpose
+-------
 ui.app
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, datetime, tkinter, tkinter, engine.app_info, engine.settings, .about_tab, .app_settings, .calendar_tab, .comparison_tab, .path_actions, .settings_tab, .snapshot_tab, .verification_tab.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
 --------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ui.app
 
 Main ArchiveSnapshot GUI application: window setup, shared state, and
 tab coordination.
@@ -136,3 +163,4 @@ def run_gui() -> None:
     """
     app = ArchiveSnapshotApp()
     app.run()
+

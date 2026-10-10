@@ -1,4 +1,33 @@
-"""Identity-Bound Packages command-line interface.
+"""
+File: packages/main.py
+
+Purpose
+-------
+Identity-Bound Packages command-line interface.
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, getpass, json, secrets, sys, pathlib, packages, packages.custody, packages.identity, packages.package.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_AUDIT_DIR. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Identity-Bound Packages command-line interface.
 
 Since a package requires an existing recipient's master key to authorize
 adding or removing another recipient (see ``package.add_recipient`` /
@@ -8,6 +37,7 @@ command is included that runs a full create -> add-recipient -> open cycle
 in one shot with generated keys, useful for a quick end-to-end sanity check
 with no setup.
 """
+
 import argparse
 import getpass
 import json
@@ -235,3 +265,4 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

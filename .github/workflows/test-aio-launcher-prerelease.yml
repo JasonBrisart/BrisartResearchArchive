@@ -1,62 +1,166 @@
-# Purpose: Run the AIO Launcher's test suite when code under aio-launcher-prerelease changes.
-# Communication / relationships: Runs on GitHub Actions when files under aio-launcher-prerelease change,
-#   when this workflow file itself changes, or on manual dispatch from the Actions tab.
-#   Reports pass/fail back to the commit/PR; does not call any other workflow.
-# Settings / parameters: Triggers on push/pull_request to `main` touching `aio-launcher-prerelease/**` or
-#   `.github/workflows/test-aio-launcher-prerelease.yml`, plus manual `workflow_dispatch`. Python pinned to 3.14.
-#   Working directory scoped to `aio-launcher-prerelease`. PYTHONPATH set to that directory so top-level
-#   packages inside it import absolutely, matching local runs.
-# Edge cases: pytest exit code 5 ("no tests collected") is treated as a pass so projects
-#   without a test suite report green. Real failures (exit 1) and collection/import errors
-#   (exit 2) still fail the job.
-# Known limitations: Installs only pytest, not project dependencies. Does not cache pip,
-#   lint, type-check, or build artifacts. A project that silently loses all its tests will
-#   still report green because of the exit-5 rule.
-# Examples: Editing anything under `aio-launcher-prerelease/` and pushing triggers this run; editing this
-#   workflow file also triggers it, so changes can be validated immediately.
+# File: .github/workflows/test-aio-launcher-prerelease.yml
+#
+# Purpose
+# -------
+# Validate aio-launcher-prerelease source syntax and run its discovered regression tests.
+#
+# Communication / relationships
+# -----------------------------
+# Independent GitHub Actions workflow; reports results to commits and PRs.
+# Saves diagnostic logs and reports as a seven-day workflow artifact.
+#
+# Settings / parameters
+# ---------------------
+# Python 3.14 on Ubuntu; project-scoped working directory and PYTHONPATH.
+# Triggers on project changes, this workflow, or manual dispatch.
+#
+# Edge cases
+# ----------
+# Missing suites, collection errors, test failures, and all-skipped suites fail.
+# Individual conditional skips remain visible; no tests are filtered out.
+#
+# Known limitations
+# -----------------
+# Installs pytest for CI only; application dependencies are not inferred.
+# Syntax checks are not behavioral tests. No coverage or security certification.
+# No interactive GUI, platform matrix, or executable-build validation.
+#
+# Examples
+# --------
+# Edit aio-launcher-prerelease/ or run this workflow manually from Actions.
+#
 
-name: Test AIO Launcher (prerelease)
+name: Launcher | AIO Prerelease | Headless Regression Tests
 
-on:
+'on':
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - 'aio-launcher-prerelease/**'
-      - '.github/workflows/test-aio-launcher-prerelease.yml'
+      - aio-launcher-prerelease/**
+      - .github/workflows/test-aio-launcher-prerelease.yml
   pull_request:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - 'aio-launcher-prerelease/**'
-      - '.github/workflows/test-aio-launcher-prerelease.yml'
-  workflow_dispatch:
+      - aio-launcher-prerelease/**
+      - .github/workflows/test-aio-launcher-prerelease.yml
+  workflow_dispatch: null
+
+permissions:
+  contents: read
 
 jobs:
   test:
+    name: Python 3.14 | Syntax and regression tests
     runs-on: ubuntu-latest
     defaults:
       run:
+        shell: bash
         working-directory: aio-launcher-prerelease
+    env:
+      PYTHONUNBUFFERED: '1'
+      REPORT_DIR: ${{ runner.temp }}/aio-launcher-prerelease-reports
+      PROJECT_LABEL: Launcher | AIO Prerelease | Headless Regression Tests
     steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
         with:
           python-version: '3.14'
 
-      - name: Install pytest
+      - name: Prepare reports and show Python environment
+        run: |
+          mkdir -p "$REPORT_DIR"
+          python --version
+
+      - name: Install CI test runner
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          python -m pip install pytest
+          python -m pytest --version
 
-      - name: Run tests
+      - name: Check Python source syntax (does not execute application code)
+        id: syntax
         run: |
-          export PYTHONPATH="$PWD:$PYTHONPATH"
-          set +e
-          pytest -q
-          code=$?
-          set -e
-          if [ "$code" -eq 5 ]; then
-            echo "::notice::No tests collected in aio-launcher-prerelease - treating as pass."
-            exit 0
-          fi
-          exit "$code"
+          python - <<'PY'
+          import os
+          import tokenize
+          from pathlib import Path
+
+          excluded = {'.git', '.venv', 'venv', '__pycache__', 'build', 'dist',
+                      'node_modules', 'PROJECT_CONTEXT_EXPORTS'}
+          files = [p for p in sorted(Path('.').rglob('*.py'))
+                   if not excluded.intersection(p.parts)]
+          if not files:
+              raise SystemExit('No Python source files found in the configured project.')
+          errors = []
+          for path in files:
+              try:
+                  with tokenize.open(path) as handle:
+                      compile(handle.read(), str(path), 'exec')
+              except (SyntaxError, UnicodeError, OSError) as exc:
+                  errors.append(f'{path}: {exc}')
+          report = f'Checked {len(files)} Python source files; syntax errors: {len(errors)}\n'
+          report += '\n'.join(errors)
+          print(report)
+          (Path(os.environ['REPORT_DIR']) / 'syntax.txt').write_text(report, encoding='utf-8')
+          if errors:
+              raise SystemExit(1)
+          PY
+
+      - name: Collect tests and reject missing or broken suites
+        id: collection
+        run: |
+          export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+          set -o pipefail
+          python -m pytest --collect-only -q 2>&1 | tee "$REPORT_DIR/collection.log"
+
+      - name: Run all discovered tests with names, skip reasons, and timings
+        id: tests
+        run: |
+          export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+          set -o pipefail
+          python -m pytest -vv -ra --tb=short --durations=20 --color=no \
+            --junitxml="$REPORT_DIR/junit.xml" 2>&1 | tee "$REPORT_DIR/tests.log"
+
+      - name: Publish result counts and reject all-skipped suites
+        if: ${{ always() && steps.tests.outcome != 'skipped' }}
+        run: |
+          python - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          path = Path(os.environ['REPORT_DIR']) / 'junit.xml'
+          if not path.exists():
+              raise SystemExit('Test report missing; inspect the test step log.')
+          root = ET.parse(path).getroot()
+          cases = list(root.iter('testcase'))
+          counts = {'tests': len(cases)}
+          for tag in ('failure', 'error', 'skipped'):
+              counts[tag] = sum(case.find(tag) is not None for case in cases)
+          counts['passed'] = counts['tests'] - counts['failure'] - counts['error'] - counts['skipped']
+          lines = ['## ' + os.environ['PROJECT_LABEL'], '',
+                   '| Result | Count |', '| --- | ---: |']
+          lines += [f'| {key} | {value} |' for key, value in counts.items()]
+          lines += ['', 'Skipped includes pytest expected-failure outcomes, if present.',
+                    'See the test log for names, reasons, and timings.']
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as handle:
+              handle.write('\n'.join(lines) + '\n')
+          if not cases or counts['tests'] == counts['skipped']:
+              raise SystemExit('No non-skipped tests reported: refusing to report success.')
+          PY
+
+      - name: Save test logs and reports (including failures)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: aio-launcher-prerelease-test-reports
+          path: ${{ env.REPORT_DIR }}
+          if-no-files-found: warn
+          retention-days: 7
+

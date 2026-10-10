@@ -1,9 +1,34 @@
 """
+File: gui/scroll_frame.py
+
+Purpose
+-------
 Scrollable Frame
 A small reusable helper that wraps a tab's content in a vertically
 scrollable area.
 No external dependencies; pure tkinter.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import tkinter as tk
 
 
@@ -53,3 +78,4 @@ def create_scrollable_area(parent: tk.Frame) -> tk.Frame:
     canvas.bind("<Leave>", unbind_wheel)
 
     return content
+

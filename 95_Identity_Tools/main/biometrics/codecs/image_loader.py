@@ -1,4 +1,33 @@
-"""Format-agnostic image loading, dispatched by file extension.
+"""
+File: biometrics/codecs/image_loader.py
+
+Purpose
+-------
+Format-agnostic image loading, dispatched by file extension.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, biometrics.codecs.
+
+Settings / parameters
+---------------------
+Module-level named settings: SUPPORTED_SUFFIXES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Format-agnostic image loading, dispatched by file extension.
 
 Every other part of biometrics that needs a still image (fingerprint capture,
 a frame lifted from ``video.py``, a generated sample) should go through this
@@ -7,6 +36,7 @@ module rather than importing ``pgm`` or ``png`` directly. That keeps the
 third still-image format later is a one-file change instead of a search
 across the codebase.
 """
+
 from pathlib import Path
 
 from biometrics.codecs import pgm, png
@@ -66,3 +96,4 @@ def _rescale_to_255(decoded: dict) -> dict:
     pixels = decoded["pixels"]
     scaled = bytes(min(255, (value * 255) // maxval) for value in pixels)
     return {"width": decoded["width"], "height": decoded["height"], "pixels": scaled}
+

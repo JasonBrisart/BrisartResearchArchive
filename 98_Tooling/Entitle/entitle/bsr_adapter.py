@@ -1,4 +1,32 @@
 """
+File: entitle/bsr_adapter.py
+
+Purpose
+-------
+Entitle BSR Adapter
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, pathlib, .core.
+
+Settings / parameters
+---------------------
+Module-level named settings: ENTITLEMENT_CONTEXT_FORMAT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle BSR Adapter
 
 Connects Entitle to BrisartSecurityResearch (BSR2).
@@ -21,6 +49,7 @@ directory itself must be present on ``sys.path`` before this module is imported.
 ``entitle.bootstrap.ensure_bsr_on_path()`` handles that; every Entitle entry
 point (CLI, GUI, examples) calls it before importing anything from this module.
 """
+
 import json
 from pathlib import Path
 from .core import (
@@ -186,3 +215,4 @@ def verify_protected_entitlement(
         payload,
         expected_product_id=expected_product_id,
     )
+

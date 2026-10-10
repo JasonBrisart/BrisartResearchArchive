@@ -1,4 +1,32 @@
 """
+File: gui/tabs/fork_provenance_tab.py
+
+Purpose
+-------
+Entitle GUI — Fork / Provenance Tab
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, entitle.tracking.fork, entitle.tracking.provenance, entitle.paths, gui.widgets.
+
+Settings / parameters
+---------------------
+Module-level named settings: TAB_TITLE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle GUI — Fork / Provenance Tab
 
 Imports directly from ``entitle.tracking.fork`` and ``entitle.tracking.provenance``
@@ -6,6 +34,7 @@ Imports directly from ``entitle.tracking.fork`` and ``entitle.tracking.provenanc
 ``entitle/tracking/`` is a PEP 420 implicit namespace package with no
 ``__init__.py`` re-export layer.
 """
+
 from tkinter import ttk
 
 from entitle.tracking.fork import record_fork
@@ -52,3 +81,4 @@ def build(parent, app):
     ttk.Button(form, text="Record Fork", command=run_fork).grid(row=row, column=0, pady=12, sticky="w")
     ttk.Button(form, text="Record Provenance", command=run_provenance).grid(row=row, column=1, pady=12, sticky="w")
     return form
+

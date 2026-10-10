@@ -1,15 +1,12 @@
-"""Vault orchestration: unlock/lock, and sealed create/read/update/delete.
+"""
+File: vault/store/vault_service.py
 
-This is the vault's application layer -- the single place that ties together
-the vault's keyring, its record model, its on-disk file, and its audit log
-into the operations the CLI (vault.app) and GUI (gui.tabs.tab_vault) actually
-call. It owns no file format details of its own: reading and writing the
-vault file is vault.store.vault_file's job, record shape/validation is
-vault.records.record_model's job, and the master-key wrapping is
-crypto.keyring's job. This module only sequences them, holds the unlocked
-master key for the session, and records an audit event for every mutation.
+Purpose
+-------
+Vault orchestration: unlock/lock, and sealed create/read/update/delete.
 
-COMMUNICATION RELATIONSHIPS
+Communication / relationships
+-----------------------------
 - crypto.keyring.Keyring: unwraps the master key on unlock(); held in memory
   for the session so each record operation is fast (one slow KDF per session,
   not per operation -- see docs/BSR2_INTEGRATION.md's "KDF cost" section).
@@ -55,7 +52,37 @@ KEY DESIGN DECISIONS
 - Authentication failures from the crypto layer are re-raised as
   VaultServiceError with the record id named, so callers catch one exception
   family and never a vendor exception type.
+
+Settings / parameters
+---------------------
+Module-level named settings: FILE_RECORD_KIND. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Vault orchestration: unlock/lock, and sealed create/read/update/delete.
+
+This is the vault's application layer -- the single place that ties together
+the vault's keyring, its record model, its on-disk file, and its audit log
+into the operations the CLI (vault.app) and GUI (gui.tabs.tab_vault) actually
+call. It owns no file format details of its own: reading and writing the
+vault file is vault.store.vault_file's job, record shape/validation is
+vault.records.record_model's job, and the master-key wrapping is
+crypto.keyring's job. This module only sequences them, holds the unlocked
+master key for the session, and records an audit event for every mutation.
 """
+
 from pathlib import Path
 
 from common.hashing import sha256_bytes
@@ -399,3 +426,4 @@ class VaultService:
         new_code = self._keyring.rotate_recovery_code()
         save_keyring(self.path, self._keyring)
         return new_code
+

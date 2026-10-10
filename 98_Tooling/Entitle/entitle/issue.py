@@ -1,4 +1,32 @@
 """
+File: entitle/issue.py
+
+Purpose
+-------
+Entitle Issue Tool
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, datetime, json, .core, .bsr_adapter.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Issue Tool
 
 Creates a protected offline entitlement container.
@@ -20,6 +48,7 @@ Example:
         --drbg-personalization "EntitleDemoPersonalization" \\
         --output entitlements/lab_a.entitle
 """
+
 import argparse
 import datetime
 import json
@@ -183,3 +212,4 @@ def main(argv=None):
     print("Payload summary:")
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
+

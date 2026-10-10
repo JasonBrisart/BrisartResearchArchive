@@ -1,4 +1,35 @@
 """
+File: tools/envinfo.py
+
+Purpose
+-------
+tools/envinfo.py
+One-shot environment snapshot for bug reports. Run this and paste its
+output directly into the **Environment:** field of a KNOWN_ISSUES.md
+entry (see docs/KNOWN_ISSUES.md for the standard bug report template).
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, platform.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 tools/envinfo.py
 One-shot environment snapshot for bug reports. Run this and paste its
 output directly into the **Environment:** field of a KNOWN_ISSUES.md
@@ -28,6 +59,7 @@ What each line reports, and why it's in the standard bug template:
     Tkinter directly, so this version is directly relevant to any GUI
     bug report.
 """
+
 from __future__ import annotations
 
 import platform
@@ -75,3 +107,4 @@ if __name__ == "__main__":
         root.destroy()
     except Exception:
         pass  # console output above is enough if a GUI popup isn't available
+

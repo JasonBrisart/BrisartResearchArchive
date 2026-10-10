@@ -1,6 +1,34 @@
 """
+File: engine/project_context_import.py
+
+Purpose
+-------
 engine.project_context_import
-------------------------------
+Project Context Helper bundle ingest support for ArchiveSnapshot.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, datetime, hashlib, json, shutil, dataclasses, pathlib, typing, .app_info.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.project_context_import
 Project Context Helper bundle ingest support for ArchiveSnapshot.
 
 This module does not generate Project Context Helper exports — Project
@@ -8,6 +36,7 @@ Context Helper remains the exporter. ArchiveSnapshot only imports an
 already-created bundle from the active inbox folder and attaches it to
 a dated snapshot.
 """
+
 from __future__ import annotations
 
 import datetime

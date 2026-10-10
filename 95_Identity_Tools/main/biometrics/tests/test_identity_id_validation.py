@@ -1,4 +1,31 @@
-"""Tests for identity id validation across identity_record and identity_store."""
+"""
+File: biometrics/tests/test_identity_id_validation.py
+
+Purpose
+-------
+Tests for identity id validation across identity_record and identity_store.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tempfile, unittest, biometrics.identity.identity_record, biometrics.identity.identity_store.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import tempfile
 import unittest
 
@@ -102,3 +129,4 @@ class IdentityStorePathSafetyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

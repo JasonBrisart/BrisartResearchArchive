@@ -1,4 +1,33 @@
-"""Fresh operating-system entropy for BSR2 envelope diversification.
+"""
+File: brisart_security_entropy.py
+
+Purpose
+-------
+Fresh operating-system entropy for BSR2 envelope diversification.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, secrets, threading.
+
+Settings / parameters
+---------------------
+Module-level named settings: _LOCK, _PREVIOUS_SAMPLE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Fresh operating-system entropy for BSR2 envelope diversification.
 
 The custom BSR2 DRBG is deterministic. This module adds an independent,
 non-deterministic input at each encryption so a recreated DRBG state does not,
@@ -59,3 +88,4 @@ def system_entropy(length: int) -> bytes:
         _PREVIOUS_SAMPLE = sample
 
     return sample
+

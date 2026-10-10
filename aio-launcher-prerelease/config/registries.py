@@ -1,35 +1,41 @@
 """
 File: config/registries.py
 
-Purpose:
+Purpose
+-------
 Discover framework modules, normalize framework metadata, maintain the
 framework registry, and resolve application page renderers.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Reads framework.py modules under frameworks/.
 - Provides registry lookups to services/framework_service.py.
 - Provides page navigation metadata to gui/components/sidebar.py.
 - Lazily imports page renderers from gui/pages/.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - RESERVED_FRAMEWORKS defines framework placeholders.
 - FRAMEWORK_DISPLAY_ORDER controls framework display order.
 - NAV_ITEMS controls the primary sidebar navigation.
 - SETTINGS_NAV_ITEM defines the bottom-pinned Settings entry.
 - DEFAULT_PAGE determines the page shown at application startup.
 
-Edge cases:
+Edge cases
+----------
 - Missing or malformed framework modules are isolated and recorded.
 - Duplicate framework IDs are rejected without stopping discovery.
 - Missing metadata fields are normalized to safe defaults.
 - Page imports remain lazy so headless tests do not import Tkinter pages.
 
-Known limitations:
+Known limitations
+-----------------
 - Reserved frameworks are informational placeholders and cannot run.
 - Page renderer caching requires a process restart to detect page-module
   changes made while the application is running.
 
-Examples:
+Examples
+--------
 - get_framework("TFL")
 - get_available_frameworks()
 - get_page_renderer("Dashboard")

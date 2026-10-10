@@ -1,4 +1,33 @@
-"""Import shim for the vendored BSR2 modules.
+"""
+File: crypto/vendor.py
+
+Purpose
+-------
+Import shim for the vendored BSR2 modules.
+
+Communication / relationships
+-----------------------------
+Direct module imports: sys, pathlib, brisart_security_drbg, brisart_security_entropy, brisart_security_envelope, brisart_security_primitives.
+
+Settings / parameters
+---------------------
+Module-level named settings: _VENDOR_DIR, _VENDOR_PATH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Import shim for the vendored BSR2 modules.
 
 The vendored files use flat imports of each other (``from
 brisart_security_primitives import ...``), exactly as they do upstream. Editing
@@ -9,6 +38,7 @@ and every consumer imports through this module.
 Keeping the path manipulation in one file means there is a single place to audit,
 rather than a scattering of ``sys.path`` edits across the codebase.
 """
+
 import sys
 from pathlib import Path
 
@@ -94,3 +124,4 @@ __all__ = [
     "system_entropy",
     "xor_bytes",
 ]
+

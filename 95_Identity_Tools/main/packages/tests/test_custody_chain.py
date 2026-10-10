@@ -1,5 +1,32 @@
-"""Tests for packages.custody: the in-package tamper-evident hash chain,
-including the non-list / non-dict hardening from 0.8.2-beta."""
+"""
+File: packages/tests/test_custody_chain.py
+
+Purpose
+-------
+Tests for packages.custody: the in-package tamper-evident hash chain,
+including the non-list / non-dict hardening from 0.8.2-beta.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, packages, packages.custody.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import unittest
 from packages import custody
 from packages.custody import CustodyError
@@ -95,3 +122,4 @@ class CustodyChainTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

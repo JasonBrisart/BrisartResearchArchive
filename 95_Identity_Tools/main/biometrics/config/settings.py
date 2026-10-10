@@ -1,3 +1,31 @@
+"""
+File: biometrics/config/settings.py
+
+Purpose
+-------
+Defines ensure_data_dirs for 95_Identity_Tools/main/biometrics/config.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, version.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, APP_VERSION, DATA_DIR, IDENTITY_DIR, TEMPLATE_DIR, REPORT_DIR, SAMPLE_DIR, TEMPLATE_WIDTH, TEMPLATE_HEIGHT, GRID_SIZE, DEFAULT_THRESHOLD. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from pathlib import Path
 
 from version import __version__
@@ -25,3 +53,4 @@ def ensure_data_dirs() -> None:
         SAMPLE_DIR,
     ):
         directory.mkdir(parents=True, exist_ok=True)
+

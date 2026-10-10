@@ -7,7 +7,7 @@ The backend facade every UI widget goes through instead of touching
 Index/SessionMemory/ResearchSettings directly.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/app.py: constructs the single BrisartService instance.
 - Owns brisart_ai.knowledge.index.Index, brisart_ai.core.session_memory.
   SessionMemory, brisart_ai.core.settings.ResearchSettings.
@@ -16,7 +16,7 @@ Communication / relationships
   brisart_ai.web.crawler.web_search_and_ingest().
 
 Settings / parameters
-----------------------
+---------------------
 - __init__(db_path): construction deliberately unguarded.
 - ask(text, force_web=None).
 - _DIAGNOSTIC_MARKERS / _MAX_DIAGNOSTIC_LINES.
@@ -24,7 +24,16 @@ Settings / parameters
 Edge cases
 ----------
 - self._stdout_lock guards stdout redirection in ask().
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -136,3 +145,4 @@ class BrisartService:
 
 
 __all__ = ["BrisartService"]
+

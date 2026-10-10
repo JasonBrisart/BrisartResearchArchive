@@ -10,14 +10,14 @@ unquote/urlencode/parse_qsl/urljoin -- used throughout util.py
 web/crawler.py, web/search.py, and web/policy.py.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Intended as a drop-in replacement for the corresponding
   urllib.parse functions at every current call site.
 - Imports nothing from elsewhere in brisart_ai; pure string/byte
   manipulation.
 
 Settings / parameters
-----------------------
+---------------------
 - BrisartSplitResult: a small named-tuple-like class exposing
   .scheme/.netloc/.path/.query/.fragment plus a computed .hostname
   property (lowercased, with a bracketed IPv6 literal or a trailing
@@ -43,7 +43,16 @@ Edge cases
 - brisart_urljoin() implements RFC 3986 section 5.3's reference
   resolution algorithm, including the dot-segment removal step
   (collapsing "/a/b/../c" to "/a/c" and "/a/./b" to "/a/b").
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from typing import Iterable, List, Optional, Sequence, Tuple
@@ -352,3 +361,4 @@ __all__ = [
     "brisart_urlsplit",
     "brisart_urlunsplit",
 ]
+

@@ -1,8 +1,9 @@
 """
 File: hardware/base/biometric_binding.py
 
-Purpose:
-    Defines the contract for the ONE operation this project deliberately
+Purpose
+-------
+Defines the contract for the ONE operation this project deliberately
     does not implement: the raw call into an operating system's own
     biometric subsystem (the Windows Biometric Framework/WinBio on
     Windows, libfprint + fprintd on Linux, or an equivalent vendor SDK
@@ -30,8 +31,9 @@ Purpose:
     audit posture. See hardware/README.md, "Why the biometric binding
     is not shipped," for the full reasoning.
 
-Communication relationships:
-    Implemented by: an organization-supplied binding class (not part of
+Communication / relationships
+-----------------------------
+Implemented by: an organization-supplied binding class (not part of
     this repository's shipped code), constructed and passed into
     hardware.biometric.fingerprint_scanner.FingerprintScanner's
     constructor.
@@ -72,7 +74,24 @@ Edge-case behavior:
       or all-zero buffer) if no finger was presented within the
       binding's own timeout, so fingerprint_scanner.py can distinguish
       "nothing happened" from "a genuinely blank capture."
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from abc import ABC, abstractmethod
 
 
@@ -128,3 +147,4 @@ class BiometricBinding(ABC):
         len(pixels) == width * height. Raise BiometricBindingError if
         no finger is presented within the binding's own timeout, or on
         any other capture failure."""
+

@@ -1,12 +1,42 @@
 """
+File: engine/snapshot_index.py
+
+Purpose
+-------
 engine.snapshot_index
-----------------------
+Discovers snapshots on disk (by reading their manifests), groups them by
+date, and maintains the ArchiveSnapshot store index file.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, json, pathlib, .app_info, .settings.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.snapshot_index
 Discovers snapshots on disk (by reading their manifests), groups them by
 date, and maintains the ArchiveSnapshot store index file.
 
 The on-disk store folder and its index/log are named after the program
 (ARCHIVE_SNAPSHOT / ARCHIVE_SNAPSHOT_INDEX.json / ARCHIVE_SNAPSHOT_LOG.md).
 """
+
 from __future__ import annotations
 
 import json
@@ -153,3 +183,4 @@ def write_store_index(source_root: Path) -> Path:
         encoding="utf-8",
     )
     return path
+

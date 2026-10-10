@@ -1,5 +1,32 @@
-"""Tests for crypto.context: canonical context-string construction and the
-rejection of characters that could forge a different context."""
+"""
+File: crypto/tests/test_context.py
+
+Purpose
+-------
+Tests for crypto.context: canonical context-string construction and the
+rejection of characters that could forge a different context.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, crypto, crypto.errors.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import unittest
 from crypto import context
 from crypto.errors import Bsr2IntegrationError
@@ -61,3 +88,4 @@ class ContextRejectionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

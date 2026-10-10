@@ -1,4 +1,33 @@
-"""The vault record data model.
+"""
+File: vault/records/record_model.py
+
+Purpose
+-------
+The vault record data model.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unicodedata, crypto.envelope.
+
+Settings / parameters
+---------------------
+Module-level named settings: RECORD_FORMAT, MAX_LABEL_LENGTH, MAX_KIND_LENGTH, _OPTIONAL_PLAINTEXT_FIELDS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+The vault record data model.
 
 A vault record is a labeled, kinded, sealed payload: an id, a normalized
 label used for lookup and display, a free-text kind (``"credential"``,
@@ -10,6 +39,7 @@ records are persisted, are ``vault.store``'s job.
 Kept free of file I/O so it can be unit tested with plain dicts, the same
 separation ``biometrics.identity.identity_record`` uses.
 """
+
 import unicodedata
 
 from crypto.envelope import is_envelope
@@ -111,3 +141,4 @@ def public_summary(record: dict) -> dict:
         if field in record:
             summary[field] = record[field]
     return summary
+

@@ -1,22 +1,26 @@
 """
 File: services/updater/notify.py
 
-Purpose:
+Purpose
+-------
 Show user-facing popups for update outcomes.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - services/updater/gui_integration.py calls maybe_notify_result() after
   each check and imports notify_on_update_enabled().
 - Uses app_is_alive() and schedule_on_ui_thread() from
   services/updater/tk_helpers.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - notify_on_update gates install-outcome popups, for both the manual
   Yes/No path and the automatic install path.
 - show_notification(app, title, message, kind): kind is "info",
   "warning", or "error".
 
-Edge cases:
+Edge cases
+----------
 - Security events (status "verification_failed") always show,
   regardless of any setting.
 - "installed" and "exe_swap_pending" show a popup with the changelog
@@ -25,14 +29,17 @@ Edge cases:
 - Popups are scheduled on the UI thread, so this is safe to call from a
   worker thread.
 
-Known limitations:
+Known limitations
+-----------------
 - The Yes/No prompt before downloading is raised from
   gui_integration.py, not here.
 - The context argument is accepted but does not change behavior.
 
-Examples:
+Examples
+--------
 - maybe_notify_result(app, result, context="check")
 """
+
 from __future__ import annotations
 
 import tkinter as tk
@@ -139,3 +146,4 @@ def maybe_notify_result(app: Any, result: dict[str, Any], *, context: str) -> No
     # "downloaded" (no confirm_install was offered, e.g. notifications
     # are off): intentionally silent -- this is the background
     # download+verify path, not meant to interrupt anyone.
+

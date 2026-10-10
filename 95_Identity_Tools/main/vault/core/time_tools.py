@@ -1,4 +1,33 @@
-"""Timestamp helpers specific to vault record bookkeeping.
+"""
+File: vault/core/time_tools.py
+
+Purpose
+-------
+Timestamp helpers specific to vault record bookkeeping.
+
+Communication / relationships
+-----------------------------
+Direct module imports: common.timestamps.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Timestamp helpers specific to vault record bookkeeping.
 
 Wraps :mod:`common.timestamps` rather than duplicating its logic, but adds
 two things ``common`` deliberately does not know about: comparing two
@@ -6,6 +35,7 @@ already-formatted ISO strings without re-parsing the whole vault on every
 sort, and stamping a record with ``created_at``/``updated_at`` from a single
 captured instant so the two fields can never straddle a second boundary.
 """
+
 from common.timestamps import utc_now_iso
 
 
@@ -34,3 +64,4 @@ def is_chronologically_ordered(earlier: str, later: str) -> bool:
     during a listing sort.
     """
     return earlier <= later
+

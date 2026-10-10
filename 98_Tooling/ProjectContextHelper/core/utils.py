@@ -1,3 +1,31 @@
+"""
+File: core/utils.py
+
+Purpose
+-------
+Defines timestamp_now, timestamp_slug, validate_root, normalize_extension, safe_read, count_lines, sha256_file, language_hint for 98_Tooling/ProjectContextHelper/core.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, datetime, hashlib, re, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: _SECRET_PATTERN. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from __future__ import annotations
 import datetime
 import hashlib
@@ -90,3 +118,4 @@ def language_hint(path: Path) -> str:
     if path.name.lower() in {".gitignore", ".dockerignore"}:
         return "text"
     return mapping.get(suffix, "text")
+

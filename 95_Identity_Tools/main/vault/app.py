@@ -1,7 +1,33 @@
-"""Vault command-line interface: init, unlock, upsert, get, list,
+"""
+File: vault/app.py
+
+Purpose
+-------
+Vault command-line interface: init, unlock, upsert, get, list,
 delete, batch-upsert, and (new) encrypt-file/decrypt-file for arbitrary
 binary files of any kind, extension, or lack thereof.
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, getpass, json, sys, pathlib, vault.config, vault.store.vault_file, vault.store.vault_service, vault.store.bulk_file_service.
+
+Settings / parameters
+---------------------
+Module-level named settings: MAX_CHUNK_MB. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import argparse
 import getpass
 import json
@@ -296,3 +322,4 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

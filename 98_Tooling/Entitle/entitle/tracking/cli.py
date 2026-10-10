@@ -1,4 +1,32 @@
 """
+File: entitle/tracking/cli.py
+
+Purpose
+-------
+Entitle Tracking — CLI
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, json, .deploy, .fork, .provenance, .query.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Tracking — CLI
 
 The ``track`` subcommand group: deploy, fork, provenance, and list.
@@ -8,6 +36,7 @@ same functions the GUI uses (``deploy_from_file``, ``record_fork``,
 ``record_provenance``, ``list_records``), so the CLI and GUI can never drift out
 of sync. ``main.py`` dispatches ``track`` here via its ``COMMAND_MODULES`` table.
 """
+
 import argparse
 import json
 
@@ -119,3 +148,4 @@ def main(argv=None):
     args = parser.parse_args(argv)
     args.func(args)
     return 0
+

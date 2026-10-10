@@ -1,4 +1,32 @@
 """
+File: entitle/records.py
+
+Purpose
+-------
+Entitle Records
+
+Communication / relationships
+-----------------------------
+Direct module imports: datetime, hashlib, json, uuid, pathlib, .core.
+
+Settings / parameters
+---------------------
+Module-level named settings: GENESIS_HASH, RECORD_FORMAT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Records
 
 Append-only, tamper-evident local record log for Entitle.
@@ -24,6 +52,7 @@ Record schema versioning:
     hashed region of each record, so it is covered by the tamper-evident chain
     like every other field.
 """
+
 import datetime
 import hashlib
 import json
@@ -131,3 +160,4 @@ class RecordStore:
                 return ChainStatus(False, index, "entry_hash_mismatch", len(records))
             prev_hash = record["entry_hash"]
         return ChainStatus(True, None, "ok", len(records))
+

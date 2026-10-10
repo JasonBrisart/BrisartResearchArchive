@@ -1,6 +1,34 @@
 """
+File: engine/retention.py
+
+Purpose
+-------
 engine.retention
+Snapshot retention for ArchiveSnapshot.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, datetime, shutil, dataclasses, pathlib, .settings, .snapshot_index.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
 -----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.retention
 Snapshot retention for ArchiveSnapshot.
 
 The store grows without bound: every snapshot ever created stays on disk
@@ -16,6 +44,7 @@ Design goals, matching the rest of the engine:
   source root. It never deletes the source folder or anything outside
   the store.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -215,3 +244,4 @@ def build_retention_report(plan: RetentionPlan) -> str:
     else:
         lines.append("- None. Every snapshot is protected by the current policy.")
     return "\n".join(lines)
+

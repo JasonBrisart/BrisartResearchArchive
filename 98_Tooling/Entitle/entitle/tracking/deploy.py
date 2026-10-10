@@ -1,4 +1,32 @@
 """
+File: entitle/tracking/deploy.py
+
+Purpose
+-------
+Entitle Tracking — Deployments
+
+Communication / relationships
+-----------------------------
+Direct module imports: ..record_types, ..records.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Tracking — Deployments
 
 Records *governed* deployments of Entitle-managed software into the shared
@@ -10,6 +38,7 @@ is not already reached. This is the only tracking concern that consults the
 entitlement and the revocation history before writing; forks and provenance are
 documentary and live in their own modules.
 """
+
 from ..record_types import RECORD_TYPE_DEPLOYMENT
 from ..records import RecordStore
 
@@ -122,3 +151,4 @@ def deploy_from_file(
         environment=environment,
         notes=notes,
     )
+

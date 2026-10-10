@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/native/brisart_url.py -- BrisartURL vs. real urllib.parse."""
+"""
+File: brisart_ai/native/tests/test_brisart_url.py
+
+Purpose
+-------
+Tests for brisart_ai/native/brisart_url.py -- BrisartURL vs. real urllib.parse.
+
+Communication / relationships
+-----------------------------
+Direct module imports: urllib.parse, unittest, brisart_ai.native.brisart_url.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import urllib.parse
 import unittest
 from brisart_ai.native.brisart_url import (
@@ -84,3 +111,4 @@ class TestBrisartQueryEncoding(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

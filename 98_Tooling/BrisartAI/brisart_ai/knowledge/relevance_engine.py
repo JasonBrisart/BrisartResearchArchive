@@ -9,13 +9,13 @@ lookup tables (rarity tiers, presence schedule, length-shape brackets)
 plus a new proximity signal with no TF-IDF/BM25 equivalent at all.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/knowledge/ranker.py: search() calls rarity_weight(),
   presence_points(), shape_multiplier(), proximity_bonus().
 - Imports nothing from elsewhere in brisart_ai.
 
 Settings / parameters
-----------------------
+---------------------
 - RARITY_TIERS: 4 fixed tiers by corpus-share.
 - PRESENCE_SCHEDULE: 4 fixed points by occurrence count, capped.
 - SHAPE_BRACKETS: 4 fixed multipliers by length ratio; shortest bracket
@@ -27,7 +27,16 @@ Edge cases
 ----------
 - rarity_weight()/presence_points() return 0.0 for zero occurrences.
 - shape_multiplier() guards average_length <= 0 by returning 1.0.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -141,3 +150,4 @@ __all__ = [
     "presence_points", "proximity_bonus", "rarity_weight", "shape_multiplier",
     "term_contribution",
 ]
+

@@ -1,4 +1,33 @@
-"""Low-level, single-file persistence for the vault.
+"""
+File: vault/store/vault_file.py
+
+Purpose
+-------
+Low-level, single-file persistence for the vault.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, pathlib, common.atomic_io, crypto.keyring.
+
+Settings / parameters
+---------------------
+Module-level named settings: VAULT_FORMAT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Low-level, single-file persistence for the vault.
 
 A vault is one JSON file containing a :mod:`crypto.keyring` state (the
 wrapped master key) and a flat map of record id to sealed vault record. This
@@ -12,6 +41,7 @@ this module and a JSON viewer.
 Writes go through :mod:`common.atomic_io` so a crash or power loss mid-write
 cannot leave a half-written vault file behind.
 """
+
 import json
 from pathlib import Path
 
@@ -131,3 +161,4 @@ def save_records(path, records: dict) -> None:
     state = load_state(path)
     state["records"] = records
     save_state(path, state)
+

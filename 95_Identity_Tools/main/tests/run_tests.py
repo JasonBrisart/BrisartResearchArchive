@@ -1,5 +1,34 @@
 #!/usr/bin/env python3
-"""Run the BrisartIdentityTools test suite.
+"""
+File: tests/run_tests.py
+
+Purpose
+-------
+Run the BrisartIdentityTools test suite.
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, sys, unittest, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: REPOSITORY_ROOT, SLOW_TEST_CLASSES, _EXCLUDED_PARTS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Run the BrisartIdentityTools test suite.
 
 The repository is one flat PEP 420 namespace-package tree with no __init__.py
 files. unittest's discover(start_dir=...) cannot import a namespace sub-package
@@ -124,3 +153,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

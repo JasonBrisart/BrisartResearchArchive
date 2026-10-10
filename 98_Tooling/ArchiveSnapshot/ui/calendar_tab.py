@@ -1,6 +1,33 @@
 """
+File: ui/calendar_tab.py
+
+Purpose
+-------
 ui.calendar_tab
-------------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, calendar, datetime, tkinter, pathlib, tkinter, engine.app_info, engine.project_context_import, engine.snapshot_writer, engine.snapshot_index, .path_actions.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ui.calendar_tab
 
 Calendar tab: browse months, see which days have snapshots, inspect a
 selected date's snapshot details, and open a snapshot's generated files.
@@ -366,3 +393,4 @@ class CalendarTab:
         self.app.current_year = today.year
         self.app.current_month = today.month
         self.refresh()
+

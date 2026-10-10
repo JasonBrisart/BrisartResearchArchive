@@ -1,4 +1,33 @@
-"""Digest pin for the vendored BSR2 files.
+"""
+File: tests/test_bsr2_vendor_integrity.py
+
+Purpose
+-------
+Digest pin for the vendored BSR2 files.
+
+Communication / relationships
+-----------------------------
+Direct module imports: hashlib, unittest, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: _VENDOR_DIR, PINNED_DIGESTS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Digest pin for the vendored BSR2 files.
 
 Hashes every file in vendor/ and compares against the pinned SHA-256 values
 below, so an accidental edit to a vendored file fails the suite instead of
@@ -96,3 +125,4 @@ class VendorIntegrityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

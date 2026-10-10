@@ -1,25 +1,32 @@
 """
 File: main.py
 
-Purpose:
+Purpose
+-------
 Launch the Brisart Research Archive GUI.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Calls gui.main_window.main().
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - None.
 
-Edge cases:
+Edge cases
+----------
 - Run it as a script (python main.py) so its folder is first on
   sys.path and the top-level packages import.
 
-Known limitations:
+Known limitations
+-----------------
 - GUI only; no command-line options.
 
-Examples:
+Examples
+--------
 - python main.py
 """
+
 from gui.main_window import main
 
 if __name__ == "__main__":

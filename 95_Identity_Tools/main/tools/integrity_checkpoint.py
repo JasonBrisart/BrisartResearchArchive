@@ -1,7 +1,9 @@
 """
 File: tools/integrity_checkpoint.py
-Purpose:
-    Standalone CLI for common.integrity_ledger. Meant to be invoked either
+
+Purpose
+-------
+Standalone CLI for common.integrity_ledger. Meant to be invoked either
     by hand (before/after a sensitive operation on a vault.json, a
     biometrics keyring.json, or a package's .json file) or by an OS-level
     scheduler (a cron job, a Windows Scheduled Task) so checkpoints are
@@ -18,8 +20,9 @@ Purpose:
     zero unless checkpoints are continuous, which this tool does not
     attempt to be.
 
-Communication relationships:
-    Called by: an operator's shell, or an OS scheduler (cron / Task
+Communication / relationships
+-----------------------------
+Called by: an operator's shell, or an OS scheduler (cron / Task
     Scheduler) invoking this script directly. Not imported by any other
     module in this repository -- it is a thin argument-parsing shell
     around common.integrity_ledger's public functions, the same
@@ -46,7 +49,24 @@ Edge-case behavior:
       still worth recording, since the recorded_at timestamp itself is
       evidence that the file was inspected and found unchanged at that
       moment.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_LEDGER_PATH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import argparse
 import sys
 from pathlib import Path
@@ -182,3 +202,4 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

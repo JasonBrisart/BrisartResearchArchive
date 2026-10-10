@@ -1,31 +1,37 @@
 """
 File: gui/components/sidebar.py
 
-Purpose:
+Purpose
+-------
 Build the application sidebar and connect each navigation entry to the
 corresponding registered page.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Reads NAV_ITEMS and SETTINGS_NAV_ITEM from config/registries.py.
 - Calls app.show_page() when a navigation entry is selected.
 - Stores navigation widgets in app.nav for active-page highlighting.
 - Is called once by gui/main_window.py during layout construction.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - The sidebar width is fixed at 210 pixels.
 - NAV_ITEMS are rendered in the upper navigation group.
 - SETTINGS_NAV_ITEM is pinned at the bottom beneath a divider.
 
-Edge cases:
+Edge cases
+----------
 - Navigation callbacks resolve page names only when clicked.
 - The expanding spacer keeps Settings pinned to the bottom regardless
   of the number of primary navigation entries.
 
-Known limitations:
+Known limitations
+-----------------
 - The sidebar does not collapse or resize independently.
 - Icons depend on the active system font supporting their characters.
 
-Examples:
+Examples
+--------
 - build_sidebar(app)
 """
 

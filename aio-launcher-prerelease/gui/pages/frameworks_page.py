@@ -1,40 +1,47 @@
 """
 File: gui/pages/frameworks_page.py
 
-Purpose:
+Purpose
+-------
 Render one card per registered framework, split into an "Available"
 group at the top and an "Available to Download" group at the bottom,
 each sorted alphabetically by name.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Registered as "Frameworks" in config/registries.get_page_registry().
 - Reads config/registries.FRAMEWORK_REGISTRY on every render.
 - Run calls app.start_framework(framework_id), which reaches
   services/framework_service.py through SystemController.
 - Results calls app.show_page("Results").
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - NOT_YET_AVAILABLE_LABEL: "Available to Download".
 - A framework belongs to the top group when its status is "available"
   (case-insensitive).
 - The features line shows the first four features.
 
-Edge cases:
+Edge cases
+----------
 - Groups are recomputed on every render; nothing is persisted.
 - The divider appears only when both groups are non-empty.
 - Unavailable frameworks show "Not installed." and a disabled button,
   whatever their raw status text (for example "Coming Soon").
 
-Known limitations:
+Known limitations
+-----------------
 - Run launches that card's framework directly, independent of
   app.selected_framework.
 - The fixed 950-pixel wraplength does not reflow on resize.
 - Reserved frameworks cannot actually be downloaded yet; the label
   describes future behavior.
 
-Examples:
+Examples
+--------
 - app.show_page("Frameworks")
 """
+
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
@@ -131,3 +138,4 @@ def _build_framework_card(app, root, row: int, framework: dict) -> None:
         ).pack(side="left", padx=(0, 8))
     else:
         ttk.Button(button_bar, text=NOT_YET_AVAILABLE_LABEL, state="disabled").pack(side="left", padx=(0, 8))
+

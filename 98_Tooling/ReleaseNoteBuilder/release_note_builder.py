@@ -1,6 +1,33 @@
 """
+File: release_note_builder.py
+
+Purpose
+-------
 ReleaseNoteBuilder
-------------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, sys, pathlib, constants, filesystem, diff_engine, generators.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ReleaseNoteBuilder
 
 A lightweight no-dependency Python utility that compares two project folders
 and generates release notes, changelog drafts, and structured release metadata.

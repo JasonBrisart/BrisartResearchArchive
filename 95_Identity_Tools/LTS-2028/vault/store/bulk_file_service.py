@@ -1,4 +1,33 @@
-"""Chunked, multi-path bulk file/folder/drive encryption on top of VaultService.
+"""
+File: vault/store/bulk_file_service.py
+
+Purpose
+-------
+Chunked, multi-path bulk file/folder/drive encryption on top of VaultService.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tempfile, time, zipfile, pathlib, common.hashing.
+
+Settings / parameters
+---------------------
+Module-level named settings: BUNDLE_MANIFEST_KIND, BUNDLE_CHUNK_KIND, DEFAULT_CHUNK_BYTES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Chunked, multi-path bulk file/folder/drive encryption on top of VaultService.
 
 WHY THIS MODULE EXISTS: BSR2's vendored envelope hard-caps a single sealed
 payload at vendor.brisart_security_envelope.MAX_PLAINTEXT_BYTES == 16 MiB
@@ -33,6 +62,7 @@ than the standalone FILE_RECORD_KIND, so its "kind" field distinguishes it as
 an internal bundle piece rather than a real, independently-meaningful
 standalone file record.
 """
+
 import tempfile
 import time
 import zipfile
@@ -284,3 +314,4 @@ class BulkFileService:
                 archive.extractall(output_dir)
                 extracted_names = archive.namelist()
         return {"output_dir": str(output_dir), "files_restored": len(extracted_names)}
+

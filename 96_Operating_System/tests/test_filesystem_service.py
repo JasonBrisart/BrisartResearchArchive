@@ -1,5 +1,5 @@
 """
-tests/test_filesystem_service.py
+File: tests/test_filesystem_service.py
 
 Purpose
 -------
@@ -13,8 +13,8 @@ module's own `module_data/<module_name>/` directory. These tests both
 confirm the happy-path CRUD contract and actively probe the sandbox with
 path-traversal-style filenames.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `ServiceRegistry.register_builtin_services()` (see
   `tests/test_service_registry.py`) constructs the one `FilesystemService`
   instance a `BrisartRuntime` ever registers, passing it
@@ -30,7 +30,7 @@ Communication relationships
   end-to-end.
 
 Settings / parameters
-----------------------
+---------------------
 - `FilesystemService(module_data_root=None)`: unlike `SystemAPI`, this
   service's data root **is** constructor-configurable, which is what makes
   it possible to point every test in this file at a fresh `tempfile`
@@ -45,7 +45,6 @@ Settings / parameters
   before touching disk.
 
 Edge-case behavior
--------------------
 - `safe_name()` maps any character outside `[A-Za-z0-9._-]` to `_`, then
   strips leading/trailing `.`/`_`. Because `/` and `\\` are among the
   characters replaced, a `filename` such as `"../../etc/passwd"` can never
@@ -62,7 +61,24 @@ Edge-case behavior
   successfully removes one.
 - `list_files()` must return only files (never subdirectories) in sorted
   order, scoped to the one module's own directory.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_filesystem_service.py
 """
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -209,3 +225,4 @@ class FilesystemServiceSandboxingTests(FilesystemServiceTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

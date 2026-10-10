@@ -1,4 +1,33 @@
-"""Device binding: tying an enrolled identity to the machine that enrolled it.
+"""
+File: biometrics/identity/device_key.py
+
+Purpose
+-------
+Device binding: tying an enrolled identity to the machine that enrolled it.
+
+Communication / relationships
+-----------------------------
+Direct module imports: platform, socket, uuid, crypto.factors.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEVICE_FACTOR_NAME. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Device binding: tying an enrolled identity to the machine that enrolled it.
 
 The problem this solves: a stolen identity store (the JSON file on disk) should
 not be usable on a different machine without also compromising something that
@@ -15,6 +44,7 @@ a strong security boundary equivalent to the passphrase or recovery code -- it
 is one more thing an attacker must also reproduce, not a replacement for the
 keyring's own authentication.
 """
+
 import platform
 import socket
 import uuid
@@ -80,3 +110,4 @@ def verify_device(master_key: bytes, bound_value: str, fingerprint: str = None) 
     """Check whether the current (or supplied) device matches a stored binding."""
     fingerprint = fingerprint if fingerprint is not None else current_device_fingerprint()
     return verify_bound_factor(master_key, DEVICE_FACTOR_NAME, fingerprint, bound_value)
+

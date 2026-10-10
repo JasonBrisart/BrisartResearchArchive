@@ -1,5 +1,5 @@
 """
-tests/run_tests.py
+File: tests/run_tests.py
 
 Purpose
 -------
@@ -11,8 +11,8 @@ own `unittest` discovery and text runner instead -- no dependency beyond
 Python itself, consistent with every other tool in this repository
 (`tests/boot_sector_test.py`, `brisartos/boot/make_boot_image.py`, etc.).
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - Discovers and runs every `tests/test_*.py` module (via
   `unittest.TestLoader().discover(...)`), which in turn each import
   `tests/_support.py` for shared `sys.path`/working-directory setup before
@@ -26,7 +26,7 @@ Communication relationships
   tests itself.
 
 Settings / parameters
-----------------------
+---------------------
 - No command-line arguments are required. Running `python
   tests/run_tests.py` (from any working directory) discovers and runs
   every test module inside the `tests/` directory that contains this
@@ -40,7 +40,6 @@ Settings / parameters
   specific plugin needed on the CI side.
 
 Edge-case behavior
--------------------
 - If `tests/` contains zero discoverable test modules (e.g. someone runs
   this against a stripped-down checkout), `unittest` reports "Ran 0 tests"
   and exits `0` -- this script does not treat an empty suite as a failure
@@ -50,7 +49,24 @@ Edge-case behavior
   that breaks a `from _support import ...` line) surfaces as a failed
   "test" named after the broken module, via `unittest`'s own
   `_FailedTest` mechanism, rather than silently skipping that file.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/run_tests.py
 """
+
 import sys
 import unittest
 from pathlib import Path
@@ -72,3 +88,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

@@ -1,3 +1,31 @@
+"""
+File: gui/about_tab.py
+
+Purpose
+-------
+Defines create_about_tab for 98_Tooling/ProjectContextHelper/gui.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, sys, tkinter, tkinter, core.constants, gui.builders, gui.dialogs, services.storage, services.updater.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from pathlib import Path
 import sys
 import tkinter as tk
@@ -193,3 +221,4 @@ def create_about_tab(parent: tk.Frame, window: tk.Tk, state: GuiState):
         if state.check_updates_startup_var.get():
             perform_auto_update()
     return startup_update_check
+

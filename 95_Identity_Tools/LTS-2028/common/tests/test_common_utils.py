@@ -1,7 +1,33 @@
-"""Tests for the shared common/ utilities: atomic writes, hashing, and the
+"""
+File: common/tests/test_common_utils.py
+
+Purpose
+-------
+Tests for the shared common/ utilities: atomic writes, hashing, and the
 UTC timestamp helpers -- including the utc_now_iso alias whose absence broke
 every tool's imports (see docs/CHANGELOG.md 1.0.0 'Fixed').
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, os, stat, tempfile, unittest, pathlib, common, common.atomic_io, common.hashing.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
 """
+
 import json
 import os
 import stat
@@ -165,3 +191,4 @@ class AtomicIoPermissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

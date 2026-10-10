@@ -1,11 +1,35 @@
 """
+File: engine/integrity_check.py
+
+Purpose
+-------
 engine.integrity_check
------------------------
 Verifies a previously created snapshot's manifest against the current
 state of the source folder, to confirm preserved files still match what
 was recorded (by hash and size) and to flag anything missing or changed
 since the snapshot was taken.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, json, pathlib, typing, .app_info, .folder_scanner.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import json

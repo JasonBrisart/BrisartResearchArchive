@@ -1,15 +1,18 @@
 """
 File: services/updater/constants.py
 
-Purpose:
+Purpose
+-------
 Hold the shared updater constants: registry location and markers, local
 paths, size and time limits, the obsolete-file list, and the frozen
 executable check. No side effects and no I/O.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Imported by every module in services/updater/.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - REGISTRY_PAGE_URL: the page holding the release registry JSON. Its
   host must be in ALLOWED_REMOTE_HOSTS.
 - APP_REGISTRY_ID "brisart_research_archive"; REGISTRY_START_MARKER and
@@ -21,17 +24,20 @@ Settings / parameters:
   after a successful backup.
 - Timeouts: 15 s for the registry, 120 s for downloads.
 
-Edge cases:
+Edge cases
+----------
 - A REGISTRY_PAGE_URL whose host is not listed in ALLOWED_REMOTE_HOSTS
   fails validation before any request is sent.
 
-Known limitations:
+Known limitations
+-----------------
 - The AIO Launcher prerelease location on GitHub is the current registry
   target; if that path moves, change REGISTRY_PAGE_URL.
 - The registry page is read up to 64 KiB, so the markers must appear
   within that limit.
 
-Examples:
+Examples
+--------
 - from services.updater.constants import REGISTRY_PAGE_URL
 """
 
@@ -97,3 +103,4 @@ MAX_COMPRESSION_RATIO = 250.0
 
 def is_frozen() -> bool:
     return bool(getattr(sys, "frozen", False))
+

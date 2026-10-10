@@ -1,7 +1,9 @@
 """
 File: biometrics/identity/keyring_access.py
-Purpose:
-    Single shared entry point for unlocking the biometrics BSR2 keyring
+
+Purpose
+-------
+Single shared entry point for unlocking the biometrics BSR2 keyring
     (data/keyring.json) with online-attempt throttling enforced identically
     for every caller. Before this module existed, biometrics/app.py's CLI
     (_unlock_keyring()) and gui/tabs/tab_biometrics.py's GUI
@@ -15,8 +17,9 @@ Purpose:
     instead, so the identical throttling policy applies no matter which
     interface is used to reach it.
 
-Communication relationships:
-    Called by:
+Communication / relationships
+-----------------------------
+Called by:
         - biometrics.app._unlock_keyring(), the CLI's sole unlock path,
           reached from every command that touches an identity's stored
           templates or attachments (enroll, verify, attach, attach-paths,
@@ -74,7 +77,24 @@ Edge-case behavior:
       crypto.keyring.Keyring itself deliberately keeps that distinction
       uniform (see crypto/keyring.py's own docstring on why an unlock
       failure message does not disclose which one occurred).
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import json
 from pathlib import Path
 
@@ -129,3 +149,4 @@ def unlock_with_passphrase(keyring: Keyring, path: Path, passphrase: str) -> byt
 
 
 __all__ = ["KeyringAccessError", "unlock_with_passphrase"]
+

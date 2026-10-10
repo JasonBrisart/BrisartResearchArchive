@@ -1,3 +1,31 @@
+"""
+File: gui/dialogs.py
+
+Purpose
+-------
+Defines open_folder, show_error, show_warning, show_info, ask_yes_no, format_git_line, show_build_complete for 98_Tooling/ProjectContextHelper/gui.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, os, tkinter, core.models.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from pathlib import Path
 import os
 from tkinter import messagebox
@@ -56,3 +84,4 @@ def show_build_complete(result: BuildResult) -> None:
             f"{snapshot_line}"
         ),
     )
+

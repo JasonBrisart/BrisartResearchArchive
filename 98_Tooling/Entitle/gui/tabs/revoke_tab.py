@@ -1,4 +1,32 @@
 """
+File: gui/tabs/revoke_tab.py
+
+Purpose
+-------
+Entitle GUI — Revoke / Reinstate Tab
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, entitle.records, entitle.revoke, entitle.paths, gui.widgets.
+
+Settings / parameters
+---------------------
+Module-level named settings: TAB_TITLE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle GUI — Revoke / Reinstate Tab
 
 Revokes, reinstates, or checks the revocation status of an entitlement. Calls
@@ -6,6 +34,7 @@ Revokes, reinstates, or checks the revocation status of an entitlement. Calls
 ``entitle.revoke.revocation_status(...)`` directly -- the same functions the
 ``python main.py revoke ...`` CLI subcommands use.
 """
+
 from tkinter import ttk
 
 from entitle.records import RecordStore
@@ -70,3 +99,4 @@ def build(parent, app):
     ttk.Button(form, text="Reinstate", command=run_reinstate).grid(row=row, column=1, pady=12, sticky="w")
     ttk.Button(form, text="Check Status", command=run_check).grid(row=row, column=2, pady=12, sticky="w")
     return form
+

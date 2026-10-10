@@ -1,6 +1,32 @@
-"""End-to-end tests proving vault records are actually sealed, and that
-unlock/lock and wrong-passphrase behavior work correctly.
 """
+File: vault/tests/test_sealed_vault.py
+
+Purpose
+-------
+End-to-end tests proving vault records are actually sealed, and that
+unlock/lock and wrong-passphrase behavior work correctly.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, os, stat, tempfile, unittest, pathlib, vault.store.vault_service.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import json
 import os
 import stat
@@ -116,3 +142,4 @@ class VaultFilePermissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

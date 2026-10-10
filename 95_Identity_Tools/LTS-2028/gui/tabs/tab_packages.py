@@ -1,5 +1,31 @@
-"""The Packages tab: create, add/remove recipients on, open, and inspect the
-custody chain of Identity-Bound Packages."""
+"""
+File: gui/tabs/tab_packages.py
+
+Purpose
+-------
+The Packages tab: create, add/remove recipients on, open, and inspect the
+custody chain of Identity-Bound Packages.
+
+Communication / relationships
+-----------------------------
+Direct module imports: hashlib, json, secrets, tkinter, pathlib, tkinter, gui.core.constants, gui.core.busy, gui.widgets.dialogs, packages, packages.custody, packages.package.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
 
 import hashlib
 import json
@@ -323,3 +349,4 @@ class PackagesTab(ttk.Frame):
             messagebox.showerror(APP_TITLE, str(exc), parent=self)
 
         run_in_background(self, work, on_success, on_error, "Running demo (real BSR2 derivations)...")
+

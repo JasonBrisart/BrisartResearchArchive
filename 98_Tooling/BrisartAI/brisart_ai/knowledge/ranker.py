@@ -9,14 +9,14 @@ generic-concept-title penalty, phrase-match, proximity, and intent
 adjustments.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/core/conversation.py: build_conversation_answer() calls search().
 - brisart_ai/web/crawler.py: imports phrase_match_adjust().
 - Imports brisart_ai.knowledge.relevance_engine, brisart_ai.intent.*,
   brisart_ai.util.tokenize().
 
 Settings / parameters
-----------------------
+---------------------
 - STOPWORD_WEIGHT (0.15) / COVERAGE_FLOOR (0.15).
 - INTENT_WEIGHT (0.30) / INTENT_MIN_FACTOR (0.40) / INTENT_MAX_FACTOR (1.90).
 - TITLE_MATCH_WEIGHT (0.12) / TITLE_MATCH_MAX_FACTOR (1.42) /
@@ -28,7 +28,16 @@ Edge cases
 ----------
 - search() accepts source_type or source_types.
 - proximity_adjust() needs 2+ distinct matched terms.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import collections
@@ -362,3 +371,4 @@ __all__ = [
     "generic_concept_title_adjust", "intent_adjust", "phrase_match_adjust",
     "proximity_adjust", "search", "title_match_adjust",
 ]
+

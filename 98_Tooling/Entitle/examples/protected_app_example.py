@@ -1,4 +1,32 @@
 """
+File: examples/protected_app_example.py
+
+Purpose
+-------
+Protected App Example
+
+Communication / relationships
+-----------------------------
+Direct module imports: sys, pathlib, entitle.bootstrap, entitle.core, entitle.bsr_adapter.
+
+Settings / parameters
+---------------------
+Module-level named settings: _REPO_ROOT, ISSUER_ID, SUBJECT_ID, PRODUCT_ID, ENTITLEMENT_FILE, MASTER_KEY. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Protected App Example
 
 This file demonstrates how another software project can use Entitle.
@@ -14,6 +42,7 @@ Behavior:
 Run this from anywhere:
     python examples/protected_app_example.py
 """
+
 import sys
 from pathlib import Path
 
@@ -139,3 +168,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

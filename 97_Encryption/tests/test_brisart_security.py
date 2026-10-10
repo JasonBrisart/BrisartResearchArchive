@@ -1,4 +1,33 @@
-"""Behavioral and boundary tests for the experimental BSR2 implementation.
+"""
+File: tests/test_brisart_security.py
+
+Purpose
+-------
+Behavioral and boundary tests for the experimental BSR2 implementation.
+
+Communication / relationships
+-----------------------------
+Direct module imports: copy, unittest, unittest.mock, brisart_security_envelope, brisart_security_drbg, brisart_security_envelope, brisart_security_primitives.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Behavioral and boundary tests for the experimental BSR2 implementation.
 
 These tests verify implemented behavior and fail-closed input handling. Passing
 results do not establish cryptographic security or production suitability.
@@ -493,3 +522,4 @@ class BrisartCipherResearchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

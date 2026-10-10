@@ -1,8 +1,9 @@
 """
 File: hardware/base/pcsc_binding.py
 
-Purpose:
-    Defines the contract for the ONE operation this project deliberately
+Purpose
+-------
+Defines the contract for the ONE operation this project deliberately
     does not implement: the raw call into an operating system's own
     PC/SC service (winscard.dll on Windows, PCSC.framework on macOS,
     libpcsclite on Linux). Every other piece of smart-card logic --
@@ -20,8 +21,9 @@ Purpose:
     hardware/README.md, "Why the OS binding is not shipped," for the
     full reasoning.
 
-Communication relationships:
-    Implemented by: an organization-supplied binding class (not part of
+Communication / relationships
+-----------------------------
+Implemented by: an organization-supplied binding class (not part of
     this repository's shipped code), constructed and passed into
     hardware.card_readers.pcsc_reader.PCSCReader's constructor.
 
@@ -50,7 +52,24 @@ Edge-case behavior:
       the trailing two-byte status word (SW1 SW2); pcsc_reader.py, not
       the binding, is responsible for splitting the status word from
       the response body.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from abc import ABC, abstractmethod
 
 
@@ -106,3 +125,4 @@ class PCSCBinding(ABC):
         """Send an APDU to the currently connected card and return the
         FULL raw response, including the trailing SW1 SW2 status word.
         Raise PCSCBindingError on any transmission failure."""
+

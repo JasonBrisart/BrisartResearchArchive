@@ -1,3 +1,31 @@
+"""
+File: core/builder.py
+
+Purpose
+-------
+Defines create_context for 98_Tooling/ProjectContextHelper/core.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, json, core.constants, core.exporters, core.git_state, services.storage, core.models, core.scanner, core.utils.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from pathlib import Path
 import json
 
@@ -96,3 +124,4 @@ def create_context(root: Path, settings: ScanSettings | None = None) -> BuildRes
         pass
 
     return result
+

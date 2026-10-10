@@ -1,5 +1,5 @@
 """
-tests/test_browser.py
+File: tests/test_browser.py
 
 Purpose
 -------
@@ -12,8 +12,8 @@ against a mocked `urlopen`, using only `unittest.mock` from the standard
 library, so the whole suite stays runnable in an air-gapped environment
 with zero network access and zero external test dependencies.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `open_url()` (the CLI entry point used by `main()`) calls `fetch_page()`
   then prints `page["text"]`; this file tests `fetch_page()`'s return
   value directly rather than capturing `open_url()`'s console output,
@@ -24,7 +24,7 @@ Communication relationships
   against literal HTML strings, independent of any real network fetch.
 
 Settings / parameters
-----------------------
+---------------------
 - `MAX_PAGE_BYTES` (1,000,000 by default) bounds how much of a response
   body `fetch_page()` will read via `response.read(MAX_PAGE_BYTES + 1)`;
   exceeding it must raise `ValueError` rather than silently truncating
@@ -39,7 +39,6 @@ Settings / parameters
   `<p>`, `<div>`, `<br>`, `<h1>`-`<h3>`, and `<li>` as line-break points.
 
 Edge-case behavior
--------------------
 - `normalize_url("")` (or a value that is only whitespace) must raise
   `ValueError("URL is required")` rather than silently normalizing to
   `"https://"`.
@@ -54,7 +53,24 @@ Edge-case behavior
 - `fetch_page()` must decode the response body using the charset reported
   by `response.headers.get_content_charset()`, falling back to `"utf-8"`
   when the mocked response declares none.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_browser.py
 """
+
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -206,3 +222,4 @@ class FetchPageMockedNetworkTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,4 +1,33 @@
-"""Synthetic sample generation for testing and demos.
+"""
+File: biometrics/samples/sample_generator.py
+
+Purpose
+-------
+Synthetic sample generation for testing and demos.
+
+Communication / relationships
+-----------------------------
+Direct module imports: math, biometrics.codecs.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_IMAGE_SIZE, DEFAULT_SAMPLE_RATE, DEFAULT_AUDIO_SECONDS, DEFAULT_VIDEO_FRAME_COUNT, DEFAULT_VIDEO_FRAME_RATE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Synthetic sample generation for testing and demos.
 
 Real biometric captures require real hardware (a microphone, a fingerprint
 scanner, a camera). To exercise enrollment and verification without any of
@@ -13,6 +42,7 @@ None of this is meant to resemble a real fingerprint, voice, or face. It is
 patterned synthetic data sized and shaped like the real thing, sufficient to
 drive the feature extractors end-to-end.
 """
+
 import math
 
 from biometrics.codecs import pgm, video, wave_tools
@@ -160,3 +190,4 @@ def write_fingerprint_sample(path, seed: str, size: int = DEFAULT_IMAGE_SIZE) ->
     encoded = generate_fingerprint_image(seed, size)
     with open(path, "wb") as handle:
         handle.write(encoded)
+

@@ -6,17 +6,26 @@ Purpose
 Defines CrawlStats, five counters for one crawl run plus print_summary().
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/web/crawler.py: owns the single CrawlStats() instance.
 
 Settings / parameters
-----------------------
+---------------------
 - requested, indexed, skipped_duplicates, skipped_empty, errors.
 
 Edge cases
 ----------
 - All fields default to 0.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,3 +48,4 @@ class CrawlStats:
         print(f"Duplicates: {self.skipped_duplicates}")
         print(f"Empty pages: {self.skipped_empty}")
         print(f"Errors: {self.errors}")
+

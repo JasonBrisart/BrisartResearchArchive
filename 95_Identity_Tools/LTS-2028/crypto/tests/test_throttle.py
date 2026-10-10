@@ -1,6 +1,33 @@
-"""Tests for crypto.throttle.AttemptLimiter, including the corrupt-state
+"""
+File: crypto/tests/test_throttle.py
+
+Purpose
+-------
+Tests for crypto.throttle.AttemptLimiter, including the corrupt-state
 hardening from 0.8.0-beta (non-finite fields, and the backoff exponent cap
-that stops a huge persisted failed_attempts from building a giant integer)."""
+that stops a huge persisted failed_attempts from building a giant integer).
+
+Communication / relationships
+-----------------------------
+Direct module imports: math, unittest, crypto.errors, crypto.throttle.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import math
 import unittest
 from crypto.errors import Bsr2IntegrationError
@@ -109,3 +136,4 @@ class AttemptLimiterConstructionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

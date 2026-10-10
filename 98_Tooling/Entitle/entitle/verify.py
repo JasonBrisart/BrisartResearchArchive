@@ -1,4 +1,32 @@
 """
+File: entitle/verify.py
+
+Purpose
+-------
+Entitle Verify Tool
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, json, .bsr_adapter.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Verify Tool
 
 Verifies a protected Entitle entitlement container.
@@ -11,6 +39,7 @@ Example:
         --master-key "change-this-master-key-change-this-master-key" \\
         --file entitlements/lab_a.entitle
 """
+
 import argparse
 import json
 
@@ -70,3 +99,4 @@ def main(argv=None):
     print()
     print(f"DENIED: {result.reason}")
     return 1
+

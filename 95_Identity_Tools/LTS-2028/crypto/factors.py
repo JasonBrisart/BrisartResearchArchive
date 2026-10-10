@@ -1,4 +1,33 @@
-"""BSR2 factor protection, split by the entropy of the input.
+"""
+File: crypto/factors.py
+
+Purpose
+-------
+BSR2 factor protection, split by the entropy of the input.
+
+Communication / relationships
+-----------------------------
+Direct module imports: crypto.errors, crypto.vendor.
+
+Settings / parameters
+---------------------
+Module-level named settings: PREFIX, KDF_ALGORITHM, MAC_ALGORITHM, SALT_BYTES, DIGEST_BYTES, ITERATIONS, MINIMUM_ITERATIONS, MAXIMUM_ITERATIONS, _KDF_FIELD_COUNT, _MAC_FIELD_COUNT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+BSR2 factor protection, split by the entropy of the input.
 
 This replaces the unsalted single-pass SHA-256 previously used for every factor
 hash. That construction had two concrete problems: identical factors produced
@@ -37,6 +66,7 @@ Encoded forms::
     bsr2$derive_password_key$iterations=10000$<hex salt>$<hex digest>
     bsr2$keyed_mac$<factor name>$<hex digest>
 """
+
 from crypto.errors import Bsr2IntegrationError
 from crypto.vendor import (
     BrisartPrimitiveError,
@@ -325,3 +355,4 @@ __all__ = [
     "verify_bound_factor",
     "verify_factor",
 ]
+

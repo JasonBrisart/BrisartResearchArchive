@@ -1,4 +1,33 @@
-"""DRBG construction for BSR2 envelope operations.
+"""
+File: crypto/rng.py
+
+Purpose
+-------
+DRBG construction for BSR2 envelope operations.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, crypto.errors, crypto.vendor.
+
+Settings / parameters
+---------------------
+Module-level named settings: SEED_BYTES, REQUESTS_BEFORE_RESEED, BYTES_BEFORE_RESEED. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+DRBG construction for BSR2 envelope operations.
 
 ``brisart_security_envelope.encrypt`` requires a caller-supplied generator and
 deliberately does not create one. That leaves the caller responsible for seeding
@@ -12,6 +41,7 @@ trigger a transparent reseed from fresh operating-system entropy instead of a
 hard failure mid-run. Upstream raises ``BrisartDRBGError`` at those limits by
 design; a long-lived enrollment process should not crash on record 100,001.
 """
+
 import secrets
 
 from crypto.errors import Bsr2IntegrationError
@@ -97,3 +127,4 @@ def new_generator(purpose: str) -> ManagedGenerator:
         b"BrisartIdentityTools/BSR2/v1/" + purpose.encode("utf-8")
     ).ljust(MINIMUM_PERSONALIZATION_BYTES, b"\x00")
     return ManagedGenerator(personalization)
+

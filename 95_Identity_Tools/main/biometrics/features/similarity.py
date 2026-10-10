@@ -1,4 +1,33 @@
-"""Shared similarity scoring for biometric feature vectors.
+"""
+File: biometrics/features/similarity.py
+
+Purpose
+-------
+Shared similarity scoring for biometric feature vectors.
+
+Communication / relationships
+-----------------------------
+Direct module imports: math.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Shared similarity scoring for biometric feature vectors.
 
 Used by fingerprint_features.py, video_features.py, and voice_features.py
 so the scoring logic exists in exactly one place instead of being copied
@@ -27,6 +56,7 @@ is fundamentally an angle-only metric, and this feature space's
 impostor/genuine separation lives in magnitude of difference, not angle.
 Normalized Euclidean distance was needed instead.
 """
+
 import math
 
 
@@ -62,3 +92,4 @@ def distance_similarity(vector_a: list, vector_b: list) -> float:
         # match rather than dividing by zero.
         return 1.0
     return math.exp(-distance / scale)
+

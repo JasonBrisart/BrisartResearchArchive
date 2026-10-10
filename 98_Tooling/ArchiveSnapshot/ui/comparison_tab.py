@@ -1,6 +1,33 @@
 """
+File: ui/comparison_tab.py
+
+Purpose
+-------
 ui.comparison_tab
---------------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, tkinter, pathlib, tkinter, engine.change_report, engine.snapshot_index, .path_actions.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ui.comparison_tab
 
 Compare tab: diff the two most recent snapshots in the selected archive
 folder.
@@ -85,3 +112,4 @@ class ComparisonTab:
             self.compare_text.insert("1.0", text)
         except Exception as exc:
             messagebox.showerror("Compare Failed", str(exc))
+

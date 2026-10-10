@@ -1,35 +1,41 @@
 """
 File: frameworks/TFL/stimuli.py
 
-Purpose:
+Purpose
+-------
 Provide the embedded 60-item TFL stimulus library, its validation, and
 the baseline stimulus limit.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - load_stimuli() and apply_stimulus_limit() are used by
   frameworks/TFL/session_gui.py, app/headless.py, the lazy wrappers in
   frameworks/TFL/framework.py, and tests/test_merged.py.
 - Reads BASE_STIMULUS_LIMIT through frameworks/TFL/framework.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - REQUIRED_STIMULUS_FIELDS: stimulus_id, cue, ambiguous_text,
   interpretation_a, interpretation_b.
 - EMBEDDED_STIMULI: S001 through S060.
 - FALLBACK_STIMULI: backward-compatible alias for EMBEDDED_STIMULI.
 - Only the first 20 stimuli are used unless enable_extra_stimuli is set.
 
-Edge cases:
+Edge cases
+----------
 - validate_stimuli() rejects non-list collections, empty collections,
   non-dictionary rows, blank fields, and duplicate IDs.
 - Values are stripped, and new dictionaries are returned so callers
   cannot mutate the embedded definitions.
 
-Known limitations:
+Known limitations
+-----------------
 - Content is editable only in source; there is no external stimulus
   file.
 - Several stimuli reuse the same ambiguity (glasses, bank, binoculars).
 
-Examples:
+Examples
+--------
 - stimuli = apply_stimulus_limit(load_stimuli(), config)
 """
 
@@ -359,3 +365,4 @@ def apply_stimulus_limit(stimuli: list[dict], config: dict) -> list[dict]:
     if config.get("enable_extra_stimuli", False):
         return validated
     return validated[:framework.BASE_STIMULUS_LIMIT]
+

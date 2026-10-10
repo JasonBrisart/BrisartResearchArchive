@@ -1,5 +1,5 @@
 """
-tests/test_hello_lab_module.py
+File: tests/test_hello_lab_module.py
 
 Purpose
 -------
@@ -14,8 +14,8 @@ permission-declared-in-`MODULE_PERMISSIONS` -> `ModuleAPI` ->
 `SystemAPI`/`FilesystemService` chain actually holds together end-to-end
 for the one module a lab operator would actually run today.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `hello_lab.run(api)` calls, in order: `api.new_object_id()` (requires
   `"object_id"`), `api.write_module_text(...)` (requires `"module_data"`),
   `api.log(...)` (requires `"log"`), `api.get_service("filesystem")`
@@ -31,7 +31,7 @@ Communication relationships
   call site that needed it, rather than somewhere unrelated.
 
 Settings / parameters
-----------------------
+---------------------
 - `hello_lab.run(api)` takes a single `api` argument satisfying the
   `ModuleAPI` interface; this file always constructs a real `ModuleAPI`
   wrapping a real `SystemAPI` (isolated under `_support.IsolatedCwd`, since
@@ -45,7 +45,6 @@ Settings / parameters
   the same `module_data/hello_lab/` directory.
 
 Edge-case behavior
--------------------
 - With the full permission tuple granted, `run()` must produce both
   `module_data/hello_lab/hello.txt` (written via the raw `SystemAPI` path)
   and `module_data/hello_lab/service_demo.txt` (written via the
@@ -59,7 +58,24 @@ Edge-case behavior
   the direct `SystemAPI` file (`hello.txt`) has already been written,
   since that write happens earlier in `run()` than the
   `api.get_service("filesystem")` call.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_hello_lab_module.py
 """
+
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -198,3 +214,4 @@ class HelloLabModulePermissionDenialTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

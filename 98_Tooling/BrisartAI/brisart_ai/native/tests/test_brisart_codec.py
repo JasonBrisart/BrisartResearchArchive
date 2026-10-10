@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/native/brisart_codec.py -- BrisartBase64 vs. real base64."""
+"""
+File: brisart_ai/native/tests/test_brisart_codec.py
+
+Purpose
+-------
+Tests for brisart_ai/native/brisart_codec.py -- BrisartBase64 vs. real base64.
+
+Communication / relationships
+-----------------------------
+Direct module imports: base64, unittest, brisart_ai.native.brisart_codec.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import base64
 import unittest
 from brisart_ai.native.brisart_codec import brisart_b64decode, brisart_b64encode, brisart_urlsafe_b64decode
@@ -47,3 +74,4 @@ class TestBrisartBase64(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

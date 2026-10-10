@@ -1,4 +1,33 @@
-"""Pure-Python grayscale image manipulation used to prepare template inputs.
+"""
+File: biometrics/codecs/image_tools.py
+
+Purpose
+-------
+Pure-Python grayscale image manipulation used to prepare template inputs.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+Module-level named settings: MIN_DIMENSION, MAX_DIMENSION. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Pure-Python grayscale image manipulation used to prepare template inputs.
 
 Every biometric template in this project is ultimately a fixed-size grid of
 values derived from a variable-size input (a captured image, a decoded video
@@ -8,6 +37,7 @@ to a ``grid_size x grid_size`` block-mean summary. No third-party imaging
 library is used; everything here is nested-loop arithmetic over flat
 ``bytes``.
 """
+
 MIN_DIMENSION = 1
 MAX_DIMENSION = 8192
 
@@ -192,3 +222,4 @@ def sobel_gradient_magnitude(width: int, height: int, pixels: bytes) -> list:
             )
             magnitudes[row * width + col] = (gx * gx + gy * gy) ** 0.5
     return magnitudes
+

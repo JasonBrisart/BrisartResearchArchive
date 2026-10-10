@@ -1,4 +1,33 @@
-"""Generic file attachments on a biometrics identity record.
+"""
+File: biometrics/engine/attachments.py
+
+Purpose
+-------
+Generic file attachments on a biometrics identity record.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, common.hashing, crypto.context, crypto.envelope, crypto.errors, crypto.rng, biometrics.identity.identity_record.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Generic file attachments on a biometrics identity record.
 
 This is deliberately independent of the voice/fingerprint/video modality
 system in engine/modalities.py: a modality template is always the OUTPUT
@@ -18,6 +47,7 @@ moved to a different identity, or relabeled under a different filename,
 without failing authentication -- exactly the same protection
 template_context already gives modality templates.
 """
+
 from pathlib import Path
 
 from common.hashing import sha256_bytes
@@ -108,3 +138,4 @@ def extract_attachment_to_file(record: dict, filename: str, master_key: bytes, o
 def remove_identity_attachment(record: dict, filename: str) -> dict:
     """Return a copy of ``record`` with the named attachment removed."""
     return remove_attachment(record, filename)
+

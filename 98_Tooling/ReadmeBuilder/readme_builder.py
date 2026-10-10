@@ -1,7 +1,34 @@
 #!/usr/bin/env python3
 """
+File: readme_builder.py
+
+Purpose
+-------
 ReadmeBuilder
--------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, sys, pathlib, filesystem, generators.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ReadmeBuilder
 
 A tiny no-dependency utility that scans a project folder and generates a
 GitHub-focused README draft plus a separate technical analysis file.

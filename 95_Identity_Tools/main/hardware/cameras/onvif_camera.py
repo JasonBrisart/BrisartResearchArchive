@@ -1,8 +1,9 @@
 """
 File: hardware/cameras/onvif_camera.py
 
-Purpose:
-    A CameraBase implementation of the ONVIF protocol -- a published,
+Purpose
+-------
+A CameraBase implementation of the ONVIF protocol -- a published,
     vendor-neutral standard for IP camera interoperability (Axis,
     Hikvision, Dahua, and most budget IP cameras). This module owns
     every piece of ONVIF protocol logic BrisartIdentityTools needs:
@@ -25,8 +26,9 @@ Purpose:
     See hardware/README.md, "Why the ONVIF transport is not shipped,"
     for the full reasoning.
 
-Communication relationships:
-    Called by: hardware.hardware_manager.HardwareManager, once
+Communication / relationships
+-----------------------------
+Called by: hardware.hardware_manager.HardwareManager, once
     registered via hardware.registry.register() (not automatic -- see
     hardware/README.md), and constructed with an ONVIFTransport
     instance the operator supplies.
@@ -102,7 +104,24 @@ Edge-case behavior:
       camera's own advertised media service address, rather than
       assuming a fixed URL path, since ONVIF devices are not required
       to expose the media service at any particular path.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_PORT, _SOAP_NAMESPACES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import base64
 import hashlib
 import os
@@ -308,3 +327,4 @@ class ONVIFCamera(CameraBase):
             raise DeviceConnectionError(
                 f"snapshot fetch from {self._snapshot_uri} failed: {exc}"
             ) from exc
+

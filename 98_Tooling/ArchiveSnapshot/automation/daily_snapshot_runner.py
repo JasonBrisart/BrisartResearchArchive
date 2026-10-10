@@ -1,7 +1,35 @@
 #!/usr/bin/env python3
 """
+File: automation/daily_snapshot_runner.py
+
+Purpose
+-------
 automation.daily_snapshot_runner
-----------------------------------
+A local-first, headless daily snapshot runner for ArchiveSnapshot.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, argparse, datetime, json, sys, time, dataclasses, pathlib, typing, engine, engine, engine.app_info.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, APP_VERSION. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+automation.daily_snapshot_runner
 A local-first, headless daily snapshot runner for ArchiveSnapshot.
 
 This replaces the previous standalone DailyArchiveBackup.py script. It no
@@ -15,6 +43,7 @@ the user in a config file.
 
 Part of BrisartPreservationTools.
 """
+
 from __future__ import annotations
 
 import argparse

@@ -1,4 +1,32 @@
 """
+File: brisartos/apps/browser.py
+
+Purpose
+-------
+BrisartOS Built-In Browser Module
+
+Communication / relationships
+-----------------------------
+Direct module imports: html.parser, urllib.parse, urllib.request.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, VERSION, USER_AGENT, MAX_PAGE_BYTES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 BrisartOS Built-In Browser Module
 
 Pure Python.

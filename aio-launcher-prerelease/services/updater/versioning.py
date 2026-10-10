@@ -1,29 +1,35 @@
 """
 File: services/updater/versioning.py
 
-Purpose:
+Purpose
+-------
 Parse and compare MAJOR.MINOR.PATCH versions and read the locally
 installed version from version.txt.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Used by services/updater/orchestration.py, services/updater/download.py,
   services/updater/install.py, and services/updater/exe_swap.py.
 - Reads LOCAL_VERSION_FILE and VERSION_PATTERN from
   services/updater/constants.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - VERSION_PATTERN accepts an optional "v" prefix and any suffix after a
   space or hyphen, for example "0.9.2 ALPHA".
 
-Edge cases:
+Edge cases
+----------
 - A missing or invalid version.txt reads as "0.0.0", so any remote
   version appears newer.
 - Suffixes are ignored when comparing: "0.9.2 ALPHA" equals "0.9.2".
 
-Known limitations:
+Known limitations
+-----------------
 - Pre-release ordering (ALPHA, BETA) is not compared.
 
-Examples:
+Examples
+--------
 - is_remote_newer("0.9.3", "0.9.2 ALPHA") returns True
 - canonical_version("v0.9.2 ALPHA") returns "0.9.2"
 """
@@ -72,3 +78,4 @@ def read_local_version(emit: Callable[[str], None] = default_emit) -> str:
     except (OSError, UnicodeDecodeError, ValueError) as exc:
         emit(f"Local version metadata is invalid. Using 0.0.0: {exc}")
         return "0.0.0"
+

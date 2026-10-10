@@ -1,4 +1,35 @@
-"""Tests for biometrics.identity.keyring_access: the shared,
+"""
+File: biometrics/tests/test_keyring_access.py
+
+Purpose
+-------
+Tests for biometrics.identity.keyring_access: the shared,
+attempt-throttled entry point both the biometrics CLI (biometrics/app.py)
+and the desktop GUI (gui/tabs/tab_biometrics.py) unlock through.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, tempfile, unittest, pathlib, biometrics.identity, crypto, crypto.keyring, crypto.throttle.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for biometrics.identity.keyring_access: the shared,
 attempt-throttled entry point both the biometrics CLI (biometrics/app.py)
 and the desktop GUI (gui/tabs/tab_biometrics.py) unlock through.
 
@@ -9,6 +40,7 @@ Keyring.unlock_with_passphrase() is called), and exactly one more real KDF
 call confirms a genuine wrong-passphrase failure is recorded, plus one more
 confirms a correct unlock clears it.
 """
+
 import json
 import tempfile
 import unittest
@@ -96,3 +128,4 @@ class KeyringAccessThrottleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

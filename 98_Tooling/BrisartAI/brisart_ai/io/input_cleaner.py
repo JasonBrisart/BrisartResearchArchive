@@ -7,19 +7,28 @@ Normalizes a typed chat question: trims whitespace and unwraps one
 pair of matching quotes.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/core/conversation.py, brisart_ai/core/session_memory.py
   both call normalize_shellish_input().
 
 Settings / parameters
-----------------------
+---------------------
 - None.
 
 Edge cases
 ----------
 - Only a single layer of quotes is stripped.
 - An all-whitespace input returns "".
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 
@@ -39,3 +48,4 @@ def normalize_shellish_input(text: str) -> str:
 
 
 __all__ = ["normalize_shellish_input"]
+

@@ -1,4 +1,35 @@
-"""Tests for gui.tabs.tab_biometrics.BiometricsTab -- the Biometrics-tab
+"""
+File: gui/tests/test_tab_biometrics.py
+
+Purpose
+-------
+Tests for gui.tabs.tab_biometrics.BiometricsTab -- the Biometrics-tab
+slice of KI-002's remaining gap ("gui/tabs/*.py ... still has no direct
+coverage").
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for gui.tabs.tab_biometrics.BiometricsTab -- the Biometrics-tab
 slice of KI-002's remaining gap ("gui/tabs/*.py ... still has no direct
 coverage").
 
@@ -29,6 +60,7 @@ biometrics/tests/test_bulk_attachments.py.
 Requires a real Tk root and skips cleanly on a headless runner with no
 display, matching the convention used throughout gui/tests/.
 """
+
 import secrets
 import tempfile
 import unittest
@@ -175,3 +207,4 @@ class BiometricsTabTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

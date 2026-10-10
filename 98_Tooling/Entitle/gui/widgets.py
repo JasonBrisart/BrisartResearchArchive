@@ -1,4 +1,32 @@
 """
+File: gui/widgets.py
+
+Purpose
+-------
+Entitle GUI Widgets
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, tkinter.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle GUI Widgets
 
 Shared Tkinter form-building helpers used by every tab in gui/tabs/.
@@ -7,6 +35,7 @@ Keeping this in one place means each tab module only has to describe *what* fiel
 it needs, not *how* to lay out a label/entry/checkbox row — so adding a new tab is
 a matter of writing a small, focused file rather than copying layout boilerplate.
 """
+
 import tkinter as tk
 from tkinter import filedialog, ttk
 
@@ -69,3 +98,4 @@ class FormFrame(ttk.Frame):
 
     def get_bool(self, key):
         return self.vars[key].get()
+

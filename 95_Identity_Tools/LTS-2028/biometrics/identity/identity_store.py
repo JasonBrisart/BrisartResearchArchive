@@ -1,4 +1,33 @@
-"""Filesystem persistence for identity records.
+"""
+File: biometrics/identity/identity_store.py
+
+Purpose
+-------
+Filesystem persistence for identity records.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, pathlib, biometrics.identity.identity_record, common.atomic_io, common.timestamps.
+
+Settings / parameters
+---------------------
+Module-level named settings: RECORD_SUFFIX. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Filesystem persistence for identity records.
 
 One record is stored per file, named by its identity id, under the
 configured identity directory (see ``biometrics.config.settings``). Writes go
@@ -10,6 +39,7 @@ This module owns file I/O and directory listing only. Record shape validation
 is delegated entirely to :mod:`biometrics.identity.identity_record`, so a
 record's structural rules live in exactly one place.
 """
+
 import json
 from pathlib import Path
 
@@ -114,3 +144,4 @@ class IdentityStore:
             except IdentityStoreError:
                 continue
         return records
+

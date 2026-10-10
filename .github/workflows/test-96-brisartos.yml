@@ -1,0 +1,189 @@
+# File: .github/workflows/test-96-brisartos.yml
+#
+# Purpose
+# -------
+# Validate 96_Operating_System source syntax and run its discovered regression tests.
+#
+# Communication / relationships
+# -----------------------------
+# Independent GitHub Actions workflow; reports results to commits and PRs.
+# Saves diagnostic logs and reports as a seven-day workflow artifact.
+#
+# Settings / parameters
+# ---------------------
+# Python 3.14 on Ubuntu; project-scoped working directory and PYTHONPATH.
+# Triggers on project changes, this workflow, or manual dispatch.
+#
+# Edge cases
+# ----------
+# Missing suites, collection errors, test failures, and all-skipped suites fail.
+# Individual conditional skips remain visible; no tests are filtered out.
+#
+# Known limitations
+# -----------------
+# Uses only Python standard-library testing; no pip or pytest installation.
+# Syntax checks are not behavioral tests. No coverage or security certification.
+# No interactive GUI, platform matrix, or executable-build validation.
+#
+# Examples
+# --------
+# Edit 96_Operating_System/ or run this workflow manually from Actions.
+#
+
+name: 96 | BrisartOS | Standard-Library Tests
+
+'on':
+  push:
+    branches:
+      - main
+    paths:
+      - 96_Operating_System/**
+      - .github/workflows/test-96-brisartos.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 96_Operating_System/**
+      - .github/workflows/test-96-brisartos.yml
+  workflow_dispatch: null
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python 3.14 | Syntax and regression tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: 96_Operating_System
+    env:
+      PYTHONUNBUFFERED: '1'
+      REPORT_DIR: ${{ runner.temp }}/96-brisartos-reports
+      PROJECT_LABEL: 96 | BrisartOS | Standard-Library Tests
+    steps:
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Prepare reports and show Python environment
+        run: |
+          mkdir -p "$REPORT_DIR"
+          python --version
+
+      - name: Check Python source syntax (does not execute application code)
+        id: syntax
+        run: |
+          python - <<'PY'
+          import os
+          import tokenize
+          from pathlib import Path
+
+          excluded = {'.git', '.venv', 'venv', '__pycache__', 'build', 'dist',
+                      'node_modules', 'PROJECT_CONTEXT_EXPORTS'}
+          files = [p for p in sorted(Path('.').rglob('*.py'))
+                   if not excluded.intersection(p.parts)]
+          if not files:
+              raise SystemExit('No Python source files found in the configured project.')
+          errors = []
+          for path in files:
+              try:
+                  with tokenize.open(path) as handle:
+                      compile(handle.read(), str(path), 'exec')
+              except (SyntaxError, UnicodeError, OSError) as exc:
+                  errors.append(f'{path}: {exc}')
+          report = f'Checked {len(files)} Python source files; syntax errors: {len(errors)}\n'
+          report += '\n'.join(errors)
+          print(report)
+          (Path(os.environ['REPORT_DIR']) / 'syntax.txt').write_text(report, encoding='utf-8')
+          if errors:
+              raise SystemExit(1)
+          PY
+
+      - name: Run all discovered standard-library tests
+        id: tests
+        run: |
+          export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+          set -o pipefail
+          python - <<'PY' 2>&1 | tee "$REPORT_DIR/tests.log"
+          import json
+          import os
+          import time
+          import unittest
+          from pathlib import Path
+
+          class TimedResult(unittest.TextTestResult):
+              def startTest(self, test):
+                  super().startTest(test)
+                  self.started = time.perf_counter()
+              def stopTest(self, test):
+                  self.timings.append((time.perf_counter() - self.started, test.id()))
+                  super().stopTest(test)
+              def __init__(self, *args, **kwargs):
+                  super().__init__(*args, **kwargs)
+                  self.timings = []
+
+          root = Path('tests').resolve()
+          loader = unittest.TestLoader()
+          suite = loader.discover(str(root), pattern='test_*.py', top_level_dir=str(root))
+          if loader.errors:
+              raise SystemExit('\n'.join(loader.errors))
+          if suite.countTestCases() == 0:
+              raise SystemExit('No tests collected: refusing to report success.')
+          result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(suite)
+          print('\nSlowest test-method durations (class fixtures are not included):')
+          for seconds, name in sorted(result.timings, reverse=True)[:20]:
+              print(f'{seconds:9.3f}s  {name}')
+          counts = {
+              'tests': result.testsRun,
+              'failures': len(result.failures),
+              'errors': len(result.errors),
+              'skipped': len(result.skipped),
+              'expected_failures': len(result.expectedFailures),
+              'unexpected_successes': len(result.unexpectedSuccesses),
+          }
+          counts['passed'] = (counts['tests'] - counts['failures'] - counts['errors']
+                              - counts['skipped'] - counts['expected_failures']
+                              - counts['unexpected_successes'])
+          (Path(os.environ['REPORT_DIR']) / 'results.json').write_text(
+              json.dumps(counts, indent=2), encoding='utf-8')
+          if result.testsRun == len(result.skipped):
+              raise SystemExit('All tests were skipped: refusing to report success.')
+          raise SystemExit(0 if result.wasSuccessful() else 1)
+          PY
+
+      - name: Publish result counts and reject all-skipped suites
+        if: ${{ always() && steps.tests.outcome != 'skipped' }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ['REPORT_DIR']) / 'results.json'
+          if not path.exists():
+              raise SystemExit('Test report missing; inspect the test step log.')
+          counts = json.loads(path.read_text(encoding='utf-8'))
+          lines = ['## ' + os.environ['PROJECT_LABEL'], '',
+                   '| Result | Count |', '| --- | ---: |']
+          lines += [f'| {key} | {value} |' for key, value in counts.items()]
+          lines += ['', 'See the test log for names, skip reasons, and method timings.']
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as handle:
+              handle.write('\n'.join(lines) + '\n')
+          PY
+
+      - name: Save test logs and reports (including failures)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: 96-brisartos-test-reports
+          path: ${{ env.REPORT_DIR }}
+          if-no-files-found: warn
+          retention-days: 7
+

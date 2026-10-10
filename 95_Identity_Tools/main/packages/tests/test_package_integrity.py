@@ -1,5 +1,32 @@
-"""Integrity tests for Identity-Bound Packages: sealed storage, recipient
-authorization, custody chain tamper-evidence, and open/add/remove flows."""
+"""
+File: packages/tests/test_package_integrity.py
+
+Purpose
+-------
+Integrity tests for Identity-Bound Packages: sealed storage, recipient
+authorization, custody chain tamper-evidence, and open/add/remove flows.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, unittest, packages, packages.custody, packages.package.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import secrets
 import unittest
 
@@ -191,3 +218,4 @@ class CustodyChainIntegrityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

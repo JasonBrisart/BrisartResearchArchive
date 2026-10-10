@@ -1,3 +1,31 @@
+"""
+File: services/updater.py
+
+Purpose
+-------
+Defines is_frozen, UpdateInfo, InstallResult, normalize_version, is_newer_version, version_slug, strip_release_tag_prefix, find_latest_release_payload for 98_Tooling/ProjectContextHelper/services.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, dataclasses, pathlib, datetime, hashlib, io, json, shutil, subprocess, sys, urllib.error, urllib.request, webbrowser, zipfile, core.constants, services.storage.
+
+Settings / parameters
+---------------------
+Module-level named settings: UPDATES_DIRNAME, BACKUPS_DIRNAME, PROTECTED_NAMES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -340,3 +368,4 @@ def apply_exe_update(staged_exe_path: Path, target_exe_path: Path | None = None,
 
 def open_releases_page(url: str = RELEASES_URL) -> None:
     webbrowser.open(url)
+

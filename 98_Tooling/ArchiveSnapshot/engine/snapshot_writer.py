@@ -1,6 +1,35 @@
 """
+File: engine/snapshot_writer.py
+
+Purpose
+-------
 engine.snapshot_writer
-----------------------
+Writes a dated snapshot's output records: summary, manifest, hashes,
+folder tree, settings, and ZIP archive.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, json, zipfile, dataclasses, pathlib, typing, .app_info, .settings, .folder_scanner.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.snapshot_writer
 Writes a dated snapshot's output records: summary, manifest, hashes,
 folder tree, settings, and ZIP archive.
 
@@ -8,6 +37,7 @@ This module writes ArchiveSnapshot's own records only. It does not
 generate Project Context Helper exports — see
 engine.project_context_import for that boundary.
 """
+
 from __future__ import annotations
 
 import json

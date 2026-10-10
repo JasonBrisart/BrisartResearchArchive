@@ -13,7 +13,7 @@ brisart_ai.native, which is what lets it sit at the very bottom of the
 application's own import graph.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/knowledge/index.py: now_ts(), stable_hash(), tokenize()
 - brisart_ai/knowledge/ranker.py: tokenize()
 - brisart_ai/knowledge/synthesizer.py: split_sentences(), tokenize()
@@ -33,7 +33,7 @@ Communication / relationships
   pathlib) beyond that.
 
 Settings / parameters
-----------------------
+---------------------
 - STOPWORDS: a small, English-only stopword set used by tokenize() to
   drop function words before terms are indexed or matched.
 - WORD_RE: token boundary pattern for tokenize() -- alphanumerics plus
@@ -52,7 +52,16 @@ Edge cases
 - normalize_url("") returns ""; normalize_url() on a schemeless string
   assumes https and prepends it before parsing.
 - same_site() compares hostnames only (case-insensitively).
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -147,3 +156,4 @@ def safe_read_text(path: Path, max_bytes: int = 5_000_000) -> str:
         except Exception:
             continue
     return raw.decode("utf-8", "replace")
+

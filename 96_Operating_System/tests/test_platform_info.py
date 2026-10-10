@@ -1,5 +1,5 @@
 """
-tests/test_platform_info.py
+File: tests/test_platform_info.py
 
 Purpose
 -------
@@ -12,8 +12,8 @@ one `BrisartRuntime` actually consumes). These tests pin down each one's
 `describe()` contract independently so a future consolidation of the two
 doesn't silently drop a field either call site depends on.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `brisartos/runtime/brisart_platform.PlatformInfo` is the one imported and
   used live by `brisartos/runtime/runtime.BrisartRuntime` (see
   `runtime.py`'s `from brisart_platform import PlatformInfo`) and surfaced
@@ -26,12 +26,11 @@ Communication relationships
   exercises it end-to-end.
 
 Settings / parameters
-----------------------
+---------------------
 Neither `PlatformInfo` class takes constructor arguments; all fields are
 fixed at construction time and returned verbatim by `describe()`.
 
 Edge-case behavior
--------------------
 - `brisartos/platform.py` is loaded via `_support.load_module_from_path()`
   under a private alias instead of a `sys.path`-based `import platform`,
   because the Python standard library already ships a module literally
@@ -45,7 +44,24 @@ Edge-case behavior
   necessarily identical) dictionaries, since callers such as
   `BrisartRuntime.print_system_info()` iterate over `sorted(info)` and
   print each value directly.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_platform_info.py
 """
+
 import unittest
 
 from _support import add_brisartos_runtime_to_syspath, load_module_from_path
@@ -136,3 +152,4 @@ class StandalonePlatformInfoTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

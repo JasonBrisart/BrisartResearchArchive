@@ -1,3 +1,31 @@
+"""
+File: tests/test_bsr_adapter.py
+
+Purpose
+-------
+Regression checks in 98_Tooling/Entitle/tests/test_bsr_adapter.py.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pytest, entitle.bsr_adapter, entitle.core.
+
+Settings / parameters
+---------------------
+Module-level named settings: MASTER_KEY, DRBG_SEED, DRBG_PERSONALIZATION. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import pytest
 
 from entitle.bsr_adapter import (
@@ -164,3 +192,4 @@ class TestEncryptionFailureWrapping:
                 drbg_seed=DRBG_SEED,
                 drbg_personalization=DRBG_PERSONALIZATION,
             )
+

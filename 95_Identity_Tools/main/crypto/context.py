@@ -1,17 +1,12 @@
-"""Canonical context strings that bind every sealed object to what it is.
+"""
+File: crypto/context.py
 
-This module is the single source of the context strings passed to BSR2's
-authenticated envelope (crypto.envelope) and factor layer (crypto.factors).
-A context is authenticated alongside the ciphertext, so an envelope sealed
-under one context cannot be opened under another: this is the mechanism that
-makes cross-substitution detectable across the whole ecosystem. A biometric
-template sealed for one identity/modality cannot be dropped into another's
-slot, a vault record's payload cannot be swapped with a different record's,
-and a package key slot cannot be moved between recipients or packages -- in
-every case the moved envelope fails authentication instead of decrypting into
-the wrong place (see docs/BSR2_INTEGRATION.md's "Context binding" section).
+Purpose
+-------
+Canonical context strings that bind every sealed object to what it is.
 
-COMMUNICATION RELATIONSHIPS
+Communication / relationships
+-----------------------------
 - crypto.envelope.seal_bytes/seal_json/open_bytes/open_json take a context
   string produced here and hand it to the vendored BSR2 envelope, which binds
   it into the authentication tag.
@@ -40,7 +35,39 @@ different context. This validation is duplicated as friendlier, field-named
 errors in each tool's own id/label validators (e.g. vault.core.ids,
 packages.identity), but this module is the last line that actually enforces
 it before sealing.
+
+Settings / parameters
+---------------------
+Module-level named settings: SEPARATOR, _PREFIX. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Canonical context strings that bind every sealed object to what it is.
+
+This module is the single source of the context strings passed to BSR2's
+authenticated envelope (crypto.envelope) and factor layer (crypto.factors).
+A context is authenticated alongside the ciphertext, so an envelope sealed
+under one context cannot be opened under another: this is the mechanism that
+makes cross-substitution detectable across the whole ecosystem. A biometric
+template sealed for one identity/modality cannot be dropped into another's
+slot, a vault record's payload cannot be swapped with a different record's,
+and a package key slot cannot be moved between recipients or packages -- in
+every case the moved envelope fails authentication instead of decrypting into
+the wrong place (see docs/BSR2_INTEGRATION.md's "Context binding" section).
 """
+
 from crypto.errors import Bsr2IntegrationError
 
 SEPARATOR = "|"
@@ -78,3 +105,4 @@ def key_slot_context(package_id, identity_id):
     return _join("ibp-key-slot", _clean("package_id", package_id), _clean("identity_id", identity_id))
 def keyring_context(wrapper):
     return _join("keyring-wrapper", _clean("wrapper", wrapper))
+

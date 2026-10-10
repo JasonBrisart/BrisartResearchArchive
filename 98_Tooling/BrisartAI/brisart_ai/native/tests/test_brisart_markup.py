@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/native/brisart_markup.py -- BrisartMarkupParser HTML tokenizer."""
+"""
+File: brisart_ai/native/tests/test_brisart_markup.py
+
+Purpose
+-------
+Tests for brisart_ai/native/brisart_markup.py -- BrisartMarkupParser HTML tokenizer.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, brisart_ai.native.brisart_markup.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import unittest
 from brisart_ai.native.brisart_markup import BrisartMarkupParser, brisart_unescape
 
@@ -116,3 +143,4 @@ class TestBrisartMarkupParser(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

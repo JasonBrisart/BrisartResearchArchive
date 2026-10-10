@@ -1,5 +1,5 @@
 """
-tests/test_module_loader.py
+File: tests/test_module_loader.py
 
 Purpose
 -------
@@ -14,8 +14,8 @@ the real `modules/hello_lab/` -- to exercise the full discovery/load/ABI
 gate/run lifecycle without depending on (or risking mutating) the
 repository's one shipped module.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `BrisartRuntime.__init__` (`runtime.py`) constructs one `ModuleLoader`
   pointed at the literal relative path `"modules"` and calls
   `discover()` during `boot()` -- see `tests/test_runtime.py` for that
@@ -31,7 +31,7 @@ Communication relationships
   itself.
 
 Settings / parameters
-----------------------
+---------------------
 - `ModuleLoader(modules_path, api, service_registry=None)`: `modules_path`
   is coerced to a `Path` and created (via `discover()`) if it does not
   already exist -- tests use a fresh `tempfile.TemporaryDirectory()` for
@@ -45,7 +45,6 @@ Settings / parameters
   module-level `run(api)` function.
 
 Edge-case behavior
--------------------
 - A folder under `modules_path` with no `module.py` inside it must be
   silently skipped by `discover()` (not an error).
 - A `module.py` that raises during import (e.g. a `SyntaxError` or a
@@ -57,7 +56,24 @@ Edge-case behavior
 - `ModuleLoader.get(name)` for a name that was never discovered (or that
   failed to load) must return `None`, matching the same "not found"
   contract `ServiceRegistry.get()` uses.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_module_loader.py
 """
+
 import shutil
 import tempfile
 import unittest
@@ -237,3 +253,4 @@ class LoadedModuleRunTests(ModuleLoaderTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

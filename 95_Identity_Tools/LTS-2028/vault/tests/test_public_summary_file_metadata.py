@@ -1,4 +1,37 @@
-"""Regression test for a bug found 2026-08-25: VaultService.list_records()
+"""
+File: vault/tests/test_public_summary_file_metadata.py
+
+Purpose
+-------
+Regression test for a bug found 2026-08-25: VaultService.list_records()
+(and therefore the GUI's "Files / Folders / Drives" tab, which calls
+list_records() on every refresh) silently dropped a file record's plaintext
+size/filename/hash metadata, even though that metadata is stored right on
+the record in the clear (see VaultService.upsert_file_bytes).
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib, vault.store.vault_file, vault.store.vault_service.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Regression test for a bug found 2026-08-25: VaultService.list_records()
 (and therefore the GUI's "Files / Folders / Drives" tab, which calls
 list_records() on every refresh) silently dropped a file record's plaintext
 size/filename/hash metadata, even though that metadata is stored right on
@@ -16,6 +49,7 @@ Fix: public_summary() now includes original_filename/file_size_bytes/
 file_sha256 whenever they are present on the record, and omits them
 otherwise (so a normal note/credential record's summary shape is unchanged).
 """
+
 import secrets
 import tempfile
 import unittest

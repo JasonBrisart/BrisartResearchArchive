@@ -1,12 +1,42 @@
 """
+File: engine/folder_scanner.py
+
+Purpose
+-------
 engine.folder_scanner
+Walks a source folder, applies ArchiveSettings exclusion rules and size
+limits, and produces a ScanResult plus a readable folder tree.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, datetime, hashlib, pathlib, .settings.
+
+Settings / parameters
 ---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.folder_scanner
 Walks a source folder, applies ArchiveSettings exclusion rules and size
 limits, and produces a ScanResult plus a readable folder tree.
 
 This module performs no writes — see engine.snapshot_writer and
 engine.snapshot_builder for that.
 """
+
 from __future__ import annotations
 
 import datetime

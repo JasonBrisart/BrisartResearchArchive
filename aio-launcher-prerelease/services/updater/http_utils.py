@@ -1,30 +1,36 @@
 """
 File: services/updater/http_utils.py
 
-Purpose:
+Purpose
+-------
 Build HTTPS-only, host-allowlisted requests and read bounded responses
 for the updater.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Used by services/updater/registry.py and services/updater/download.py.
 - Reads ALLOWED_REMOTE_HOSTS and USER_AGENT from
   services/updater/constants.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - validate_remote_url(url, allowed_hosts=None) accepts an override set.
 - Requests send User-Agent, Accept, and Cache-Control: no-cache.
 
-Edge cases:
+Edge cases
+----------
 - Rejects non-HTTPS URLs, hosts not on the allowlist, and URLs carrying
   credentials.
 - The final URL after redirects is validated again.
 - A declared or actual body larger than the limit is rejected.
 
-Known limitations:
+Known limitations
+-----------------
 - Hostnames must match exactly; subdomains such as www. are not allowed
   unless listed.
 
-Examples:
+Examples
+--------
 - request = build_request(REGISTRY_PAGE_URL, "text/html")
 """
 
@@ -82,3 +88,4 @@ def read_bounded_response(response: Any, maximum_bytes: int) -> bytes:
     if len(data) > maximum_bytes:
         raise ValueError(f"Remote response exceeded the allowed size of {maximum_bytes:,} bytes.")
     return data
+

@@ -1,3 +1,31 @@
+"""
+File: brisart_security_primitives.py
+
+Purpose
+-------
+Defines BrisartPrimitiveError, rotate_left, _mix_pair, permute, frame, _pad, _initial_state, sponge_hash for 97_Encryption.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+Module-level named settings: MASK64, STATE_WORDS, RATE_BYTES, DEFAULT_ROUNDS, BSR2_PARAMETER_SEED, ROUND_CONSTANTS, ROUND_INDEX_CONSTANT, LANE_INDEX_CONSTANT, INITIAL_STATE_CONSTANT, ROTATIONS, WORD_PERMUTATION, _HEX_ALPHABET. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 MASK64 = (1 << 64) - 1
 STATE_WORDS = 16
 RATE_BYTES = 32
@@ -242,3 +270,4 @@ def hex_decode(text: str) -> bytes:
             raise BrisartPrimitiveError("hex input contains invalid characters")
         values.append((_HEX_ALPHABET.index(pair[0]) << 4) | _HEX_ALPHABET.index(pair[1]))
     return bytes(values)
+

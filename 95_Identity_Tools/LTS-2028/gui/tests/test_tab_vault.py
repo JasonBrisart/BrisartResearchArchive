@@ -1,4 +1,35 @@
-"""Tests for gui.tabs.tab_vault.VaultTab -- the piece of KI-002's remaining
+"""
+File: gui/tests/test_tab_vault.py
+
+Purpose
+-------
+Tests for gui.tabs.tab_vault.VaultTab -- the piece of KI-002's remaining
+gap ("gui/tabs/*.py ... still has no direct coverage") that this file closes
+for the Vault tab specifically.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for gui.tabs.tab_vault.VaultTab -- the piece of KI-002's remaining
 gap ("gui/tabs/*.py ... still has no direct coverage") that this file closes
 for the Vault tab specifically.
 
@@ -28,6 +59,7 @@ Requires a real Tk root (ttk.Treeview cannot be constructed without one)
 and skips cleanly on a headless runner with no display, matching the
 convention used throughout gui/tests/.
 """
+
 import secrets
 import tempfile
 import unittest
@@ -157,3 +189,4 @@ class VaultTabTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

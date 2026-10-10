@@ -1,4 +1,33 @@
-"""Atomic JSON/text file writes, the single canonical copy.
+"""
+File: common/atomic_io.py
+
+Purpose
+-------
+Atomic JSON/text file writes, the single canonical copy.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, os, secrets, stat, sys, pathlib, typing.
+
+Settings / parameters
+---------------------
+Module-level named settings: SENSITIVE_FILE_MODE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Atomic JSON/text file writes, the single canonical copy.
 
 Replaces the write-to-temp-then-rename dance that existed in three places
 (vault_file.save_vault_file, identity_store.save_json, report_writer). Two of
@@ -10,6 +39,7 @@ A reader sees either the old file or the fully-written new one, never a
 half-written file: bytes land in a uniquely-named temp file that is os.replace-d
 into position only after being flushed and fsync-ed.
 """
+
 import json
 import os
 import secrets
@@ -166,3 +196,4 @@ def warn_if_permissive(
         )
         return True
     return False
+

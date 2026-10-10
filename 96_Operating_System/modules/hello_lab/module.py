@@ -1,8 +1,33 @@
 """
+File: modules/hello_lab/module.py
+
+Purpose
+-------
 Hello Lab Module
 Pure Python.
 No dependencies.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+Module-level named settings: MODULE_NAME, MODULE_DISPLAY_NAME, MODULE_VERSION, MODULE_AUTHOR, MODULE_DESCRIPTION, MODULE_ABI, MODULE_PERMISSIONS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 MODULE_NAME = "hello_lab"
 MODULE_DISPLAY_NAME = "Hello Lab Module"
 MODULE_VERSION = "0.2.0"

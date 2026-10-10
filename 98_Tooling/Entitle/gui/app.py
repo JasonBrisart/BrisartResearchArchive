@@ -1,4 +1,32 @@
 """
+File: gui/app.py
+
+Purpose
+-------
+Entitle GUI — Core Engine
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, sys, tkinter, pathlib, tkinter, tkinter.scrolledtext, entitle.bootstrap, gui.tabs.
+
+Settings / parameters
+---------------------
+Module-level named settings: _REPO_ROOT, TAB_MODULES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle GUI — Core Engine
 
 A minimal Tkinter front end for the core Entitle workflows: issue, verify, deploy,
@@ -29,6 +57,7 @@ Launch with:
 or directly:
     python gui/app.py
 """
+
 import json
 import sys
 import tkinter as tk
@@ -105,3 +134,4 @@ def launch():
 
 if __name__ == "__main__":
     launch()
+

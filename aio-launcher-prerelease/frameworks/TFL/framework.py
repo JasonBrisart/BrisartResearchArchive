@@ -1,11 +1,13 @@
 """
 File: frameworks/TFL/framework.py
 
-Purpose:
+Purpose
+-------
 Define TFL's identity and FRAMEWORK_METADATA for discovery, its output
 paths, re-exported constants, CSV schema, and lazy re-export wrappers.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - config/registries.py discovers TFL through FRAMEWORK_METADATA.
 - The metadata points services/framework_service.py at
   frameworks.TFL.session_gui.TFLGuiSession.
@@ -13,7 +15,8 @@ Communication / relationships:
   from frameworks/shared/schema.py.
 - Resolves output paths through config/runtime.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - FRAMEWORK_ID "TFL", FRAMEWORK_NAME "Temporal Feedback Loop", status
   "Available".
 - runner_module "frameworks.TFL.session_gui", runner_class
@@ -21,23 +24,27 @@ Settings / parameters:
 - BASE_STIMULUS_LIMIT, PREDICTION_PROMPT, PREDICTION_CHOICES, and
   SESSION_INTRO_TEXT are re-exported from frameworks/TFL/settings.py.
 
-Edge cases:
+Edge cases
+----------
 - The wrappers import their submodules lazily, so one broken submodule
   cannot break framework discovery.
 - The output directory is resolved on every call, so settings changes
   apply without a restart.
 
-Known limitations:
+Known limitations
+-----------------
 - Changing status away from "Available" hides the Run button and blocks
   launch.
 - The re-exported constants are defined in frameworks/TFL/settings.py;
   edit them there.
 
-Examples:
+Examples
+--------
 - from frameworks.TFL import framework
 - framework.FRAMEWORK_METADATA["runner_class"]
 - framework.analyze_output()
 """
+
 from __future__ import annotations
 from pathlib import Path
 
@@ -170,3 +177,4 @@ def load_output(path=None):
 def analyze_output(path=None):
     from .analysis import analyze_output as _analyze_output
     return _analyze_output(path)
+

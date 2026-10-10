@@ -1,5 +1,29 @@
 """
+File: classifiers.py
+
+Purpose
+-------
 Interpretive classification logic for ReleaseNoteBuilder.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, re.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
 
 from __future__ import annotations
@@ -146,3 +170,4 @@ def summarize_release_type(classified: dict, diff: dict) -> str:
     if added_count == 0 and modified_count == 0 and removed_count == 0:
         return "No file changes detected."
     return "General project update."
+

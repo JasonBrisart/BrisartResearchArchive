@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/knowledge/relevance_engine.py -- the Brisart Relevance Engine."""
+"""
+File: brisart_ai/knowledge/tests/test_relevance_engine.py
+
+Purpose
+-------
+Tests for brisart_ai/knowledge/relevance_engine.py -- the Brisart Relevance Engine.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, brisart_ai.knowledge.relevance_engine.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import unittest
 from brisart_ai.knowledge.relevance_engine import (
     presence_points, proximity_bonus, rarity_weight, shape_multiplier, term_contribution,
@@ -101,3 +128,4 @@ class TestProximityBonus(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

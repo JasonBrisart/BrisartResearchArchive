@@ -1,9 +1,39 @@
-"""Tests covering re-enrollment / template overwrite behavior.
+"""
+File: biometrics/tests/test_enrollment_overwrite.py
+
+Purpose
+-------
+Tests covering re-enrollment / template overwrite behavior.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.engine, biometrics.identity.identity_record, biometrics.identity.identity_store, biometrics.samples.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests covering re-enrollment / template overwrite behavior.
 
 set_template must replace a modality's template without disturbing any other
 modality already on the record, and without mutating the caller's original
 record object in place.
 """
+
 import secrets
 import tempfile
 import unittest
@@ -87,3 +117,4 @@ class EnrollmentOverwriteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

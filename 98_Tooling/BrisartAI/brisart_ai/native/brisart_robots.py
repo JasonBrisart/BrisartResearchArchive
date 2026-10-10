@@ -26,7 +26,7 @@ what it actually does, not what a "better" robots.txt parser would do
 verified again afterward, and now agrees on all tested decisions.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Intended as a drop-in replacement for
   urllib.robotparser.RobotFileParser: construct, call .parse(lines),
   then .can_fetch(user_agent, url) -- the same two-step contract
@@ -35,7 +35,7 @@ Communication / relationships
   no dependency on urllib.robotparser.
 
 Settings / parameters
-----------------------
+---------------------
 - Group ("Entry") formation follows the stdlib's own state machine
   exactly, including its specific quirks: a run of consecutive
   "User-agent:" lines with NO rule lines before a blank line discards
@@ -45,7 +45,8 @@ Settings / parameters
   group is kept, every subsequent "User-agent: *" group in the same
   file is silently discarded, exactly like the real class's
   `_add_entry()`. A group mixing "*" with a specific named agent (e.g.
-  "User-agent: googlebot\nUser-agent: *") is ALSO treated purely as
+  "User-agent: googlebot
+User-agent: *") is ALSO treated purely as
   the default group and is never reachable by name-specific lookup --
   this looks like an odd edge case, but it is what the stdlib actually
   does, and is exercised directly in this module's self-test.
@@ -71,7 +72,16 @@ Edge cases
   value is silently ignored, but the line still counts as "a rule was
   seen" for group-continuation purposes, exactly like the class being
   replaced.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from typing import List, Optional
@@ -263,3 +273,4 @@ if __name__ == "__main__":
 
 
 __all__ = ["BrisartRobotsPolicy"]
+

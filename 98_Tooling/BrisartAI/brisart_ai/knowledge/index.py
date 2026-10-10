@@ -6,7 +6,7 @@ Purpose
 The SQLite-backed store every indexed file, web page, and note lands in.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/knowledge/ingest.py, brisart_ai/web/crawler.py,
   brisart_ai/knowledge/vault.py call add_source().
 - brisart_ai/knowledge/ranker.py reads terms/sources directly via SQL.
@@ -15,7 +15,7 @@ Communication / relationships
   brisart_ai.util.{now_ts, stable_hash, tokenize}.
 
 Settings / parameters
-----------------------
+---------------------
 - DEFAULT_DB: anchored to project root (parents[2]).
 - check_same_thread=False.
 - add_source()'s source_key is a stable hash of source_type + location.
@@ -25,7 +25,16 @@ Edge cases
 - add_source() raises ValueError for missing type/location, returns
   False for empty text.
 - purge_junk_web_sources() only touches source_type = 'web' rows.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import collections
@@ -175,3 +184,4 @@ class Index:
 
 
 __all__ = ["DEFAULT_DB", "Index"]
+

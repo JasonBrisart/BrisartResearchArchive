@@ -1,4 +1,33 @@
-"""Binary PGM (Netpbm P5) reader and writer.
+"""
+File: biometrics/codecs/pgm.py
+
+Purpose
+-------
+Binary PGM (Netpbm P5) reader and writer.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+Module-level named settings: MAGIC_BINARY_GRAYSCALE, MAX_MAXVAL, MAX_DIMENSION. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Binary PGM (Netpbm P5) reader and writer.
 
 PGM is used as this project's canonical still-image interchange format
 because the format itself is a handful of ASCII header tokens followed by a
@@ -123,3 +152,4 @@ def write_pgm(path, width: int, height: int, pixels: bytes, maxval: int = MAX_MA
     encoded = encode(width, height, pixels, maxval)
     with open(path, "wb") as handle:
         handle.write(encoded)
+

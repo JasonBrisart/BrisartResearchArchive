@@ -1,4 +1,34 @@
-"""Tests for gui.core.constants: the repo-root bootstrap walk and the
+"""
+File: gui/tests/test_constants.py
+
+Purpose
+-------
+Tests for gui.core.constants: the repo-root bootstrap walk and the
+shared constants every other gui/ module depends on.
+
+Communication / relationships
+-----------------------------
+Direct module imports: importlib.util, sys, tempfile, unittest, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: _CONSTANTS_PATH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for gui.core.constants: the repo-root bootstrap walk and the
 shared constants every other gui/ module depends on.
 
 Fast and fully headless: _find_repo_root() is pure path arithmetic over
@@ -6,6 +36,7 @@ temporary directories built with tempfile, so this exercises the real
 walk-up logic without needing tkinter, a display, or the actual repository
 checkout on disk.
 """
+
 import importlib.util
 import sys
 import tempfile
@@ -123,3 +154,4 @@ class ModuleConstantsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,5 +1,5 @@
 """
-tests/_support.py
+File: tests/_support.py
 
 Purpose
 -------
@@ -10,7 +10,6 @@ and matches no `test_*.py` discovery pattern), so `unittest discover` and
 tests/ imports from here instead of duplicating path/setup logic.
 
 Why this file exists
----------------------
 BrisartOS is not laid out as an installable Python package (there is no
 top-level `brisartos/__init__.py`, and most modules import each other with
 flat, non-relative imports, e.g. `brisartos/runtime/module_loader.py` does
@@ -22,8 +21,8 @@ exact same `sys.path` shape that `brisartos/runtime/runtime.py` already
 sets up for itself at import time, so that importing each module under test
 behaves identically to how it behaves when BrisartOS actually runs.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - Every `tests/test_*.py` module imports `REPO_ROOT` and one or more of the
   `add_*_to_syspath()` helpers (or `load_module_from_path()`) from this file
   before importing anything from `brisartos/`, `modules/`, or `version.py`.
@@ -35,7 +34,7 @@ Communication relationships
   repository checkout.
 
 Settings / parameters
-----------------------
+---------------------
 - `REPO_ROOT`: absolute path to the BrisartOS repository root, computed as
   the parent of the `tests/` directory. Every other path in this file is
   derived from it so the suite works regardless of the caller's own cwd.
@@ -73,7 +72,6 @@ Settings / parameters
   `tests/` resolving as a namespace package at all.
 
 Edge-case behavior
--------------------
 - All `add_*_to_syspath()` helpers are idempotent: calling them multiple
   times (once per test module, across a full `discover` run) does not
   create duplicate `sys.path` entries.
@@ -81,7 +79,24 @@ Edge-case behavior
   wrapped test body raises, and it points `Path.cwd()` at a fresh
   `tempfile.TemporaryDirectory()` that is deleted on exit, so no BrisartOS
   test ever leaves `module_data/` or `logs/` artifacts on disk.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+tests/_support.py
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -173,3 +188,4 @@ class IsolatedCwd:
         os.chdir(self._previous_cwd)
         self._tmp.cleanup()
         return False
+

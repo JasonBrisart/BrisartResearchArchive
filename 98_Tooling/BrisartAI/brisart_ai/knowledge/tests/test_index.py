@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/knowledge/index.py -- Index (SQLite source/term store)."""
+"""
+File: brisart_ai/knowledge/tests/test_index.py
+
+Purpose
+-------
+Tests for brisart_ai/knowledge/index.py -- Index (SQLite source/term store).
+
+Communication / relationships
+-----------------------------
+Direct module imports: tempfile, unittest, pathlib, brisart_ai.knowledge.index.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -97,3 +124,4 @@ class TestIndex(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

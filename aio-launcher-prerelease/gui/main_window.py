@@ -1,12 +1,14 @@
 """
 File: gui/main_window.py
 
-Purpose:
+Purpose
+-------
 Create the Brisart Research Archive root window, initialize application
 state and services, build the primary layout, manage page navigation,
 and schedule the Archive's self-update check.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Mixes UIController, SystemController, and LogController into the root.
 - Reads persistent configuration through config/runtime.py.
 - Initializes framework discovery through config/registries.py.
@@ -15,25 +17,29 @@ Communication / relationships:
 - Schedules the Archive updater through services/updater/.
 - Renders pages registered by config/registries.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - The window opens at 800 by 600 pixels.
 - The minimum window size is 800 by 600 pixels.
 - STARTUP_UPDATE_CHECK_DELAY_MS controls the Archive update-check delay.
 - DEFAULT_PAGE controls the initial page.
 
-Edge cases:
+Edge cases
+----------
 - Page rendering failures produce a visible error and log entry.
 - Missing page renderers produce a visible error.
 - Mouse-wheel events over Text widgets remain owned by those widgets.
 - Destroyed page canvases are checked before scrolling.
 
-Known limitations:
+Known limitations
+-----------------
 - Touchpad scrolling over the general page area may remain platform
   dependent.
 - The application always opens at 800 by 600 rather than restoring the
   previously saved window size.
 
-Examples:
+Examples
+--------
 - python main.py
 - BrisartSuiteApp().mainloop()
 """

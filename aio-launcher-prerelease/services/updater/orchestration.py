@@ -1,18 +1,21 @@
 """
 File: services/updater/orchestration.py
 
-Purpose:
+Purpose
+-------
 Tie the registry, download, and install steps together into complete
 update operations.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - services/updater/gui_integration.py calls check_and_maybe_install().
 - Uses services/trust_anchor.is_configured(),
   services/updater/registry.py, services/updater/download.py,
   services/updater/install.py, services/updater/exe_swap.py, and
   services/updater/versioning.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - check_and_maybe_install(emit, auto_install=False, confirm_install=None):
   with auto_install, downloads, verifies, and installs without asking;
   with confirm_install, asks before downloading and returns "declined"
@@ -22,7 +25,8 @@ Settings / parameters:
 - Result dictionaries carry status, local_version, remote_version,
   downloaded_file, message, and changelog.
 
-Edge cases:
+Edge cases
+----------
 - When the trust anchor is still the placeholder, both entry points
   return status "trust_anchor_unconfigured" before any network request.
 - An "exe" asset while running from source, or a "zip" asset while
@@ -30,12 +34,15 @@ Edge cases:
 - Exceptions are mapped to registry_error, verification_failed,
   http_error, network_error, validation_error, or unexpected_error.
 
-Known limitations:
+Known limitations
+-----------------
 - After an "installed" result the application must be restarted.
 
-Examples:
+Examples
+--------
 - result = check_and_maybe_install(print, auto_install=True)
 """
+
 from __future__ import annotations
 
 import zipfile
@@ -226,3 +233,4 @@ def check_and_maybe_install(
         return _apply_verified_release(entry, verified_path, local_version, remote_version, emit)
     except Exception as exc:
         return _map_exception(exc, local_version)
+

@@ -1,6 +1,33 @@
 """
+File: ui/about_tab.py
+
+Purpose
+-------
 ui.about_tab
---------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, tkinter, engine.app_info.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ui.about_tab
 
 About tab: application description and architecture overview.
 """
@@ -62,3 +89,4 @@ class AboutTab:
             wraplength=820,
         )
         label.pack(fill="both", expand=True, padx=22, pady=22)
+

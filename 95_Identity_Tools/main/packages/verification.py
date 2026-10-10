@@ -1,4 +1,33 @@
-"""Recipient authorization checks for Identity-Bound Packages.
+"""
+File: packages/verification.py
+
+Purpose
+-------
+Recipient authorization checks for Identity-Bound Packages.
+
+Communication / relationships
+-----------------------------
+Direct module imports: crypto.errors, crypto.factors.
+
+Settings / parameters
+---------------------
+Module-level named settings: RECIPIENT_FACTOR_NAME, _VERIFIER_MARKER. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Recipient authorization checks for Identity-Bound Packages.
 
 Before ``package.py`` attempts to unwrap a key slot, it is useful to be able
 to answer "does this master key actually belong to this recipient?" as a
@@ -13,6 +42,7 @@ belt-and-suspenders check, not the package's actual security boundary --
 that boundary is the key slot's own BSR2 authentication tag, which
 ``ciphers.unwrap_content_key`` enforces regardless.
 """
+
 from crypto.errors import Bsr2IntegrationError
 from crypto.factors import bind_factor, verify_bound_factor
 
@@ -47,3 +77,4 @@ def verify_recipient_master_key(master_key: bytes, identity_id: str, verifier: s
     """
     factor_name = f"{RECIPIENT_FACTOR_NAME}:{identity_id}"
     return verify_bound_factor(master_key, factor_name, _VERIFIER_MARKER, verifier)
+

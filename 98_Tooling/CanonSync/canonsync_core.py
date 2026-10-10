@@ -1,7 +1,36 @@
 #!/usr/bin/env python3
 """
+File: canonsync_core.py
+
+Purpose
+-------
 canonsync_core.py
+Engine for CanonSync: keep a set of canonical files (the "canon") in sync
+across many git repos, from a single source of truth.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, argparse, json, sys, datetime, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, APP_VERSION, BEGIN_MARKER, END_MARKER, REPO_SPECIFIC_SEPARATOR, MODE_BLOCK, MODE_WHOLE, STATUS_CREATE, STATUS_UPDATE, STATUS_UNCHANGED, STATUS_MISSING, STATUS_SKIPPED. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
 -----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+canonsync_core.py
 Engine for CanonSync: keep a set of canonical files (the "canon") in sync
 across many git repos, from a single source of truth.
 
@@ -392,3 +421,4 @@ def _cli(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(_cli(sys.argv[1:]))
+

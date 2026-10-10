@@ -1,4 +1,35 @@
-"""The Biometrics tab: create/unlock the keyring, enroll/verify/inspect/delete
+"""
+File: gui/tabs/tab_biometrics.py
+
+Purpose
+-------
+The Biometrics tab: create/unlock the keyring, enroll/verify/inspect/delete
+identities, and attach/extract arbitrary files, folders, or drives to/from an
+identity (chunked transparently past BSR2's single-envelope size limit).
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, tkinter, pathlib, tkinter, gui.core.constants, gui.core.busy, gui.widgets.dialogs, gui.widgets.path_panel, biometrics.config, biometrics.engine, biometrics.engine, biometrics.engine, biometrics.engine, biometrics.identity, biometrics.identity.identity_record, biometrics.identity.identity_store, biometrics.samples, crypto.keyring.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+The Biometrics tab: create/unlock the keyring, enroll/verify/inspect/delete
 identities, and attach/extract arbitrary files, folders, or drives to/from an
 identity (chunked transparently past BSR2's single-envelope size limit).
 
@@ -10,6 +41,7 @@ whatever biometrics/app.py's CLI did on the same keyring.json -- an attacker
 with GUI access had unlimited passphrase guesses even after the CLI path was
 throttled. Both interfaces now enforce the identical policy.
 """
+
 import json
 import tkinter as tk
 from pathlib import Path
@@ -530,3 +562,4 @@ class BiometricsTab(ttk.Frame):
             updated = bio_attachment_engine.remove_identity_attachment(record, name)
         self._store_ref().save(updated)
         self._refresh_attachment_list()
+

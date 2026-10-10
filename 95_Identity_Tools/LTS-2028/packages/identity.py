@@ -1,4 +1,33 @@
-"""Recipient identity shape for Identity-Bound Packages.
+"""
+File: packages/identity.py
+
+Purpose
+-------
+Recipient identity shape for Identity-Bound Packages.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+Module-level named settings: MAX_IDENTITY_ID_LENGTH, MAX_LABEL_LENGTH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Recipient identity shape for Identity-Bound Packages.
 
 A recipient here is deliberately lightweight compared to
 ``biometrics.identity.identity_record``: a package does not care whether a
@@ -12,6 +41,7 @@ Kept free of any crypto import, matching the layering already used in
 ``biometrics.identity.identity_record`` and ``vault.records.record_model``:
 the data shape is unit-testable with plain dicts.
 """
+
 MAX_IDENTITY_ID_LENGTH = 128
 MAX_LABEL_LENGTH = 256
 
@@ -75,3 +105,4 @@ def validate_recipient(recipient: dict) -> dict:
     validate_identity_id(recipient.get("identity_id"))
     validate_label(recipient.get("label"))
     return recipient
+

@@ -1,3 +1,31 @@
+"""
+File: gui/builders.py
+
+Purpose
+-------
+Defines GuiState, bytes_to_mb_text, make_bool_var, wire_preference_autosave, make_gui_state, profile_description, apply_settings_to_state, apply_profile_defaults for 98_Tooling/ProjectContextHelper/gui.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, dataclasses, pathlib, tkinter, services.storage, core.constants, core.builder, core.models.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -203,3 +231,4 @@ def run_project_build(state: GuiState) -> BuildResult:
     state.last_export_dir = result.export_dir
     save_last_settings(settings)
     return result
+

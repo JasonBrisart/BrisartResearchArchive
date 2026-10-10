@@ -1,12 +1,42 @@
 """
+File: engine/settings.py
+
+Purpose
+-------
 engine.settings
----------------
+Dataclasses describing archive settings, scan results, snapshot results,
+and saved GUI/app settings for ArchiveSnapshot.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, dataclasses, pathlib, typing, .app_info.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.settings
 Dataclasses describing archive settings, scan results, snapshot results,
 and saved GUI/app settings for ArchiveSnapshot.
 
 No file I/O or scanning logic lives here — this module only defines the
 shapes that other engine modules pass around.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -139,3 +169,4 @@ class AppSettings:
 
     def to_jsonable(self) -> dict[str, Any]:
         return asdict(self)
+

@@ -1,5 +1,29 @@
 """
+File: diff_engine.py
+
+Purpose
+-------
 Folder comparison engine for ReleaseNoteBuilder.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, pathlib, filesystem.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
 
 from __future__ import annotations
@@ -51,3 +75,4 @@ def build_project_comparison(old_root: Path, new_root: Path) -> dict:
         "new_snapshot": new_snapshot,
         "diff": diff,
     }
+

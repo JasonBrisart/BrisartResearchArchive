@@ -1,5 +1,29 @@
 """
+File: analysis.py
+
+Purpose
+-------
 Project analysis logic for ReadmeBuilder.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, ast, pathlib, constants, filesystem.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
 
 from __future__ import annotations

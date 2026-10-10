@@ -1,4 +1,33 @@
-"""A minimal, custom frame-sequence container for the video modality.
+"""
+File: biometrics/codecs/video.py
+
+Purpose
+-------
+A minimal, custom frame-sequence container for the video modality.
+
+Communication / relationships
+-----------------------------
+Direct module imports: struct, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: MAGIC, HEADER_STRUCT, MAX_DIMENSION, MAX_FRAME_COUNT, MAX_BODY_BYTES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+A minimal, custom frame-sequence container for the video modality.
 
 There is no dependency on a real video codec here (no H.264, no container
 muxer, no third-party library) because none is needed: video enrollment is a
@@ -17,6 +46,7 @@ Format layout::
     frame_rate     4 bytes   big-endian unsigned int (frames per second)
     frames         frame_count * width * height bytes, concatenated
 """
+
 import struct
 from pathlib import Path
 
@@ -176,3 +206,4 @@ def write_video(path, width: int, height: int, frame_rate: int, frames: list) ->
     encoded = encode(width, height, frame_rate, frames)
     with open(path, "wb") as handle:
         handle.write(encoded)
+

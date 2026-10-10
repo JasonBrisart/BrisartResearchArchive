@@ -12,7 +12,7 @@ so that knowledge/index.py can import it without the knowledge layer
 having to depend on the web layer.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/web/search.py: drops blocked hosts from search results.
 - brisart_ai/web/crawler.py: refuses blocked hosts + off-topic wikis at
   ingest time via is_junk_web_source().
@@ -25,7 +25,7 @@ Communication / relationships
   in. Otherwise imports only re.
 
 Settings / parameters
-----------------------
+---------------------
 - BLOCKED_WEB_HOSTS: dictionary/thesaurus/definition sites.
 - LOW_VALUE_HOSTS: hosts ranked down, not blocked outright.
 - LISTING_PATH_MARKERS: path fragments marking listing/search pages.
@@ -37,7 +37,16 @@ Edge cases
 - is_blocked_web_host() requires an absolute URL with a scheme.
 - is_offtopic_wiki() only rejects a wiki page whose title is EXACTLY a
   bare function word, unless overridden by topic_terms.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -151,3 +160,4 @@ __all__ = [
     "is_offtopic_wiki",
     "is_junk_web_source",
 ]
+

@@ -1,34 +1,40 @@
 """
 File: signing/sign_release.py
 
-Purpose:
+Purpose
+-------
 Offline, licensor-only tool that generates the release signing keypair
 and produces signed registry entries for this application. Run it only
 on your own trusted machine.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Uses services/rsa_signing.py.
 - The printed public key is pasted into services/trust_anchor.py.
 - The printed entry is pasted into the registry page as the
   "brisart_research_archive" entry.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - generate-keys [--bits 2048] [--force].
 - sign --file <release file> --version <version> --url <download URL>.
 - Private key location: signing/keys/private_key.json.
 
-Edge cases:
+Edge cases
+----------
 - generate-keys refuses to overwrite an existing key without --force;
   overwriting invalidates trust in every previously signed release.
 - sign exits with status 1 when no private key exists.
 
-Known limitations:
+Known limitations
+-----------------
 - The private key is stored as unencrypted JSON. Never commit, upload,
   or package signing/keys/.
 - The printed entry omits asset_kind (defaults to "zip") and changelog;
   add them manually when needed.
 
-Examples:
+Examples
+--------
 - python signing/sign_release.py generate-keys
 - python signing/sign_release.py sign --file BrisartResearchArchive-0.9.2.zip --version 0.9.2 --url "https://brisartresearcharchive.com/..."
 """

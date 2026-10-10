@@ -1,4 +1,33 @@
-"""Record id generation and validation for the vault.
+"""
+File: vault/core/ids.py
+
+Purpose
+-------
+Record id generation and validation for the vault.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets.
+
+Settings / parameters
+---------------------
+Module-level named settings: MAX_RECORD_ID_LENGTH, RECORD_ID_TOKEN_BYTES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Record id generation and validation for the vault.
 
 Unlike biometrics identity ids (which become filesystem path segments and so
 must reject path separators), a vault record id is only ever used as a JSON
@@ -9,6 +38,7 @@ and NUL bytes itself. Validation here catches those problems earlier, with a
 message that names the actual field, rather than surfacing a generic context
 error from deep inside the sealing call.
 """
+
 import secrets
 
 MAX_RECORD_ID_LENGTH = 128
@@ -49,3 +79,4 @@ def validate_record_id(record_id) -> str:
     if "\x00" in record_id:
         raise RecordIdError("record_id cannot contain a NUL byte.")
     return record_id
+

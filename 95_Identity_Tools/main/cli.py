@@ -1,4 +1,33 @@
-"""Unified entry point: python cli.py <tool> ...
+"""
+File: cli.py
+
+Purpose
+-------
+Unified entry point: python cli.py <tool> ...
+
+Communication / relationships
+-----------------------------
+Direct module imports: sys, version.
+
+Settings / parameters
+---------------------
+Module-level named settings: USAGE, _DISPATCH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Unified entry point: python cli.py <tool> ...
 
     python cli.py biometrics enroll ...
     python cli.py vault --vault v.json init
@@ -11,6 +40,7 @@ tool's main() is called in-process with a plain top-level import. Tool
 modules are imported lazily so `version`/`help` never pay an import cost for
 a tool they are not running.
 """
+
 import sys
 
 from version import __version__
@@ -99,3 +129,4 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

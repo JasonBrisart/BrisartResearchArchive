@@ -9,13 +9,13 @@ network involved, using controlled in-file text fixtures against the
 real brisart_ai.knowledge.ranker.search() path.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Imports brisart_ai.intent.{describe_intent, detect_intent},
   brisart_ai.knowledge.index.Index, brisart_ai.knowledge.ranker.search.
 - Standalone script; run directly via `python3 scripts/debug_offline_replay.py`.
 
 Settings / parameters
-----------------------
+---------------------
 - FIXTURES: (name, query, expected_top_title, chunks) tuples.
 - Usage: no args (all fixtures), a fixture name, or --list.
 
@@ -23,7 +23,16 @@ Edge cases
 ----------
 - Fixture database lives in a temp dir, deleted on exit.
 - Exit status is non-zero when a fixture's expected top chunk doesn't win.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import os
@@ -180,3 +189,4 @@ def main(argv: Sequence[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
+

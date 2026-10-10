@@ -1,4 +1,32 @@
 """
+File: entitle/record_types.py
+
+Purpose
+-------
+Entitle Record Types
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+Module-level named settings: RECORD_TYPE_DEPLOYMENT, RECORD_TYPE_FORK, RECORD_TYPE_PROVENANCE, RECORD_TYPE_REVOCATION, RECORD_TYPE_REINSTATEMENT, ALL_RECORD_TYPES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Record Types
 
 Single source of truth for the ``record_type`` strings used throughout the
@@ -29,3 +57,4 @@ ALL_RECORD_TYPES = (
     RECORD_TYPE_REVOCATION,
     RECORD_TYPE_REINSTATEMENT,
 )
+

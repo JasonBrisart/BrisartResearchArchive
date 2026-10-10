@@ -1,3 +1,31 @@
+"""
+File: tests/test_report.py
+
+Purpose
+-------
+Regression checks in 98_Tooling/Entitle/tests/test_report.py.
+
+Communication / relationships
+-----------------------------
+Direct module imports: entitle.records, entitle.report, entitle.tracking.fork, entitle.tracking.deploy, entitle.core.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 from entitle.records import RecordStore
 from entitle.report import build_report, build_report_for_path, format_text
 # entitle/tracking/__init__.py was removed (0.4.2), so these are imported
@@ -54,3 +82,4 @@ class TestFormatText:
         text = format_text(report)
         assert "BROKEN" in text
         assert "entry_hash_mismatch" in text
+

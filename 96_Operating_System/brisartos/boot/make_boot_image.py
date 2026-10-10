@@ -1,4 +1,33 @@
-"""Build the first BrisartOS boot image using Python only.
+"""
+File: brisartos/boot/make_boot_image.py
+
+Purpose
+-------
+Build the first BrisartOS boot image using Python only.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: BOOT_LOAD_ADDRESS, IMAGE_SIZE, SIGNATURE, OUTPUT, STACK_TOP, MESSAGE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Build the first BrisartOS boot image using Python only.
 
 This script writes a 512-byte BIOS boot sector image. It does not call an
 assembler, compiler, linker, GRUB, Linux build system, or external package.
@@ -7,7 +36,6 @@ The boot image is intentionally tiny: it prints a BrisartOS message using BIOS
 video interrupt 0x10 and then halts forever.
 
 Bare-metal safety notes
------------------------
 Two things the BIOS spec does NOT guarantee, but real firmware
 variance can violate, are handled explicitly here rather than assumed:
 
@@ -24,6 +52,7 @@ variance can violate, are handled explicitly here rather than assumed:
    later absolute address computed as BOOT_LOAD_ADDRESS + offset is
    guaranteed correct regardless of which convention the firmware used.
 """
+
 from pathlib import Path
 
 BOOT_LOAD_ADDRESS = 0x7C00

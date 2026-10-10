@@ -10,14 +10,14 @@ _decode_bing_target() to unwrap Bing's click-tracking redirect
 wrapper, whose `u` parameter is URL-safe base64 without padding.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Intended as a drop-in replacement for base64.b64encode()/b64decode()
   and base64.urlsafe_b64decode() at every current call site.
 - Imports nothing from elsewhere in brisart_ai; pure stdlib-free
   integer/byte arithmetic.
 
 Settings / parameters
-----------------------
+---------------------
 - _STANDARD_ALPHABET: the 64-character RFC 4648 standard alphabet
   (A-Z, a-z, 0-9, +, /).
 - _URLSAFE_ALPHABET: the URL-safe variant (- and _ replace + and /),
@@ -37,7 +37,16 @@ Edge cases
   table entry).
 - An empty input encodes to an empty string and decodes back to empty
   bytes, exercised explicitly by this module's self-test.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 _STANDARD_ALPHABET = (
@@ -148,3 +157,4 @@ if __name__ == "__main__":
 
 
 __all__ = ["brisart_b64encode", "brisart_b64decode", "brisart_urlsafe_b64decode"]
+

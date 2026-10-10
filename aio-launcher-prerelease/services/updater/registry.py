@@ -1,36 +1,43 @@
 """
 File: services/updater/registry.py
 
-Purpose:
+Purpose
+-------
 Fetch this application's entry from the release registry page (a JSON
 object embedded between marker comments), and define RegistryError,
 VerificationError, and RegistryEntry.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Reads constants from services/updater/constants.py.
 - Uses services/updater/http_utils.py for requests.
 - services/updater/orchestration.py calls fetch_registry_entry();
   services/updater/download.py uses RegistryEntry and VerificationError.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - Required entry fields: version, download_url, sha256, signature.
 - Optional fields: asset_kind ("zip" by default, or "exe") and
   changelog.
 
-Edge cases:
+Edge cases
+----------
 - HTML-escaped quotes and ampersands are unescaped before parsing.
 - Missing markers, invalid JSON, a missing entry, or missing fields
   raise RegistryError.
 - Network failures are wrapped as RegistryError.
 
-Known limitations:
+Known limitations
+-----------------
 - Scrapes HTML with a regular expression; only the first marker block
   is used.
 - The page must fit within MAX_REGISTRY_RESPONSE_BYTES (64 KiB).
 
-Examples:
+Examples
+--------
 - entry = fetch_registry_entry()
 """
+
 from __future__ import annotations
 
 import json
@@ -119,3 +126,4 @@ def fetch_registry_entry(app_id: str = APP_REGISTRY_ID) -> RegistryEntry:
         asset_kind=str(entry.get("asset_kind", "zip")).strip().lower() or "zip",
         changelog=str(entry.get("changelog", "") or "").strip(),
     )
+

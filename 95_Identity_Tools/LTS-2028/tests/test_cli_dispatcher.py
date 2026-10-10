@@ -1,4 +1,31 @@
-"""Tests for cli.py's dispatcher (the fast paths that do not import a tool)."""
+"""
+File: tests/test_cli_dispatcher.py
+
+Purpose
+-------
+Tests for cli.py's dispatcher (the fast paths that do not import a tool).
+
+Communication / relationships
+-----------------------------
+Direct module imports: io, unittest, contextlib, cli, version.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import io
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -39,3 +66,4 @@ class CliDispatcherTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

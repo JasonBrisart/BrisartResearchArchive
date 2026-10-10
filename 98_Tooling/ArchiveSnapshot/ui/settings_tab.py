@@ -1,6 +1,33 @@
 """
+File: ui/settings_tab.py
+
+Purpose
+-------
 ui.settings_tab
-------------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, datetime, json, tkinter, pathlib, tkinter, engine.app_info, engine.settings, engine.snapshot_builder, .app_settings, .path_actions.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ui.settings_tab
 
 Settings tab: persisted GUI settings, Project Context Helper import
 option, and the visible (GUI-open) daily snapshot mode.
@@ -195,3 +222,4 @@ class SettingsTab:
             self.app.status.set(f"Daily archive check failed: {exc}")
 
         self.app.window.after(60000, self.daily_check_loop)
+

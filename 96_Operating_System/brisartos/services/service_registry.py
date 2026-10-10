@@ -1,4 +1,8 @@
 """
+File: brisartos/services/service_registry.py
+
+Purpose
+-------
 BrisartOS Service Registry
 Pure Python.
 No dependencies.
@@ -6,7 +10,28 @@ The service registry provides a stable runtime-owned place
 for BrisartOS services to be registered, listed, inspected,
 and queried without requiring shell commands or modules to
 know the internal service implementation details.
+
+Communication / relationships
+-----------------------------
+Direct module imports: archive_service, filesystem_service, settings_service, update_service.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from archive_service import ArchiveService
 from filesystem_service import FilesystemService
 from settings_service import SettingsService

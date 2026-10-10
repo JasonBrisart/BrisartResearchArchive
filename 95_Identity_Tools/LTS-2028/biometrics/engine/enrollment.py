@@ -1,4 +1,33 @@
-"""Enrollment: turning raw biometric input into a sealed, stored template.
+"""
+File: biometrics/engine/enrollment.py
+
+Purpose
+-------
+Enrollment: turning raw biometric input into a sealed, stored template.
+
+Communication / relationships
+-----------------------------
+Direct module imports: biometrics.codecs, biometrics.engine, biometrics.features.liveness, biometrics.identity, biometrics.identity.identity_record, crypto.context, crypto.envelope, crypto.rng.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Enrollment: turning raw biometric input into a sealed, stored template.
 
 The flow for enrolling one modality is: extract a feature vector from the
 input file (via ``biometrics.engine.modalities``), serialise it as JSON,
@@ -17,6 +46,7 @@ biometrics.features.liveness.assess_liveness(). Pass allow_static=True
 (wired to the CLI's --allow-static flag) to override this and enroll a
 static clip anyway.
 """
+
 from biometrics.codecs import video as video_codec
 from biometrics.engine import modalities
 from biometrics.features.liveness import LivenessError, assess_liveness
@@ -114,3 +144,4 @@ def enroll_identity(
     for modality, source_path in modality_sources.items():
         record = enroll_modality(record, modality, source_path, master_key, allow_static=allow_static)
     return record
+

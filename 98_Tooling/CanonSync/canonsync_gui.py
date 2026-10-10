@@ -1,7 +1,35 @@
 #!/usr/bin/env python3
 """
+File: canonsync_gui.py
+
+Purpose
+-------
 canonsync_gui.py
-----------------
+Tkinter GUI for CanonSync.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, pathlib, tkinter, tkinter, canonsync_core.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_CONFIG, CHECK_ON, CHECK_OFF, STATUS_LABEL, STATUS_COLOR. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+canonsync_gui.py
 Tkinter GUI for CanonSync.
 
 Point it at a parent folder (e.g. your GitHub directory). It discovers
@@ -385,3 +413,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

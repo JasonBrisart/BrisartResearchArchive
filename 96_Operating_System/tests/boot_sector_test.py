@@ -1,4 +1,35 @@
 """
+File: tests/boot_sector_test.py
+
+Purpose
+-------
+BrisartOS Boot Sector Emulator / Smoke Test
+Pure Python.
+No dependencies.
+No QEMU, Bochs, VirtualBox, or any external emulator required.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, sys.
+
+Settings / parameters
+---------------------
+Module-level named settings: BOOT_LOAD_SEGMENT, BOOT_LOAD_ADDRESS, IMAGE_SIZE, SIGNATURE, MEMORY_SIZE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
 BrisartOS Boot Sector Emulator / Smoke Test
 Pure Python.
 No dependencies.
@@ -43,6 +74,7 @@ flagged as a bare-metal safety bug rather than silently ignored --
 this is exactly the class of bug that can pass in a permissive
 emulator but corrupt memory on real firmware.
 """
+
 from pathlib import Path
 import sys
 

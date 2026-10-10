@@ -1,5 +1,5 @@
 """
-tests/test_runtime.py
+File: tests/test_runtime.py
 
 Purpose
 -------
@@ -12,8 +12,8 @@ end-to-end (copied into an isolated temporary working directory) rather
 than a synthetic fixture, because `BrisartRuntime.boot()` is the actual
 code path that discovers and would run it in production.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `BrisartRuntime.__init__` constructs `PlatformInfo`, `SystemAPI`, and
   `ServiceRegistry` itself (see `tests/test_platform_info.py`,
   `tests/test_system_api.py`, and `tests/test_service_registry.py` for
@@ -26,7 +26,7 @@ Communication relationships
   already registered -- `modules/hello_lab/module.py` does exactly this.
 
 Settings / parameters
-----------------------
+---------------------
 - `BrisartRuntime()` takes no constructor arguments; every dependency it
   builds is fixed by source (relative `"modules"` path, `SystemAPI`'s
   `Path.cwd()`-relative `module_data/`/`logs/`). Every test in this file
@@ -40,7 +40,6 @@ Settings / parameters
   command name gracefully instead of crashing the whole session.
 
 Edge-case behavior
--------------------
 - `version_text()` must embed both `BrisartRuntime.NAME` and
   `BrisartRuntime.VERSION` (sourced from the single `version.py` source of
   truth at the repo root), matching the project's stated "single source
@@ -52,7 +51,24 @@ Edge-case behavior
   unknown name must not raise, matching the "not found" contract every
   other lookup-by-name method in this codebase follows (`ServiceRegistry`,
   `ModuleLoader`).
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_runtime.py
 """
+
 import shutil
 import unittest
 from contextlib import redirect_stdout
@@ -214,3 +230,4 @@ class BrisartRuntimeServiceLifecycleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

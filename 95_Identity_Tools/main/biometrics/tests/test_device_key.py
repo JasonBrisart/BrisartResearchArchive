@@ -1,9 +1,39 @@
-"""Tests for biometrics.identity.device_key: machine-fingerprint binding.
+"""
+File: biometrics/tests/test_device_key.py
+
+Purpose
+-------
+Tests for biometrics.identity.device_key: machine-fingerprint binding.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, unittest, biometrics.identity.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for biometrics.identity.device_key: machine-fingerprint binding.
 
 Fast: bind_device / verify_device use the keyed-MAC factor path (~15 ms), not
 the slow KDF. An injected 32-byte master key stands in for a real unlocked
 device key.
 """
+
 import secrets
 import unittest
 
@@ -45,3 +75,4 @@ class DeviceBindingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,6 +1,35 @@
 """
+File: engine/change_report.py
+
+Purpose
+-------
 engine.change_report
---------------------
+Compares two snapshot manifests and builds a Markdown change report
+describing added, removed, modified, and unchanged files.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, json, pathlib, .app_info.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.change_report
 Compares two snapshot manifests and builds a Markdown change report
 describing added, removed, modified, and unchanged files.
 
@@ -10,6 +39,7 @@ back to size-only detection, which can miss an edit that leaves a file's
 size unchanged. The report discloses this explicitly so it never
 overstates its own confidence.
 """
+
 from __future__ import annotations
 
 import json
@@ -178,3 +208,4 @@ def build_diff_markdown(diff: dict) -> str:
         lines.append("- No modified files.")
 
     return "\n".join(lines)
+

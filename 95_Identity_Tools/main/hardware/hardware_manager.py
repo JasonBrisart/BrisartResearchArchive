@@ -1,8 +1,9 @@
 """
 File: hardware/hardware_manager.py
 
-Purpose:
-    Central hardware manager. The single entry point between the rest
+Purpose
+-------
+Central hardware manager. The single entry point between the rest
     of BrisartIdentityTools and any registered hardware driver.
 
     This file never constructs a driver's network/OS connection itself
@@ -23,8 +24,9 @@ Purpose:
     implementation. It has no knowledge of networks, sockets, or
     operating-system libraries of any kind.
 
-Communication relationships:
-    Called by: any code that wants a device by its registered name
+Communication / relationships
+-----------------------------
+Called by: any code that wants a device by its registered name
     instead of importing and constructing a driver class directly.
 
     Calls out to: hardware.registry.get(), and then whatever class that
@@ -50,7 +52,24 @@ Edge-case behavior:
       FingerprintScanner's own TypeError for a missing or wrong-typed
       binding/transport) -- HardwareManager does not catch or
       reinterpret that error.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from hardware.registry import get
 
 
@@ -62,3 +81,4 @@ class HardwareManager:
                 f"Hardware device '{device_name}' is not registered."
             )
         return device_class(*args, **kwargs)
+

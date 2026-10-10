@@ -1,5 +1,5 @@
 """
-tests/test_module_api.py
+File: tests/test_module_api.py
 
 Purpose
 -------
@@ -14,8 +14,8 @@ that adds a new gated method but forgets the `self.require(...)` call
 would otherwise go unnoticed until a module unexpectedly bypassed its own
 declared permission set.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `brisartos/runtime/module_loader.LoadedModule.run()` constructs one
   `ModuleAPI` per module execution, seeded with that module's own
   `MODULE_PERMISSIONS` tuple -- see `tests/test_module_loader.py` for that
@@ -29,7 +29,7 @@ Communication relationships
   happens to use.
 
 Settings / parameters
-----------------------
+---------------------
 - `ModuleAPI(module_name, permissions, system_api, service_registry=None)`:
   `permissions` is converted to a `set` internally, so duplicate or
   unordered input tuples behave identically. `service_registry` is
@@ -44,7 +44,6 @@ Settings / parameters
   `get_service(name)` -> `f"service:{name}"`.
 
 Edge-case behavior
--------------------
 - `PermissionError` raised by `require()` must include both the module's
   own name and the missing permission string in its message, since that
   message is the only diagnostic a lab operator sees when a module fails.
@@ -57,7 +56,24 @@ Edge-case behavior
   name list regardless of which `service:<name>` permissions the calling
   module actually holds -- it is a diagnostics helper, not a gated
   accessor.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_module_api.py
 """
+
 import unittest
 from unittest.mock import MagicMock
 
@@ -245,3 +261,4 @@ class ModuleAPIPermissionSetTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

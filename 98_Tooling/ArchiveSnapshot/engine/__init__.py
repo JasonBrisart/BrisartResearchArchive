@@ -1,6 +1,36 @@
 """
+File: engine/__init__.py
+
+Purpose
+-------
 engine
-------
+Core, non-UI logic for ArchiveSnapshot: scanning, snapshot creation,
+snapshot discovery/indexing, change reports, integrity verification,
+retention, and Project Context Helper import.
+
+Communication / relationships
+-----------------------------
+Direct module imports: .app_info, .settings, .snapshot_builder, .snapshot_index, .change_report, .integrity_check, .retention, .snapshot_writer, .project_context_import.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine
 Core, non-UI logic for ArchiveSnapshot: scanning, snapshot creation,
 snapshot discovery/indexing, change reports, integrity verification,
 retention, and Project Context Helper import.
@@ -13,6 +43,7 @@ Common entry points are re-exported here for convenience:
 
     from engine import create_snapshot, ArchiveSettings
 """
+
 from .app_info import APP_NAME, APP_VERSION, APP_TAGLINE, AUTHOR, REPOSITORY_NAME
 from .settings import ArchiveSettings, AppSettings, StoredSnapshot, SnapshotResult
 from .snapshot_builder import create_snapshot
@@ -61,3 +92,4 @@ __all__ = [
     "project_context_active_dir",
     "project_context_display_text",
 ]
+

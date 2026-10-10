@@ -1,4 +1,33 @@
-"""Regression checks for known_answer_vectors.json.
+"""
+File: tests/test_known_answer_vectors.py
+
+Purpose
+-------
+Regression checks for known_answer_vectors.json.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, unittest, pathlib, unittest.mock, brisart_security_envelope, brisart_security_drbg, brisart_security_envelope, brisart_security_primitives.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Regression checks for known_answer_vectors.json.
 
 Envelope generation now uses fresh operating-system entropy. The envelope KAT
 injects an all-zero entropy value strictly inside this test so that the frozen
@@ -91,3 +120,4 @@ class KnownAnswerVectorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

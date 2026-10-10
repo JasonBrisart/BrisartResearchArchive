@@ -1,12 +1,14 @@
 """
 File: frameworks/TFL/engine.py
 
-Purpose:
+Purpose
+-------
 Run one TFL session headlessly: stage progression, timing, response
 validation and locking, output-row construction, and completion. No
 Tkinter dependency.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Uses TimerInterface from engine/timing.py.
 - Uses feedback.determine_feedback() for each recorded row.
 - Falls back to settings.TRIAL_DURATION_SEC when the config has no
@@ -15,7 +17,8 @@ Communication / relationships:
   in the GUI, and by app/headless.py and tests/test_merged.py headlessly.
 - Rows are saved and analyzed by frameworks/TFL/analysis.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - TFLSessionEngine(config, trials, timer, participant_id="",
   session_id=None, on_trial_recorded=None, on_stage_advanced=None).
 - TIMED_STAGES: prediction and behavioral_choice.
@@ -23,7 +26,8 @@ Settings / parameters:
   optional content_probe, behavioral_choice.
 - Generated session IDs use YYYYMMDD-HHMMSS-<8 hex characters>.
 
-Edge cases:
+Edge cases
+----------
 - Duplicate or late submissions are rejected through input_locked and
   stage checks.
 - Stale timer callbacks are ignored through timer_token.
@@ -34,18 +38,21 @@ Edge cases:
 - Invalid choices return False without advancing. Affect must be an
   integer from 0 to 100.
 
-Known limitations:
+Known limitations
+-----------------
 - finish_session() increments the completion counter on every call;
   tests rely on this.
 - Only prediction and behavioral_choice are timed.
 - Reaction times use the injected timer, not wall-clock time.
 
-Examples:
+Examples
+--------
 - engine.start_trial()
 - engine.submit_prediction("A")
 - engine.submit_affect(60)
 - engine.submit_behavioral_choice("B")
 """
+
 from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
@@ -395,3 +402,4 @@ class TFLSessionEngine:
 
 
 __all__ = ["TFLSessionEngine", "StageState", "TIMED_STAGES", "generate_session_id", "utc_now_iso"]
+

@@ -1,4 +1,33 @@
-"""Identity-Bound Package orchestration: create, add/remove recipients, open.
+"""
+File: packages/package.py
+
+Purpose
+-------
+Identity-Bound Package orchestration: create, add/remove recipients, open.
+
+Communication / relationships
+-----------------------------
+Direct module imports: crypto.errors, packages, packages.identity, packages.verification.
+
+Settings / parameters
+---------------------
+Module-level named settings: PACKAGE_FORMAT. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Identity-Bound Package orchestration: create, add/remove recipients, open.
 
 Ties together every other module in ``packages/``:
 
@@ -16,6 +45,7 @@ slots, and the custody chain. Nothing here performs file I/O directly --
 persistence is left to the caller (typically ``main.py``), matching the
 separation ``vault.store.vault_service`` keeps from ``vault.store.vault_file``.
 """
+
 from crypto.errors import Bsr2IntegrationError
 from packages import audit, ciphers, custody
 # BUG FIX (2026-08-24): this previously also imported RecipientIdentityError
@@ -244,3 +274,4 @@ def list_recipients(state: dict) -> list:
 def custody_summary(state: dict) -> list:
     """A compact, display-friendly summary of the package's custody history."""
     return custody.summarize(state["custody_chain"])
+

@@ -1,3 +1,31 @@
+"""
+File: gui/extras_tab.py
+
+Purpose
+-------
+Defines create_extras_tab for 98_Tooling/ProjectContextHelper/gui.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, gui.builders, gui.profiles_section, gui.scroll_frame.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 import tkinter as tk
 
 from gui.builders import GuiState
@@ -49,3 +77,4 @@ def create_extras_tab(
         tk.Label(extras_frame, text=help_text, fg="#666666", anchor="w", justify="left", wraplength=560).grid(row=index, column=1, sticky="w", padx=(12, 0), pady=2)
 
     create_custom_profiles_section(content, state)
+

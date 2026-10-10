@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/web/policy.py -- robots.txt + local/private-host safety policy."""
+"""
+File: brisart_ai/web/tests/test_policy.py
+
+Purpose
+-------
+Tests for brisart_ai/web/policy.py -- robots.txt + local/private-host safety policy.
+
+Communication / relationships
+-----------------------------
+Direct module imports: unittest, brisart_ai.web.policy.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import unittest
 from brisart_ai.web.policy import USER_AGENT, is_local_or_private_host, is_localhost
 
@@ -50,3 +77,4 @@ class TestUserAgent(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

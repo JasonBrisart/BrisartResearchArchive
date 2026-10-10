@@ -8,14 +8,14 @@ decode using the declared/detected charset, hand HTML off to
 io/extractor.py's html_to_text().
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/web/crawler.py: the only caller of fetch_url().
 - Calls brisart_ai.io.extractor.html_to_text() and
   brisart_ai.util.normalize_url(); imports USER_AGENT from
   brisart_ai.web.policy.
 
 Settings / parameters
-----------------------
+---------------------
 - MAX_PAGE_BYTES (2,000,000).
 - REQUEST_TIMEOUT (15 seconds).
 
@@ -23,7 +23,16 @@ Edge cases
 ----------
 - Every failure mode is captured into the returned FetchResult.
 - normalize_url("") returns error="invalid URL" before any request.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import urllib.error
@@ -97,3 +106,4 @@ def fetch_url(url: str) -> FetchResult:
             url=normalized, status=0, content_type="", title="", text="",
             links=[], error=str(exc),
         )
+

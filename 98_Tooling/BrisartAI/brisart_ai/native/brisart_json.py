@@ -10,7 +10,7 @@ BrisartJSON -- a from-spec, pure-Python JSON parser and serializer
 Wikipedia API's JSON search response).
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Intended as a drop-in replacement for json.loads()/json.dumps() at
   every current call site.
 - Imports nothing from elsewhere in brisart_ai; a hand-written
@@ -18,7 +18,7 @@ Communication / relationships
   module itself.
 
 Settings / parameters
-----------------------
+---------------------
 - brisart_dumps(value, indent=None, sort_keys=False): matches the
   json module's own keyword names and defaults closely enough that
   call sites (core/settings.py's json.dumps(self.values, indent=2,
@@ -43,7 +43,16 @@ Edge cases
   real-world API response could in principle include one) but is
   never emitted by brisart_dumps() for an ordinary float, since valid
   JSON text has no literal representation for them.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple, Union
@@ -353,3 +362,4 @@ if __name__ == "__main__":
 
 
 __all__ = ["BrisartJSONDecodeError", "brisart_dumps", "brisart_loads"]
+

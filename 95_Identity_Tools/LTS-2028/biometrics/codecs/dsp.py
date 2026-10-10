@@ -1,4 +1,33 @@
-"""Signal-processing primitives shared by the voice feature extractor.
+"""
+File: biometrics/codecs/dsp.py
+
+Purpose
+-------
+Signal-processing primitives shared by the voice feature extractor.
+
+Communication / relationships
+-----------------------------
+Direct module imports: math.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_FRAME_SIZE, DEFAULT_HOP_SIZE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Signal-processing primitives shared by the voice feature extractor.
 
 Implemented as plain loops over Python lists rather than with a numeric
 library. Frame sizes used elsewhere in biometrics are small (on the order of
@@ -6,6 +35,7 @@ a few hundred samples), so the O(n) and O(n^2) costs here are not a practical
 bottleneck, and keeping the implementation transparent matters more than
 shaving milliseconds off it.
 """
+
 import math
 
 DEFAULT_FRAME_SIZE = 512
@@ -132,3 +162,4 @@ def normalize_vector(values: list) -> list:
     if peak == 0:
         return list(values)
     return [value / peak for value in values]
+

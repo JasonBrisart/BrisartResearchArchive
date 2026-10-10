@@ -1,5 +1,5 @@
 """
-tests/test_system_api.py
+File: tests/test_system_api.py
 
 Purpose
 -------
@@ -11,8 +11,8 @@ focus on the two things most likely to silently regress: filesystem-path
 sanitization (`safe_name`) and the fact that every write is scoped under
 `module_data/<safe module name>/`.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `BrisartRuntime.__init__` (see `runtime.py`) constructs exactly one
   `SystemAPI` per runtime instance and hands it to both `ModuleLoader` and,
   indirectly through `ModuleAPI`, to every loaded module -- see
@@ -25,7 +25,7 @@ Communication relationships
   in `tests/test_module_loader.py`.
 
 Settings / parameters
-----------------------
+---------------------
 - `SystemAPI(platform)`: `platform` is stored but otherwise only consulted
   by `get_platform_info()`, which returns `platform.describe()` verbatim.
 - `module_data_root` / `logs_root` are **not** configurable via the
@@ -37,7 +37,6 @@ Settings / parameters
   `module_data/`/`logs/` inside the real repository checkout.
 
 Edge-case behavior
--------------------
 - `new_object_id()` must return a 32-character lowercase hex string (128
   bits via `secrets.token_hex(16)`), and two consecutive calls must not
   collide.
@@ -51,7 +50,24 @@ Edge-case behavior
 - `log()` must append (not overwrite) to `logs/<safe source>.log`, so
   multiple calls with the same `source` accumulate multiple lines rather
   than clobbering each other.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_system_api.py
 """
+
 import unittest
 from pathlib import Path
 
@@ -172,3 +188,4 @@ class SystemAPIPlatformInfoTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

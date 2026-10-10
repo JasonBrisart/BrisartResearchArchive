@@ -1,4 +1,33 @@
-"""BSR2 envelope operations with length-hiding padding.
+"""
+File: crypto/envelope.py
+
+Purpose
+-------
+BSR2 envelope operations with length-hiding padding.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, crypto.errors, crypto.vendor.
+
+Settings / parameters
+---------------------
+Module-level named settings: PADDING_BLOCK_BYTES, _LENGTH_PREFIX_BYTES, _ENVELOPE_FIELDS, MAX_PAYLOAD_BYTES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+BSR2 envelope operations with length-hiding padding.
 
 All encryption and authentication is BSR2's. This module adds two things around
 it.
@@ -20,6 +49,7 @@ The padding is applied *inside* the BSR2 plaintext, so it is fully covered by
 BSR2's authentication tag. Length recovery happens only after the tag verifies,
 which means a forged envelope can never steer the unpadding logic.
 """
+
 import json
 
 from crypto.errors import (
@@ -150,3 +180,4 @@ __all__ = [
     "seal_bytes",
     "seal_json",
 ]
+

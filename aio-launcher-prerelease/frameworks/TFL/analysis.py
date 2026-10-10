@@ -1,12 +1,14 @@
 """
 File: frameworks/TFL/analysis.py
 
-Purpose:
+Purpose
+-------
 Save, load, validate, and analyze TFL CSV output, and produce the text
 report, including prediction-behavior consistency and temporal feedback
 carryover. Pure standard library.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Uses config/runtime.get_framework_output_dir() and
   frameworks/TFL/framework.py (FRAMEWORK_ID, CSV_FIELDNAMES).
 - frameworks/TFL/screen.py calls save_rows() and remove_autosave_file()
@@ -16,7 +18,8 @@ Communication / relationships:
   get_default_output_file().
 - Covered by tests/test_merged.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - Output directory: <output_folder>/TFL.
 - save_rows() writes tfl_output_<timestamp>.csv, then atomically
   refreshes tfl_output_latest.csv. With an explicit path it writes only
@@ -26,7 +29,8 @@ Settings / parameters:
 - Completion gate: at least 80 percent of rows must be completed.
 - Affect values must be finite numbers from 0 to 100.
 
-Edge cases:
+Edge cases
+----------
 - All writes go to a .tmp file first; the temp file is removed on
   failure.
 - Session IDs are sanitized before use in filenames, so path-traversal
@@ -37,16 +41,19 @@ Edge cases:
   comparisons.
 - Unknown contradiction values are bucketed as "none".
 
-Known limitations:
+Known limitations
+-----------------
 - Carryover looks only at the immediately preceding trial.
 - The report is plain text, with no charts or statistical tests.
 - analyze_output() reads the latest file unless a path is supplied.
 
-Examples:
+Examples
+--------
 - path = save_rows(engine.rows)
 - print(analyze_output())
 - analyze_output(Path("tfl_output_20260926_101500_000000.csv"))
 """
+
 from __future__ import annotations
 import csv
 import math
@@ -393,3 +400,4 @@ __all__ = [
     "sanitize_session_id", "get_autosave_file", "autosave_rows", "remove_autosave_file",
     "sorted_completed_rows", "prediction_behavior_consistency_report", "feedback_carryover_report",
 ]
+

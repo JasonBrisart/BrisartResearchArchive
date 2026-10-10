@@ -1,4 +1,39 @@
-"""Chunked, multi-path bulk file/folder/drive attachments on a biometrics
+"""
+File: biometrics/engine/bulk_attachments.py
+
+Purpose
+-------
+Chunked, multi-path bulk file/folder/drive attachments on a biometrics
+identity record -- the biometrics-side counterpart to
+vault.store.bulk_file_service.BulkFileService, built for exactly the same
+reason: a single BSR2 envelope hard-caps at ~16 MiB
+(crypto.envelope.MAX_PAYLOAD_BYTES), so a large file, or a zip built from
+an entire folder/drive, must be split into several sealed chunk
+attachments and reassembled on the way back out.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, tempfile, time, zipfile, pathlib, common.hashing, biometrics.engine.attachments.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_CHUNK_BYTES, _MANIFEST_SUFFIX. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Chunked, multi-path bulk file/folder/drive attachments on a biometrics
 identity record -- the biometrics-side counterpart to
 vault.store.bulk_file_service.BulkFileService, built for exactly the same
 reason: a single BSR2 envelope hard-caps at ~16 MiB
@@ -23,6 +58,7 @@ separate "JSON attachment" concept here, keeping this module's storage
 shape uniform with single-file attachments rather than introducing a
 second payload format.
 """
+
 import json
 import tempfile
 import time
@@ -246,3 +282,4 @@ def remove_bulk_attachment(record: dict, name: str, master_key: bytes) -> dict:
         # has become unreadable.
         pass
     return remove_identity_attachment(record, f"{name}{_MANIFEST_SUFFIX}")
+

@@ -8,13 +8,13 @@ local notes, lightweight entity extraction, source-to-entity links, a
 topic timeline, and a vault summary report.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/service.py: calls add_note(), list_notes(), search_notes(),
   reindex_missing_notes() (once, at startup).
 - Imports brisart_ai.util.{now_ts, tokenize}; calls index.add_source().
 
 Settings / parameters
-----------------------
+---------------------
 - ENTITY_RE: capitalized-phrase pattern, a lightweight heuristic.
 - rebuild_entities(max_sources=5000).
 
@@ -22,7 +22,16 @@ Edge cases
 ----------
 - Notes mirrored into sources (source_type="note") via _index_note().
 - reindex_missing_notes() is idempotent.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -476,3 +485,4 @@ __all__ = [
     "list_notes", "reindex_missing_notes", "rebuild_entities", "search_notes",
     "search_notes_as_documents", "timeline", "vault_report",
 ]
+

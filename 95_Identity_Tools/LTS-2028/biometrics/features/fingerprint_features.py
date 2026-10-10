@@ -1,4 +1,34 @@
-"""Fingerprint feature extraction: a grayscale image reduced to a ridge-
+"""
+File: biometrics/features/fingerprint_features.py
+
+Purpose
+-------
+Fingerprint feature extraction: a grayscale image reduced to a ridge-
+orientation summary vector.
+
+Communication / relationships
+-----------------------------
+Direct module imports: math, biometrics.codecs, biometrics.features.similarity.
+
+Settings / parameters
+---------------------
+Module-level named settings: TARGET_WIDTH, TARGET_HEIGHT, GRID_SIZE, FEATURE_VECTOR_LENGTH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Fingerprint feature extraction: a grayscale image reduced to a ridge-
 orientation summary vector.
 
 Real fingerprint matching systems use minutiae extraction (ridge endings and
@@ -12,6 +42,7 @@ minutiae-based one.
 
 The output is a fixed-length vector regardless of input image resolution.
 """
+
 import math
 from biometrics.codecs import image_loader, image_tools
 from biometrics.features.similarity import distance_similarity
@@ -134,3 +165,4 @@ def compare(vector_a: list, vector_b: list) -> float:
     if len(vector_a) != len(vector_b):
         raise FingerprintFeatureError("feature vectors must be the same length.")
     return distance_similarity(vector_a, vector_b)
+

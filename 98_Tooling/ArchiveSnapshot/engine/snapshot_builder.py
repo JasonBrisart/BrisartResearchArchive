@@ -1,6 +1,36 @@
 """
+File: engine/snapshot_builder.py
+
+Purpose
+-------
 engine.snapshot_builder
-------------------------
+Orchestrates one full snapshot creation: scan the source folder, import
+any Project Context Helper bundle, write snapshot outputs, build a change
+report against the previous snapshot, and update the store index.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, datetime, dataclasses, pathlib, .app_info, .change_report, .snapshot_writer, .settings, .project_context_import, .folder_scanner, .snapshot_index.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+engine.snapshot_builder
 Orchestrates one full snapshot creation: scan the source folder, import
 any Project Context Helper bundle, write snapshot outputs, build a change
 report against the previous snapshot, and update the store index.
@@ -8,6 +38,7 @@ report against the previous snapshot, and update the store index.
 This is the single entry point other code (CLI, GUI, daily automation)
 should call to create a snapshot.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -170,3 +201,4 @@ def create_snapshot(
         skipped_count=len(scan.skipped_records),
         total_included_bytes=scan.total_included_bytes,
     )
+

@@ -1,3 +1,31 @@
+"""
+File: cli/cli.py
+
+Purpose
+-------
+Defines build_parser, settings_from_args, run_update_check, run_profile_list, run_profile_delete, run_cli, main for 98_Tooling/ProjectContextHelper/cli.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, argparse, sys, core.constants, core.builder, core.utils, gui.main_gui, services, services.updater.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from pathlib import Path
 import argparse
 import sys
@@ -259,3 +287,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,4 +1,33 @@
-"""Attempt limiting for unlock and verification paths.
+"""
+File: crypto/throttle.py
+
+Purpose
+-------
+Attempt limiting for unlock and verification paths.
+
+Communication / relationships
+-----------------------------
+Direct module imports: math, time, crypto.errors.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEFAULT_MAX_ATTEMPTS, DEFAULT_BASE_DELAY_SECONDS, DEFAULT_MAX_DELAY_SECONDS, DEFAULT_LOCKOUT_SECONDS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Attempt limiting for unlock and verification paths.
 
 BSR2's KDF makes each *offline* guess expensive. It does nothing about online
 guessing against a running process: an attacker who can call unlock in a loop
@@ -9,6 +38,7 @@ State is persisted by the caller rather than held in memory. An in-memory counte
 resets when the process restarts, which an attacker controls for free by killing
 the process between guesses.
 """
+
 import math
 import time
 
@@ -159,3 +189,4 @@ class AttemptLimiter:
             "locked_for_seconds": round(locked_for, 3),
             "backoff_remaining_seconds": round(waiting_for, 3),
         }
+

@@ -1,4 +1,33 @@
-"""Tests for crypto.keyring.Keyring.
+"""
+File: crypto/tests/test_keyring.py
+
+Purpose
+-------
+Tests for crypto.keyring.Keyring.
+
+Communication / relationships
+-----------------------------
+Direct module imports: copy, unittest, crypto.errors, crypto.keyring.
+
+Settings / parameters
+---------------------
+Module-level named settings: _ALGORITHM. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for crypto.keyring.Keyring.
 
 Split into two classes by cost:
 
@@ -11,6 +40,7 @@ Split into two classes by cost:
   KDF derivations) and performs a small, fixed number of real unlocks. This is
   the same real-KDF cost the existing vault/package suites already pay.
 """
+
 import copy
 import unittest
 
@@ -184,3 +214,4 @@ class KeyringUnlockTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

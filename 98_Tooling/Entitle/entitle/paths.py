@@ -1,4 +1,32 @@
 """
+File: entitle/paths.py
+
+Purpose
+-------
+Entitle Paths
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: REPO_ROOT, ENTITLEMENTS_DIR, RECORDS_DIR, REPORTS_DIR, DEFAULT_RECORD_STORE, DEFAULT_ENTITLEMENT_FILE, DEFAULT_NEW_ENTITLEMENT_FILE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Paths
 
 Single source of truth for Entitle's default runtime data locations.
@@ -19,6 +47,7 @@ source.
 All paths are resolved relative to the repository root so they behave the same
 regardless of the current working directory the tool is launched from.
 """
+
 from pathlib import Path
 
 # Repository root is the parent of the entitle/ package directory.
@@ -48,3 +77,4 @@ def default_entitlement_file() -> str:
 def default_new_entitlement_file() -> str:
     """Return the default output path for a newly issued entitlement."""
     return str(DEFAULT_NEW_ENTITLEMENT_FILE)
+

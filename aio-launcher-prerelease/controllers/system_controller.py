@@ -1,13 +1,15 @@
 """
 File: controllers/system_controller.py
 
-Purpose:
+Purpose
+-------
 Coordinate application-level actions including framework execution,
 framework-registry refreshes, settings persistence, output-directory
 management, TFL analysis, Archive update checks, document viewing, and
 application shutdown.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Uses config/runtime.py for settings and output-directory resolution.
 - Delegates framework execution to services/framework_service.py.
 - Delegates TFL analysis to services/tfl_analysis.py.
@@ -15,24 +17,28 @@ Communication / relationships:
 - Opens local documents through gui/components/document_viewer.py.
 - Is mixed into gui/main_window.BrisartSuiteApp.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - save_config() controls whether status and error dialogs are shown.
 - _collect_settings() reads current Tk variables and window dimensions.
 - Output directories may be absolute or relative to the application
   data directory.
 
-Edge cases:
+Edge cases
+----------
 - Missing services and Tk variables produce visible or logged failures.
 - Settings-save failures do not automatically close the application.
 - Output directories are created before opening when necessary.
 - Framework and analysis exceptions are isolated from the GUI loop.
 
-Known limitations:
+Known limitations
+-----------------
 - TFL analysis remains framework-specific.
 - Opening folders and CSV files depends on the operating system's
   default file-management commands.
 
-Examples:
+Examples
+--------
 - app.start_framework("TFL")
 - app.check_updates()
 - app.open_output_folder()

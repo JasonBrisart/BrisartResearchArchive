@@ -1,3 +1,31 @@
+"""
+File: brisart_security_drbg.py
+
+Purpose
+-------
+Defines BrisartDRBGError, BrisartDRBG for 97_Encryption.
+
+Communication / relationships
+-----------------------------
+Direct module imports: brisart_security_primitives.
+
+Settings / parameters
+---------------------
+Module-level named settings: MINIMUM_SEED_BYTES, MINIMUM_PERSONALIZATION_BYTES, MAX_REQUEST_BYTES, MAX_BYTES_BEFORE_RESEED, RESEED_INTERVAL. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from brisart_security_primitives import frame, sponge_hash
 
 
@@ -141,3 +169,4 @@ class BrisartDRBG:
         self._generated_bytes = MAX_BYTES_BEFORE_RESEED
         self._previous_block = None
         self._destroyed = True
+

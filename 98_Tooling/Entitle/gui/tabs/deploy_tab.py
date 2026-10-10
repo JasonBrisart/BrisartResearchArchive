@@ -1,10 +1,39 @@
 """
+File: gui/tabs/deploy_tab.py
+
+Purpose
+-------
+Entitle GUI — Deploy Tab
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, entitle.tracking.deploy, entitle.paths, gui.widgets.
+
+Settings / parameters
+---------------------
+Module-level named settings: TAB_TITLE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle GUI — Deploy Tab
 
 Imports directly from ``entitle.tracking.deploy`` (the submodule) rather than
 ``entitle.tracking`` (the package), since ``entitle/tracking/`` is a PEP 420
 implicit namespace package with no ``__init__.py`` re-export layer.
 """
+
 from tkinter import ttk
 
 from entitle.tracking.deploy import deploy_from_file
@@ -40,3 +69,4 @@ def build(parent, app):
 
     ttk.Button(form, text="Record Deployment", command=run).grid(row=form.next_row(), column=0, columnspan=3, pady=12, sticky="w")
     return form
+

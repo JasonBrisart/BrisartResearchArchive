@@ -1,4 +1,33 @@
-"""Tests for brisart_ai/ui/service.py -- BrisartService (headless, no Tk display required).
+"""
+File: brisart_ai/ui/tests/test_service_headless.py
+
+Purpose
+-------
+Tests for brisart_ai/ui/service.py -- BrisartService (headless, no Tk display required).
+
+Communication / relationships
+-----------------------------
+Direct module imports: tempfile, unittest, pathlib, brisart_ai.ui.service.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for brisart_ai/ui/service.py -- BrisartService (headless, no Tk display required).
 
 BrisartService itself has no Tk dependency (it's a pure backend facade
 over Index/SessionMemory/ResearchSettings), so it can be constructed and
@@ -6,6 +35,7 @@ exercised in a fully headless test environment. app.py, chat_panel.py,
 dialogs.py, and sidebar.py DO require a live Tk display and are outside
 the scope of headless unit testing -- they are verified manually.
 """
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -90,3 +120,4 @@ class TestBrisartServiceHeadless(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

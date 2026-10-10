@@ -1,6 +1,33 @@
 """
+File: ui/path_actions.py
+
+Purpose
+-------
 ui.path_actions
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, os, tkinter, pathlib, tkinter, engine.project_context_import.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
 -----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ui.path_actions
 
 Shared filesystem and folder-picker actions used across ArchiveSnapshot's
 GUI tabs.
@@ -118,3 +145,4 @@ def build_folder_picker(parent: tk.Frame, app) -> tk.LabelFrame:
     ).pack(side="left", padx=(8, 0))
 
     return frame
+

@@ -1,3 +1,31 @@
+"""
+File: tests/test_records.py
+
+Purpose
+-------
+Regression checks in 98_Tooling/Entitle/tests/test_records.py.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, entitle.records.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import json
 
 from entitle.records import GENESIS_HASH, RECORD_FORMAT, RecordStore
@@ -148,3 +176,4 @@ class TestVerifyChain:
         as_dict = status.to_dict()
         assert as_dict["valid"] is True
         assert as_dict["record_count"] == 1
+

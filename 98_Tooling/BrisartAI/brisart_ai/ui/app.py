@@ -6,14 +6,14 @@ Purpose
 The BrisartAI desktop window -- the only entry point for the program.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisartai.py: the only caller of run().
 - Constructs brisart_ai.ui.service.BrisartService, Sidebar, ChatPanel,
   dialogs.
 - Imports brisart_ai.ui.theme, brisart_ai.version_info.
 
 Settings / parameters
-----------------------
+---------------------
 - Construction order: BrisartService built BEFORE the Tk window.
 - self._busy.
 - force_web=None defers to Automatic Web Research setting.
@@ -22,7 +22,16 @@ Edge cases
 ----------
 - run() wraps app construction in a single try/except.
 - _answer_question() runs on a background thread.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import threading
@@ -202,3 +211,4 @@ def run(db_path: str = DEFAULT_DB) -> None:
 
 
 __all__ = ["BrisartApp", "run"]
+

@@ -1,37 +1,44 @@
 """
 File: gui/theme.py
 
-Purpose:
+Purpose
+-------
 Define the central visual theme: APP_NAME, APP_VERSION (read from
 version.txt), the COLORS palette, font constants, and apply_theme(),
 which configures every ttk style used by the app.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Imported by gui/main_window.py, gui/components/, gui/pages/,
   gui/widgets/, and frameworks/TFL/ GUI modules (with fallbacks).
 - APP_VERSION is shown on the Settings page.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - COLORS: bg, panel, panel2, panel3, text, muted, border, accent,
   accent2, success, warning, danger.
 - FONT Segoe UI 10; FONT_SMALL 9; FONT_TITLE 20 bold; FONT_HEAD 13 bold;
   FONT_MONO Consolas 10.
 - ttk base theme: "clam".
 
-Edge cases:
+Edge cases
+----------
 - A missing or unreadable version.txt gives "Unknown Version".
 - If "clam" is unavailable, the platform default theme is kept.
 
-Known limitations:
+Known limitations
+-----------------
 - The version is read once at import; restart after an update to see
   the new number.
 - Only the dark palette exists.
 - Segoe UI and Consolas are Windows fonts; other systems substitute.
 
-Examples:
+Examples
+--------
 - apply_theme(root)
 - COLORS["accent"]
 """
+
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
@@ -105,3 +112,4 @@ def apply_theme(root: tk.Tk):
         background=[("active", COLORS["panel"]), ("pressed", COLORS["panel"])],
         foreground=[("active", COLORS["text"]), ("pressed", COLORS["text"])],
     )
+

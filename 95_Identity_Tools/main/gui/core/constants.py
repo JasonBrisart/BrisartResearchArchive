@@ -1,4 +1,33 @@
-"""Shared constants and the repo-root bootstrap for the GUI package.
+"""
+File: gui/core/constants.py
+
+Purpose
+-------
+Shared constants and the repo-root bootstrap for the GUI package.
+
+Communication / relationships
+-----------------------------
+Direct module imports: sys, pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: _REPO_ROOT, APP_TITLE, _MODALITY_FILETYPES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Shared constants and the repo-root bootstrap for the GUI package.
 
 This module is imported first by every other ``gui`` module, so putting the
 ``sys.path`` bootstrap here guarantees the repository root is importable no
@@ -53,3 +82,4 @@ _MODALITY_FILETYPES = {
 class _Cancelled(Exception):
     """Raised internally when a nested sub-dialog (e.g. a payload editor
     opened from within another dialog) is cancelled by the user."""
+

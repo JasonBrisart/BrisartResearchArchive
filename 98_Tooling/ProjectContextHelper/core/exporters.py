@@ -1,3 +1,31 @@
+"""
+File: core/exporters.py
+
+Purpose
+-------
+Defines escape_table_cell, source_completeness_report, git_state_report, append_git_state_markdown, build_manifest, append_source_completeness_markdown, build_context_markdown, build_summary_text for 98_Tooling/ProjectContextHelper/core.
+
+Communication / relationships
+-----------------------------
+Direct module imports: collections, dataclasses, pathlib, zipfile, core.constants, core.git_state, core.models, core.scanner, core.utils.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
@@ -341,3 +369,4 @@ def create_snapshot_zip(zip_path: Path, context_path: Path, manifest_path: Path,
         for path in scan.included_paths:
             rel = path.relative_to(root)
             archive.write(path, f"project_files/{rel.as_posix()}")
+

@@ -1,3 +1,31 @@
+"""
+File: tests/test_tracking.py
+
+Purpose
+-------
+Regression checks in 98_Tooling/Entitle/tests/test_tracking.py.
+
+Communication / relationships
+-----------------------------
+Direct module imports: entitle.core, entitle.records, entitle.revoke, entitle.tracking.deploy, entitle.tracking.fork, entitle.tracking.provenance, entitle.tracking.query.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 from entitle.core import EntitlementResult
 from entitle.records import RecordStore
 from entitle.revoke import revoke
@@ -120,3 +148,4 @@ class TestForkAndProvenance:
         record_fork(store=store_path, product="P", source_version="1.0", fork_name="f", maintainer="m")
         record_provenance(store=store_path, product="P", origin="o", version="1.0", custodian="c")
         assert len(list_records(store=store_path)) == 2
+

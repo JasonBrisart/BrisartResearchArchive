@@ -6,7 +6,7 @@ Purpose
 File-type dispatch for local ingestion.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/knowledge/ingest.py: calls iter_supported_files() and read_file().
 - Calls brisart_ai.io.binary_readers.*, brisart_ai.io.extractor.*, and
   brisart_ai.util.safe_read_text().
@@ -14,7 +14,7 @@ Communication / relationships
   BrisartJSONDecodeError} (replacing json.*) -- see native/README.md.
 
 Settings / parameters
-----------------------
+---------------------
 - TEXT_EXTENSIONS / BINARY_TEXT_EXTENSIONS / SUPPORTED_EXTENSIONS.
 - SUPPORTED_EXTENSIONLESS_NAMES.
 
@@ -23,7 +23,16 @@ Edge cases
 - iter_supported_files() silently skips inaccessible paths.
 - .rtf gets a crude regex stripper.
 - .json/.jsonl never raise on invalid JSON.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -142,3 +151,4 @@ def read_file(path: Path) -> str:
     if ext == ".rtf":
         return _rtf_to_text(raw)
     return raw
+

@@ -1,6 +1,33 @@
 """
+File: ui/snapshot_tab.py
+
+Purpose
+-------
 ui.snapshot_tab
-------------------
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, tkinter, tkinter, engine.settings, engine.snapshot_builder, engine.snapshot_writer, .path_actions.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+ui.snapshot_tab
 
 Create Snapshot tab: archive metadata, snapshot options, size limits,
 and snapshot creation.
@@ -163,3 +190,4 @@ class SnapshotTab:
         except Exception as exc:
             self.app.status.set(f"Snapshot failed: {exc}")
             messagebox.showerror("Snapshot Failed", str(exc))
+

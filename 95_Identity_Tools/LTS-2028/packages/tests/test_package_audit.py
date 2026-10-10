@@ -1,4 +1,31 @@
-"""Tests for packages.audit: the external, append-only package audit trail."""
+"""
+File: packages/tests/test_package_audit.py
+
+Purpose
+-------
+Tests for packages.audit: the external, append-only package audit trail.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, tempfile, unittest, pathlib, packages, packages.audit.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import json
 import tempfile
 import unittest
@@ -84,3 +111,4 @@ class PackageAuditTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

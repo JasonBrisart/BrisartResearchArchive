@@ -1,4 +1,33 @@
-"""BSR2 keyring: master key wrapping under a passphrase and a recovery code.
+"""
+File: crypto/keyring.py
+
+Purpose
+-------
+BSR2 keyring: master key wrapping under a passphrase and a recovery code.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, unicodedata, typing, crypto.context, crypto.envelope, crypto.errors, crypto.rng, crypto.vendor.
+
+Settings / parameters
+---------------------
+Module-level named settings: MASTER_KEY_BYTES, KDF_SALT_BYTES, KDF_ITERATIONS, MAXIMUM_KDF_ITERATIONS, RECOVERY_CODE_GROUPS, RECOVERY_CODE_GROUP_SIZE, _RECOVERY_ALPHABET, _CONFUSABLE_CHARACTERS, KEYRING_FORMAT, _WRAPPER_PASSPHRASE, _WRAPPER_RECOVERY. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+BSR2 keyring: master key wrapping under a passphrase and a recovery code.
 
 The design problem this solves: BSR2's ``derive_password_key`` is genuinely
 expensive in pure Python (measured at roughly 70 seconds at its own enforced
@@ -26,6 +55,7 @@ Consequences that follow from this, and are deliberate:
 * Losing both the passphrase and the recovery code is unrecoverable. There is no
   third path by design.
 """
+
 import secrets
 import unicodedata
 from typing import Optional
@@ -452,3 +482,4 @@ class Keyring:
             "recovery_code_available": True,
             "unlocked": self.is_unlocked,
         }
+

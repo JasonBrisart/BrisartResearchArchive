@@ -1,8 +1,33 @@
 """
+File: brisartos/runtime/module_loader.py
+
+Purpose
+-------
 BrisartOS Module Loader
 Pure Python.
 No dependencies.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib, importlib.util, module_api.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from pathlib import Path
 import importlib.util
 from module_api import ModuleAPI
@@ -115,3 +140,4 @@ class ModuleLoader:
             self.api,
             self.service_registry
         )
+

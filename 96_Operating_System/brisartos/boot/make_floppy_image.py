@@ -1,4 +1,35 @@
 """
+File: brisartos/boot/make_floppy_image.py
+
+Purpose
+-------
+BrisartOS Floppy Image Builder
+Pure Python.
+No dependencies.
+Standard library only.
+
+Communication / relationships
+-----------------------------
+Direct module imports: pathlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: BOOT_SECTOR, OUTPUT, FLOPPY_SIZE, BOOT_SIZE, SIGNATURE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 BrisartOS Floppy Image Builder
 Pure Python.
 No dependencies.
@@ -7,6 +38,7 @@ Standard library only.
 This wraps the 512-byte BrisartOS boot sector into a 1.44 MB
 floppy-style image for legacy BIOS VM testing.
 """
+
 from pathlib import Path
 
 BOOT_SECTOR = Path("build/brisartos_boot.img")
@@ -49,3 +81,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

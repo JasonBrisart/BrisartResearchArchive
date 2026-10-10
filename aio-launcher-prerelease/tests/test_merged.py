@@ -1,36 +1,43 @@
 """
 File: tests/test_merged.py
 
-Purpose:
+Purpose
+-------
 Headless test suite covering the registry, stimuli and trial building,
 the TFL engine, identity and timestamps, autosave, analysis, the
 dependency audit, the file-header standard, updater configuration,
 obsolete-file removal, and the trust-anchor guard.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Imports app/headless.py, config/registries.py, frameworks/TFL/
   modules, services/trust_anchor.py, and the non-GUI updater modules.
 - Never imports Tkinter page modules, so it runs without a display.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - APPDATA is redirected to a temporary folder before any project
   import, so tests never touch real settings or output folders.
 - STANDARD_HEADER_SECTIONS lists the six required header sections in
   order.
 
-Edge cases:
+Edge cases
+----------
 - The header test parses every .py file with ast, so a syntax error in
   any file fails the suite.
 - The updater tests never make network requests.
 
-Known limitations:
+Known limitations
+-----------------
 - No GUI rendering coverage.
 - tests/ has no __init__.py, so run this file directly rather than with
   python -m unittest tests.test_merged.
 
-Examples:
+Examples
+--------
 - python tests/test_merged.py
 """
+
 from __future__ import annotations
 import importlib
 import pkgutil
@@ -484,12 +491,12 @@ class DependencyAuditTests(unittest.TestCase):
 
 
 STANDARD_HEADER_SECTIONS = (
-    "Purpose:",
-    "Communication / relationships:",
-    "Settings / parameters:",
-    "Edge cases:",
-    "Known limitations:",
-    "Examples:",
+    "Purpose",
+    "Communication / relationships",
+    "Settings / parameters",
+    "Edge cases",
+    "Known limitations",
+    "Examples",
 )
 
 
@@ -522,7 +529,13 @@ class HeaderStandardTests(unittest.TestCase):
                 positions = []
                 for section in STANDARD_HEADER_SECTIONS:
                     self.assertIn(section, lines, f"missing section {section}")
-                    positions.append(lines.index(section))
+                    position = lines.index(section)
+                    positions.append(position)
+                    self.assertGreater(position, 0, "section must follow the file line")
+                    self.assertEqual(lines[position - 1], "", "missing blank line before section")
+                    self.assertLess(position + 2, len(lines), "section has no body")
+                    self.assertEqual(lines[position + 1], "-" * len(section), "incorrect section underline")
+                    self.assertTrue(lines[position + 2], "section body must not be empty")
                 self.assertEqual(positions, sorted(positions), "sections out of order")
 
 
@@ -618,3 +631,4 @@ class ObsoleteFileRemovalTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

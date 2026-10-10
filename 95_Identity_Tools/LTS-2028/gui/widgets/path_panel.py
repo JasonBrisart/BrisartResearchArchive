@@ -1,4 +1,33 @@
-"""The shared multi-select file/folder/drive picker panel.
+"""
+File: gui/widgets/path_panel.py
+
+Purpose
+-------
+The shared multi-select file/folder/drive picker panel.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, tkinter.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+The shared multi-select file/folder/drive picker panel.
 
 Used by both the Vault "Files / Folders / Drives" sub-tab and the Biometrics
 "File Attachments" sub-tab, so the same behavior (add files via a real
@@ -82,3 +111,4 @@ class PathSelectionPanel(ttk.Frame):
     def _clear_all(self):
         self.paths = []
         self._refresh_listbox()
+

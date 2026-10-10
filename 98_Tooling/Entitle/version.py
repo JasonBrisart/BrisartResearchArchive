@@ -1,4 +1,32 @@
 """
+File: version.py
+
+Purpose
+-------
+Single source of truth for the Entitle version.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Single source of truth for the Entitle version.
 
 This lives in a standalone root module (rather than inside ``entitle/__init__.py``)
@@ -14,3 +42,4 @@ importing the whole package.
 """
 
 __version__ = "0.4.1"
+

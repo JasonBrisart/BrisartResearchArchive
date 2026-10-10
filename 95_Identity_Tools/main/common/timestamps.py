@@ -1,4 +1,33 @@
-"""UTC timestamp helpers, the single canonical copy.
+"""
+File: common/timestamps.py
+
+Purpose
+-------
+UTC timestamp helpers, the single canonical copy.
+
+Communication / relationships
+-----------------------------
+Direct module imports: datetime.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+UTC timestamp helpers, the single canonical copy.
 
 Three formats were previously redefined across three files; all three are kept
 here because they serve different needs:
@@ -16,6 +45,7 @@ All timezone-aware UTC. The old naive-local helper is intentionally dropped.
 so both names are kept -- ``utc_now`` for any external dependant, ``utc_now_iso``
 because it is what every actual call site here uses.
 """
+
 import datetime as _dt
 
 
@@ -35,3 +65,4 @@ def filename_timestamp() -> str:
 def microsecond_timestamp() -> str:
     """Filename-safe UTC stamp with microseconds, e.g. 20260823_142530_004821Z."""
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d_%H%M%S_%fZ")
+

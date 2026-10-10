@@ -1,4 +1,33 @@
-"""The identity record data model.
+"""
+File: biometrics/identity/identity_record.py
+
+Purpose
+-------
+The identity record data model.
+
+Communication / relationships
+-----------------------------
+Direct module imports: crypto.envelope.
+
+Settings / parameters
+---------------------
+Module-level named settings: SUPPORTED_MODALITIES, RECORD_FORMAT, MAX_ATTACHMENT_FILENAME_LENGTH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+The identity record data model.
 
 An identity record is the persisted unit for one enrolled person: an id, a
 human-readable label, a device binding, zero or more sealed biometric
@@ -16,6 +45,7 @@ Kept intentionally separate from identity_store.py: this module has no file
 I/O and no knowledge of where records live on disk, so it can be unit
 tested with plain dicts.
 """
+
 from crypto.envelope import is_envelope
 
 SUPPORTED_MODALITIES = ("voice", "fingerprint", "video")
@@ -202,3 +232,4 @@ def public_summary(record: dict) -> dict:
             for filename, entry in sorted(attachments.items())
         ],
     }
+

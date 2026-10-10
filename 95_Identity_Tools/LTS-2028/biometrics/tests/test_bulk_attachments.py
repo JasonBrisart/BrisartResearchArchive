@@ -1,4 +1,34 @@
-"""Tests for biometrics.engine.bulk_attachments: chunked, multi-path
+"""
+File: biometrics/tests/test_bulk_attachments.py
+
+Purpose
+-------
+Tests for biometrics.engine.bulk_attachments: chunked, multi-path
+file/folder/drive attachments on an identity record.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.identity.identity_record, biometrics.engine, biometrics.engine.bulk_attachments.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for biometrics.engine.bulk_attachments: chunked, multi-path
 file/folder/drive attachments on an identity record.
 
 Like biometrics/tests/test_attachments.py, these use an injected 32-byte master
@@ -6,6 +36,7 @@ key (secrets.token_bytes) rather than a real Keyring unlock, so they exercise
 the full chunk/bundle/manifest logic and real BSR2 sealing of each chunk WITHOUT
 paying the slow KDF cost. A small chunk size forces the multi-chunk path.
 """
+
 import secrets
 import tempfile
 import unittest
@@ -107,3 +138,4 @@ class BulkAttachmentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

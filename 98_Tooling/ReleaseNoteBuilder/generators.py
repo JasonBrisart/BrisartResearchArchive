@@ -1,5 +1,29 @@
 """
+File: generators.py
+
+Purpose
+-------
 Markdown and manifest generators for ReleaseNoteBuilder.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, json, pathlib, constants, filesystem, classifiers.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
 
 from __future__ import annotations
@@ -199,3 +223,4 @@ def write_outputs(output_folder: Path, comparison: dict, version_label: str = "U
         "changelog": str(changelog_path),
         "manifest": str(manifest_path),
     }
+

@@ -1,7 +1,9 @@
 """
 File: packages/demo.py
-Purpose:
-    Shared demo-package logic for both the CLI (`packages.main`'s `demo`
+
+Purpose
+-------
+Shared demo-package logic for both the CLI (`packages.main`'s `demo`
     command) and the GUI (`gui.tabs.tab_packages.PackagesTab`'s "Run Demo"
     button). Runs a complete, real create -> add-recipient -> open ->
     validate-custody cycle using freshly generated keys, and optionally
@@ -14,8 +16,9 @@ Purpose:
     packages/main.py and once in gui/tabs/tab_packages.py) so the CLI and
     the GUI can never drift apart from each other.
 
-Communication relationships:
-    Called by:
+Communication / relationships
+-----------------------------
+Called by:
         - packages.main.command_demo (CLI), via the existing `demo`
           subcommand's new `--save` / `--output-dir` flags.
         - gui.tabs.tab_packages.PackagesTab._run_demo and
@@ -78,7 +81,24 @@ Edge-case behavior:
     - output_root is created (including parents) if it does not already
       exist; a caller supplying a path on a read-only filesystem will see
       whatever OSError mkdir() itself raises, uncaught.
+
+Settings / parameters
+---------------------
+Module-level named settings: DEMO_FOLDER_PREFIX, DEFAULT_DEMO_ROOT, _README_TEMPLATE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 import hashlib
 import secrets
 from pathlib import Path
@@ -222,3 +242,4 @@ def run_demo(save_to_disk: bool = False, output_root=None) -> dict:
         transcript.append(f"demo artifacts saved to: {folder}")
 
     return {"transcript": transcript, "package_id": package_id, "folder": folder}
+

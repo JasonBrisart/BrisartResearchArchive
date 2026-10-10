@@ -1,4 +1,33 @@
-"""Versioned authenticated-envelope operations for experimental BSR2.
+"""
+File: brisart_security_envelope.py
+
+Purpose
+-------
+Versioned authenticated-envelope operations for experimental BSR2.
+
+Communication / relationships
+-----------------------------
+Direct module imports: brisart_security_entropy, brisart_security_primitives.
+
+Settings / parameters
+---------------------
+Module-level named settings: ALGORITHM, VERSION, SALT_BYTES, NONCE_BYTES, TAG_BYTES, MAX_CONTEXT_BYTES, MAX_PLAINTEXT_BYTES, _EXPECTED_FIELDS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Versioned authenticated-envelope operations for experimental BSR2.
 
 Each encryption combines the caller-supplied deterministic generator with
 fresh operating-system entropy. This prevents recreation of the caller's DRBG
@@ -292,3 +321,4 @@ def decrypt(master_key: bytes, envelope: dict, context: str) -> bytes:
         ciphertext,
         stream_bytes(encryption_key, nonce, len(ciphertext)),
     )
+

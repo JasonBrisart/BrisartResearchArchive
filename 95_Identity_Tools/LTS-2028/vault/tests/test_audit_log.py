@@ -1,4 +1,31 @@
-"""Tests for vault.reports.audit_log."""
+"""
+File: vault/tests/test_audit_log.py
+
+Purpose
+-------
+Tests for vault.reports.audit_log.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, re, tempfile, unittest, pathlib, vault.reports, vault.reports.audit_log.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import json
 import re
 import tempfile
@@ -79,3 +106,4 @@ class VaultAuditLogTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,11 +1,39 @@
-"""Error types for the BSR2 integration layer.
+"""
+File: crypto/errors.py
+
+Purpose
+-------
+Error types for the BSR2 integration layer.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Error types for the BSR2 integration layer.
 
 Authentication failure is kept distinct from malformed input. Callers need to
 treat "this is not shaped like a keyring" as a data bug and "the tag did not
 verify" as a security event, and one shared exception type forces them to
 string-match messages to tell those apart.
 """
-
 
 class Bsr2IntegrationError(Exception):
     """Base class for BSR2 integration failures."""
@@ -39,3 +67,4 @@ class EnvelopeAuthenticationError(Bsr2IntegrationError):
 
     The original exception is kept as ``__cause__`` for debugging.
     """
+

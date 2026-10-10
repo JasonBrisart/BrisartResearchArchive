@@ -1,4 +1,33 @@
-"""Minimal 8-bit grayscale PNG encoder and decoder.
+"""
+File: biometrics/codecs/png.py
+
+Purpose
+-------
+Minimal 8-bit grayscale PNG encoder and decoder.
+
+Communication / relationships
+-----------------------------
+Direct module imports: struct, zlib.
+
+Settings / parameters
+---------------------
+Module-level named settings: PNG_SIGNATURE, COLOR_TYPE_GRAYSCALE, BIT_DEPTH, FILTER_NONE, MAX_DIMENSION. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Minimal 8-bit grayscale PNG encoder and decoder.
 
 Only what is actually needed is implemented: an unpaletted, uninterlaced,
 8-bit grayscale image, one IDAT chunk, no ancillary chunks. That is a small
@@ -12,6 +41,7 @@ Compression is ``zlib`` and checksums are ``binascii.crc32`` /
 with the project's zero-third-party-dependency rule: nothing here is
 installed from PyPI, only what ships with the interpreter itself.
 """
+
 import struct
 import zlib
 
@@ -223,3 +253,4 @@ def write_png(path, width: int, height: int, pixels: bytes) -> None:
     encoded = encode(width, height, pixels)
     with open(path, "wb") as handle:
         handle.write(encoded)
+

@@ -1,4 +1,32 @@
 """
+File: entitle/report.py
+
+Purpose
+-------
+Entitle Report
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, json, pathlib, .record_types, .records.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 Entitle Report
 
 Audit and reporting for the Entitle record store.
@@ -10,6 +38,7 @@ been edited, truncated, or reordered.
 Example:
     python main.py report --store records/entitle_records.log
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -124,3 +153,4 @@ def main(argv=None):
     else:
         print(rendered)
     return 0
+

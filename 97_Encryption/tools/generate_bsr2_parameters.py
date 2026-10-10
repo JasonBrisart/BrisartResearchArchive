@@ -1,4 +1,33 @@
-"""Deterministically generate BSR2 fixed parameters without crypto libraries.
+"""
+File: tools/generate_bsr2_parameters.py
+
+Purpose
+-------
+Deterministically generate BSR2 fixed parameters without crypto libraries.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__, argparse, json.
+
+Settings / parameters
+---------------------
+Module-level named settings: MASK64, PARAMETER_SEED, STATE_WORDS, WARMUP_STEPS, ROUND_CONSTANT_COUNT, ROTATION_COUNT, PERMUTATION_SIZE. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Deterministically generate BSR2 fixed parameters without crypto libraries.
 
 The generator uses only Python integer and byte operations. Its public seed,
 state transition, warm-up count, output schedule, and selection rules are
@@ -170,3 +199,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

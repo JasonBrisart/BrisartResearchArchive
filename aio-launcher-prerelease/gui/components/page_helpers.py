@@ -1,11 +1,13 @@
 """
 File: gui/components/page_helpers.py
 
-Purpose:
+Purpose
+-------
 Provide the UIController mixin (page_shell and add_card) that every
 page renders through, plus the scrolling and text-wrapping helpers.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Mixed into gui/main_window.BrisartSuiteApp.
 - Every module in gui/pages/ calls app.page_shell() and app.add_card().
 - gui/main_window.py uses mousewheel_units() and
@@ -14,7 +16,8 @@ Communication / relationships:
   bind_text_widget_scroll_passthrough().
 - Uses Card from gui/widgets/card.py.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - MIN_DYNAMIC_WRAPLENGTH (220): lowest wraplength applied while a
   container briefly reports a near-zero width during layout.
 - page_shell() places the scrollable canvas on self._page_canvas so the
@@ -22,7 +25,8 @@ Settings / parameters:
 - add_card(root, row, title, body, actions): actions is a list of
   (label, command, is_primary) tuples.
 
-Edge cases:
+Edge cases
+----------
 - mousewheel_units() guarantees at least one unit for any nonzero
   delta, since trackpads send deltas below 120.
 - The Text passthrough forwards the wheel to the page only when the Text
@@ -32,7 +36,8 @@ Edge cases:
   correctly immediately.
 - Every bind uses add="+" and is guarded against TclError.
 
-Known limitations:
+Known limitations
+-----------------
 - Touchpad two-finger scrolling over the general page area still does
   not work; see docs/KNOWN_ISSUES.md.
 - Fix history, in chronological order:
@@ -49,10 +54,12 @@ Known limitations:
   Fix 7: Text widgets swallowed the wheel even when their content fit;
   fixed by bind_text_widget_scroll_passthrough().
 
-Examples:
+Examples
+--------
 - root = app.page_shell("Results", "Run analysis tools.")
 - app.add_card(root, 2, "Title", "Body", [("Run", app.analyze_tfl, True)])
 """
+
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
@@ -268,3 +275,4 @@ __all__ = [
     "UIController", "COLORS", "bind_dynamic_wraplength", "bind_scrolling_recursively",
     "widget_is_or_contains_text", "mousewheel_units", "bind_text_widget_scroll_passthrough",
 ]
+

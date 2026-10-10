@@ -6,7 +6,7 @@ Purpose
 The single answer-routing entry point.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/ui/service.py: BrisartService.ask() is the only caller.
 - Calls brisart_ai.io.input_cleaner.normalize_shellish_input(),
   brisart_ai.knowledge.ranker.search(),
@@ -14,7 +14,7 @@ Communication / relationships
   brisart_ai.web.crawler.web_search_and_ingest().
 
 Settings / parameters
-----------------------
+---------------------
 - allowed_source_types: always "web"; "file"/"note" per-toggle.
 - force_web: explicit "Research Web" vs. fallback-only.
 
@@ -22,7 +22,16 @@ Edge cases
 ----------
 - A web search is triggered exactly once per question.
 - Both question and answer are always recorded to session memory.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -90,3 +99,4 @@ def build_conversation_answer(
 
 
 __all__ = ["build_conversation_answer"]
+

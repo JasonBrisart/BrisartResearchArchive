@@ -1,4 +1,32 @@
 """
+File: constants.py
+
+Purpose
+-------
+ReleaseNoteBuilder constants.
+
+Communication / relationships
+-----------------------------
+No direct module-level imports are declared.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_NAME, REPOSITORY_URL, APPLICATION_TAGLINE, OUTPUT_RELEASE_NOTES, OUTPUT_CHANGELOG, OUTPUT_MANIFEST, EXCLUDED_DIRS, EXCLUDED_FILES, EXCLUDED_SUFFIXES, TEXT_SUFFIXES. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 ReleaseNoteBuilder constants.
 
 Part of BrisartDevTools.

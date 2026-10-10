@@ -1,12 +1,14 @@
 """
 File: frameworks/TFL/screen.py
 
-Purpose:
+Purpose
+-------
 Render TFL trials. This is a pure presentation layer: it shows whatever
 the engine reports and forwards input to engine.submit_*(). It owns no
 trial state.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Called through TFLGuiSession.render() in frameworks/TFL/session_gui.py.
 - Reads session.engine.
 - Uses feedback.make_perturbation_instruction().
@@ -15,12 +17,14 @@ Communication / relationships:
   which opens the Results page and runs analysis.
 - Uses Card from gui/widgets/card.py, with a fallback.
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - WINDOW_PADDING 22, CONTENT_WRAP_LENGTH 860, HEADER_WRAP_LENGTH 900.
 - PREDICTION_CHOICES ("A", "B"); PROBE_CHOICES ("A", "B", "U").
 - The countdown label refreshes every 250 ms.
 
-Edge cases:
+Edge cases
+----------
 - validate_session() raises AttributeError before anything is drawn if
   the session adapter lacks required attributes or methods.
 - The countdown loop stops as soon as its label is destroyed, so it
@@ -30,14 +34,17 @@ Edge cases:
 - If the final save fails, the autosave checkpoint is left in place and
   the failure is shown.
 
-Known limitations:
+Known limitations
+-----------------
 - The screen is fully rebuilt on every stage change.
 - Fixed wraplengths do not reflow on resize.
 - The final save runs inside the completion render.
 
-Examples:
+Examples
+--------
 - render_trial(session)
 """
+
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
@@ -271,3 +278,4 @@ def render_trial(session: Any) -> None:
         render_timed_choice_stage(session, content, "Final behavioral choice", engine.submit_behavioral_choice)
     build_action_bar(session, root)
 __all__ = ["render_trial"]
+

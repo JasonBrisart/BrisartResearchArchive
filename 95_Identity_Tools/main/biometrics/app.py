@@ -1,4 +1,36 @@
-"""Biometrics command-line interface: enroll, verify, inspect, and manage
+"""
+File: biometrics/app.py
+
+Purpose
+-------
+Biometrics command-line interface: enroll, verify, inspect, and manage
+identities, plus attach/extract arbitrary files -- including whole
+folders and drives, chunked past BSR2's single-envelope size limit -- on
+an identity, independent of the voice/fingerprint/video modality system.
+
+Communication / relationships
+-----------------------------
+Direct module imports: argparse, getpass, json, sys, pathlib, biometrics.config, biometrics.engine, biometrics.engine, biometrics.engine, biometrics.identity, biometrics.identity.identity_record, biometrics.identity.identity_store, biometrics.reports, biometrics.samples, common.atomic_io, crypto.keyring.
+
+Settings / parameters
+---------------------
+Module-level named settings: KEYRING_FILE_NAME. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Biometrics command-line interface: enroll, verify, inspect, and manage
 identities, plus attach/extract arbitrary files -- including whole
 folders and drives, chunked past BSR2's single-envelope size limit -- on
 an identity, independent of the voice/fingerprint/video modality system.
@@ -32,6 +64,7 @@ Invoked either directly (``python biometrics/app.py ...``) or through the
 unified dispatcher (``python cli.py biometrics ...``, which sets ``sys.argv``
 and calls :func:`main`).
 """
+
 import argparse
 import getpass
 import json
@@ -534,3 +567,4 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

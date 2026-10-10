@@ -1,3 +1,31 @@
+"""
+File: gui/main_gui.py
+
+Purpose
+-------
+Defines run_gui for 98_Tooling/ProjectContextHelper/gui.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, tkinter, core.constants, gui.builders, gui.build_tab, gui.options_tab, gui.extras_tab, gui.about_tab.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -48,3 +76,4 @@ def run_gui() -> None:
 
 if __name__ == "__main__":
     run_gui()
+

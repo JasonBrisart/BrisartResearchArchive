@@ -1,4 +1,33 @@
-"""Tamper-evident chain of custody, embedded inside the package itself.
+"""
+File: packages/custody.py
+
+Purpose
+-------
+Tamper-evident chain of custody, embedded inside the package itself.
+
+Communication / relationships
+-----------------------------
+Direct module imports: json, common.hashing, common.timestamps.
+
+Settings / parameters
+---------------------
+Module-level named settings: GENESIS_PREVIOUS_HASH, _VALID_ACTIONS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Tamper-evident chain of custody, embedded inside the package itself.
 
 Unlike ``audit.py`` (an external, append-only log of package events written
 to the filesystem), the custody chain travels *inside* the package's own
@@ -14,6 +43,7 @@ package's history was edited after the fact, but the chain itself does not
 decide who is allowed to open the package. That decision is
 ``verification.py`` and ``ciphers.py``'s job.
 """
+
 import json
 
 from common.hashing import sha256_bytes
@@ -156,3 +186,4 @@ def summarize(chain: list) -> list:
         }
         for entry in chain
     ]
+

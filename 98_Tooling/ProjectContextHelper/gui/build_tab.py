@@ -1,3 +1,31 @@
+"""
+File: gui/build_tab.py
+
+Purpose
+-------
+Defines create_build_tab for 98_Tooling/ProjectContextHelper/gui.
+
+Communication / relationships
+-----------------------------
+Direct module imports: tkinter, tkinter, core.constants, gui.builders, gui.dialogs.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+"""
+
 import tkinter as tk
 from tkinter import filedialog, ttk
 
@@ -90,3 +118,4 @@ def create_build_tab(
             return
         open_folder(state.last_export_dir)
     tk.Button(parent, text="Open Last Export Folder", command=open_last_export).pack(pady=(0, 8))
+

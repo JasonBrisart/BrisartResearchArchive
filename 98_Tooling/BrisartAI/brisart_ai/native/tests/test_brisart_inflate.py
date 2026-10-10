@@ -1,4 +1,31 @@
-"""Tests for brisart_ai/native/brisart_inflate.py -- BrisartInflate vs. real zlib."""
+"""
+File: brisart_ai/native/tests/test_brisart_inflate.py
+
+Purpose
+-------
+Tests for brisart_ai/native/brisart_inflate.py -- BrisartInflate vs. real zlib.
+
+Communication / relationships
+-----------------------------
+Direct module imports: zlib, unittest, brisart_ai.native.brisart_inflate.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import zlib
 import unittest
 from brisart_ai.native.brisart_inflate import brisart_adler32, brisart_inflate, brisart_zlib_decompress
@@ -67,3 +94,4 @@ class TestBrisartInflate(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

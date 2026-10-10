@@ -1,4 +1,33 @@
-"""Tests for crypto.factors.
+"""
+File: crypto/tests/test_factors.py
+
+Purpose
+-------
+Tests for crypto.factors.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, unittest, crypto.errors, crypto.
+
+Settings / parameters
+---------------------
+Module-level named settings: _HEX32. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for crypto.factors.
 
 Two factor families are tested:
 
@@ -12,6 +41,7 @@ Two factor families are tested:
   Exactly ONE real KDF round trip is included, in its own class, and is slow by
   design (consistent with the vault/package suites' real-KDF tests).
 """
+
 import secrets
 import unittest
 
@@ -113,3 +143,4 @@ class FactorHashKdfRoundTripTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

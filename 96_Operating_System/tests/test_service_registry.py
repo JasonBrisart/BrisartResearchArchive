@@ -1,5 +1,5 @@
 """
-tests/test_service_registry.py
+File: tests/test_service_registry.py
 
 Purpose
 -------
@@ -11,8 +11,8 @@ lookup-by-name, "not found" handling, and the `describe()`/`status_all()`
 metadata contract that `BrisartRuntime.print_services()` and
 `describe_service()` render directly to the shell.
 
-Communication relationships
-----------------------------
+Communication / relationships
+-----------------------------
 - `register_builtin_services()` wires up exactly the four services shipped
   today (`ArchiveService`, `FilesystemService`, `SettingsService`,
   `UpdateService`) under the fixed names `"archive"`, `"filesystem"`,
@@ -25,7 +25,7 @@ Communication relationships
   layer involved.
 
 Settings / parameters
-----------------------
+---------------------
 - `ServiceRegistry(module_data_root=None)`: `module_data_root` is only
   forwarded to `FilesystemService` inside `register_builtin_services()`;
   registering services manually via `register()` does not require it.
@@ -40,7 +40,6 @@ Settings / parameters
   name silently replaces the previous `ServiceRecord`.
 
 Edge-case behavior
--------------------
 - `get()`, `describe()`, and `get_service_object()` must all return `None`
   for an unregistered name rather than raising `KeyError`, since
   `BrisartRuntime.describe_service()` relies on a `None` return to print
@@ -51,7 +50,24 @@ Edge-case behavior
 - A `ServiceRecord` wrapping an object with no `status()` method must fall
   back to the literal string `"Status unavailable"` rather than raising
   `AttributeError`.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+tests/test_service_registry.py
 """
+
 import unittest
 
 from _support import IsolatedCwd, add_brisartos_services_to_syspath
@@ -177,3 +193,4 @@ class ServiceRegistryBuiltinServicesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

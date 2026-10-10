@@ -1,13 +1,15 @@
 """
 File: controllers/log_controller.py
 
-Purpose:
+Purpose
+-------
 Provide app.log(text), the single logging entry point for the whole
 application. Every call updates the status text, writes a timestamped
 line into any live Activity Log widget, and persists the same line to
 disk.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - Mixed into gui/main_window.BrisartSuiteApp.
 - Called by controllers/system_controller.py,
   services/framework_service.py, frameworks/TFL/session_gui.py, and
@@ -17,28 +19,33 @@ Communication / relationships:
 - Writes into log_box (gui/pages/settings_page.py) and home_log_box
   (reserved for a future Dashboard log).
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - MAX_LOG_LINES (3000): caps the on-screen widget, independent of the
   100-entry cap on the persisted file.
 - New lines are inserted at "1.0", so the newest entry is always at the
   top; trimming removes the oldest lines from the bottom.
 
-Edge cases:
+Edge cases
+----------
 - Widget references are checked for liveness before every write, since
   pages are destroyed and rebuilt on navigation. Dead references are
   deleted, never written to.
 - TclError during a write is swallowed.
 - Lines are persisted to disk even when no widget currently exists.
 
-Known limitations:
+Known limitations
+-----------------
 - No current page creates home_log_box.
 - The on-screen log resets on every page rebuild; the Settings page
   repopulates it from the persisted history.
 
-Examples:
+Examples
+--------
 - app.log("TFL session started: 20260926-101500-a1b2c3d4")
 - append_log_line(text_widget, "Manual note")
 """
+
 from __future__ import annotations
 import tkinter as tk
 from config.activity_log import append_activity_log_entry

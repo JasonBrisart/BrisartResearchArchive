@@ -1,3 +1,31 @@
+"""
+File: tests/test_core.py
+
+Purpose
+-------
+Regression checks in 98_Tooling/Entitle/tests/test_core.py.
+
+Communication / relationships
+-----------------------------
+Direct module imports: datetime, pytest, entitle.core.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+"""
+
 import datetime
 
 import pytest
@@ -165,3 +193,4 @@ class TestEntitlementResult:
         assert as_dict["issuer_id"] == "issuer"
         assert as_dict["rights"] == {"can_run": True}
         assert as_dict["allowed"] is True
+

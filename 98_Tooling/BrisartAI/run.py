@@ -8,7 +8,7 @@ renamed to run.py so starting the application is simply `python run.py`
 (or `py run.py` on Windows, matching start.bat).
 
 Communication / relationships
-------------------------------
+-----------------------------
 - Imports DEFAULT_DB from brisart_ai.knowledge.index -- the path to
   BrisartAI's SQLite index file, anchored to the project root
   regardless of the working directory this script was launched from.
@@ -18,7 +18,7 @@ Communication / relationships
   failure -- lives inside ui/app.py's run(), not here.
 
 Settings / parameters
-----------------------
+---------------------
 - No parameters or constants of its own. run() accepts an optional
   db_path argument (defaulting to DEFAULT_DB), which this file passes
   through explicitly for clarity rather than relying on the default.
@@ -34,7 +34,16 @@ Edge cases
 - The `if __name__ == "__main__":` guard means importing this module
   from elsewhere (which nothing in the codebase currently does) would
   not launch the GUI as a side effect.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 from brisart_ai.knowledge.index import DEFAULT_DB
@@ -42,3 +51,4 @@ from brisart_ai.ui.app import run
 
 if __name__ == "__main__":
     run(DEFAULT_DB)
+

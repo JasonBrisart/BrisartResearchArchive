@@ -1,4 +1,34 @@
-"""Video feature extraction: a BRVID frame sequence reduced to a fixed-length
+"""
+File: biometrics/features/video_features.py
+
+Purpose
+-------
+Video feature extraction: a BRVID frame sequence reduced to a fixed-length
+vector.
+
+Communication / relationships
+-----------------------------
+Direct module imports: biometrics.codecs, biometrics.features.similarity.
+
+Settings / parameters
+---------------------
+Module-level named settings: GRID_SIZE, MAX_FRAMES_SAMPLED, FEATURE_VECTOR_LENGTH. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
+Video feature extraction: a BRVID frame sequence reduced to a fixed-length
 vector.
 
 The approach is to treat video as "images plus motion": each frame
@@ -8,6 +38,7 @@ frame differences contribute a motion-energy summary. The two are
 concatenated and averaged across the sequence, producing one fixed-length
 vector independent of how many frames the source video contained.
 """
+
 from biometrics.codecs import image_tools, video
 from biometrics.features.similarity import distance_similarity
 
@@ -94,3 +125,4 @@ def compare(vector_a: list, vector_b: list) -> float:
     if len(vector_a) != len(vector_b):
         raise VideoFeatureError("feature vectors must be the same length.")
     return distance_similarity(vector_a, vector_b)
+

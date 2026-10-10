@@ -1,11 +1,13 @@
 """
 File: config/runtime.py
 
-Purpose:
+Purpose
+-------
 Load, normalize, validate, and atomically persist application settings,
 and resolve output directories. Pure standard library.
 
-Communication / relationships:
+Communication / relationships
+-----------------------------
 - gui/main_window.py calls load_settings() at startup.
 - controllers/system_controller.py uses normalize_settings(),
   save_settings(), and get_output_folder().
@@ -13,7 +15,8 @@ Communication / relationships:
 - frameworks/TFL/framework.py and frameworks/TFL/analysis.py call
   get_framework_output_dir().
 
-Settings / parameters:
+Settings / parameters
+---------------------
 - APP_DIR: %APPDATA%/Brisart Research Archive, falling back to the home
   directory when APPDATA is not set.
 - SETTINGS_FILE: user_settings.json, with .tmp and .bak companions.
@@ -26,7 +29,8 @@ Settings / parameters:
 - MAX_WINDOW_WIDTH/MAX_WINDOW_HEIGHT: 7680x4320.
 - ALLOWED_THEMES: {"dark"}.
 
-Edge cases:
+Edge cases
+----------
 - An unreadable or invalid settings file is moved aside to
   user_settings.invalid.json (or .invalid.N.json) and defaults are used.
 - A stale .tmp file is promoted when the main file is missing and the
@@ -39,16 +43,19 @@ Edge cases:
 - Framework IDs are reduced to letters, digits, "-" and "_", then
   uppercased.
 
-Known limitations:
+Known limitations
+-----------------
 - Only the dark theme exists.
 - Output-path validation applies Windows filename rules on every OS.
 - Window size is saved, but gui/main_window.py always opens at 800x600.
 
-Examples:
+Examples
+--------
 - settings = load_settings()
 - save_settings(settings)
 - output_dir = get_framework_output_dir("TFL")
 """
+
 from __future__ import annotations
 import json
 import os
@@ -385,3 +392,4 @@ __all__ = [
     "cleanup_stale_temp_settings", "migrate_legacy_settings", "backup_invalid_settings_file",
     "load_settings", "save_settings", "reset_settings",
 ]
+

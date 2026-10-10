@@ -1,4 +1,32 @@
 """
+File: constants.py
+
+Purpose
+-------
+AutoExeBuilder constants.
+
+Communication / relationships
+-----------------------------
+Direct module imports: __future__.
+
+Settings / parameters
+---------------------
+Module-level named settings: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_NAME, REPOSITORY_URL, APPLICATION_TAGLINE, OUTPUT_FOLDER_NAME, BUILD_MANIFEST_FILENAME, BUILD_COMMAND_FILENAME, BUILD_NOTES_FILENAME, DEFAULT_EXCLUDED_DIRS, DEFAULT_EXCLUDED_SUFFIXES, ENTRYPOINT_PRIORITY_NAMES, PYINSTALLER_MODULE_NAME, PYTHON_STDLIB_HINTS. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
+
+Additional module documentation
+-------------------------------
 AutoExeBuilder constants.
 
 Part of BrisartDevTools.

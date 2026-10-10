@@ -1,4 +1,35 @@
-"""Tests for BulkFileService: chunked encryption of content past BSR2's
+"""
+File: vault/tests/test_bulk_file_service.py
+
+Purpose
+-------
+Tests for BulkFileService: chunked encryption of content past BSR2's
+single-envelope ~16 MiB limit, and multi-path (files + folders + drive
+roots) bundling into one encrypted archive.
+
+Communication / relationships
+-----------------------------
+Direct module imports: secrets, tempfile, unittest, pathlib, vault.store.vault_file, vault.store.vault_service, vault.store.bulk_file_service.
+
+Settings / parameters
+---------------------
+No uppercase module-level settings are declared; parameters remain defined in the code below.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for BulkFileService: chunked encryption of content past BSR2's
 single-envelope ~16 MiB limit, and multi-path (files + folders + drive
 roots) bundling into one encrypted archive.
 
@@ -8,6 +39,7 @@ chunking/reassembly/zip-bundling logic under test here is independent of
 HOW the master key was obtained, so this is a faithful test of the actual
 logic without the unrelated KDF cost.
 """
+
 import secrets
 import tempfile
 import unittest
@@ -140,3 +172,4 @@ class BulkFileServiceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

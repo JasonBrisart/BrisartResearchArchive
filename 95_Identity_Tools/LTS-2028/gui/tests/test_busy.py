@@ -1,4 +1,35 @@
-"""Tests for gui.core.busy: the shared BusyDialog + run_in_background
+"""
+File: gui/tests/test_busy.py
+
+Purpose
+-------
+Tests for gui.core.busy: the shared BusyDialog + run_in_background
+background-thread/queue contract every slow (BSR2 KDF-touching) GUI action
+goes through.
+
+Communication / relationships
+-----------------------------
+Direct module imports: time, unittest.
+
+Settings / parameters
+---------------------
+Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+
+Edge cases
+----------
+Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Run this test file with the project-scoped test runner.
+
+Additional module documentation
+-------------------------------
+Tests for gui.core.busy: the shared BusyDialog + run_in_background
 background-thread/queue contract every slow (BSR2 KDF-touching) GUI action
 goes through.
 
@@ -10,6 +41,7 @@ these run for real. On a headless CI runner with no display, the whole class
 skips cleanly rather than failing the suite -- consistent with how GUI tests
 are conventionally handled when a project's CI doesn't provision a display.
 """
+
 import time
 import unittest
 
@@ -162,3 +194,4 @@ class BusyDialogTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

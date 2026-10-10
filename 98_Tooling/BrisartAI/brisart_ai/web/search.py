@@ -9,7 +9,7 @@ Search -> DuckDuckGo HTML -> DuckDuckGo Lite -> Bing HTML -> Mojeek ->
 Wikipedia API.
 
 Communication / relationships
-------------------------------
+-----------------------------
 - brisart_ai/web/crawler.py: web_search_and_ingest() is the sole caller
   of search_public_web().
 - Imports brisart_ai.blocklist.{FUNCTION_WORDS, is_blocked_web_host},
@@ -25,7 +25,7 @@ Communication / relationships
   (urllib.request/urllib.error) are unchanged.
 
 Settings / parameters
-----------------------
+---------------------
 - Provider URLs and _BLOCK_MARKERS / _SEARCH_HOSTS / _RESULT_LINK_CLASSES.
 - search_public_web(with_titles=False): default list[str], with_titles=True
   returns list[tuple[str, str]].
@@ -35,7 +35,16 @@ Edge cases
 - _decode_bing_target() unwraps Bing's /ck/a redirect via brisart_codec.
 - _partition_related_results() judges each result individually.
 - Every provider function is implemented directly in this file.
+
+Known limitations
+-----------------
+This header update does not establish complete behavioral, platform, or security validation.
+
+Examples
+--------
+Inspect the definitions below and the project documentation for supported usage.
 """
+
 from __future__ import annotations
 
 import re
@@ -743,3 +752,4 @@ def search_public_web(
 
 
 __all__ = ["search_public_web"]
+
