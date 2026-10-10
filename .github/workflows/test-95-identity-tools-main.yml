@@ -60,7 +60,6 @@ jobs:
         working-directory: 95_Identity_Tools/main
     env:
       PYTHONUNBUFFERED: '1'
-      REPORT_DIR: ${{ runner.temp }}/95-identity-tools-main-reports
       PROJECT_LABEL: 95 | Identity Tools | main | Python Tests
     steps:
 
@@ -74,6 +73,8 @@ jobs:
 
       - name: Prepare reports and show Python environment
         run: |
+          REPORT_DIR="$RUNNER_TEMP/95-identity-tools-main-reports"
+          printf 'REPORT_DIR=%s\n' "$REPORT_DIR" >> "$GITHUB_ENV"
           mkdir -p "$REPORT_DIR"
           python --version
 

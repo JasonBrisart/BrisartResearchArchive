@@ -60,7 +60,6 @@ jobs:
         working-directory: aio-launcher-prerelease
     env:
       PYTHONUNBUFFERED: '1'
-      REPORT_DIR: ${{ runner.temp }}/aio-launcher-prerelease-reports
       PROJECT_LABEL: Launcher | AIO Prerelease | Headless Regression Tests
     steps:
 
@@ -74,6 +73,8 @@ jobs:
 
       - name: Prepare reports and show Python environment
         run: |
+          REPORT_DIR="$RUNNER_TEMP/aio-launcher-prerelease-reports"
+          printf 'REPORT_DIR=%s\n' "$REPORT_DIR" >> "$GITHUB_ENV"
           mkdir -p "$REPORT_DIR"
           python --version
 

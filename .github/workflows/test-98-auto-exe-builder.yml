@@ -60,7 +60,6 @@ jobs:
         working-directory: 98_Tooling/AutoExeBuilder
     env:
       PYTHONUNBUFFERED: '1'
-      REPORT_DIR: ${{ runner.temp }}/98-auto-exe-builder-reports
       PROJECT_LABEL: 98 | Auto EXE Builder | Python Tests
     steps:
 
@@ -74,6 +73,8 @@ jobs:
 
       - name: Prepare reports and show Python environment
         run: |
+          REPORT_DIR="$RUNNER_TEMP/98-auto-exe-builder-reports"
+          printf 'REPORT_DIR=%s\n' "$REPORT_DIR" >> "$GITHUB_ENV"
           mkdir -p "$REPORT_DIR"
           python --version
 

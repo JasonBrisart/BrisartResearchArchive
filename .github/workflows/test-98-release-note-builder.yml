@@ -60,7 +60,6 @@ jobs:
         working-directory: 98_Tooling/ReleaseNoteBuilder
     env:
       PYTHONUNBUFFERED: '1'
-      REPORT_DIR: ${{ runner.temp }}/98-release-note-builder-reports
       PROJECT_LABEL: 98 | Release Note Builder | Python Tests
     steps:
 
@@ -74,6 +73,8 @@ jobs:
 
       - name: Prepare reports and show Python environment
         run: |
+          REPORT_DIR="$RUNNER_TEMP/98-release-note-builder-reports"
+          printf 'REPORT_DIR=%s\n' "$REPORT_DIR" >> "$GITHUB_ENV"
           mkdir -p "$REPORT_DIR"
           python --version
 
