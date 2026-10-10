@@ -1,138 +1,213 @@
 # Architecture
 
-Project Context Helper is organized as one entry point plus four
-purpose-built packages.
+Project Context Helper is a standard-library Python application within Brisart Research Archive. This document describes the supplied v3.1.4 implementation, including its current coupling and limitations. It does not describe a proposed refactor or certify runtime behavior.
 
-```
+## Project layout
+
+```text
 ProjectContextHelper/
-├── run.py                  <- the only file you ever run directly
-├── docs/                     README.md, ARCHITECTURE.md, CHANGELOG.md
-├── core/                    the scan + export engine
-│   ├── constants.py           app metadata, profiles, default rules
-│   ├── models.py                ScanSettings (+ to/from_jsonable), etc.
-│   ├── scanner.py                walks a project folder, decides what's included
-│   ├── git_state.py               pure-Python .git reader (Extras-only feature)
-│   ├── exporters.py                renders PROJECT_CONTEXT.md / manifest / summary
-│   ├── builder.py                   orchestrates one full build (create_context)
-│   └── utils.py                      hashing, redaction, timestamps, language hints
-├── services/                 stateful support services
-│   ├── storage.py               ALL settings/profile/history persistence (single file)
-│   └── updater.py                self-update check / download / install
-├── cli/                      command-line interface
-│   └── cli.py                    argparse wiring, calls core.builder directly
-└── gui/                      tkinter desktop interface
-    ├── main_gui.py               4-tab notebook shell (Build/Options/Extras/About)
-    ├── builders.py                shared GuiState + settings <-> ScanSettings glue
-    ├── scroll_frame.py             reusable scrollable-container helper
-    ├── build_tab.py                Build tab
-    ├── options_tab.py               Options tab
-    ├── extras_tab.py                 Extras tab (toggles + Custom Profiles)
-    ├── profiles_section.py            Custom Profiles Save/Load/Delete controls
-    ├── about_tab.py                    About tab (info, history, updates)
-    └── dialogs.py                       shared message-box helpers
+|-- run.py
+|-- cli/
+|   `-- cli.py
+|-- core/
+|   |-- builder.py
+|   |-- constants.py
+|   |-- exporters.py
+|   |-- git_state.py
+|   |-- models.py
+|   |-- scanner.py
+|   `-- utils.py
+|-- services/
+|   |-- storage.py
+|   `-- updater.py
+|-- gui/
+|   |-- main_gui.py
+|   |-- builders.py
+|   |-- build_tab.py
+|   |-- options_tab.py
+|   |-- extras_tab.py
+|   |-- profiles_section.py
+|   |-- about_tab.py
+|   |-- dialogs.py
+|   `-- scroll_frame.py
+|-- tests/
+|   `-- test_export_safety_utilities.py
+`-- docs/
+    |-- README.md
+    |-- ARCHITECTURE.md
+    `-- CHANGELOG.md
 ```
 
-## Storage consolidation: one file for all persisted state
+## Entry point and actual dependencies
 
-**`services/storage.py` is the single, exclusive place every kind of
-persisted application state (other than a build's own output files)
-is read and written.** Nothing else in this app performs direct file
-I/O against `app_settings.json`, `last_export_settings.json`,
-`custom_profiles.json`, or `build_history.json`.
+`run.py` inserts its own directory into `sys.path`, imports `cli.cli.main`, and invokes it under the main guard. The CLI dispatches management commands, an export, or the GUI when no project root is supplied.
 
-Prior to this consolidation, this same functionality was spread
-across four separate modules:
+Both frontends call `core.builder.create_context()`, but they are not isolated from one another:
 
-| Old module | Replaced section in storage.py | File |
-|---|---|---|
-| `services/app_settings.py` | App Preferences | `app_settings.json` |
-| `services/settings_memory.py` | Last Used Settings | `last_export_settings.json` |
-| `services/profile_manager.py` | Custom Profiles | `custom_profiles.json` |
-| `services/history.py` | Build History | `build_history.json` |
+- `cli/cli.py` imports `gui.main_gui` at module load. Consequently, source CLI operations also require tkinter to be importable.
+- `core/builder.py` imports `HistoryEntry` and `append_history_entry` from `services.storage`. The core package is therefore not entirely independent of services.
+- `services/storage.py` depends on `core.constants` and `core.models`.
+- `services/updater.py` depends on `core.constants` and reuses `services.storage.application_dir()`.
+- GUI modules depend on core and services; neither service imports the frontends.
 
-Each of those four modules independently re-implemented the same
-`application_dir()` resolution helper (frozen-executable vs.
-source-mode folder resolution). That duplication is exactly the kind
-of thing that lets small inconsistencies creep in silently over
-time — one copy gets updated or fixed, another doesn't. `storage.py`
-has exactly one `application_dir()` implementation, used by every
-section in the file.
+```text
+run.py -> cli.cli
+              |-> gui.main_gui -> GUI components
+              |-> core.builder <- gui.builders
+              |       |-> core.scanner -> core.models / core.utils
+              |       |-> core.exporters
+              |       |-> core.git_state
+              |       `-> services.storage -> core.constants / core.models
+              `-> services.updater -> services.storage / core.constants
+```
 
-**Every other module that needs any of this state imports directly
-from `services.storage`:**
-- `core/builder.py` imports `HistoryEntry`, `append_history_entry`
-- `cli/cli.py` imports the whole module as `storage` and calls
-  `storage.load_last_settings()`, `storage.save_profile()`, etc.
-- `gui/builders.py` imports `AppPreferences`, `load_preferences`,
-  `save_preferences`, `load_last_settings`, `save_last_settings`
-- `gui/profiles_section.py` imports the whole module as `storage`
-- `gui/about_tab.py` imports `HistoryEntry`, `application_dir`,
-  `clear_history`, `recent_entries`
+This is a modular application with shared orchestration, not a strictly layered dependency architecture.
 
-`services/updater.py` (a separate concern — downloading and applying
-application updates, not user settings) now also imports
-`application_dir` directly from `services.storage` rather than
-maintaining its own duplicate copy, so there is exactly one
-implementation of "where does this app's data live" in the entire
-codebase.
+## Module responsibilities
 
-## Settings persistence: three distinct mechanisms, one storage layer
+| Module | Responsibility |
+|---|---|
+| `core/constants.py` | Application metadata, filenames, exclusion defaults, built-in presets, and legacy release endpoints. |
+| `core/models.py` | Mutable `ScanSettings`, JSON conversion, and frozen file/skip/scan/build records. |
+| `core/scanner.py` | File eligibility, skip records, byte budgets, completeness enforcement, and separate tree rendering. |
+| `core/utils.py` | Root validation, timestamps, extension normalization, heuristic redaction, hashing, line counts, and language hints. |
+| `core/git_state.py` | Optional local Git metadata inspection without invoking Git. |
+| `core/exporters.py` | Markdown, manifest, summary, completeness reports, and ZIP rendering. |
+| `core/builder.py` | Export orchestration and best-effort history recording. |
+| `services/storage.py` | Preferences, last-used settings, named profiles, and history persistence. |
+| `services/updater.py` | Legacy release lookup, staging, backup, source copying, and Windows executable replacement. |
+| `cli/cli.py` | Argument parsing, settings precedence, management actions, and export dispatch. |
+| `gui/builders.py` | Shared tkinter state, validation, settings conversion, and export invocation. |
+| Other GUI modules | Window/tab construction, profile controls, dialogs, history/update controls, and scrolling. |
 
-1. **Built-in profile defaults** (`core/constants.py`) — `standard`
-   and `archive`.
-2. **Last-used settings, always-on** (`services/storage.py`, section 3)
-   — GUI-only, no toggle, no way to disable. The CLI's
-   `--remember-settings` / `--use-last-settings` flags read/write the
-   same file but remain explicit opt-in for scripting determinism.
-3. **Custom Profiles** (`services/storage.py`, section 4) — named,
-   multi-slot, always explicit Save/Load/Delete.
+## Export lifecycle
 
-`load_profile()`, `delete_profile()`, and `profile_exists()` all
-strip leading/trailing whitespace from the requested name before
-looking it up, matching `save_profile()`'s existing behavior of
-always storing a stripped name.
+`create_context()` performs these operations in order:
 
-## Why this split
+1. Resolve and validate the selected project root.
+2. Use supplied settings, or construct raw `ScanSettings()` when omitted.
+3. Inspect Git metadata when requested.
+4. Create the output directory and output paths.
+5. Scan eligible files and enforce configured completeness.
+6. Write Markdown context, JSON manifest, plaintext summary, and settings JSON sequentially.
+7. Optionally create a ZIP containing those outputs and original included source files.
+8. Construct `BuildResult`, attempt to record history, and return the result.
 
-**`core/` never imports from `services/`, `cli/`, or `gui/`.**
+History-write failures are suppressed after export creation. A completeness failure occurs before rendering, but the output directory may already exist.
 
-**`services/` depends only on `core/`, never on `cli/` or `gui/`.**
+Outputs are not written as a transaction. A failure can leave partial output. Source files are read at multiple stages, so a changing project can produce different scan hashes, rendered contents, and ZIP bytes. Timestamped directories have one-second resolution and can be reused by builds started in the same second.
 
-**`cli/` and `gui/` are two interchangeable frontends** over the same
-`core.builder.create_context()`, differing intentionally only in
-whether "last used settings" persist automatically (GUI: yes, always)
-or only on request (CLI: opt-in flags only).
+## Settings and precedence
 
-## GUI: four tabs
+### Built-in presets
 
-1. **Build** 2. **Options** 3. **Extras** 4. **About**
+`settings_for_profile()` constructs fresh settings, applies shared exclusions, and applies the selected preset. Both presets enable ZIP creation and heuristic Markdown redaction and disable Git inspection.
 
-Both Options and Extras wrap their content in a scrollable area
-(`gui/scroll_frame.py`).
+| Setting | standard | archive |
+|---|---:|---:|
+| Maximum file bytes | 350000 | 2000000 |
+| Maximum total bytes | 5000000 | 100000000 |
+| Embedded contents, hashes, line counts, skipped details | Disabled | Enabled |
+| Required eligible-source completeness | Disabled | Enabled |
+| Markdown skipped-detail limit | 100 | 1000 |
 
-## Core vs. Extras vs. Custom Profiles
+The interface default is `archive`. Raw `ScanSettings()` is not an archive preset: its extension and exclusion sets are empty. Direct callers should explicitly use `settings_for_profile()`.
 
-1. **Core output toggles** (Options tab).
-2. **Extras (optional)** (Extras tab, top section) — currently just
-   `include_git_state`.
-3. **Custom Profiles** (Extras tab, bottom section) — named,
-   multi-slot, explicit Save/Load/Delete.
+### CLI precedence
 
-## Shared settings serialization
+Settings are applied in this order, with later stages taking precedence:
 
-`core/models.py`'s `ScanSettings.to_jsonable()` /
-`ScanSettings.from_jsonable()` are the single shared conversion path
-used by every section of `services/storage.py` that persists a
-`ScanSettings` (Last Used Settings and Custom Profiles both use it).
+1. Selected built-in preset.
+2. Last-used settings, when `--use-last-settings` is supplied and loading succeeds.
+3. Named profile, when `--load-profile` is supplied and loading succeeds.
+4. Explicit CLI overrides.
 
-## Import convention
+`--extensions` replaces the extension set; repeated exclusions extend existing sets. When both Git enable/disable flags are supplied, `--no-git-state` wins. The CLI does not automatically load or save last-used settings.
 
-`run.py` inserts the project root onto `sys.path` before importing
-anything else.
+### GUI behavior
 
-## App-data file location
+The GUI loads saved preferences and last-used export settings at startup. Successful builds save last-used export settings. Unsaved edits are not automatically saved as last-used settings.
 
-`services/storage.py`'s single `application_dir()` (also reused by
-`services/updater.py`) resolves to the project root (the folder
-containing `run.py`) in source mode, or the folder containing the
-compiled `.exe` when frozen.
+Changing the built-in profile applies preset defaults. Named-profile loading sets the base profile first and reapplies exposed values afterward so those values survive the preset callback.
+
+The GUI does not expose every `ScanSettings` field. Building settings starts from a preset and overlays exposed controls; custom extension/exclusion sets, a custom Git history limit, and other hidden values can be lost. GUI sizes use decimal MB: 1000000 bytes per MB.
+
+## Persistence and design rationale
+
+`services/storage.py` centralizes four persisted state files:
+
+- `app_settings.json`: folder-opening and update preferences.
+- `last_export_settings.json`: settings from the last remembered export.
+- `custom_profiles.json`: named settings records.
+- `build_history.json`: export history, capped at 50 entries.
+
+The shared `application_dir()` resolves beside `run.py` in source mode and beside the executable in frozen mode. The updater reuses this helper.
+
+The documented reason for consolidation was to remove duplicated application-directory resolution and make persistence findable in one module. CLI settings memory remains opt-in for scripting determinism; GUI settings memory is automatic after successful builds.
+
+Writes use a sibling temporary file, flush/fsync, and `os.replace()`. This does not provide cross-process locking, transactional multi-file updates, or automatic recovery. PID-based temporary names can collide between concurrent writes in one process. Hard termination can leave temporary files, and read-modify-write operations can lose concurrent updates.
+
+Some convenience operations suppress errors. Named-profile writes and some history operations can propagate failures. Preference loading assumes a JSON object and truth-coerces values; valid JSON of the wrong shape can still fail, and a string such as `"false"` is truthy.
+
+## Completeness and preservation boundaries
+
+Completeness checks cover configured eligible source/text files, not every project file. Blocking reasons are `file_too_large`, `total_size_limit`, `size_unavailable`, and `read_unavailable`.
+
+Intentional exclusions and unsupported extensions do not fail completeness. A PASS does not establish program correctness, test success, secret removal, immutable snapshot consistency, or full repository preservation. Failed optional hash/line-count reads can leave null metadata without failing completeness.
+
+The tree is rendered separately using exclusions, not inclusion eligibility or byte budgets. It can show files absent from the index. Scanning traverses excluded descendants before rejecting files rather than pruning excluded directories at entry.
+
+## Security and output limitations
+
+- Redaction is heuristic and affects rendered text only. ZIP members retain original source bytes.
+- Hashes describe original source bytes, not redacted Markdown.
+- Root membership checks do not provide general resolved-path containment guarantees for symlinks.
+- Absolute or parent-traversing output paths are not rejected by the builder.
+- Custom output directory names are not automatically added to exclusions.
+- Fixed triple-backtick source fences can be disrupted by embedded triple-backtick text.
+
+These are current boundaries, not assurances of safe handling of arbitrary sensitive or untrusted projects.
+
+## Optional Git inspection
+
+Git inspection reads `.git` at the selected root, including a supported gitdir pointer. It does not search parent directories, invoke Git, parse packfiles, interpret `.gitignore`, compare the index, or implement full linked-worktree/SHA-256 repository support.
+
+Unavailable data produces warnings and can leave dirty status unknown. Partial subtree warnings can also coexist with a clean/dirty result. Excluded tracked files can be reported as deleted. Raw-byte comparisons do not implement Git filters or full file-mode/symlink semantics.
+
+Treat this output as supplementary context, not authoritative Git verification.
+
+## Legacy updates and offline operation
+
+Local export generation does not require network access. Release checks, downloads, and opening release pages do.
+
+The implementation still points to the legacy BrisartDevTools GitHub release endpoints. This documentation update does not migrate those endpoints or implement archive-hosted distribution.
+
+Digest verification is conditional: absent or unsupported digests are skipped. Some UI messages claim stronger verification than the implementation guarantees. Source updates back up and overwrite files, but do not remove obsolete files or automatically roll back partial failures. Not all state files are protected from replacement.
+
+Executable replacement uses a Windows batch script and requires the caller to exit. The script does not check move success before relaunch; delayed expansion can affect exclamation marks in paths. Update staging and copying are not a trusted-package validation system.
+
+## GUI execution model
+
+Builds and network/update work run synchronously on the GUI thread. `update_idletasks()` refreshes pending display work but does not provide background execution or cancellation. Global mouse-wheel bindings in `scroll_frame.py` can interfere with other components.
+
+## Validation and maintainer handoff
+
+The included unittest suite covers extension normalization, redaction examples, unredacted reads, hashing, and root validation. It does not cover the full export pipeline, persistence, Git parsing, GUI, or updater.
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Run from the directory containing `run.py`. Changelog verification narratives are historical records, not substitutes for executable regression coverage. This documentation revision does not report a new test run.
+
+Recommended maintainer checklist:
+
+1. Read the README, this dependency map, and the relevant module headers.
+2. Record the Python version and platform used for validation.
+3. Run the included tests and record the actual result.
+4. Perform the README's suggested smoke test on disposable fixture data.
+5. Review skip records, completeness scope, settings, and ZIP contents separately.
+6. Validate changed behavior with focused regression tests before claiming support.
+7. Update module headers, README, architecture, and changelog together when behavior changes.
+
+Recommended additional regression coverage: settings precedence and hidden-field handling; full export output; completeness failures; persistence corruption/concurrency; partial Git data; and updater failure/verification behavior. These are proposed validation priorities, not existing coverage.
