@@ -8,6 +8,7 @@ UTC timestamp helpers, the single canonical copy.
 Public interface:
 - utc_now() -- Current UTC time as ISO-8601 to the second (e.g.
   2026-08-23T14:25:30+00:00).
+- utc_now_iso -- Alias of utc_now (the same function object).
 - filename_timestamp() -- Filename-safe UTC stamp to the second, e.g.
   20260823_142530Z.
 - microsecond_timestamp() -- Filename-safe UTC stamp with microseconds, e.g.
@@ -58,20 +59,38 @@ unchanged.
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- Every function reads the system clock. There is no monotonic guarantee, so a
+  clock set backwards can make later stamps sort earlier.
+- utc_now() has one-second resolution, so two events in the same second get
+  identical stamps (vault.core.time_tools captures one value for that reason).
+- microsecond_timestamp() is not guaranteed unique: two calls inside one clock
+  tick return the same value. Callers that need unique names add their own
+  suffix, as packages/audit.py and vault/reports/audit_log.py do with random
+  hex.
+- The formats sort correctly only against their own kind. utc_now() output
+  ("2026-08-23T14:25:30+00:00") and the filename stamps ("20260823_142530Z")
+  are different formats and must not be compared with each other.
+- utc_now_iso is the same function object as utc_now, kept as an alias for
+  import compatibility (see docs/CHANGELOG.md 1.0.0 'Fixed'), not a separate
+  implementation.
+- UTC only. There is deliberately no local-time helper, so any display in local
+  time is the caller's job.
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
     from common.timestamps import (
-        utc_now,
         filename_timestamp,
         microsecond_timestamp,
+        utc_now,
     )
-    result = utc_now()
-    filename_timestamp()
-    microsecond_timestamp()
+
+    print(utc_now())                # 2026-08-23T14:25:30+00:00, to the second
+    print(filename_timestamp())     # 20260823_142530Z
+    print(microsecond_timestamp())  # 20260823_142530_004821Z
 """
 
 import datetime as _dt

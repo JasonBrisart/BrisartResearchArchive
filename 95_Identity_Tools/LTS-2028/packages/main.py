@@ -42,22 +42,36 @@ Covered by tests: no test file imports this module directly.
 Settings / parameters
 ---------------------
 - DEFAULT_AUDIT_DIR = Path("data") / "packages" / "audit"
-- package_file (command-line option).
-- --package-id (command-line option).
-- --identity-id (command-line option).
-- --label (command-line option).
-- --payload: JSON object string.
-- package_file (command-line option).
-- --identity-id (command-line option).
-- --label (command-line option).
-- --opener-identity-id (command-line option).
-- package_file (command-line option).
-- --identity-id (command-line option).
-- --opener-identity-id (command-line option).
-- package_file (command-line option).
-- --identity-id (command-line option).
-- package_file (command-line option).
-- package_file (command-line option).
+
+Commands (each takes the options listed under it):
+- create -- create a new package.
+  - package_file: path to the package JSON file.
+  - --package-id: required; id stored in the package and bound into its custody
+    chain.
+  - --identity-id: required; id of the first recipient, the creator.
+  - --label: required; display label for that recipient.
+  - --payload (required): JSON object string.
+- add-recipient -- add a recipient to an existing package.
+  - package_file: path to the package JSON file.
+  - --identity-id: required; id of the recipient being added.
+  - --label: required; display label for the new recipient.
+  - --opener-identity-id: required; an existing recipient who authorizes the
+    addition (you are prompted for that recipient's master key text).
+- remove-recipient -- remove a recipient from a package.
+  - package_file: path to the package JSON file.
+  - --identity-id: required; id of the recipient to remove.
+  - --opener-identity-id: required; an existing recipient who authorizes the
+    removal (you are prompted for their master key text).
+- open -- open a package's payload as a recipient.
+  - package_file: path to the package JSON file.
+  - --identity-id: required; the recipient opening the package (you are
+    prompted for that recipient's master key text).
+- list-recipients -- list a package's recipients.
+  - package_file: path to the package JSON file.
+- verify-custody -- verify and print a package's custody chain.
+  - package_file: path to the package JSON file.
+- demo -- run a full create/add/open cycle with generated keys.
+  - no options of its own.
 
 Edge cases
 ----------
@@ -94,6 +108,15 @@ Edge cases
 
 Known limitations
 -----------------
+- Master keys are typed text hashed once. _prompt_master_key() reads text with
+  getpass and turns it into a 32-byte key with a single unsalted SHA-256. The
+  source comment calls this a CLI-friendly stand-in for a real master key
+  source; it is not a password KDF, so the same text always gives the same key
+  and a guessable text gives a guessable key. The GUI Packages tab does the
+  same.
+- _save_state() writes the package file with open() and json.dump() directly,
+  not through common.atomic_io, so an interrupted write can leave a truncated
+  package file.
 - No test module imports this file directly; as an entry point it is verified
   only by running it, so check changes manually.
 

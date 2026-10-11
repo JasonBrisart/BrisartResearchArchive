@@ -41,11 +41,22 @@ Covered by tests: no test file imports this module directly.
 Settings / parameters
 ---------------------
 - REPOSITORY_ROOT = _find_repo_root(Path(__file__))
-- SLOW_TEST_CLASSES = set of 8 entries
-- _EXCLUDED_PARTS = set of 12 entries
+- SLOW_TEST_CLASSES -- TestCase classes that run BSR2's real password KDF and
+  are slow by design, filtered at class level so --fast still runs the fast
+  classes in the same module: vault.tests.test_sealed_vault.SealedVaultTests,
+  vault.tests.test_file_records.FileRecordTests,
+  vault.tests.test_batch_upsert.BatchUpsertTests,
+  vault.tests.test_label_normalization.VaultLookupNormalizationTests,
+  vault.tests.test_unlock_throttle.VaultUnlockThrottleTests,
+  crypto.tests.test_keyring.KeyringUnlockTests,
+  crypto.tests.test_factors.FactorHashKdfRoundTripTests,
+  biometrics.tests.test_keyring_access.KeyringAccessThrottleTests.
+- _EXCLUDED_PARTS -- Folder names skipped when discovering test files:
+  __pycache__, vendor, .git, build, dist, .venv, venv, node_modules, .idea,
+  .vscode, PROJECT_CONTEXT_EXPORTS, and data.
 - --fast: skip the slow real-KDF tests.
 - --slow: run ONLY the slow real-KDF tests.
-- -v/--verbose (command-line option).
+- -v/--verbose: print one line per test (unittest verbosity 2).
 
 Edge cases
 ----------

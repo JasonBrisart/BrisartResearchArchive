@@ -53,6 +53,14 @@ treatment its entropy actually calls for.
 
 Encoded forms::
 
+    bsr2$derive_password_key$iterations=<n>$<salt hex>$<digest hex>
+    bsr2$keyed_mac$<factor name>$<digest hex>
+
+hash_factor() produces the first form (the salt is 32 random bytes and the
+digest is 32 bytes, each written as hex) and bind_factor() the second. A bare
+64-character hex string is a legacy unsalted SHA-256 digest from before BSR2;
+is_legacy_digest() recognizes it.
+
 Communication / relationships
 -----------------------------
 Depends on (project modules):

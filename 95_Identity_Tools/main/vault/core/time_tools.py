@@ -43,20 +43,35 @@ unchanged.
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- is_chronologically_ordered() compares text, not time, and is correct only for
+  strings in the exact format common.timestamps.utc_now_iso produces. A "Z"
+  suffix, a non-UTC offset, or fractional seconds can give wrong answers:
+  2026-01-01T05:00:00+05:00 (which is 00:00 UTC) is reported as later than
+  2026-01-01T01:00:00+00:00, and the same instant written with "Z" and with
+  "+00:00" is ordered in one direction only.
+- Equal timestamps return True in both directions, so two events in the same
+  second cannot be told apart by order.
+- Second resolution only; see common/timestamps.py.
+- stamp_updated() does not validate existing_created_at (None is accepted and
+  returned as-is) and does not compare it with the new time, so a clock set
+  backwards can produce an updated_at earlier than created_at.
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
     from vault.core.time_tools import (
+        is_chronologically_ordered,
         stamp_new_record,
         stamp_updated,
-        is_chronologically_ordered,
     )
-    result = stamp_new_record()
-    stamp_updated(existing_created_at)
-    is_chronologically_ordered(earlier, later)
+
+    created = stamp_new_record()                 # created_at == updated_at
+    updated = stamp_updated(created["created_at"])
+    first = created["created_at"]
+    print(is_chronologically_ordered(first, updated["updated_at"]))
 """
 
 from common.timestamps import utc_now_iso

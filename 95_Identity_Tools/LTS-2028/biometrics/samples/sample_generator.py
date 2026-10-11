@@ -85,6 +85,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: seed, path stand for values the caller
+supplies.
+
 ::
 
     from biometrics.samples.sample_generator import (
@@ -92,7 +95,7 @@ Examples
         generate_voice_sample,
         write_voice_sample,
     )
-    result = generate_fingerprint_image(seed)
+    generate_fingerprint_image(seed)
     generate_voice_sample(seed)
     write_voice_sample(path, seed)
 """

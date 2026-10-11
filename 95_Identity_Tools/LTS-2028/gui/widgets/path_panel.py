@@ -41,14 +41,27 @@ unchanged.
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- Paths can only be added through the native file and folder dialogs; there is
+  no way to type, paste, or drag in a path. A drive root is chosen with the
+  same folder dialog, because tkinter has no drive picker.
+- Duplicates are detected by exact string match, so the same location written
+  two ways (different case, a trailing slash) is added twice. Paths are not
+  checked for existence or readability when added; a bad path surfaces later,
+  when the bundle is built.
+- The panel stores the strings the dialogs return, in the order they were
+  added, and does nothing else with them.
+- Requires a Tk display. The tests (gui/tests/test_path_panel.py) skip
+  themselves on a headless runner.
 
 Examples
 --------
+Call shapes only, not a runnable script: master stands for a value the caller
+supplies.
+
 ::
 
     from gui.widgets.path_panel import PathSelectionPanel
-    obj = PathSelectionPanel(master)
+    PathSelectionPanel(master)
 """
 
 import tkinter as tk

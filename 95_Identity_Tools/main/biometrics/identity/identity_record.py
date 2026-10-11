@@ -37,7 +37,7 @@ Design notes:
 
 An identity record is the persisted unit for one enrolled person: an id, a
 human-readable label, a device binding, zero or more sealed biometric templates
-keyed by modality (``"voice"``, ``"fingerprint"``, ``"video"``), and (new) zero
+keyed by modality (``"voice"``, ``"fingerprint"``, ``"video"``), and zero
 or more sealed FILE ATTACHMENTS keyed by filename -- an arbitrary raw file of
 any kind, any extension, or no extension at all, completely independent of the
 voice/fingerprint/video modality system. Template payloads AND attachment
@@ -112,6 +112,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: identity_id, label, device_binding,
+modality, envelope stand for values the caller supplies.
+
 ::
 
     from biometrics.identity.identity_record import (
@@ -119,7 +122,7 @@ Examples
         validate_record,
         set_template,
     )
-    result = new_record(identity_id, label, device_binding)
+    record = new_record(identity_id, label, device_binding)
     validate_record(record)
     set_template(record, modality, envelope)
 """

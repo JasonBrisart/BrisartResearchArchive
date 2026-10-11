@@ -9,7 +9,7 @@ transparently past BSR2's single-envelope limit).
 
 Public interface:
 - class VaultTab(ttk.Frame) -- Init/unlock/lock a vault, create/view/delete
-  JSON records, and (new) encrypt/decrypt arbitrary files, folders, or drives
+  JSON records, and encrypt/decrypt arbitrary files, folders, or drives
   -- any combination, any size, chunked transparently past BSR2's
   single-envelope limit.
 
@@ -44,14 +44,29 @@ Edge cases
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- Automated tests cover only the selection and list-refresh helpers
+  (gui/tests/test_tab_vault.py). The dialog workflows (init, unlock, new
+  record, view, encrypt, decrypt) are not exercised by tests and are checked by
+  hand.
+- Init and unlock run BSR2 key derivations (about a minute each at the
+  10,000-iteration floor, and init runs two), and bulk encryption is slow
+  (docs/KNOWN_ISSUES.md KI-003). They run in a background thread behind a modal
+  "Working..." dialog, so the window stays responsive but the action takes that
+  long.
+- Deleting a record runs on the UI thread, not through run_in_background(), and
+  has no error handling. Every other vault action runs in the background and
+  reports failures in an error dialog.
+- Requires a Tk display; there is no headless mode.
 
 Examples
 --------
+Call shapes only, not a runnable script: master stands for a value the caller
+supplies.
+
 ::
 
     from gui.tabs.tab_vault import VaultTab
-    obj = VaultTab(master)
+    VaultTab(master)
 """
 
 import json

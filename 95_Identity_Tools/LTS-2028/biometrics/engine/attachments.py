@@ -98,6 +98,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: record, filename, file_bytes,
+master_key, source_path stand for values the caller supplies.
+
 ::
 
     from biometrics.engine.attachments import (
@@ -105,7 +108,7 @@ Examples
         attach_file,
         extract_attachment_bytes,
     )
-    result = attach_bytes(record, filename, file_bytes, master_key)
+    attach_bytes(record, filename, file_bytes, master_key)
     attach_file(record, filename, source_path, master_key)
     extract_attachment_bytes(record, filename, master_key)
 """

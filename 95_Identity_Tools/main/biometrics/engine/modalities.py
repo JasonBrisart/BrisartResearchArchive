@@ -50,7 +50,10 @@ Covered by tests: no test file imports this module directly.
 Settings / parameters
 ---------------------
 - DEFAULT_THRESHOLDS = { "voice": 0.85, "fingerprint": 0.80, "video": 0.75, }
-- _MODALITIES = dict of 3 entries
+- _MODALITIES = {"voice", "fingerprint", "video"} -- Registry mapping each
+  modality name to its extract_from_path function, its compare function, and
+  its expected vector_length. supported_modalities() returns these keys,
+  sorted.
 
 Edge cases
 ----------
@@ -64,6 +67,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: modality, path, vector_a, vector_b
+stand for values the caller supplies.
+
 ::
 
     from biometrics.engine.modalities import (
@@ -71,7 +77,7 @@ Examples
         extract_from_path,
         compare,
     )
-    result = supported_modalities()
+    supported_modalities()
     extract_from_path(modality, path)
     compare(modality, vector_a, vector_b)
 """

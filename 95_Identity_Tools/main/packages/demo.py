@@ -32,9 +32,14 @@ Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-- DEMO_FOLDER_PREFIX = "DEMO_DO_NOT_USE_"
-- DEFAULT_DEMO_ROOT = Path("data") / "packages" / "demo"
-- _README_TEMPLATE = multi-line text template (2569 chars)
+- DEMO_FOLDER_PREFIX = "DEMO_DO_NOT_USE_" -- Prefix of every saved demo folder.
+  The folder holds the demo passphrases as plain text, so it must not be reused
+  for real data.
+- DEFAULT_DEMO_ROOT = Path("data") / "packages" / "demo" -- Default parent
+  folder for saved demos, relative to the working directory.
+- _README_TEMPLATE -- Text of the README written beside saved demo files. It
+  explains the four demo steps and each file, and contains a {package_path}
+  placeholder for the commands it suggests.
 
 Edge cases
 ----------
@@ -52,7 +57,7 @@ Examples
 ::
 
     from packages.demo import run_demo
-    result = run_demo()
+    run_demo()
 """
 
 import hashlib

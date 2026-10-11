@@ -64,6 +64,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: identity_id, label stand for values
+the caller supplies.
+
 ::
 
     from packages.identity import (
@@ -71,7 +74,7 @@ Examples
         validate_label,
         new_recipient,
     )
-    result = validate_identity_id(identity_id)
+    validate_identity_id(identity_id)
     validate_label(label)
     new_recipient(identity_id, label)
 """

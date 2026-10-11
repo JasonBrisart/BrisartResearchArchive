@@ -57,16 +57,45 @@ Edge cases
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- "Append-only" describes what this module does, not what is enforced. It never
+  edits or deletes an entry, but nothing stops another process or person from
+  doing so, and entries are not hashed, chained, or signed.
+- record_id is not validated here, and it becomes part of the file name.
+  vault.core.ids.validate_record_id() rejects only empty ids, edge whitespace,
+  ids over 128 characters, "|" and NUL, so an id such as "x/../../y" passes it.
+  In a test, record_event() with that id wrote the entry outside the audit
+  directory. Reject path separators in record ids before they reach this
+  module.
+- list_entries(record_id=...) matches the text "_<record_id>_" anywhere in a
+  file name, so it can return the wrong entries: a filter of "created" also
+  matched an entry whose action was "created" for a different record.
+- Vault-level events (unlocked, locked) have no record id and are filed under
+  the name "vault", so a real record whose id is "vault" cannot be
+  distinguished from them by name.
+- Only the action is validated. write_entry() checks the format marker only; a
+  non-dict entry raises AttributeError and a missing key raises KeyError.
+- Labels and kinds are stored in the clear, exactly as they are in the vault
+  file itself, so they must not contain secrets.
+- Ordering comes from the UTC stamp in the file name, so it is chronological
+  only while the system clock moves forward.
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
-    from vault.reports.audit_log import build_entry, write_entry, record_event
-    result = build_entry(action)
-    write_entry(audit_dir, entry)
-    record_event(audit_dir, action)
+    import tempfile
+    from pathlib import Path
+
+    from vault.reports.audit_log import list_entries, record_event
+
+    with tempfile.TemporaryDirectory() as folder:
+        audit_dir = Path(folder) / "audit"
+        record_event(audit_dir, "unlocked")              # a vault-level event
+        record_event(audit_dir, "created", "rec-1", "Email", "credential")
+        for path in list_entries(audit_dir, record_id="rec-1"):
+            print(path.name)
 """
 
 import secrets

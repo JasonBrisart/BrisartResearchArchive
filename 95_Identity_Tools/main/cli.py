@@ -33,8 +33,12 @@ Covered by tests: tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------
-- USAGE = multi-line text template (410 chars)
-- _DISPATCH = dict of 8 entries
+- USAGE -- Help text printed by help, --help and -h (to stdout) and, with exit
+  status 2, when no tool or an unknown tool is given (to stderr). It lists
+  biometrics, vault, package, gui, version, and help.
+- _DISPATCH -- Maps the first command-line word to its handler: biometrics,
+  vault, package, gui, version, and help, plus the aliases --help and -h, which
+  both run help.
 
 Edge cases
 ----------

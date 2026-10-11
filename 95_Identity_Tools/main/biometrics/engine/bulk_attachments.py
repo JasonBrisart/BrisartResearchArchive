@@ -119,6 +119,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: record, name, data, master_key, paths
+stand for values the caller supplies.
+
 ::
 
     from biometrics.engine.bulk_attachments import (
@@ -126,7 +129,7 @@ Examples
         restore_large_bytes,
         attach_paths,
     )
-    result = attach_large_bytes(record, name, data, master_key)
+    attach_large_bytes(record, name, data, master_key)
     restore_large_bytes(record, name, master_key)
     attach_paths(record, name, paths, master_key)
 """

@@ -67,7 +67,7 @@ Examples
 
     python -m tools.envinfo
     from tools.envinfo import get_tk_version, build_environment_report
-    result = get_tk_version()
+    get_tk_version()
     build_environment_report()
 """
 

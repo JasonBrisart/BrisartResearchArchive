@@ -97,6 +97,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: vault_service, label, data stand for
+values the caller supplies.
+
 ::
 
     from vault.store.bulk_file_service import BulkFileService

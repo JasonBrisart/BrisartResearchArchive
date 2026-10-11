@@ -50,10 +50,13 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: path, width, height, pixels stand for
+values the caller supplies.
+
 ::
 
     from biometrics.codecs.image_loader import load_image, save_image
-    result = load_image(path)
+    load_image(path)
     save_image(path, width, height, pixels)
 """
 

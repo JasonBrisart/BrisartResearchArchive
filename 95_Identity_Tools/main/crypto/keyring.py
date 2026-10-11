@@ -3,20 +3,39 @@ File: crypto/keyring.py
 
 Purpose
 -------
-BSR2 keyring: master key wrapping under a passphrase and a recovery code.
+BSR2 keyring: a random master key wrapped under a passphrase and, separately,
+under an offline recovery code. Everything else in the project (vault records,
+biometric templates) is sealed under the master key, never directly under a
+passphrase-derived key.
 
 Public interface:
-- generate_recovery_code() -- Generate a fresh recovery code.
-- format_recovery_code(code) -- Format a recovery code in readable groups for
-  display or printing.
+- generate_recovery_code() -- Generate a fresh 40-character recovery code (200
+  bits) from a 32-symbol alphabet.
+- format_recovery_code(code) -- Normalize a recovery code and format it as
+  eight hyphen-separated groups of five for display or printing.
 - class Keyring -- A master key wrapped under a passphrase and a recovery code.
-  Public methods: create, unlock_with_passphrase, unlock_with_recovery_code,
-  is_unlocked, master_key, lock, change_passphrase, rotate_recovery_code,
-  to_state, public_summary.
+- Keyring(state) -- Wrap an existing keyring state dict. Checks its structure
+  only; the keyring starts locked.
+- Keyring.create(passphrase, iterations=KDF_ITERATIONS, recovery_code=None) --
+  Classmethod. Build a new keyring around a fresh random master key. Returns
+  (keyring, recovery_code); the keyring comes back already unlocked.
+- Keyring.unlock_with_passphrase(passphrase) -- Unwrap the master key, cache
+  it, and return it.
+- Keyring.unlock_with_recovery_code(recovery_code) -- Same, using the recovery
+  code.
+- Keyring.is_unlocked -- Property. True while the master key is cached.
+- Keyring.master_key -- Property. The cached master key, or KeyringLockedError.
+- Keyring.lock() -- Drop the cached master key.
+- Keyring.change_passphrase(new_passphrase) -- Re-wrap the master key under a
+  new passphrase. Requires an unlocked keyring.
+- Keyring.rotate_recovery_code() -- Issue a new recovery code and return it,
+  formatted. Requires an unlocked keyring.
+- Keyring.to_state() -- The storable, JSON-serialisable state dict.
+- Keyring.public_summary() -- Non-secret metadata for status output.
 
 Design notes:
 
-The design problem this solves: BSR2's ``derive_password_key`` is genuinely
+The design problem this solves: BSR2's derive_password_key is genuinely
 expensive in pure Python (measured at roughly 70 seconds at its own enforced
 minimum of 10,000 iterations, and around 14 minutes at its 120,000 default).
 Deriving a key from the passphrase for every operation would be unusable, and
@@ -44,6 +63,32 @@ Consequences that follow from this, and are deliberate:
 - Losing both the passphrase and the recovery code is unrecoverable. There is
   no third path by design.
 
+Cost model. Every key derivation costs the same. create() runs two (one per
+wrapper); unlocking, change_passphrase(), and rotate_recovery_code() run one
+each. At the 10,000-iteration floor that is on the order of a minute per
+derivation, so create() takes a few minutes and an unlock about one. Once the
+keyring is unlocked, sealing and opening data is fast.
+
+Failed unlocks are deliberately uninformative. A wrong passphrase, a wrong but
+well-formed recovery code, and a modified keyring all raise the same
+KeyringAuthenticationError, so the caller learns that the unlock failed and
+not why. A failed unlock does not change state: a keyring that was already
+unlocked stays unlocked.
+
+Where the state lives. A Keyring holds the state dict it is given, not a copy,
+and to_state() returns that same live dict. change_passphrase() and
+rotate_recovery_code() modify it in place and write nothing to disk, so the
+caller must persist to_state() afterwards (vault/store/vault_file.py does this
+for the vault). Until that happens, the file on disk still has the old
+passphrase or recovery code.
+
+Where attempt limiting lives. This class limits nothing about how often an
+unlock may be tried. The KDF cost makes each offline guess slow, and the
+throttle in crypto/throttle.py limits online guessing; it is applied by
+biometrics/identity/keyring_access.py and vault/store/vault_service.py, not
+here. The recovery code gets no extra protection from either: it relies on
+being 200 bits long.
+
 Communication / relationships
 -----------------------------
 Depends on (project modules):
@@ -64,23 +109,54 @@ crypto/tests/test_keyring.py.
 
 Settings / parameters
 ---------------------
-- MASTER_KEY_BYTES = 32
-- KDF_SALT_BYTES = 32
-- KDF_ITERATIONS = 10_000
-- MAXIMUM_KDF_ITERATIONS = 1_000_000
-- RECOVERY_CODE_GROUPS = 8
-- RECOVERY_CODE_GROUP_SIZE = 5
+- MASTER_KEY_BYTES = 32 -- Length of the master key and of every derived
+  wrapping key (256 bits).
+- KDF_SALT_BYTES = 32 -- Length of the random salt stored with each wrapper. A
+  new salt is drawn whenever a wrapper is rebuilt.
+- KDF_ITERATIONS = 10_000 -- Default iteration count, and BSR2's enforced
+  minimum. It is the strongest setting that still lets an unlock finish in
+  under a couple of minutes at roughly 7 ms per iteration. The count is stored
+  in each keyring, so a different default would not invalidate existing ones.
+- MAXIMUM_KDF_ITERATIONS = 1_000_000 -- Ceiling, checked by create() and when a
+  state is loaded. Legitimate keyrings sit between 10,000 and 120,000; a
+  tampered header with an astronomical count would otherwise make an unlock
+  run for years before it could fail. Mirrors
+  crypto.factors.MAXIMUM_ITERATIONS.
+- RECOVERY_CODE_GROUPS = 8 -- Number of groups in a recovery code.
+- RECOVERY_CODE_GROUP_SIZE = 5 -- Characters per group: 8 x 5 = 40 characters.
 - _RECOVERY_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ" -- Crockford base32
   without I, L, O, U: no ambiguity when transcribed by hand.
 - _CONFUSABLE_CHARACTERS = {"I": "1", "L": "1", "O": "0", "U": "V"} -- The
   characters excluded from the alphabet, mapped to their visual equivalents, so
   a code transcribed by hand still resolves.
-- KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v1"
-- _WRAPPER_PASSPHRASE = "passphrase"
-- _WRAPPER_RECOVERY = "recovery"
+- KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v1" -- Stored in every
+  state; loading any other value raises KeyringFormatError.
+- _WRAPPER_PASSPHRASE = "passphrase" -- Name of the passphrase wrapper section
+  in the state, also bound into that wrapper's envelope via keyring_context().
+- _WRAPPER_RECOVERY = "recovery" -- The same for the recovery wrapper.
+- Keyring.create(iterations=KDF_ITERATIONS) -- Must be an exact int between
+  10,000 and MAXIMUM_KDF_ITERATIONS.
+- Keyring.create(recovery_code=None) -- Supply your own code instead of a
+  generated one. It is normalized, and the code returned is its formatted form.
 
 Edge cases
 ----------
+All errors derive from Bsr2IntegrationError: KeyringFormatError (bad stored
+state), KeyringAuthenticationError (unlock failed), and KeyringLockedError
+(operation needs an unlocked keyring).
+
+Input handling:
+- Recovery codes are forgiving: hyphens and whitespace are stripped, case is
+  folded, and I and L read as 1, O as 0, and U as V.
+- Passphrases are normalized with NFKC, so the same text typed on another
+  platform derives the same key. Surrounding whitespace is kept and counts.
+- Argument problems (empty passphrase, malformed recovery code, iteration count
+  out of range) fail immediately, before any key derivation runs.
+- Keyring.create(iterations=True) or a float such as 10000.0 raises
+  KeyringFormatError, not Bsr2IntegrationError, because the check is shared
+  with state validation and accepts only an exact int.
+
+Errors, in the order the code raises them:
 - _normalize_recovery_code() raises Bsr2IntegrationError: "recovery code must
   be a string."
 - _normalize_recovery_code() raises Bsr2IntegrationError: "recovery code
@@ -125,13 +201,16 @@ Edge cases
 - Keyring._unwrap() raises KeyringFormatError: "unwrapped master key has an
   invalid length."
 - Keyring._unwrap() raises KeyringFormatError: "unwrapped master key does not
-  match the keyring check value."
-- Keyring.master_key() raises KeyringLockedError: "keyring is locked; unlock it
+  match the keyring check value." This is raised after authentication has
+  succeeded, and means the two wrappers hold different master keys.
+- Keyring.master_key raises KeyringLockedError: "keyring is locked; unlock it
   before using the master key."
 - Keyring.change_passphrase() raises KeyringLockedError: "unlock the keyring
   before changing its passphrase."
 - Keyring.rotate_recovery_code() raises KeyringLockedError: "unlock the keyring
   before rotating its recovery code."
+
+Translated errors:
 - Keyring._unwrap(): translates (BrisartEnvelopeError, Bsr2IntegrationError)
   into KeyringAuthenticationError, so callers only need to handle this module's
   own error type.
@@ -139,19 +218,73 @@ Edge cases
   KeyringFormatError, so callers only need to handle this module's own error
   type.
 
+Loading is structural only: a keyring whose envelopes were modified still
+loads, and fails with KeyringAuthenticationError only when unlocked.
+
 Known limitations
 -----------------
+- Slow by design. Each unlock costs one key derivation (about a minute at the
+  floor) and create() costs two. It cannot be made faster without going below
+  BSR2's minimum iteration count, which BSR2 does not allow.
+- No way to raise the iteration count of an existing keyring. The count is
+  stored per keyring, but no method here changes it, and create() always draws
+  a new master key, so strengthening a keyring means starting a new one.
+- change_passphrase() does not ask for the old passphrase. Being unlocked is
+  the only check, so whoever holds an unlocked Keyring object can change it.
+- rotate_recovery_code() invalidates the old code only for the state it
+  modifies. Any earlier copy of the keyring (a backup, a synced file) still
+  opens with the old recovery code, and with the old passphrase after
+  change_passphrase().
+- lock() is best effort. It drops the cached reference, but Python cannot
+  guarantee the bytes leave process memory, and any copy a caller kept from
+  unlock_with_*() or master_key survives it.
+- No attempt limiting or lockout in this class (see Design notes).
+- No password strength check: any non-empty string is accepted as a passphrase.
+- public_summary() always reports recovery_code_available as True. It is a
+  constant, not read from the state.
+- Not thread-safe. The state and the cached key are plain mutable attributes
+  with no locking, so share one Keyring between threads only with your own
+  synchronization.
+- The 10,000 floor is written as a literal in both create() and _validate(),
+  not as a shared constant, so the two must be changed together.
 - Security rests on BSR2, a custom research construction that has not been
   independently audited (see docs/SECURITY.md); do not treat it as a
   replacement for vetted, audited cryptography.
 
 Examples
 --------
+Run from the repository root. The default iteration count makes create() and
+each unlock slow (see Design notes).
+
 ::
 
-    from crypto.keyring import generate_recovery_code, format_recovery_code
-    result = generate_recovery_code()
-    format_recovery_code(code)
+    from crypto.keyring import (
+        Keyring,
+        format_recovery_code,
+        generate_recovery_code,
+    )
+
+    # Create: two key derivations. The recovery code is returned only here.
+    keyring, recovery_code = Keyring.create("correct horse battery staple")
+    print(recovery_code)            # store it offline; it is never saved
+    state = keyring.to_state()      # JSON-serialisable; persist this
+
+    # Reopen later: validates structure, then one derivation to unlock.
+    keyring = Keyring(state)
+    keyring.unlock_with_passphrase("correct horse battery staple")
+    master_key = keyring.master_key
+    keyring.lock()
+
+    # Recovery path. Case, spaces, and hyphens do not matter.
+    keyring.unlock_with_recovery_code(recovery_code.lower())
+
+    # The state is changed in place and not saved for you: persist it again.
+    keyring.change_passphrase("a new passphrase")
+    state = keyring.to_state()
+
+    # Generate and format a standalone code.
+    code = generate_recovery_code()
+    print(format_recovery_code(code))
 """
 
 import secrets

@@ -37,12 +37,17 @@ Known limitations
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
-    from hardware.registry import register, get, list_registered
-    register(device_name, device_class)
-    get(device_name)
-    list_registered()
+    from hardware.card_readers.placeholder_reader import PlaceholderReader
+    from hardware.registry import get, list_registered, register
+
+    register("demo-reader", PlaceholderReader)
+    print(list_registered())                           # sorted names
+    print(get("demo-reader") is PlaceholderReader)
+    print(get("missing"))                              # None, not an error
 """
 
 _DEVICE_REGISTRY = {}

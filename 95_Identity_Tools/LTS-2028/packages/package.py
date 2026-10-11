@@ -107,6 +107,10 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: package_id, creator_label, payload,
+recipients, state, identity_id, label, master_key, opener_identity_id,
+opener_master_key stand for values the caller supplies.
+
 ::
 
     from packages.package import (
@@ -114,7 +118,7 @@ Examples
         validate_package,
         add_recipient,
     )
-    result = create_package(package_id, creator_label, payload, recipients)
+    create_package(package_id, creator_label, payload, recipients)
     validate_package(state)
     add_recipient(
         state,

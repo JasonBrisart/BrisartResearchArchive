@@ -42,14 +42,29 @@ Edge cases
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- Master keys are typed text hashed once. _derive_master_key() turns the
+  "master key text" a user types into a 32-byte key with a single unsalted
+  SHA-256, not BSR2's password KDF, although gui/tests/test_tab_packages.py
+  calls it a key stretch. The same text always gives the same key, and a
+  guessable text gives a guessable key. packages/main.py does the same for the
+  CLI.
+- _save_state() writes the package file with open() and json.dump() directly,
+  not through common.atomic_io, so an interrupted write can leave a truncated
+  package file.
+- Audit entries go to data/packages/audit, a path relative to the folder the
+  GUI was started from, so launching from another folder writes the audit trail
+  somewhere else.
+- Requires a Tk display; there is no headless mode.
 
 Examples
 --------
+Call shapes only, not a runnable script: master stands for a value the caller
+supplies.
+
 ::
 
     from gui.tabs.tab_packages import PackagesTab
-    obj = PackagesTab(master)
+    PackagesTab(master)
 """
 
 import hashlib

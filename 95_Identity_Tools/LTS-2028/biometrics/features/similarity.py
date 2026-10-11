@@ -69,10 +69,13 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: vector_a, vector_b stand for values
+the caller supplies.
+
 ::
 
     from biometrics.features.similarity import distance_similarity
-    result = distance_similarity(vector_a, vector_b)
+    distance_similarity(vector_a, vector_b)
 """
 
 import math

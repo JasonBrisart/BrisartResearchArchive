@@ -73,13 +73,16 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: width, height, frames stand for values
+the caller supplies.
+
 ::
 
     from biometrics.features.liveness import (
         compute_motion_energy,
         assess_liveness,
     )
-    result = compute_motion_energy(width, height, frames)
+    compute_motion_energy(width, height, frames)
     assess_liveness(width, height, frames)
 """
 

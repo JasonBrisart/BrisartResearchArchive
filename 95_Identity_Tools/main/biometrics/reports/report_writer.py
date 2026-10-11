@@ -59,6 +59,10 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: identity_id, label,
+modalities_enrolled, verification_result, report_dir stand for values the
+caller supplies.
+
 ::
 
     from biometrics.reports.report_writer import (
@@ -66,7 +70,7 @@ Examples
         build_verification_report,
         write_report,
     )
-    result = build_enrollment_report(identity_id, label, modalities_enrolled)
+    report = build_enrollment_report(identity_id, label, modalities_enrolled)
     build_verification_report(verification_result)
     write_report(report_dir, report)
 """

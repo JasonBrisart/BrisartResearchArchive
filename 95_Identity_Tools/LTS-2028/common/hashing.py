@@ -45,11 +45,21 @@ Known limitations
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
+    import tempfile
+    from pathlib import Path
+
     from common.hashing import sha256_bytes, sha256_file
-    result = sha256_bytes(data)
-    sha256_file(path)
+
+    print(sha256_bytes(b"hello"))
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "blob.bin"
+        path.write_bytes(b"hello")
+        print(sha256_file(path) == sha256_bytes(b"hello"))
 """
 
 import hashlib

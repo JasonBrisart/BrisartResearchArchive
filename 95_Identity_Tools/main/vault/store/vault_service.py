@@ -101,6 +101,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: path, passphrase stand for values the
+caller supplies.
+
 ::
 
     from vault.store.vault_service import VaultService

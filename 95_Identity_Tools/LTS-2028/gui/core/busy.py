@@ -56,10 +56,13 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: parent, message stand for values the
+caller supplies.
+
 ::
 
     from gui.core.busy import BusyDialog
-    obj = BusyDialog(parent, message)
+    BusyDialog(parent, message)
 """
 
 import queue

@@ -67,6 +67,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: samples, sample_rate, path, vector_a,
+vector_b stand for values the caller supplies.
+
 ::
 
     from biometrics.features.voice_features import (
@@ -74,7 +77,7 @@ Examples
         extract_from_wav,
         compare,
     )
-    result = extract_from_samples(samples, sample_rate)
+    extract_from_samples(samples, sample_rate)
     extract_from_wav(path)
     compare(vector_a, vector_b)
 """

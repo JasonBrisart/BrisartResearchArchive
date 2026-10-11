@@ -79,12 +79,19 @@ Known limitations
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
-    from packages.custody import new_chain, append, verify_chain
-    result = new_chain(creator_label, package_id)
-    append(chain, action, actor_label)
-    verify_chain(chain)
+    from packages.custody import append, new_chain, summarize, verify_chain
+
+    chain = new_chain("Alice", "pkg-1")                  # one "created" entry
+    chain = append(chain, "recipient_added", "Alice", {"identity_id": "bob"})
+    chain = append(chain, "opened", "Bob")               # returns a new list
+
+    print(verify_chain(chain, "pkg-1"))
+    for entry in summarize(chain):
+        print(entry["action"], entry["actor_label"])
 """
 
 import json

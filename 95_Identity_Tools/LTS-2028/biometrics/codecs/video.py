@@ -29,6 +29,15 @@ frames, each exactly ``width * height`` bytes, with no per-frame compression.
 
 Format layout::
 
+    offset  size  field
+    0       8     magic: the ASCII bytes BRVID001 (the version is in the magic)
+    8       4     width, unsigned 32-bit, big-endian
+    12      4     height, unsigned 32-bit, big-endian
+    16      4     frame_count, unsigned 32-bit, big-endian
+    20      4     frame_rate, unsigned 32-bit, big-endian
+    24      body  frame_count blocks of width x height bytes: 8-bit grayscale,
+                  row-major, one block after another, no compression
+
 Communication / relationships
 -----------------------------
 Standard library: pathlib, struct.
@@ -96,18 +105,48 @@ Edge cases
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- Uncompressed and grayscale only. A file is the 24-byte header plus
+  frame_count x width x height bytes, so size grows fast: a one-minute 640 x
+  480 clip at 30 fps is about 553 MB, which is above MAX_BODY_BYTES (512 MiB)
+  and would be refused by decode().
+- encode() and decode() disagree about the body-size ceiling. encode() checks
+  the dimensions and frame count but not MAX_BODY_BYTES, so it can write a file
+  that decode() and read_video() then reject.
+- Custom format, readable only by this project. The repository contains no
+  converter from common video formats, so real footage must be converted to
+  8-bit grayscale BRVID frames by other means.
+- frame_rate is a positive whole number stored as an unsigned 32-bit integer,
+  so rates such as 29.97 cannot be represented. There are no per-frame
+  timestamps and no audio.
+- probe() reads only the header and does not validate the body. For a truncated
+  file it returns metadata with size_matches_header set to False instead of
+  raising; read_video() and decode() raise VideoFormatError.
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
-    magic          8 bytes   b"BRVID001"
-    width          4 bytes   big-endian unsigned int
-    height         4 bytes   big-endian unsigned int
-    frame_count    4 bytes   big-endian unsigned int
-    frame_rate     4 bytes   big-endian unsigned int (frames per second)
-    frames         frame_count * width * height bytes, concatenated
+    import tempfile
+    from pathlib import Path
+
+    from biometrics.codecs.video import probe, read_video, write_video
+
+    width, height = 8, 8
+    frames = []
+    for step in range(5):
+        frames.append(bytes((x + y + step * 10) % 256
+                            for y in range(height) for x in range(width)))
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "clip.brvid"
+        write_video(path, width, height, 5, frames)    # frame_rate is whole
+        print(probe(path))                             # header only
+        clip = read_video(path)
+
+    print(clip["width"], clip["height"], clip["frame_rate"])
+    print(len(clip["frames"]))
 """
 
 import struct

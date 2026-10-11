@@ -78,6 +78,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: path, passphrase stand for values the
+caller supplies.
+
 ::
 
     from vault.store.vault_file import (
@@ -85,7 +88,7 @@ Examples
         create_vault_file,
         load_state,
     )
-    result = vault_exists(path)
+    vault_exists(path)
     create_vault_file(path, passphrase)
     load_state(path)
 """

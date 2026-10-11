@@ -33,10 +33,14 @@ Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-- _REPO_ROOT = _find_repo_root(Path(__file__)) -- --- repo-root bootstrap (runs
-  on first import of any gui module) ---------
+- _REPO_ROOT = _find_repo_root(Path(__file__)) -- The first ancestor directory
+  that contains version.py. It is put at the front of sys.path the first time
+  any gui module is imported, so every tool package resolves.
 - APP_TITLE = "BrisartIdentityTools"
-- _MODALITY_FILETYPES = dict of 3 entries
+- _MODALITY_FILETYPES = {"voice": WAV audio (*.wav), "fingerprint": fingerprint
+  images (*.pgm *.png), "video": BRVID clips (*.brvid)} -- File-dialog filters
+  for the Biometrics enroll and verify pickers. A modality with no entry gets
+  no filter.
 
 Edge cases
 ----------
@@ -58,7 +62,8 @@ Examples
 --------
 ::
 
-    from gui.core.constants import _REPO_ROOT
+    # Importing any gui module also puts the repository root on sys.path.
+    from gui.core.constants import APP_TITLE
 """
 
 import sys

@@ -82,6 +82,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: binding stands for a value the caller
+supplies.
+
 ::
 
     from hardware.card_readers.pcsc_reader import PCSCReader

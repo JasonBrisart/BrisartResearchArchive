@@ -73,16 +73,35 @@ Known limitations
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
+    import secrets
+
+    from crypto.context import record_context
+    from crypto.envelope import seal_json
+    from crypto.rng import new_generator
+    from vault.core.time_tools import stamp_new_record
     from vault.records.record_model import (
-        normalize_label,
         new_record,
+        public_summary,
         validate_record,
     )
-    result = normalize_label(label)
-    new_record(record_id, label, kind, payload_envelope, timestamps)
+
+    master_key = secrets.token_bytes(32)
+    envelope = seal_json(
+        master_key,
+        {"secret": "hunter2"},
+        record_context("rec-1", "credential", "Email password"),
+        new_generator("example"),
+    )
+    record = new_record(
+        "rec-1", "  Email password  ", "credential", envelope,
+        stamp_new_record(),
+    )
     validate_record(record)
+    print(public_summary(record))   # label is stored as "Email password"
 """
 
 import unicodedata

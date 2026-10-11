@@ -60,6 +60,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: master_key, bound_value stand for
+values the caller supplies.
+
 ::
 
     from biometrics.identity.device_key import (
@@ -67,7 +70,7 @@ Examples
         bind_device,
         verify_device,
     )
-    result = current_device_fingerprint()
+    current_device_fingerprint()
     bind_device(master_key)
     verify_device(master_key, bound_value)
 """

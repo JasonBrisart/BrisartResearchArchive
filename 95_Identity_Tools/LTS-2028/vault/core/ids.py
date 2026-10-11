@@ -51,11 +51,19 @@ Known limitations
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
-    from vault.core.ids import new_record_id, validate_record_id
-    result = new_record_id()
+    from vault.core.ids import RecordIdError, new_record_id, validate_record_id
+
+    record_id = new_record_id()                  # 32 hex characters
     validate_record_id(record_id)
+
+    try:
+        validate_record_id("bad|id")
+    except RecordIdError as error:
+        print(error)
 """
 
 import secrets

@@ -70,12 +70,27 @@ Known limitations
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
-    from biometrics.codecs.pgm import decode, encode, read_pgm
-    result = decode(data)
-    encode(width, height, pixels)
-    read_pgm(path)
+    import tempfile
+    from pathlib import Path
+
+    from biometrics.codecs.pgm import decode, encode, read_pgm, write_pgm
+
+    width, height = 4, 3
+    pixels = bytes(range(width * height))
+
+    data = encode(width, height, pixels)           # binary P5 bytes
+    image = decode(data)
+    print(image["width"], image["height"], image["maxval"])
+    print(image["pixels"] == pixels)
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "sample.pgm"
+        write_pgm(path, width, height, pixels)
+        print(read_pgm(path)["pixels"] == pixels)
 """
 
 MAGIC_BINARY_GRAYSCALE = b"P5"

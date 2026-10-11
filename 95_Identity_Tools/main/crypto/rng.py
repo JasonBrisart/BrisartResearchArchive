@@ -66,6 +66,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: personalization, length,
+additional_input stand for values the caller supplies.
+
 ::
 
     from crypto.rng import ManagedGenerator

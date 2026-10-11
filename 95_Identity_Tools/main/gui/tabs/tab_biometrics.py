@@ -9,7 +9,7 @@ identity (chunked transparently past BSR2's single-envelope size limit).
 
 Public interface:
 - class BiometricsTab(ttk.Frame) -- Create/unlock the biometrics keyring,
-  enroll/verify/inspect/delete identities, and (new) attach/extract arbitrary
+  enroll/verify/inspect/delete identities, and attach/extract arbitrary
   files, folders, or drives to/from an identity -- independent of the
   voice/fingerprint/ video modality system, chunked transparently past BSR2's
   single- envelope size limit.
@@ -68,10 +68,13 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: master stands for a value the caller
+supplies.
+
 ::
 
     from gui.tabs.tab_biometrics import BiometricsTab
-    obj = BiometricsTab(master)
+    BiometricsTab(master)
 """
 
 import json

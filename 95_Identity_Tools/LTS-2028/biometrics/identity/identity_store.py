@@ -69,6 +69,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: identity_dir, identity_id stand for
+values the caller supplies.
+
 ::
 
     from biometrics.identity.identity_store import IdentityStore

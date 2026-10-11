@@ -63,6 +63,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: record_id, kind, label, identity_id,
+modality, filename stand for values the caller supplies.
+
 ::
 
     from crypto.context import (
@@ -70,7 +73,7 @@ Examples
         template_context,
         attachment_context,
     )
-    result = record_context(record_id, kind, label)
+    record_context(record_id, kind, label)
     template_context(identity_id, modality)
     attachment_context(identity_id, filename)
 """

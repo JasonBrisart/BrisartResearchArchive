@@ -59,10 +59,27 @@ Edge cases
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- Measures how clips look and move, not who is in them. The vector is
+  brightness block-means on a 6 x 6 grid plus block-means of frame-to-frame
+  differences; no face or body landmarks are used, so two different people
+  filmed with similar framing can score high. See the compare() docstring for
+  the one impostor pair that was measured.
+- Frames narrower or shorter than GRID_SIZE (6 pixels) raise
+  image_tools.ImageToolsError, not VideoFeatureError.
+- Clips longer than MAX_FRAMES_SAMPLED (60) are evenly subsampled and the
+  motion term is computed between the sampled frames, so motion energy depends
+  on clip length and the gap between samples.
+- A single-frame clip has no motion: the second half of the vector is all
+  zeros.
+- The spatial blocks are computed after per-frame contrast stretching, so
+  uniform lighting changes are largely cancelled, while the motion blocks use
+  raw differences and are not stretched.
 
 Examples
 --------
+Call shapes only, not a runnable script: width, height, frames, path, vector_a,
+vector_b stand for values the caller supplies.
+
 ::
 
     from biometrics.features.video_features import (
@@ -70,7 +87,7 @@ Examples
         extract_from_video,
         compare,
     )
-    result = extract_from_frames(width, height, frames)
+    extract_from_frames(width, height, frames)
     extract_from_video(path)
     compare(vector_a, vector_b)
 """

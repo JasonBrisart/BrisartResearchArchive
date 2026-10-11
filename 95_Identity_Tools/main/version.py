@@ -38,7 +38,14 @@ unchanged.
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- The version is a plain string edited by hand. Nothing checks it against
+  docs/CHANGELOG.md, the README files, or what actually shipped. LTS-2028 and
+  main each carry their own copy of this file with their own value.
+- It versions the tools, not stored data. Each stored format carries its own
+  format string (for example "brisart-identity-tools/vault-record/v1"), so
+  changing this value never migrates or invalidates existing files.
+- The value is treated as opaque text: cli.py and the GUI print it, and the
+  settings modules re-export it. Nothing parses or compares versions.
 
 Examples
 --------

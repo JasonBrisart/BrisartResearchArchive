@@ -59,15 +59,44 @@ Edge cases
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- Integer PCM only, 8, 16, or 32 bits per sample. 24-bit audio raises
+  WaveFormatError ("unsupported sample width: 3 bytes."), and floating-point or
+  compressed WAV raises WaveFormatError from the wave module (for example
+  "failed to read WAV file: unknown format: 3").
+- Samples keep the file's own scale. 8-bit values are re-centered to -128..127
+  and 16- and 32-bit values keep their native ranges, so the same sound stored
+  at different widths has very different amplitudes.
+- Multi-channel audio is averaged to mono with integer floor division, which
+  rounds toward negative infinity (a stereo pair of -1 and 0 becomes -1). The
+  returned channel_count is the original count, while samples is always mono.
+- The caps bound what a header may claim, not memory use. At both limits (768
+  kHz for 600 s) a file would hold about 460 million samples as Python
+  integers, all read into memory at once; there is no streaming.
+- write_wave() writes mono only and silently clamps samples to the range of the
+  chosen width. A non-integer sample raises struct.error rather than
+  WaveFormatError.
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
+    import math
+    import tempfile
+    from pathlib import Path
+
     from biometrics.codecs.wave_tools import read_wave, write_wave
-    result = read_wave(path)
-    write_wave(path, sample_rate, samples)
+
+    tone = [math.sin(2 * math.pi * 220 * n / 8000) for n in range(4000)]
+    samples = [int(8000 * value) for value in tone]
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "tone.wav"
+        write_wave(path, 8000, samples)           # mono, 16-bit PCM
+        audio = read_wave(path)
+
+    print(audio["sample_rate"], audio["sample_width"], len(audio["samples"]))
 """
 
 import struct

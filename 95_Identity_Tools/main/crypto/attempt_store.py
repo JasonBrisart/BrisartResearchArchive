@@ -55,6 +55,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: container stands for a value the
+caller supplies.
+
 ::
 
     from crypto.attempt_store import (
@@ -62,7 +65,7 @@ Examples
         record_failure,
         record_success,
     )
-    result = check_and_get_state(container)
+    check_and_get_state(container)
     record_failure(container)
     record_success(container)
 """

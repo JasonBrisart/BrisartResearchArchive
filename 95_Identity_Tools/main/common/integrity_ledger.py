@@ -138,6 +138,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: ledger_path, target_path stand for
+values the caller supplies.
+
 ::
 
     from common.integrity_ledger import (
@@ -145,7 +148,7 @@ Examples
         verify_ledger,
         history_for_path,
     )
-    result = append_checkpoint(ledger_path, target_path)
+    append_checkpoint(ledger_path, target_path)
     verify_ledger(ledger_path)
     history_for_path(ledger_path, target_path)
 """

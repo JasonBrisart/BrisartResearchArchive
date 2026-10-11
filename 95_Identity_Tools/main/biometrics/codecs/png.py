@@ -84,10 +84,13 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: data, width, height, pixels, path
+stand for values the caller supplies.
+
 ::
 
     from biometrics.codecs.png import decode, encode, read_png
-    result = decode(data)
+    decode(data)
     encode(width, height, pixels)
     read_png(path)
 """

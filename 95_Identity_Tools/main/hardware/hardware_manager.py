@@ -50,11 +50,17 @@ Known limitations
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
+    from hardware.card_readers.placeholder_reader import PlaceholderReader
     from hardware.hardware_manager import HardwareManager
-    obj = HardwareManager()
-    obj.create_device(device_name)
+    from hardware.registry import register
+
+    register("demo-reader", PlaceholderReader)         # name -> driver class
+    reader = HardwareManager().create_device("demo-reader")
+    print(reader.name, reader.connect())
 """
 
 from hardware.registry import get

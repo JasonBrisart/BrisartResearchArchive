@@ -92,47 +92,70 @@ Covered by tests: no test file imports this module directly.
 Settings / parameters
 ---------------------
 - KEYRING_FILE_NAME = "keyring.json"
-- seed: deterministic seed for generation.
-- --modalities (command-line option).
-- --output-dir (command-line option).
-- output: output .brvid path.
-- --seed (command-line option).
-- --frames (command-line option).
-- --frame-rate (command-line option).
-- path (command-line option).
-- identity_id (command-line option).
-- --label (command-line option).
-- --voice: path to a WAV file.
-- --fingerprint: path to a PGM/PNG image.
-- --video: path to a BRVID file.
-- --allow-static: skip the video liveness gate and allow enrolling a static
-  (no-motion) clip.
-- identity_id (command-line option).
-- --voice: path to a WAV file.
-- --fingerprint: path to a PGM/PNG image.
-- --video: path to a BRVID file.
-- --any-match: accept if any one requested modality matches, instead of
-  requiring all.
-- --allow-static: skip the video liveness gate and score a static (no-motion)
-  clip anyway.
-- identity_id (command-line option).
-- identity_id (command-line option).
-- identity_id (command-line option).
-- file_path (command-line option).
-- --name: attachment name to store it under; defaults to the file's own name.
-- identity_id (command-line option).
-- name: bundle name to store it under.
-- paths: one or more file, folder, or drive root paths.
-- --chunk-mb (command-line option).
-- identity_id (command-line option).
-- name (command-line option).
-- output_path (command-line option).
-- identity_id (command-line option).
-- name (command-line option).
-- output_dir (command-line option).
-- identity_id (command-line option).
-- name (command-line option).
-- --no-unlock: skip unlocking if this is definitely not a chunked bundle.
+
+Commands (each takes the options listed under it):
+- make-samples -- generate synthetic test samples.
+  - seed (positional): deterministic seed for generation.
+  - --modalities: one or more of fingerprint, video, voice; default is all
+    three.
+  - --output-dir: optional; default is the samples folder from
+    biometrics/config/settings.py (data/samples).
+- record-video -- generate a synthetic video capture file.
+  - output (positional): output .brvid path.
+  - --seed (default video-capture).
+  - --frames: integer; default 10 (sample_generator.DEFAULT_VIDEO_FRAME_COUNT).
+  - --frame-rate: integer; default 5
+    (sample_generator.DEFAULT_VIDEO_FRAME_RATE).
+- probe-video -- print BRVID file header metadata.
+  - path (positional).
+- enroll -- enroll a new identity.
+  - identity_id: the identity's id.
+  - --label (required).
+  - --voice: path to a WAV file.
+  - --fingerprint: path to a PGM/PNG image.
+  - --video: path to a BRVID file.
+  - --allow-static (flag, off by default): skip the video liveness gate and
+    allow enrolling a static (no-motion) clip.
+- verify -- verify a probe against an enrolled identity.
+  - identity_id: the identity's id.
+  - --voice: path to a WAV file.
+  - --fingerprint: path to a PGM/PNG image.
+  - --video: path to a BRVID file.
+  - --any-match (flag, off by default): accept if any one requested modality
+    matches, instead of requiring all.
+  - --allow-static (flag, off by default): skip the video liveness gate and
+    score a static (no-motion) clip anyway.
+- inspect -- show a non-secret summary of one identity.
+  - identity_id: the identity's id.
+- delete -- delete an enrolled identity.
+  - identity_id: the identity's id.
+- attach -- attach an arbitrary file (any extension, or none) to an identity.
+  - identity_id: the identity's id.
+  - file_path (positional).
+  - --name: attachment name to store it under; defaults to the file's own name.
+- attach-paths -- attach any combination of files/folders/drive roots as one
+  bundle.
+  - identity_id: the identity's id.
+  - name (positional): bundle name to store it under.
+  - paths (positional, one or more): one or more file, folder, or drive root
+    paths.
+  - --chunk-mb: integer, MiB per chunk; default 8.
+- extract-attachment -- decrypt an attached file (or bundle) back to disk.
+  - identity_id: the identity's id.
+  - name (positional).
+  - output_path (positional).
+- restore-paths -- decrypt and unzip an attach-paths bundle into a real
+  directory tree.
+  - identity_id: the identity's id.
+  - name (positional).
+  - output_dir (positional).
+- remove-attachment -- remove a named attachment (or bundle) from an identity.
+  - identity_id: the identity's id.
+  - name (positional).
+  - --no-unlock (flag, off by default): skip unlocking if this is definitely
+    not a chunked bundle.
+- list -- list all enrolled identities.
+  - no options of its own.
 
 Edge cases
 ----------

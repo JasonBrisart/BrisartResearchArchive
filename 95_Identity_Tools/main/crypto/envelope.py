@@ -99,10 +99,13 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: value, master_key, plaintext, context,
+rng, envelope stand for values the caller supplies.
+
 ::
 
     from crypto.envelope import is_envelope, seal_bytes, open_bytes
-    result = is_envelope(value)
+    is_envelope(value)
     seal_bytes(master_key, plaintext, context, rng)
     open_bytes(master_key, envelope, context)
 """

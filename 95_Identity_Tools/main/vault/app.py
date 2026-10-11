@@ -3,9 +3,10 @@ File: vault/app.py
 
 Purpose
 -------
-Vault command-line interface: init, unlock, upsert, get, list, delete,
-batch-upsert, and (new) encrypt-file/decrypt-file for arbitrary binary files of
-any kind, extension, or lack thereof.
+Vault command-line interface: init, upsert, batch-upsert, get, list, delete,
+encrypt-file/decrypt-file for arbitrary binary files of any kind, extension,
+or lack thereof, and encrypt-paths/restore-paths for bundles of files,
+folders, or drives.
 
 Public interface:
 - class AppError(ValueError)
@@ -48,25 +49,48 @@ Covered by tests: no test file imports this module directly.
 Settings / parameters
 ---------------------
 - MAX_CHUNK_MB = 15
-- --vault: path to the vault file.
-- label (command-line option).
-- --kind (command-line option).
-- --payload: JSON object string.
-- --record-id (command-line option).
-- items_file: path to a JSON array of items.
-- file_path: path to the file to encrypt.
-- --label: defaults to the file's own name.
-- --record-id (command-line option).
-- record_id (command-line option).
-- output_path (command-line option).
-- paths: one or more file, folder, or drive root paths.
-- --label: defaults to the first path's own name.
-- --record-id (command-line option).
-- --chunk-mb: chunk size in MiB (default 8; must be 1..{...}).
-- record_id (command-line option).
-- output_dir (command-line option).
-- record_id (command-line option).
-- record_id (command-line option).
+
+Options shared by every command:
+- --vault: path to the vault file; when omitted, the default from
+  vault/config/settings.py (data/vault/vault.json) is used.
+
+Commands (each takes the options listed under it):
+- upsert -- create or update one JSON-payload record.
+  - label: record label.
+  - --kind: required; free-text record kind, for example credential or note.
+  - --payload (required): JSON object string.
+  - --record-id: optional; omit to have the vault generate an id, or give an
+    existing id to replace that record's contents.
+- batch-upsert -- create or update many JSON-payload records from a JSON file.
+  - items_file (positional): path to a JSON array of items.
+- encrypt-file -- encrypt any local file into the vault, any extension or none
+  at all.
+  - file_path (positional): path to the file to encrypt.
+  - --label: defaults to the file's own name.
+  - --record-id: optional; omit to have the vault generate an id, or give an
+    existing id to replace that record's contents.
+- decrypt-file -- decrypt a file record back to disk, byte-for-byte.
+  - record_id: id of the record.
+  - output_path (positional).
+- encrypt-paths -- encrypt any combination of files/folders/drive roots as one
+  bundle (transparently chunked past BSR2's ~16 MiB single-envelope limit).
+  - paths (positional, one or more): one or more file, folder, or drive root
+    paths.
+  - --label: defaults to the first path's own name.
+  - --record-id: optional; omit to have the vault generate an id, or give an
+    existing id to replace that record's contents.
+  - --chunk-mb (int): chunk size in MiB (default 8; must be 1..15).
+- restore-paths -- decrypt and unzip a bundle back into a real directory tree.
+  - record_id: id of the record.
+  - output_dir (positional).
+- get -- retrieve and decrypt one JSON record's payload.
+  - record_id: id of the record.
+- delete -- delete one record.
+  - record_id: id of the record.
+- init -- create a new vault.
+  - no options of its own.
+- list -- list all records (no unlock required).
+  - no options of its own.
 
 Edge cases
 ----------

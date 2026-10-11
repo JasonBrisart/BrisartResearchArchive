@@ -53,20 +53,56 @@ Edge cases
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- Not a spectral analysis. band_energies() splits the time-domain frame into
+  contiguous segments and measures each segment's energy; there is no FFT or
+  filterbank. Running discrete_cosine_transform() over those energies gives an
+  MFCC-shaped vector, but it is not comparable with MFCCs from other tools.
+- Nothing caps frame_size or the length of the input, and
+  discrete_cosine_transform() is plain nested loops (O(n x output_length)), so
+  large frames or long recordings make feature extraction slow.
+- The tail is zero-padded and padding is not excluded from later steps.
+  frame_signal() keeps starting frames until the start position passes the end
+  of the input, so with the defaults (512 / 256) a 1000-sample stream gives 4
+  frames and the last holds only 232 real samples. Trailing silence therefore
+  enters the features.
+- zero_crossing_rate() treats a sample of exactly 0 as non-negative, so [1, 0,
+  -1, 0] counts 2 crossings out of 3 pairs.
+- normalize_vector() divides by the largest absolute value, not by the vector
+  length, so the result has peak 1.0 but is not unit-length in the L2 sense.
+- Inputs are plain Python lists of numbers and are not type-checked.
+  frame_signal() passes any items through, and a non-numeric sample later fails
+  with a TypeError from the arithmetic, not DspError.
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
+    import math
+
     from biometrics.codecs.dsp import (
-        frame_signal,
         apply_hamming_window,
+        band_energies,
+        discrete_cosine_transform,
+        frame_signal,
+        normalize_vector,
         short_time_energy,
+        zero_crossing_rate,
     )
-    result = frame_signal(samples)
-    apply_hamming_window(frame)
-    short_time_energy(frame)
+
+    # One second of a 440 Hz tone at 8 kHz, as a list of integers.
+    tone = [math.sin(2 * math.pi * 440 * n / 8000) for n in range(8000)]
+    samples = [int(1000 * value) for value in tone]
+
+    frames = frame_signal(samples)               # 512-sample frames, hop 256
+    frame = apply_hamming_window(frames[0])
+    print(short_time_energy(frame), zero_crossing_rate(frame))
+
+    # Time-domain segments, not a spectrum (see Known limitations).
+    bands = band_energies(frame, 8)
+    coefficients = discrete_cosine_transform(bands, 4)
+    print(normalize_vector(coefficients))
 """
 
 import math

@@ -93,6 +93,10 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: identity_id, label, master_key,
+record, modality, source_path, modality_sources stand for values the caller
+supplies.
+
 ::
 
     from biometrics.engine.enrollment import (
@@ -100,7 +104,7 @@ Examples
         enroll_modality,
         enroll_identity,
     )
-    result = create_identity(identity_id, label, master_key)
+    create_identity(identity_id, label, master_key)
     enroll_modality(record, modality, source_path, master_key)
     enroll_identity(identity_id, label, master_key, modality_sources)
 """

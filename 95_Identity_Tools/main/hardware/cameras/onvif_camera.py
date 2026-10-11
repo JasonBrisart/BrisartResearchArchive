@@ -45,7 +45,9 @@ Covered by tests: no test file imports this module directly.
 Settings / parameters
 ---------------------
 - DEFAULT_PORT = 80
-- _SOAP_NAMESPACES = dict of 6 entries
+- _SOAP_NAMESPACES -- XML namespace map used to build and read ONVIF messages:
+  soap (SOAP 1.2 envelope), wsse and wsu (WS-Security secext and utility), tds
+  (ONVIF device service), trt (ONVIF media service), and tt (ONVIF schema).
 
 Edge cases
 ----------
@@ -84,6 +86,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: transport, host, username, password
+stand for values the caller supplies.
+
 ::
 
     from hardware.cameras.onvif_camera import ONVIFCamera

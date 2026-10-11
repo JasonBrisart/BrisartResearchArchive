@@ -71,6 +71,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: recipient_master_key, package_id,
+identity_id, content_key, wrapped stand for values the caller supplies.
+
 ::
 
     from packages.ciphers import (
@@ -78,7 +81,7 @@ Examples
         wrap_content_key,
         unwrap_content_key,
     )
-    result = new_content_key()
+    new_content_key()
     wrap_content_key(
         recipient_master_key,
         package_id,

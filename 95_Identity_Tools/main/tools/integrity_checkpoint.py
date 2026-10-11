@@ -42,11 +42,22 @@ Covered by tests: no test file imports this module directly.
 Settings / parameters
 ---------------------
 - DEFAULT_LEDGER_PATH = Path("data") / "integrity" / "ledger.json"
-- --ledger: path to the ledger file (default: {...}).
-- target_file (command-line option).
-- --label: optional actor label to record with this checkpoint.
-- target_file (command-line option).
-- target_file (command-line option).
+
+Options shared by every command:
+- --ledger: path to the ledger file (default: data/integrity/ledger.json).
+
+Commands (each takes the options listed under it):
+- checkpoint -- record a new checkpoint of a file.
+  - target_file (positional).
+  - --label: optional actor label to record with this checkpoint.
+- status -- compare a file's current hash against its latest checkpoint.
+  - target_file (positional).
+- history -- list every checkpoint recorded for a file.
+  - target_file (positional).
+- verify -- verify the ledger's own hash chain is intact.
+  - no options of its own.
+- list-tracked -- list every file path tracked in the ledger.
+  - no options of its own.
 
 Edge cases
 ----------

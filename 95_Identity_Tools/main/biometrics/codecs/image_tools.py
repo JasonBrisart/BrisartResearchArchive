@@ -58,20 +58,49 @@ Edge cases
 
 Known limitations
 -----------------
-- No known limitations beyond the documented contract of its public interface.
+- 8-bit grayscale only. A pixel buffer is a flat, row-major bytes object whose
+  length must equal width x height; there is no color, no row padding, and no
+  support for other bit depths.
+- resize_nearest() does no filtering, so shrinking a detailed image aliases.
+  That is deliberate (it never invents a pixel value and is reproducible across
+  platforms) but it means fine texture can change the template when the source
+  resolution changes.
+- crop_center() pads a source smaller than the target with black (0) pixels,
+  centered, so a padded border can influence the features built from it.
+- normalize() stretches against the whole buffer's minimum and maximum, so one
+  outlier pixel sets the range for the entire image. A flat image is returned
+  unchanged.
+- sobel_gradient_magnitude() is a per-pixel Python loop with a closure call for
+  every neighbor read. It took about a second for 256 x 256 in a test run, and
+  MAX_DIMENSION (8192) allows images about a thousand times larger, so a
+  maximum-size image would take many minutes. Magnitudes are returned as
+  unscaled floats, not clamped to 0-255.
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
     from biometrics.codecs.image_tools import (
+        block_grid_means,
         crop_center,
-        resize_nearest,
         normalize,
+        resize_nearest,
+        sobel_gradient_magnitude,
     )
-    result = crop_center(width, height, pixels, target_width, target_height)
-    resize_nearest(width, height, pixels, target_width, target_height)
-    normalize(pixels)
+
+    # A 16 x 16 grayscale gradient: flat, row-major bytes, width * height long.
+    width, height = 16, 16
+    pixels = bytes((x * 8 + y * 4) % 256
+                   for y in range(height) for x in range(width))
+
+    small = resize_nearest(width, height, pixels, 8, 8)
+    crop_width, crop_height, cropped = crop_center(8, 8, small, 4, 4)
+    stretched = normalize(cropped)
+
+    print(block_grid_means(width, height, pixels, 4))    # 16 block means
+    print(max(sobel_gradient_magnitude(8, 8, small)))    # strongest edge
 """
 
 MIN_DIMENSION = 1

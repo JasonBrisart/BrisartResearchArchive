@@ -59,10 +59,13 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: parent, title, fields stand for values
+the caller supplies.
+
 ::
 
     from gui.widgets.dialogs import TextPromptDialog
-    obj = TextPromptDialog(parent, title, fields)
+    TextPromptDialog(parent, title, fields)
 """
 
 import json

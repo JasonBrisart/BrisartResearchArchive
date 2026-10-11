@@ -108,10 +108,13 @@ Examples
 API usage with an enrolled record, probe paths, and an unlocked master key
 supplied by the caller.
 
+Call shapes only, not a runnable script: record, modality, probe_path,
+master_key, probe_sources stand for values the caller supplies.
+
 ::
 
     from biometrics.engine.verification import verify_modality, verify_identity
-    result = verify_modality(record, modality, probe_path, master_key)
+    verify_modality(record, modality, probe_path, master_key)
     verify_identity(record, probe_sources, master_key)
 """
 

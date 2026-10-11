@@ -62,10 +62,13 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: keyring, path, passphrase stand for
+values the caller supplies.
+
 ::
 
     from biometrics.identity.keyring_access import unlock_with_passphrase
-    result = unlock_with_passphrase(keyring, path, passphrase)
+    unlock_with_passphrase(keyring, path, passphrase)
 """
 
 import json

@@ -64,6 +64,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: width, height, pixels, path, vector_a,
+vector_b stand for values the caller supplies.
+
 ::
 
     from biometrics.features.fingerprint_features import (
@@ -71,7 +74,7 @@ Examples
         extract_from_image,
         compare,
     )
-    result = extract_from_pixels(width, height, pixels)
+    extract_from_pixels(width, height, pixels)
     extract_from_image(path)
     compare(vector_a, vector_b)
 """

@@ -66,16 +66,20 @@ Known limitations
 
 Examples
 --------
+Run from the repository root.
+
 ::
 
-    from common.atomic_io import (
-        atomic_write_text,
-        atomic_write_json,
-        warn_if_permissive,
-    )
-    atomic_write_text(path, text)
-    atomic_write_json(path, data)
-    warn_if_permissive(path)
+    import tempfile
+    from pathlib import Path
+
+    from common.atomic_io import atomic_write_json, atomic_write_text
+
+    with tempfile.TemporaryDirectory() as folder:
+        data_path = Path(folder) / "data.json"
+        atomic_write_text(Path(folder) / "note.txt", "hello")
+        atomic_write_json(data_path, {"b": 2, "a": 1})
+        print(data_path.read_text())        # keys sorted, indent 2
 """
 
 import json

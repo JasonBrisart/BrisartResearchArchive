@@ -89,6 +89,9 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: binding stands for a value the caller
+supplies.
+
 ::
 
     from hardware.biometric.fingerprint_scanner import FingerprintScanner

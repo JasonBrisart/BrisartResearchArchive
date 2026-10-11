@@ -59,13 +59,16 @@ Known limitations
 
 Examples
 --------
+Call shapes only, not a runnable script: master_key, identity_id stand for
+values the caller supplies.
+
 ::
 
     from packages.verification import (
         build_recipient_verifier,
         verify_recipient_master_key,
     )
-    result = build_recipient_verifier(master_key, identity_id)
+    verifier = build_recipient_verifier(master_key, identity_id)
     verify_recipient_master_key(master_key, identity_id, verifier)
 """
 
