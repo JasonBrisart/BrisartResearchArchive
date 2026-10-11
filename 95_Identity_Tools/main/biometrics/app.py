@@ -4,65 +4,196 @@ File: biometrics/app.py
 Purpose
 -------
 Biometrics command-line interface: enroll, verify, inspect, and manage
-identities, plus attach/extract arbitrary files -- including whole
-folders and drives, chunked past BSR2's single-envelope size limit -- on
-an identity, independent of the voice/fingerprint/video modality system.
+identities, plus attach/extract arbitrary files -- including whole folders and
+drives, chunked past BSR2's single-envelope size limit -- on an identity,
+independent of the voice/fingerprint/video modality system.
 
-Communication / relationships
------------------------------
-Direct module imports: argparse, getpass, json, sys, pathlib, biometrics.config, biometrics.engine, biometrics.engine, biometrics.engine, biometrics.identity, biometrics.identity.identity_record, biometrics.identity.identity_store, biometrics.reports, biometrics.samples, common.atomic_io, crypto.keyring.
+Public interface:
+- class AppError(ValueError) -- Raised for user-facing CLI failures (bad
+  arguments, missing files).
+- command_make_samples(args)
+- command_enroll(args)
+- command_verify(args)
+- command_inspect(args)
+- command_list(_args)
+- command_delete(args)
+- command_probe_video(args)
+- command_record_video(args)
+- command_attach(args) -- Attach an arbitrary file (any extension, or none at
+  all) to an already-enrolled identity. The file's contents are never
+  inspected, parsed, or assumed to be any particular format -- exactly the raw
+  bytes on disk are sealed. Files larger than BSR2's ~16 MiB single- envelope
+  limit are transparently chunked.
+- command_attach_paths(args) -- Attach any combination of files, folders,
+  and/or drive roots to an identity as ONE bundle, zipping them first
+  (preserving relative structure) and chunking as needed past the
+  single-envelope size limit.
+- command_extract_attachment(args) -- Decrypt a previously attached file
+  straight back to disk, byte-for- byte identical to what was originally
+  attached. Automatically detects and reassembles a chunked bundle if one
+  exists under this name.
+- command_restore_paths(args) -- Decrypt and unzip an attach-paths bundle back
+  into a real directory tree.
+- command_remove_attachment(args) -- Remove a named attachment (or bulk bundle)
+  from an identity.
+- build_parser()
+- main(argv=None)
 
-Settings / parameters
----------------------
-Module-level named settings: KEYRING_FILE_NAME. See their definitions below for values.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Biometrics command-line interface: enroll, verify, inspect, and manage
-identities, plus attach/extract arbitrary files -- including whole
-folders and drives, chunked past BSR2's single-envelope size limit -- on
-an identity, independent of the voice/fingerprint/video modality system.
-
-This module is the single entry point that wires together every other
-piece of ``biometrics/``: it loads/unlocks a keyring for the master key,
-generates or locates sample/probe files, calls into ``engine.enrollment``
-and ``engine.verification``, persists identity records via
+This module is the single entry point that wires together every other piece of
+``biometrics/``: it loads/unlocks a keyring for the master key, generates or
+locates sample/probe files, calls into ``engine.enrollment`` and
+``engine.verification``, persists identity records via
 ``identity.identity_store.IdentityStore``, and writes audit reports via
-``reports.report_writer``. Individual modules stay unit-testable on their
-own; this file is where a human actually drives them from a terminal.
+``reports.report_writer``. Individual modules stay unit-testable on their own;
+this file is where a human actually drives them from a terminal.
 
 LIVENESS GATE: --allow-static (on both `enroll` and `verify`) bypasses the
-video-modality liveness gate added in biometrics.features.liveness. Without
-it, enrolling or verifying a --video source that shows no genuine
-frame-to-frame motion (a static photograph, or a hand-built all-identical-
-frame clip) is refused/reported as a non-match. See
-biometrics/features/liveness.py's module docstring for exactly what this
-gate does and does not detect.
+video-modality liveness gate added in biometrics.features.liveness. Without it,
+enrolling or verifying a --video source that shows no genuine frame-to-frame
+motion (a static photograph, or a hand-built all-identical- frame clip) is
+refused/reported as a non-match.
 
-UNLOCK THROTTLING: keyring unlock (the passphrase prompt in
+UNLOCK THROTTLING (since 1.3.7): keyring unlock (the passphrase prompt in
 _unlock_keyring()) is enforced through biometrics.identity.keyring_access,
 which persists crypto.throttle.AttemptLimiter state directly inside
-keyring.json and refuses an unlock attempt outright once the attempt budget
-is exhausted -- before BSR2's slow KDF is even run. This is the identical
-policy gui.tabs.tab_biometrics.BiometricsTab._ensure_keyring() enforces, so
-neither interface can be used to bypass throttling the other interface
-would apply.
+keyring.json and refuses an unlock attempt outright once the attempt budget is
+exhausted -- before BSR2's slow KDF is even run. This is the identical policy
+gui.tabs.tab_biometrics.BiometricsTab._ensure_keyring() enforces, so neither
+interface can be used to bypass throttling the other interface would apply.
 
 Invoked either directly (``python biometrics/app.py ...``) or through the
 unified dispatcher (``python cli.py biometrics ...``, which sets ``sys.argv``
 and calls :func:`main`).
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.config.settings (biometrics/config/settings.py)
+- biometrics.engine.enrollment (biometrics/engine/enrollment.py)
+- biometrics.engine.modalities (biometrics/engine/modalities.py)
+- biometrics.engine.verification (biometrics/engine/verification.py)
+- biometrics.engine.attachments (biometrics/engine/attachments.py)
+- biometrics.engine.bulk_attachments (biometrics/engine/bulk_attachments.py)
+- biometrics.identity.keyring_access (biometrics/identity/keyring_access.py)
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- biometrics.identity.identity_store (biometrics/identity/identity_store.py)
+- biometrics.reports.report_writer (biometrics/reports/report_writer.py)
+- biometrics.samples.sample_generator (biometrics/samples/sample_generator.py)
+- common.atomic_io (common/atomic_io.py)
+- crypto.keyring (crypto/keyring.py)
+- biometrics.codecs.video (biometrics/codecs/video.py)
+Standard library: argparse, getpass, json, pathlib, sys.
+Imported by:
+- cli.py
+Covered by tests: no test file imports this module directly.
+
+Settings / parameters
+---------------------
+- KEYRING_FILE_NAME = "keyring.json"
+- seed: deterministic seed for generation.
+- --modalities (command-line option).
+- --output-dir (command-line option).
+- output: output .brvid path.
+- --seed (command-line option).
+- --frames (command-line option).
+- --frame-rate (command-line option).
+- path (command-line option).
+- identity_id (command-line option).
+- --label (command-line option).
+- --voice: path to a WAV file.
+- --fingerprint: path to a PGM/PNG image.
+- --video: path to a BRVID file.
+- --allow-static: skip the video liveness gate and allow enrolling a static
+  (no-motion) clip.
+- identity_id (command-line option).
+- --voice: path to a WAV file.
+- --fingerprint: path to a PGM/PNG image.
+- --video: path to a BRVID file.
+- --any-match: accept if any one requested modality matches, instead of
+  requiring all.
+- --allow-static: skip the video liveness gate and score a static (no-motion)
+  clip anyway.
+- identity_id (command-line option).
+- identity_id (command-line option).
+- identity_id (command-line option).
+- file_path (command-line option).
+- --name: attachment name to store it under; defaults to the file's own name.
+- identity_id (command-line option).
+- name: bundle name to store it under.
+- paths: one or more file, folder, or drive root paths.
+- --chunk-mb (command-line option).
+- identity_id (command-line option).
+- name (command-line option).
+- output_path (command-line option).
+- identity_id (command-line option).
+- name (command-line option).
+- output_dir (command-line option).
+- identity_id (command-line option).
+- name (command-line option).
+- --no-unlock: skip unlocking if this is definitely not a chunked bundle.
+
+Edge cases
+----------
+- _load_or_create_keyring() raises AppError: "passphrases did not match."
+- _unlock_keyring() raises AppError.
+- command_enroll() raises AppError: "identity {...} already exists; use
+  'verify' or delete it first before re-enrolling."
+- command_enroll() raises AppError: "at least one of --voice, --fingerprint, or
+  --video is required."
+- command_enroll() raises AppError.
+- command_verify() raises AppError.
+- command_verify() raises AppError: "at least one of --voice, --fingerprint, or
+  --video is required."
+- command_inspect() raises AppError.
+- command_attach() raises AppError.
+- command_attach() raises AppError: "no file found at {...}."
+- command_attach_paths() raises AppError.
+- command_extract_attachment() raises AppError.
+- command_restore_paths() raises AppError.
+- command_remove_attachment() raises AppError.
+- Run as a script, the process exit status is main()'s return value (via
+  ``raise SystemExit(main())``).
+- _unlock_keyring(): translates keyring_access.KeyringAccessError into
+  AppError, so callers only need to handle this module's own error type.
+- command_attach(), command_extract_attachment(): translates
+  (attachment_engine.AttachmentError, bulk_attachments.BulkAttachmentError)
+  into AppError, so callers only need to handle this module's own error type.
+- command_attach(), command_attach_paths(), command_extract_attachment(),
+  command_inspect(), command_remove_attachment(), command_restore_paths(),
+  command_verify(): translates IdentityStoreError into AppError, so callers
+  only need to handle this module's own error type.
+- command_attach_paths(), command_restore_paths(): translates
+  bulk_attachments.BulkAttachmentError into AppError, so callers only need to
+  handle this module's own error type.
+- command_enroll(): translates enrollment.EnrollmentError into AppError, so
+  callers only need to handle this module's own error type.
+- command_list(): catches IdentityStoreError and handles it in place; it does
+  not propagate to the caller.
+- command_verify(): translates verification.VerificationError into AppError, so
+  callers only need to handle this module's own error type.
+- main(): catches AppError and handles it in place; it does not propagate to
+  the caller.
+
+Known limitations
+-----------------
+- See biometrics/features/liveness.py's module docstring for exactly what this
+  gate does and does not detect.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- No test module imports this file directly; as an entry point it is verified
+  only by running it, so check changes manually.
+
+Examples
+--------
+::
+
+    python -m biometrics.app --help
+    python -m biometrics.app make-samples --help
+    python -m biometrics.app record-video --help
+    python -m biometrics.app probe-video --help
 """
 
 import argparse
@@ -567,4 +698,7 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
 

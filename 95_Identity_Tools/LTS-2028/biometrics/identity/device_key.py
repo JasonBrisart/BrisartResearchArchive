@@ -5,29 +5,17 @@ Purpose
 -------
 Device binding: tying an enrolled identity to the machine that enrolled it.
 
-Communication / relationships
------------------------------
-Direct module imports: platform, socket, uuid, crypto.factors.
+Public interface:
+- class DeviceKeyError(ValueError) -- Raised when device fingerprint material
+  cannot be gathered or is invalid.
+- current_device_fingerprint() -- Collect a best-effort, machine-specific
+  fingerprint string.
+- bind_device(master_key, fingerprint=None) -- Produce a stored binding of a
+  device fingerprint under the master key.
+- verify_device(master_key, bound_value, fingerprint=None) -- Check whether the
+  current (or supplied) device matches a stored binding.
 
-Settings / parameters
----------------------
-Module-level named settings: DEVICE_FACTOR_NAME. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Device binding: tying an enrolled identity to the machine that enrolled it.
+Design notes:
 
 The problem this solves: a stolen identity store (the JSON file on disk) should
 not be usable on a different machine without also compromising something that
@@ -38,11 +26,50 @@ device later means recomputing the same derivation from the live machine and
 checking it against the stored binding, not reading a device key back out of
 the record.
 
-Machine-specific material is deliberately weak on its own (a hostname is public,
-a MAC address is often guessable). This module does not claim device binding is
-a strong security boundary equivalent to the passphrase or recovery code -- it
-is one more thing an attacker must also reproduce, not a replacement for the
-keyring's own authentication.
+Machine-specific material is deliberately weak on its own (a hostname is
+public, a MAC address is often guessable). This module does not claim device
+binding is a strong security boundary equivalent to the passphrase or recovery
+code -- it is one more thing an attacker must also reproduce, not a replacement
+for the keyring's own authentication.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.factors (crypto/factors.py)
+Standard library: platform, socket, uuid.
+Imported by:
+- biometrics/engine/enrollment.py
+Covered by tests: biometrics/tests/test_device_key.py.
+
+Settings / parameters
+---------------------
+- DEVICE_FACTOR_NAME = "device_binding"
+
+Edge cases
+----------
+- current_device_fingerprint() raises DeviceKeyError: "unable to gather any
+  device fingerprint material on this platform."
+- Broad ``except Exception`` boundary in _safe: failures are reported to the
+  user/caller rather than crashing.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    from biometrics.identity.device_key import (
+        current_device_fingerprint,
+        bind_device,
+        verify_device,
+    )
+    result = current_device_fingerprint()
+    bind_device(master_key)
+    verify_device(master_key, bound_value)
 """
 
 import platform
@@ -110,4 +137,7 @@ def verify_device(master_key: bytes, bound_value: str, fingerprint: str = None) 
     """Check whether the current (or supplied) device matches a stored binding."""
     fingerprint = fingerprint if fingerprint is not None else current_device_fingerprint()
     return verify_bound_factor(master_key, DEVICE_FACTOR_NAME, fingerprint, bound_value)
+
+
+
 

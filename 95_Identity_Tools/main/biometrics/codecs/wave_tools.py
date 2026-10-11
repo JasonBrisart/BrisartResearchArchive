@@ -5,36 +5,69 @@ Purpose
 -------
 WAV audio reading and writing for the voice modality.
 
+Public interface:
+- class WaveFormatError(ValueError) -- Raised when audio data cannot be parsed
+  or does not fit expectations.
+- read_wave(path) -- Read a WAV file, returning a mono ``int`` sample stream.
+- write_wave(path, sample_rate, samples, sample_width=2) -- Write a mono
+  ``int`` sample stream as a 16-bit (default) PCM WAV file.
+
+Design notes:
+
+Uses only the ``wave`` and ``struct`` modules from the Python standard library
+-- no third-party audio libraries. Samples are always normalised to mono
+``int`` PCM in the caller-facing functions, because every downstream consumer
+(``dsp.py``, ``voice_features.py``) works on a single channel of integers and
+should not need to know how many channels or what sample width the original
+file used.
+
 Communication / relationships
 -----------------------------
-Direct module imports: struct, wave.
+Standard library: struct, wave.
+Imported by:
+- biometrics/features/voice_features.py
+- biometrics/samples/sample_generator.py
+Covered by tests: biometrics/tests/test_codec_and_dsp_support.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: SUPPORTED_SAMPLE_WIDTHS, MAX_DURATION_SECONDS, MAX_SAMPLE_RATE. See their definitions below for values.
+- SUPPORTED_SAMPLE_WIDTHS = (1, 2, 4) -- bytes per sample: 8, 16, 32-bit PCM
+- MAX_DURATION_SECONDS = 600 -- guards against an absurd allocation from a
+  corrupt or hostile header claiming an enormous frame count.
+- MAX_SAMPLE_RATE = 768_000 -- ceiling on a declared sample rate. Real PCM tops
+  out around 384 kHz even for extreme professional audio; 768 kHz leaves
+  generous headroom while stopping a hostile header from declaring an
+  astronomically large rate. frame_count is bounded RELATIVE to sample_rate
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _unpack_samples() raises WaveFormatError: "unsupported sample width: {...}
+  bytes."
+- read_wave() raises WaveFormatError: "unsupported sample width: {...} bytes."
+- read_wave() raises WaveFormatError: "sample rate must be positive."
+- read_wave() raises WaveFormatError: "sample rate {...} exceeds the supported
+  maximum of {...}."
+- read_wave() raises WaveFormatError: "audio exceeds the supported {...}s
+  maximum."
+- read_wave() raises WaveFormatError: "failed to read WAV file: {...}"
+- write_wave() raises WaveFormatError: "sample rate must be positive."
+- write_wave() raises WaveFormatError: "sample rate {...} exceeds the supported
+  maximum of {...}."
+- write_wave() raises WaveFormatError: "unsupported sample width: {...} bytes."
+- read_wave(): translates wave.Error into WaveFormatError, so callers only need
+  to handle this module's own error type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No known limitations beyond the documented contract of its public interface.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-WAV audio reading and writing for the voice modality.
-
-Uses only the ``wave`` and ``struct`` modules from the Python standard
-library -- no third-party audio libraries. Samples are always normalised to
-mono ``int`` PCM in the caller-facing functions, because every downstream
-consumer (``dsp.py``, ``voice_features.py``) works on a single channel of
-integers and should not need to know how many channels or what sample width
-the original file used.
+    from biometrics.codecs.wave_tools import read_wave, write_wave
+    result = read_wave(path)
+    write_wave(path, sample_rate, samples)
 """
 
 import struct
@@ -153,4 +186,7 @@ def write_wave(path, sample_rate: int, samples: list, sample_width: int = 2) -> 
         handle.setsampwidth(sample_width)
         handle.setframerate(sample_rate)
         handle.writeframes(raw)
+
+
+
 

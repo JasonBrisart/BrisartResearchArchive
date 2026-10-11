@@ -5,42 +5,78 @@ Purpose
 -------
 Voice feature extraction: a WAV recording reduced to a fixed-length vector.
 
-Communication / relationships
------------------------------
-Direct module imports: biometrics.codecs, biometrics.features.similarity.
+Public interface:
+- class VoiceFeatureError(ValueError) -- Raised when voice feature extraction
+  cannot proceed.
+- extract_from_samples(samples, sample_rate) -- Extract a fixed-length feature
+  vector from mono integer samples.
+- extract_from_wav(path) -- Read a WAV file and extract its fixed-length voice
+  feature vector.
+- compare(vector_a, vector_b) -- Distance-based similarity between two voice
+  feature vectors, in (0.0, 1.0].
 
-Settings / parameters
----------------------
-Module-level named settings: FRAME_SIZE, HOP_SIZE, BAND_COUNT, DCT_COEFFICIENT_COUNT, FEATURE_VECTOR_LENGTH. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Voice feature extraction: a WAV recording reduced to a fixed-length vector.
+Design notes:
 
 The pipeline is deliberately classical rather than learned, because this
-project has no dependency on a machine-learning library and no training data
-to fit one with: frame the signal, window each frame, summarise it in a few
-complementary ways (energy, zero-crossing rate, band-energy DCT
-coefficients), then average those per-frame summaries across the whole
-recording. The result is a fixed-length vector regardless of how long the
-input recording was, which is what ``engine/modalities.py`` needs to compare
-two recordings of different lengths.
+project has no dependency on a machine-learning library and no training data to
+fit one with: frame the signal, window each frame, summarise it in a few
+complementary ways (energy, zero-crossing rate, band-energy DCT coefficients),
+then average those per-frame summaries across the whole recording. The result
+is a fixed-length vector regardless of how long the input recording was, which
+is what ``engine/modalities.py`` needs to compare two recordings of different
+lengths.
 
 None of this claims to be state-of-the-art speaker verification. It is a
 transparent, fully auditable, dependency-free feature set suitable for the
 threshold-based matching this project performs.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.codecs.dsp (biometrics/codecs/dsp.py)
+- biometrics.codecs.wave_tools (biometrics/codecs/wave_tools.py)
+- biometrics.features.similarity (biometrics/features/similarity.py)
+Standard library: none.
+Imported by:
+- biometrics/engine/modalities.py
+Covered by tests: no test file imports this module directly.
+
+Settings / parameters
+---------------------
+- FRAME_SIZE = 512
+- HOP_SIZE = 256
+- BAND_COUNT = 8
+- DCT_COEFFICIENT_COUNT = 12
+- FEATURE_VECTOR_LENGTH = 1 + 1 + BAND_COUNT + DCT_COEFFICIENT_COUNT -- energy
+  + zero-crossing-rate + band energies + DCT coefficients
+
+Edge cases
+----------
+- extract_from_samples() raises VoiceFeatureError: "sample_rate must be
+  positive."
+- extract_from_samples() raises VoiceFeatureError: "samples must not be empty."
+- extract_from_samples() raises VoiceFeatureError: "no frames could be
+  extracted from the recording."
+- compare() raises VoiceFeatureError: "feature vectors must be the same
+  length."
+
+Known limitations
+-----------------
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
+
+Examples
+--------
+::
+
+    from biometrics.features.voice_features import (
+        extract_from_samples,
+        extract_from_wav,
+        compare,
+    )
+    result = extract_from_samples(samples, sample_rate)
+    extract_from_wav(path)
+    compare(vector_a, vector_b)
 """
 
 from biometrics.codecs import dsp, wave_tools
@@ -113,4 +149,7 @@ def compare(vector_a: list, vector_b: list) -> float:
     if len(vector_a) != len(vector_b):
         raise VoiceFeatureError("feature vectors must be the same length.")
     return distance_similarity(vector_a, vector_b)
+
+
+
 

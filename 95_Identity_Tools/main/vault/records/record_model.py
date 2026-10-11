@@ -5,39 +5,84 @@ Purpose
 -------
 The vault record data model.
 
-Communication / relationships
------------------------------
-Direct module imports: unicodedata, crypto.envelope.
+Public interface:
+- class VaultRecordError(ValueError)
+- normalize_label(label)
+- new_record(record_id, label, kind, payload_envelope, timestamps)
+- validate_record(record)
+- replace_payload(record, new_payload_envelope, timestamps)
+- public_summary(record)
 
-Settings / parameters
----------------------
-Module-level named settings: RECORD_FORMAT, MAX_LABEL_LENGTH, MAX_KIND_LENGTH, _OPTIONAL_PLAINTEXT_FIELDS. See their definitions below for values.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-The vault record data model.
-
-A vault record is a labeled, kinded, sealed payload: an id, a normalized
-label used for lookup and display, a free-text kind (``"credential"``,
-``"note"``, ``"recovery-code"``, or any caller-defined string), and a BSR2
-envelope holding the actual secret content. This module defines the record's
-shape and validation only -- sealing and opening the payload, and where
-records are persisted, are ``vault.store``'s job.
+A vault record is a labeled, kinded, sealed payload: an id, a normalized label
+used for lookup and display, a free-text kind (``"credential"``, ``"note"``,
+``"recovery-code"``, or any caller-defined string), and a BSR2 envelope holding
+the actual secret content. This module defines the record's shape and
+validation only -- sealing and opening the payload, and where records are
+persisted, are ``vault.store``'s job.
 
 Kept free of file I/O so it can be unit tested with plain dicts, the same
 separation ``biometrics.identity.identity_record`` uses.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.envelope (crypto/envelope.py)
+Standard library: unicodedata.
+Imported by:
+- vault/store/vault_service.py
+Covered by tests: vault/tests/test_label_normalization.py,
+vault/tests/test_record_model.py.
+
+Settings / parameters
+---------------------
+- RECORD_FORMAT = "brisart-identity-tools/vault-record/v1"
+- MAX_LABEL_LENGTH = 256
+- MAX_KIND_LENGTH = 64
+- _OPTIONAL_PLAINTEXT_FIELDS = ("original_filename", "file_size_bytes",
+  "file_sha256")
+
+Edge cases
+----------
+- normalize_label() raises VaultRecordError: "label must be a string."
+- normalize_label() raises VaultRecordError: "label cannot be empty."
+- normalize_label() raises VaultRecordError: "label too long."
+- _validate_kind() raises VaultRecordError: "kind must be a non-empty string."
+- _validate_kind() raises VaultRecordError: "kind too long."
+- new_record() raises VaultRecordError: "record_id must be a non-empty string."
+- new_record() raises VaultRecordError: "payload must be a BSR2 envelope."
+- new_record() raises VaultRecordError: "timestamps must contain created_at and
+  updated_at."
+- validate_record() raises VaultRecordError: "vault record must be an object."
+- validate_record() raises VaultRecordError: "unsupported vault record format."
+- validate_record() raises VaultRecordError: "record_id must be a non-empty
+  string."
+- validate_record() raises VaultRecordError: "payload must be a BSR2 envelope."
+- validate_record() raises VaultRecordError: "created_at must be a non-empty
+  string."
+- validate_record() raises VaultRecordError: "updated_at must be a non-empty
+  string."
+- replace_payload() raises VaultRecordError: "payload must be a BSR2 envelope."
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    from vault.records.record_model import (
+        normalize_label,
+        new_record,
+        validate_record,
+    )
+    result = normalize_label(label)
+    new_record(record_id, label, kind, payload_envelope, timestamps)
+    validate_record(record)
 """
 
 import unicodedata
@@ -141,4 +186,7 @@ def public_summary(record: dict) -> dict:
         if field in record:
             summary[field] = record[field]
     return summary
+
+
+
 

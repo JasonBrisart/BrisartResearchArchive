@@ -5,25 +5,58 @@ Purpose
 -------
 Tests for identity id validation across identity_record and identity_store.
 
+Verifies: biometrics/identity/identity_record.py,
+biometrics/identity/identity_store.py.
+Contains 17 test case(s) across 2 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, biometrics.identity.identity_record, biometrics.identity.identity_store.
+Depends on (project modules):
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- biometrics.identity.identity_store (biometrics/identity/identity_store.py)
+Standard library: tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+IdentityRecordValidationTests:
+- New record rejects empty identity id.
+- New record rejects empty label.
+- New record rejects empty device binding.
+- Validate record rejects wrong format.
+- Validate record rejects non dict.
+- Has modality false for fresh record.
+- Public summary omits device binding.
+IdentityStorePathSafetyTests:
+- Rejects path traversal in identity id.
+- Rejects forward slash in identity id.
+- Rejects backslash in identity id.
+- Rejects whitespace padded identity id.
+- Rejects non string identity id.
+- Load missing identity raises.
+- Save and load round trip.
+- Delete missing identity returns false.
+- Delete existing identity returns true.
+- List identity ids sorted.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 17 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest biometrics.tests.test_identity_id_validation -v
+    python tests/run_tests.py
 """
 
 import tempfile
@@ -129,4 +162,7 @@ class IdentityStorePathSafetyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

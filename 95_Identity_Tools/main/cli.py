@@ -5,29 +5,10 @@ Purpose
 -------
 Unified entry point: python cli.py <tool> ...
 
-Communication / relationships
------------------------------
-Direct module imports: sys, version.
+Public interface:
+- main(argv=None)
 
-Settings / parameters
----------------------
-Module-level named settings: USAGE, _DISPATCH. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Unified entry point: python cli.py <tool> ...
+Design notes:
 
     python cli.py biometrics enroll ...
     python cli.py vault --vault v.json init
@@ -35,10 +16,50 @@ Unified entry point: python cli.py <tool> ...
     python cli.py gui
     python cli.py version
 
-Everything now lives flat at the repo root (no wrapper package), so each
-tool's main() is called in-process with a plain top-level import. Tool
-modules are imported lazily so `version`/`help` never pay an import cost for
-a tool they are not running.
+Everything now lives flat at the repo root (no wrapper package), so each tool's
+main() is called in-process with a plain top-level import.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- version (version.py)
+- biometrics.app (biometrics/app.py)
+- vault.app (vault/app.py)
+- packages.main (packages/main.py)
+Standard library: sys.
+Imported by: no other module in this tree imports it directly (it is an entry
+point).
+Covered by tests: tests/test_cli_dispatcher.py.
+
+Settings / parameters
+---------------------
+- USAGE = multi-line text template (410 chars)
+- _DISPATCH = dict of 8 entries
+
+Edge cases
+----------
+- Run as a script, the process exit status is main()'s return value (via
+  ``raise SystemExit(main())``).
+- main(): catches SystemExit and handles it in place; it does not propagate to
+  the caller.
+
+Known limitations
+-----------------
+- The gui command imports ``gui.app``, which does not exist in this tree (the
+  GUI shell currently lives at the repository-root app.py), so ``python cli.py
+  gui`` raises ImportError until that file is moved to gui/app.py.
+- Tool modules are imported lazily so `version`/`help` never pay an import cost
+  for a tool they are not running.
+
+Examples
+--------
+::
+
+    python cli.py help
+    python cli.py version
+    python cli.py vault --vault v.json init
+    python cli.py package demo
+    python cli.py biometrics --help
 """
 
 import sys
@@ -129,4 +150,7 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
 

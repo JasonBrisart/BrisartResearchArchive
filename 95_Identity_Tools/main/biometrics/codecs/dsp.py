@@ -5,35 +5,68 @@ Purpose
 -------
 Signal-processing primitives shared by the voice feature extractor.
 
+Public interface:
+- class DspError(ValueError) -- Raised on invalid signal-processing parameters
+  or input.
+- frame_signal(samples, frame_size=DEFAULT_FRAME_SIZE,
+  hop_size=DEFAULT_HOP_SIZE) -- Split a sample stream into overlapping
+  fixed-size frames.
+- apply_hamming_window(frame) -- Apply a Hamming window to reduce spectral
+  leakage at frame edges.
+- short_time_energy(frame) -- Mean squared amplitude of a frame -- a proxy for
+  loudness.
+- zero_crossing_rate(frame) -- Fraction of adjacent sample pairs that cross
+  zero.
+- discrete_cosine_transform(values, output_length) -- Naive DCT-II, truncated
+  to the first ``output_length`` coefficients.
+- band_energies(frame, band_count) -- Split a frame into contiguous bands and
+  return each band's energy.
+- normalize_vector(values) -- Scale a vector to unit maximum absolute value.
+
+Design notes:
+
+Implemented as plain loops over Python lists rather than with a numeric
+library. Frame sizes used elsewhere in biometrics are small (on the order of a
+few hundred samples), so the O(n) and O(n^2) costs here are not a practical
+bottleneck, and keeping the implementation transparent matters more than
+shaving milliseconds off it.
+
 Communication / relationships
 -----------------------------
-Direct module imports: math.
+Standard library: math.
+Imported by:
+- biometrics/features/voice_features.py
+Covered by tests: biometrics/tests/test_codec_and_dsp_support.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: DEFAULT_FRAME_SIZE, DEFAULT_HOP_SIZE. See their definitions below for values.
+- DEFAULT_FRAME_SIZE = 512
+- DEFAULT_HOP_SIZE = 256
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- frame_signal() raises DspError: "frame_size must be at least 1."
+- frame_signal() raises DspError: "hop_size must be at least 1."
+- discrete_cosine_transform() raises DspError: "output_length must be at least
+  1."
+- band_energies() raises DspError: "band_count must be at least 1."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No known limitations beyond the documented contract of its public interface.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Signal-processing primitives shared by the voice feature extractor.
-
-Implemented as plain loops over Python lists rather than with a numeric
-library. Frame sizes used elsewhere in biometrics are small (on the order of
-a few hundred samples), so the O(n) and O(n^2) costs here are not a practical
-bottleneck, and keeping the implementation transparent matters more than
-shaving milliseconds off it.
+    from biometrics.codecs.dsp import (
+        frame_signal,
+        apply_hamming_window,
+        short_time_energy,
+    )
+    result = frame_signal(samples)
+    apply_hamming_window(frame)
+    short_time_energy(frame)
 """
 
 import math
@@ -162,4 +195,7 @@ def normalize_vector(values: list) -> list:
     if peak == 0:
         return list(values)
     return [value / peak for value in values]
+
+
+
 

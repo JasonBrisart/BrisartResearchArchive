@@ -5,42 +5,68 @@ Purpose
 -------
 Recipient authorization checks for Identity-Bound Packages.
 
-Communication / relationships
------------------------------
-Direct module imports: crypto.errors, crypto.factors.
+Public interface:
+- class VerificationError(ValueError) -- Raised when recipient verification
+  cannot proceed or fails.
+- build_recipient_verifier(master_key, identity_id) -- Build a stored verifier
+  binding a recipient's master key to their id.
+- verify_recipient_master_key(master_key, identity_id, verifier) -- Check
+  whether ``master_key`` matches a previously built verifier.
 
-Settings / parameters
----------------------
-Module-level named settings: RECIPIENT_FACTOR_NAME, _VERIFIER_MARKER. See their definitions below for values.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Recipient authorization checks for Identity-Bound Packages.
-
-Before ``package.py`` attempts to unwrap a key slot, it is useful to be able
-to answer "does this master key actually belong to this recipient?" as a
-fast, clearly-named check, rather than letting a mismatched key fail deep
-inside ``ciphers.unwrap_content_key`` with a generic authentication error.
+Before ``package.py`` attempts to unwrap a key slot, it is useful to be able to
+answer "does this master key actually belong to this recipient?" as a fast,
+clearly-named check, rather than letting a mismatched key fail deep inside
+``ciphers.unwrap_content_key`` with a generic authentication error.
 
 This reuses :mod:`crypto.factors`' keyed-binding construction (the same one
 ``biometrics.identity.device_key`` uses for device binding): a recipient's
-master key is bound to a fixed marker string at registration time, and
-verified against that binding before any key slot is touched. This is a
-belt-and-suspenders check, not the package's actual security boundary --
-that boundary is the key slot's own BSR2 authentication tag, which
+master key is bound to a fixed marker string at registration time, and verified
+against that binding before any key slot is touched. This is a
+belt-and-suspenders check, not the package's actual security boundary -- that
+boundary is the key slot's own BSR2 authentication tag, which
 ``ciphers.unwrap_content_key`` enforces regardless.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+- crypto.factors (crypto/factors.py)
+Standard library: none.
+Imported by:
+- packages/package.py
+Covered by tests: packages/tests/test_verification.py.
+
+Settings / parameters
+---------------------
+- RECIPIENT_FACTOR_NAME = "package-recipient"
+- _VERIFIER_MARKER = "recipient-master-key-bound"
+
+Edge cases
+----------
+- build_recipient_verifier() raises VerificationError: "failed to build
+  recipient verifier: {...}"
+- build_recipient_verifier(): translates Bsr2IntegrationError into
+  VerificationError, so callers only need to handle this module's own error
+  type.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    from packages.verification import (
+        build_recipient_verifier,
+        verify_recipient_master_key,
+    )
+    result = build_recipient_verifier(master_key, identity_id)
+    verify_recipient_master_key(master_key, identity_id, verifier)
 """
 
 from crypto.errors import Bsr2IntegrationError
@@ -77,4 +103,7 @@ def verify_recipient_master_key(master_key: bytes, identity_id: str, verifier: s
     """
     factor_name = f"{RECIPIENT_FACTOR_NAME}:{identity_id}"
     return verify_bound_factor(master_key, factor_name, _VERIFIER_MARKER, verifier)
+
+
+
 

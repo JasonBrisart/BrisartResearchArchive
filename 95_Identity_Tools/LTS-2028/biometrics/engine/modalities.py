@@ -5,40 +5,75 @@ Purpose
 -------
 Per-modality dispatch table: feature extraction, comparison, and thresholds.
 
+Public interface:
+- class UnsupportedModalityError(ValueError) -- Raised when a modality name has
+  no registered extractor.
+- supported_modalities() -- List every modality name with a registered
+  extractor, sorted.
+- extract_from_path(modality, path) -- Extract a feature vector for
+  ``modality`` from a file at ``path``.
+- compare(modality, vector_a, vector_b) -- Compare two feature vectors for
+  ``modality``, returning a similarity score.
+- vector_length(modality) -- Return the fixed feature-vector length for
+  ``modality``.
+- default_threshold(modality) -- Return the default match-acceptance threshold
+  for ``modality``.
+
+Design notes:
+
+``enrollment.py`` and ``verification.py`` both need to answer "given a modality
+name, how do I turn raw input into a template, and how do I compare two
+templates?" without hardcoding a chain of if/elif branches for each of the
+three modalities. This module is the single place that answers that question,
+so adding a fourth modality later means adding one entry here, not hunting
+through both engine files.
+
+Default match thresholds are deliberately conservative (biased toward rejecting
+a genuine match rather than accepting an impostor) since this is a
+research/reference implementation, not a tuned production biometric system.
+
 Communication / relationships
 -----------------------------
-Direct module imports: biometrics.features.
+Depends on (project modules):
+- biometrics.features.fingerprint_features
+  (biometrics/features/fingerprint_features.py)
+- biometrics.features.video_features (biometrics/features/video_features.py)
+- biometrics.features.voice_features (biometrics/features/voice_features.py)
+Standard library: none.
+Imported by:
+- biometrics/app.py
+- biometrics/engine/enrollment.py
+- biometrics/engine/verification.py
+- gui/widgets/dialogs.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: DEFAULT_THRESHOLDS, _MODALITIES. See their definitions below for values.
+- DEFAULT_THRESHOLDS = { "voice": 0.85, "fingerprint": 0.80, "video": 0.75, }
+- _MODALITIES = dict of 3 entries
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _entry() raises UnsupportedModalityError: "unsupported modality {...};
+  expected one of {...}."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Per-modality dispatch table: feature extraction, comparison, and thresholds.
-
-``enrollment.py`` and ``verification.py`` both need to answer "given a
-modality name, how do I turn raw input into a template, and how do I compare
-two templates?" without hardcoding a chain of if/elif branches for each of
-the three modalities. This module is the single place that answers that
-question, so adding a fourth modality later means adding one entry here, not
-hunting through both engine files.
-
-Default match thresholds are deliberately conservative (biased toward
-rejecting a genuine match rather than accepting an impostor) since this is a
-research/reference implementation, not a tuned production biometric system.
+    from biometrics.engine.modalities import (
+        supported_modalities,
+        extract_from_path,
+        compare,
+    )
+    result = supported_modalities()
+    extract_from_path(modality, path)
+    compare(modality, vector_a, vector_b)
 """
 
 from biometrics.features import fingerprint_features, video_features, voice_features
@@ -119,4 +154,7 @@ def default_threshold(modality: str) -> float:
     """Return the default match-acceptance threshold for ``modality``."""
     _entry(modality)  # validates the modality name
     return DEFAULT_THRESHOLDS[modality]
+
+
+
 

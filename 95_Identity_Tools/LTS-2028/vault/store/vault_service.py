@@ -5,82 +5,107 @@ Purpose
 -------
 Vault orchestration: unlock/lock, and sealed create/read/update/delete.
 
+Public interface:
+- class VaultServiceError(ValueError)
+- class VaultService. Public methods: create, unlock,
+  unlock_with_recovery_code, lock, is_unlocked, upsert, batch_upsert,
+  upsert_file_bytes, upsert_file, get_file_bytes, get_file, delete, get,
+  get_summary, list_records, find_by_label, change_passphrase,
+  rotate_recovery_code.
+
+Design notes:
+
+This is the vault's application layer -- the single place that ties together
+the vault's keyring, its record model, its on-disk file, and its audit log into
+the operations the CLI (vault.app) and GUI (gui.tabs.tab_vault) actually call.
+It owns no file format details of its own: reading and writing the vault file
+is vault.store.vault_file's job, record shape/validation is
+vault.records.record_model's job, and the master-key wrapping is
+crypto.keyring's job.
+
 Communication / relationships
 -----------------------------
-- crypto.keyring.Keyring: unwraps the master key on unlock(); held in memory
-  for the session so each record operation is fast (one slow KDF per session,
-  not per operation -- see docs/BSR2_INTEGRATION.md's "KDF cost" section).
-- crypto.envelope (seal_json/open_json for JSON records; seal_bytes/open_bytes
-  for raw file records) bound to a crypto.context.record_context, so a
-  ciphertext cannot be moved between records without failing authentication.
-- crypto.attempt_store: (since 1.3.7) unlock() and unlock_with_recovery_code()
-  both consult this before constructing a Keyring at all, and both record a
-  failure or success afterward. State is persisted as a plain
-  "unlock_attempts" field directly inside the vault file itself, read/written
-  in the same load_state()/save_state() calls this module already makes for
-  every other field -- no separate file, no format-version bump. Both unlock
-  methods share the SAME attempt counter, so an attacker cannot reset their
-  budget by switching between a passphrase guess and a recovery-code guess.
-- vault.store.vault_file: all persistence; writes go through it atomically and
-  with owner-only (0600) permissions since the file holds the wrapped key.
-- vault.records.record_model: validate_record / new_record / replace_payload /
-  public_summary define and enforce record shape; this module never fabricates
-  a record dict by hand.
-- vault.reports.audit_log: every created/updated/deleted/unlocked/locked event
-  is recorded to a separate audit directory when one is configured.
-- vault.store.bulk_file_service builds on upsert_file_bytes/get_file_bytes here
-  to add chunking for content past BSR2's single-envelope size limit.
-
-KEY DESIGN DECISIONS
-- Record *shells* (record_id, kind, label, timestamps, and for file records
-  the plaintext original_filename/size/sha256) stay readable so list_records()
-  works while locked; only the payload value is sealed. This metadata trade-off
-  is deliberate and documented in vault/README.md.
-- upsert_file_bytes seals raw bytes with seal_bytes (never seal_json), so an
-  arbitrary file -- any extension, or binary that is not valid JSON at all --
-  round-trips byte-for-byte. Its `kind` parameter lets callers like
-  BulkFileService mark internal bundle chunks (BUNDLE_CHUNK_KIND) distinctly
-  from a genuinely standalone file (FILE_RECORD_KIND), so the two are never
-  conflated in listings or restore logic.
-- batch_upsert validates every item *before* mutating the in-memory records
-  map, so a bad item in the batch fails the whole batch without partially
-  committing (the all-or-nothing contract its tests pin).
-- Attempt-throttle state (since 1.3.7) is checked BEFORE a Keyring is even
-  constructed from the stored wrapper, so a locked-out caller is refused
-  immediately without paying BSR2's slow KDF cost at all -- refusal is cheap
-  even though a genuine unlock attempt is deliberately expensive.
-- Authentication failures from the crypto layer are re-raised as
-  VaultServiceError with the record id named, so callers catch one exception
-  family and never a vendor exception type.
+Depends on (project modules):
+- common.hashing (common/hashing.py)
+- crypto.attempt_store (crypto/attempt_store.py)
+- crypto.context (crypto/context.py)
+- crypto.envelope (crypto/envelope.py)
+- crypto.errors (crypto/errors.py)
+- crypto.rng (crypto/rng.py)
+- crypto.throttle (crypto/throttle.py)
+- vault.core.ids (vault/core/ids.py)
+- vault.core.time_tools (vault/core/time_tools.py)
+- vault.records.record_model (vault/records/record_model.py)
+- vault.reports.audit_log (vault/reports/audit_log.py)
+- vault.store.vault_file (vault/store/vault_file.py)
+- crypto.keyring (crypto/keyring.py)
+Standard library: pathlib.
+Imported by:
+- gui/tabs/tab_vault.py
+- vault/app.py
+Covered by tests: gui/tests/test_tab_vault.py,
+vault/tests/test_batch_upsert.py, vault/tests/test_bulk_file_service.py,
+vault/tests/test_file_records.py, vault/tests/test_label_normalization.py,
+vault/tests/test_public_summary_file_metadata.py,
+vault/tests/test_sealed_vault.py, vault/tests/test_unlock_throttle.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: FILE_RECORD_KIND. See their definitions below for values.
+- FILE_RECORD_KIND = "file"
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- VaultService.unlock() raises VaultServiceError: "unlock refused: too many
+  recent failed attempts; retry in {...} second(s)."
+- VaultService.unlock() raises VaultServiceError: "unlock failed: {...}"
+- VaultService.unlock_with_recovery_code() raises VaultServiceError: "unlock
+  refused: too many recent failed attempts; retry in {...} second(s)."
+- VaultService.unlock_with_recovery_code() raises VaultServiceError: "unlock
+  failed: {...}"
+- VaultService._require_unlocked() raises VaultServiceError: "vault is locked;
+  unlock it before this operation."
+- VaultService.batch_upsert() raises VaultServiceError: "each batch item must
+  contain 'label', 'kind', and 'payload'."
+- VaultService.upsert_file_bytes() raises VaultServiceError: "file_bytes must
+  be bytes."
+- VaultService.upsert_file() raises VaultServiceError: "no file found at
+  {...}."
+- VaultService.get_file_bytes() raises VaultServiceError: "no record found for
+  {...}."
+- VaultService.get_file_bytes() raises VaultServiceError: "record {...} failed
+  to authenticate: {...}"
+- VaultService.get() raises VaultServiceError: "no record found for {...}."
+- VaultService.get() raises VaultServiceError: "record {...} failed to
+  authenticate: {...}"
+- VaultService.get_summary() raises VaultServiceError: "no record found for
+  {...}."
+- VaultService.change_passphrase() raises VaultServiceError: "unlock the vault
+  before changing its passphrase."
+- VaultService.rotate_recovery_code() raises VaultServiceError: "unlock the
+  vault before rotating its recovery code."
+- VaultService.get(), VaultService.get_file_bytes(), VaultService.unlock(),
+  VaultService.unlock_with_recovery_code(): translates Bsr2IntegrationError
+  into VaultServiceError, so callers only need to handle this module's own
+  error type.
+- VaultService.unlock(), VaultService.unlock_with_recovery_code(): translates
+  AttemptLockedOut into VaultServiceError, so callers only need to handle this
+  module's own error type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- This module only sequences them, holds the unlocked master key for the
+  session, and records an audit event for every mutation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Vault orchestration: unlock/lock, and sealed create/read/update/delete.
-
-This is the vault's application layer -- the single place that ties together
-the vault's keyring, its record model, its on-disk file, and its audit log
-into the operations the CLI (vault.app) and GUI (gui.tabs.tab_vault) actually
-call. It owns no file format details of its own: reading and writing the
-vault file is vault.store.vault_file's job, record shape/validation is
-vault.records.record_model's job, and the master-key wrapping is
-crypto.keyring's job. This module only sequences them, holds the unlocked
-master key for the session, and records an audit event for every mutation.
+    from vault.store.vault_service import VaultService
+    obj = VaultService(path)
+    obj.create(path, passphrase)
 """
 
 from pathlib import Path
@@ -426,4 +451,7 @@ class VaultService:
         new_code = self._keyring.rotate_recovery_code()
         save_keyring(self.path, self._keyring)
         return new_code
+
+
+
 

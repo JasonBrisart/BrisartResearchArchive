@@ -5,40 +5,114 @@ Purpose
 -------
 Identity-Bound Packages command-line interface.
 
+Public interface:
+- class AppError(ValueError) -- Raised for user-facing CLI failures.
+- command_create(args)
+- command_add_recipient(args)
+- command_remove_recipient(args)
+- command_open(args)
+- command_list_recipients(args)
+- command_verify_custody(args)
+- command_demo(args) -- Run a full create -> add-recipient -> open cycle with
+  generated keys.
+- build_parser()
+- main(argv=None)
+
+Design notes:
+
+Since a package requires an existing recipient's master key to authorize adding
+or removing another recipient (see `package.add_recipient` /
+`package.remove_recipient`), this CLI works against a local JSON file per
+package and prompts for whichever master keys an operation needs. A "demo"
+command is included that runs a full create -> add-recipient -> open cycle in
+one shot with generated keys, useful for a quick end-to-end sanity check with
+no setup. Pass `--save` to that command to additionally write every demo
+artifact (the package file, both recipients' raw master keys, and a formatted
+custody-chain summary) to an inspectable folder on disk -- see
+packages/demo.py's module docstring for exactly what gets written and why.
+
 Communication / relationships
 -----------------------------
-Direct module imports: argparse, getpass, json, sys, pathlib, packages, packages.custody, packages.identity, packages.package.
+Depends on (project modules):
+- packages.demo (packages/demo.py)
+- packages.package (packages/package.py)
+- packages.custody (packages/custody.py)
+- packages.identity (packages/identity.py)
+Standard library: argparse, getpass, hashlib, json, pathlib, sys.
+Imported by:
+- cli.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: DEFAULT_AUDIT_DIR. See their definitions below for values.
+- DEFAULT_AUDIT_DIR = Path("data") / "packages" / "audit"
+- package_file (command-line option).
+- --package-id (command-line option).
+- --identity-id (command-line option).
+- --label (command-line option).
+- --payload: JSON object string.
+- package_file (command-line option).
+- --identity-id (command-line option).
+- --label (command-line option).
+- --opener-identity-id (command-line option).
+- package_file (command-line option).
+- --identity-id (command-line option).
+- --opener-identity-id (command-line option).
+- package_file (command-line option).
+- --identity-id (command-line option).
+- package_file (command-line option).
+- package_file (command-line option).
+- --save: also write every demo artifact (package file, both recipients'
+  passphrase text, and a custody summary) to an inspectable folder on disk.
+- --output-dir: directory to create the saved demo folder under (default:
+  data/packages/demo). Only used together with --save.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _load_state() raises AppError: "no package file found at {...}."
+- _load_state() raises AppError: "package file could not be read: {...}"
+- _load_state() raises AppError: "package file is invalid: {...}"
+- command_create() raises AppError: "a package file already exists at {...}."
+- command_create() raises AppError: "--payload must be valid JSON: {...}"
+- command_create() raises AppError: "--payload must be a JSON object."
+- command_create() raises AppError.
+- command_add_recipient() raises AppError.
+- command_remove_recipient() raises AppError.
+- command_open() raises AppError.
+- Run as a script, the process exit status is main()'s return value (via
+  ``raise SystemExit(main())``).
+- _load_state(): translates (OSError, json.JSONDecodeError) into AppError, so
+  callers only need to handle this module's own error type.
+- _load_state(): translates (PackageError, CustodyError) into AppError, so
+  callers only need to handle this module's own error type.
+- command_add_recipient(): translates (PackageError, PackageAuthorizationError,
+  RecipientIdentityError) into AppError, so callers only need to handle this
+  module's own error type.
+- command_create(): translates (PackageError, RecipientIdentityError) into
+  AppError, so callers only need to handle this module's own error type.
+- command_create(): translates json.JSONDecodeError into AppError, so callers
+  only need to handle this module's own error type.
+- command_open(): translates PackageAuthorizationError into AppError, so
+  callers only need to handle this module's own error type.
+- command_remove_recipient(): translates (PackageError,
+  PackageAuthorizationError) into AppError, so callers only need to handle this
+  module's own error type.
+- main(): catches AppError and handles it in place; it does not propagate to
+  the caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; as an entry point it is verified
+  only by running it, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Identity-Bound Packages command-line interface.
-
-Since a package requires an existing recipient's master key to authorize
-adding or removing another recipient (see `package.add_recipient` /
-`package.remove_recipient`), this CLI works against a local JSON file per
-package and prompts for whichever master keys an operation needs. A "demo"
-command is included that runs a full create -> add-recipient -> open cycle
-in one shot with generated keys, useful for a quick end-to-end sanity check
-with no setup. Pass `--save` to that command to additionally write every
-demo artifact (the package file, both recipients' raw master keys, and a
-formatted custody-chain summary) to an inspectable folder on disk -- see
-packages/demo.py's module docstring for exactly what gets written and why.
+    python -m packages.main --help
+    python -m packages.main create --help
+    python -m packages.main add-recipient --help
+    python -m packages.main remove-recipient --help
 """
 
 import argparse
@@ -266,4 +340,7 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
 

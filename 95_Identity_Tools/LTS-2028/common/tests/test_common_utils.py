@@ -3,29 +3,71 @@ File: common/tests/test_common_utils.py
 
 Purpose
 -------
-Tests for the shared common/ utilities: atomic writes, hashing, and the
-UTC timestamp helpers -- including the utc_now_iso alias whose absence broke
-every tool's imports (see docs/CHANGELOG.md 1.0.0 'Fixed').
+Tests for the shared common/ utilities: atomic writes, hashing, and the UTC
+timestamp helpers -- including the utc_now_iso alias whose absence broke every
+tool's imports (see docs/CHANGELOG.md 1.0.0 'Fixed').
+
+Verifies: common/timestamps.py, common/atomic_io.py, common/hashing.py.
+Contains 20 test case(s) across 4 TestCase class(es).
 
 Communication / relationships
 -----------------------------
-Direct module imports: json, os, stat, tempfile, unittest, pathlib, common, common.atomic_io, common.hashing.
+Depends on (project modules):
+- common.timestamps (common/timestamps.py)
+- common.atomic_io (common/atomic_io.py)
+- common.hashing (common/hashing.py)
+Standard library: json, os, pathlib, stat, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+TimestampTests:
+- Utc now iso alias exists and matches utc now.
+- Utc now is timezone aware iso.
+- Iso timestamps are lexically sortable.
+- Filename timestamp is path safe.
+- Microsecond timestamp has more precision.
+HashingTests:
+- Sha256 bytes matches known vector.
+- Sha256 file matches sha256 bytes.
+- Sha256 file streams large content.
+AtomicIoTests:
+- Atomic write text round trips.
+- Atomic write json round trips.
+- Atomic write json sorts keys.
+- Atomic write json rejects non dict.
+- Atomic write creates parent directories.
+- Write leaves no temp file behind.
+AtomicIoPermissionTests:
+- Atomic write text applies requested file mode.
+- Atomic write json applies requested file mode.
+- Omitting file mode does not force sensitive mode.
+- Warn if permissive flags an overly open file.
+- Warn if permissive is silent for a correctly restricted file.
+- Warn if permissive is silent for a missing file.
+- Skips (rather than fails) when a prerequisite is missing: "POSIX permission
+  bits are not enforced on Windows"
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Behaviour branches on the host operating system (sys.platform / os.name
+  checks in the code); verify changes on Windows, macOS, and Linux.
+- Passing proves only the 20 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest common.tests.test_common_utils -v
+    python tests/run_tests.py
 """
 
 import json
@@ -191,4 +233,7 @@ class AtomicIoPermissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

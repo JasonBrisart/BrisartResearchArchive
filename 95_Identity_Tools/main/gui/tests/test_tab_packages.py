@@ -6,30 +6,10 @@ Purpose
 Tests for gui.tabs.tab_packages.PackagesTab -- the Packages-tab slice of
 KI-002's remaining gap ("gui/tabs/*.py ... still has no direct coverage").
 
-Communication / relationships
------------------------------
-Direct module imports: hashlib, secrets, unittest.
+Verifies: gui/tabs/tab_packages.py, packages/package.py.
+Contains 8 test case(s) across 1 TestCase class(es).
 
-Settings / parameters
----------------------
-Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for gui.tabs.tab_packages.PackagesTab -- the Packages-tab slice of
-KI-002's remaining gap ("gui/tabs/*.py ... still has no direct coverage").
+Design notes:
 
 Scope is limited to the tab's own pure logic: the passphrase-text-to-master-
 key stretch (_derive_master_key), the state-presence guard used before every
@@ -43,11 +23,49 @@ here, for the same reason the Vault- and Biometrics-tab test files exclude
 their equivalents.
 
 Package fixtures use packages.package.create_package with injected 32-byte
-master keys -- fast, keyed-MAC-based sealing (no slow KDF), the same
-convention already used throughout packages/tests/.
+master keys -- fast, keyed-MAC-based sealing (no slow KDF), the same convention
+already used throughout packages/tests/.
 
-Requires a real Tk root and skips cleanly on a headless runner with no
-display, matching the convention used throughout gui/tests/.
+Requires a real Tk root and skips cleanly on a headless runner with no display,
+matching the convention used throughout gui/tests/.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- gui.tabs.tab_packages (gui/tabs/tab_packages.py)
+- packages.package (packages/package.py)
+Standard library: hashlib, secrets, tkinter, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+- _HAS_DISPLAY = _tk_display_available()
+
+Edge cases
+----------
+- Derive master key is deterministic.
+- Derive master key matches plain sha256.
+- Derive master key differs for different input.
+- Derive master key is 32 bytes.
+- Require state true when state present.
+- Refresh recipients empty when state none.
+- Refresh recipients populates rows from package state.
+- Refresh recipients clears previous rows on refresh.
+- Skips (rather than fails) when a prerequisite is missing: "requires a
+  Tk-capable display"
+
+Known limitations
+-----------------
+- Passing proves only the 8 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest gui.tests.test_tab_packages -v
+    python tests/run_tests.py
 """
 
 import hashlib
@@ -149,4 +167,7 @@ class PackagesTabTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

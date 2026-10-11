@@ -7,25 +7,51 @@ The Vault tab: init/unlock/lock a vault, manage JSON records, and
 encrypt/decrypt arbitrary files, folders, or drives (any size, chunked
 transparently past BSR2's single-envelope limit).
 
+Public interface:
+- class VaultTab(ttk.Frame) -- Init/unlock/lock a vault, create/view/delete
+  JSON records, and (new) encrypt/decrypt arbitrary files, folders, or drives
+  -- any combination, any size, chunked transparently past BSR2's
+  single-envelope limit.
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, pathlib, tkinter, gui.core.constants, gui.core.busy, gui.widgets.dialogs, gui.widgets.path_panel, vault.config, vault.store.vault_file, vault.store.vault_service, vault.store.bulk_file_service.
+Depends on (project modules):
+- gui.core.constants (gui/core/constants.py)
+- gui.core.busy (gui/core/busy.py)
+- gui.widgets.dialogs (gui/widgets/dialogs.py)
+- gui.widgets.path_panel (gui/widgets/path_panel.py)
+- vault.config.settings (vault/config/settings.py)
+- vault.store.vault_file (vault/store/vault_file.py)
+- vault.store.vault_service (vault/store/vault_service.py)
+- vault.store.bulk_file_service (vault/store/bulk_file_service.py)
+Standard library: json, pathlib, tkinter.
+Imported by:
+- app.py
+Covered by tests: gui/tests/test_tab_vault.py.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- VaultTab._decrypt_selected_bundle(): catches VaultServiceError and handles it
+  in place; it does not propagate to the caller.
+- VaultTab._refresh_file_list(), VaultTab._refresh_list(): catches
+  (VaultServiceError, VaultFileError) and handles it in place; it does not
+  propagate to the caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No known limitations beyond the documented contract of its public interface.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from gui.tabs.tab_vault import VaultTab
+    obj = VaultTab(master)
 """
 
 import json
@@ -472,4 +498,7 @@ class VaultTab(ttk.Frame):
             messagebox.showerror(APP_TITLE, str(exc), parent=self)
 
         run_in_background(self, work, on_success, on_error, "Decrypting and restoring...")
+
+
+
 

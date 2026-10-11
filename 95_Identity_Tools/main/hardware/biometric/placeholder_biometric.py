@@ -3,27 +3,48 @@ File: hardware/biometric/placeholder_biometric.py
 
 Purpose
 -------
-Placeholder biometric implementation.
+Stand-in BiometricBase implementation that performs no hardware I/O and returns
+fixed values. It lets the hardware manager, registry, and callers be wired and
+exercised end-to-end before a real scanner is attached.
+
+Public interface:
+- class PlaceholderBiometric(BiometricBase). Public methods: name, connect,
+  disconnect, health_check, scan.
 
 Communication / relationships
 -----------------------------
-Direct module imports: hardware.base.biometric_base.
+Depends on (project modules):
+- hardware.base.biometric_base (hardware/base/biometric_base.py)
+Standard library: none.
+Imported by: no other module in this tree imports it directly.
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Placeholder biometric implementation.
+- Not a real device driver: methods return fixed values and perform no hardware
+  I/O. Use it for wiring/tests until a concrete driver exists.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from hardware.biometric.placeholder_biometric import PlaceholderBiometric
+    obj = PlaceholderBiometric()
+    obj.name
 """
 
 from hardware.base.biometric_base import BiometricBase
@@ -46,4 +67,7 @@ class PlaceholderBiometric(BiometricBase):
 
     def scan(self):
         return None
+
+
+
 

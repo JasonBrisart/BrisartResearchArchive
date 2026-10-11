@@ -7,40 +7,58 @@ Tests for VaultService.upsert_file/upsert_file_bytes/get_file/get_file_bytes:
 arbitrary raw-file encryption, independent of extension, kind, or any
 assumption about the file's content shape.
 
+Verifies: vault/store/vault_service.py.
+Contains 10 test case(s) across 1 TestCase class(es).
+
+Design notes:
+
+Follows the same convention as test_sealed_vault.py: setUp() runs a real
+VaultService.create() call, which pays BSR2's real ~85-90 second KDF cost per
+test method. That is consistent with how this repository's existing vault test
+suite is written and how its own CI documents the expected runtime (see
+.github/workflows/tests.yml's "vault and package CLIs each run BSR2's
+deliberately slow passphrase derivation" comment) -- this is not a new cost
+introduced by this feature, only the same accepted cost applied to a new code
+path.
+
 Communication / relationships
 -----------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib, vault.store.vault_service.
+Depends on (project modules):
+- vault.store.vault_service (vault/store/vault_service.py)
+Standard library: pathlib, secrets, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Arbitrary binary with no extension round trips exactly.
+- Content resembling json is never parsed as json.
+- Exe shaped binary round trips exactly.
+- Empty file round trips correctly.
+- Upsert file reads a real file from disk.
+- Get file writes decrypted bytes to disk.
+- Stored vault file never contains the plaintext.
+- File record reports size and hash metadata.
+- Upsert file missing source raises.
+- File record requires unlocked vault.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
 
-Additional module documentation
--------------------------------
-Tests for VaultService.upsert_file/upsert_file_bytes/get_file/get_file_bytes:
-arbitrary raw-file encryption, independent of extension, kind, or any
-assumption about the file's content shape.
-
-Follows the same convention as test_sealed_vault.py: setUp() runs a real
-VaultService.create() call, which pays BSR2's real ~85-90 second KDF cost
-per test method. That is consistent with how this repository's existing
-vault test suite is written and how its own CI documents the expected
-runtime (see .github/workflows/tests.yml's "vault and package CLIs each
-run BSR2's deliberately slow passphrase derivation" comment) -- this is not
-a new cost introduced by this feature, only the same accepted cost applied
-to a new code path.
+    python -m unittest vault.tests.test_file_records -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -126,4 +144,7 @@ class FileRecordTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

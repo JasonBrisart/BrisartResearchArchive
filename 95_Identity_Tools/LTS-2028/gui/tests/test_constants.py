@@ -3,38 +3,52 @@ File: gui/tests/test_constants.py
 
 Purpose
 -------
-Tests for gui.core.constants: the repo-root bootstrap walk and the
-shared constants every other gui/ module depends on.
+Tests for gui.core.constants: the repo-root bootstrap walk and the shared
+constants every other gui/ module depends on.
+
+Contains 7 test case(s) across 2 TestCase class(es).
+
+Design notes:
+
+Fast and fully headless: _find_repo_root() is pure path arithmetic over
+temporary directories built with tempfile, so this exercises the real walk-up
+logic without needing tkinter, a display, or the actual repository checkout on
+disk.
 
 Communication / relationships
 -----------------------------
-Direct module imports: importlib.util, sys, tempfile, unittest, pathlib.
+Standard library: importlib, pathlib, sys, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-Module-level named settings: _CONSTANTS_PATH. See their definitions below for values.
+- _CONSTANTS_PATH = Path(__file__).resolve().parent.parent / "core" /
+  "consta...
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+FindRepoRootTests:
+- Finds root when version py is two levels up.
+- Finds root when starting file is directly in root.
+- Falls back to top of walk when version py is missing.
+- Prefers the nearest ancestor containing version py.
+ModuleConstantsTests:
+- App title is a non empty string.
+- Modality filetypes keys are known modalities.
+- Cancelled is an exception type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 7 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
 
-Additional module documentation
--------------------------------
-Tests for gui.core.constants: the repo-root bootstrap walk and the
-shared constants every other gui/ module depends on.
-
-Fast and fully headless: _find_repo_root() is pure path arithmetic over
-temporary directories built with tempfile, so this exercises the real
-walk-up logic without needing tkinter, a display, or the actual repository
-checkout on disk.
+    python -m unittest gui.tests.test_constants -v
+    python tests/run_tests.py
 """
 
 import importlib.util
@@ -154,4 +168,7 @@ class ModuleConstantsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

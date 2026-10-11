@@ -3,28 +3,47 @@ File: vault/tests/test_batch_upsert.py
 
 Purpose
 -------
-Tests for VaultService.batch_upsert: bulk creation, bulk updates, and
-that a batch containing an invalid item fails without silently skipping it.
+Tests for VaultService.batch_upsert: bulk creation, bulk updates, and that a
+batch containing an invalid item fails without silently skipping it.
+
+Verifies: vault/store/vault_service.py.
+Contains 7 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib, vault.store.vault_service.
+Depends on (project modules):
+- vault.store.vault_service (vault/store/vault_service.py)
+Standard library: pathlib, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Batch creates all records.
+- Batch payloads are individually retrievable.
+- Batch with explicit record ids updates in place.
+- Batch rejects item missing required fields.
+- Failed batch does not partially commit.
+- Batch upsert requires unlocked vault.
+- Large batch generates unique ids.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 7 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest vault.tests.test_batch_upsert -v
+    python tests/run_tests.py
 """
 
 import tempfile
@@ -114,4 +133,7 @@ class BatchUpsertTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

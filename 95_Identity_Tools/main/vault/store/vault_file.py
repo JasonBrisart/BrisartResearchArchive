@@ -5,41 +5,89 @@ Purpose
 -------
 Low-level, single-file persistence for the vault.
 
+Public interface:
+- class VaultFileError(ValueError) -- Raised when a vault file cannot be read,
+  written, or is malformed.
+- vault_exists(path) -- Report whether a vault file already exists at `path`.
+- create_vault_file(path, passphrase) -- Create a brand-new vault file
+  protected by `passphrase`.
+- load_state(path) -- Load and validate the raw vault file structure.
+- load_keyring(path) -- Load just the keyring from a vault file, without
+  touching records.
+- load_records(path) -- Load just the records map from a vault file:
+  `{record_id: record}`.
+- save_state(path, state) -- Persist the whole vault file structure atomically.
+- save_keyring(path, keyring) -- Persist an updated keyring back into an
+  existing vault file.
+- save_records(path, records) -- Persist an updated records map back into an
+  existing vault file.
+
+Design notes:
+
+A vault is one JSON file containing a :mod:`crypto.keyring` state (the wrapped
+master key) and a flat map of record id to sealed vault record. This module
+owns reading and writing that file only -- it has no opinion about what a valid
+record looks like (that is `vault.records.record_model`'s job) or how unlocking
+and mutation should be orchestrated (`vault.store.vault_service`'s job).
+Keeping this layer thin means the on-disk format can be inspected or repaired
+with nothing more than this module and a JSON viewer.
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, pathlib, common.atomic_io, crypto.keyring.
+Depends on (project modules):
+- common.atomic_io (common/atomic_io.py)
+- crypto.keyring (crypto/keyring.py)
+Standard library: json, pathlib.
+Imported by:
+- gui/tabs/tab_vault.py
+- vault/app.py
+- vault/store/vault_service.py
+Covered by tests: gui/tests/test_tab_vault.py,
+vault/tests/test_bulk_file_service.py,
+vault/tests/test_public_summary_file_metadata.py,
+vault/tests/test_sealed_vault.py, vault/tests/test_unlock_throttle.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: VAULT_FORMAT. See their definitions below for values.
+- VAULT_FORMAT = "brisart-identity-tools/vault-file/v1"
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- create_vault_file() raises VaultFileError: "a vault file already exists at
+  {...}."
+- load_state() raises VaultFileError: "no vault file found at {...}."
+- load_state() raises VaultFileError: "vault file could not be read: {...}"
+- load_state() raises VaultFileError: "vault file must contain a JSON object."
+- load_state() raises VaultFileError: "unsupported vault file format."
+- load_state() raises VaultFileError: "vault file is missing a valid keyring
+  section."
+- load_state() raises VaultFileError: "vault file is missing a valid records
+  section."
+- save_state() raises VaultFileError: "state does not have the expected vault
+  format marker."
+- load_state(): translates (OSError, json.JSONDecodeError) into VaultFileError,
+  so callers only need to handle this module's own error type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Writes go through :mod:`common.atomic_io` so a crash or power loss mid-write
+  cannot leave a half-written vault file behind.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Low-level, single-file persistence for the vault.
-
-A vault is one JSON file containing a :mod:`crypto.keyring` state (the
-wrapped master key) and a flat map of record id to sealed vault record. This
-module owns reading and writing that file only -- it has no opinion about
-what a valid record looks like (that is
-`vault.records.record_model`'s job) or how unlocking and mutation should be
-orchestrated (`vault.store.vault_service`'s job). Keeping this layer thin
-means the on-disk format can be inspected or repaired with nothing more than
-this module and a JSON viewer.
-
-Writes go through :mod:`common.atomic_io` so a crash or power loss mid-write
-cannot leave a half-written vault file behind.
+    from vault.store.vault_file import (
+        vault_exists,
+        create_vault_file,
+        load_state,
+    )
+    result = vault_exists(path)
+    create_vault_file(path, passphrase)
+    load_state(path)
 """
 
 import json
@@ -161,4 +209,7 @@ def save_records(path, records: dict) -> None:
     state = load_state(path)
     state["records"] = records
     save_state(path, state)
+
+
+
 

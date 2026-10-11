@@ -6,25 +6,51 @@ Purpose
 Tests for crypto.context: canonical context-string construction and the
 rejection of characters that could forge a different context.
 
+Verifies: crypto/context.py, crypto/errors.py.
+Contains 9 test case(s) across 2 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, crypto, crypto.errors.
+Depends on (project modules):
+- crypto.context (crypto/context.py)
+- crypto.errors (crypto/errors.py)
+Standard library: unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+ContextConstructionTests:
+- Record context is deterministic.
+- Different kinds produce different contexts.
+- All contexts share the versioned prefix.
+- Field order matters so swapped fields differ.
+ContextRejectionTests:
+- Separator in a field is rejected.
+- Nul byte in a field is rejected.
+- Empty field is rejected.
+- Non string field is rejected.
+- A field cannot be shifted across the separator boundary.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 9 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest crypto.tests.test_context -v
+    python tests/run_tests.py
 """
 
 import unittest
@@ -88,4 +114,7 @@ class ContextRejectionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

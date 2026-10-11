@@ -5,39 +5,102 @@ Purpose
 -------
 A minimal, custom frame-sequence container for the video modality.
 
-Communication / relationships
------------------------------
-Direct module imports: struct, pathlib.
+Public interface:
+- class VideoFormatError(ValueError) -- Raised when data does not parse as a
+  well-formed BRVID container.
+- encode(width, height, frame_rate, frames) -- Serialise a list of equal-sized
+  grayscale frames into BRVID bytes.
+- decode(data) -- Parse BRVID bytes into ``{"width", "height", "frame_rate",
+  "frames"}``.
+- probe(path) -- Read only the header, returning metadata without loading frame
+  data.
+- read_video(path) -- Read and decode a BRVID file from disk.
+- write_video(path, width, height, frame_rate, frames) -- Encode and write a
+  list of grayscale frames as a BRVID file.
 
-Settings / parameters
----------------------
-Module-level named settings: MAGIC, HEADER_STRUCT, MAX_DIMENSION, MAX_FRAME_COUNT, MAX_BODY_BYTES. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-A minimal, custom frame-sequence container for the video modality.
+Design notes:
 
 There is no dependency on a real video codec here (no H.264, no container
 muxer, no third-party library) because none is needed: video enrollment is a
-short sequence of grayscale frames captured or generated for a single
-identity, not general-purpose video playback. This module defines the
-smallest format that can hold that: a fixed header followed by concatenated
-raw grayscale frames, each exactly ``width * height`` bytes, with no
-per-frame compression.
+short sequence of grayscale frames captured or generated for a single identity,
+not general-purpose video playback. This module defines the smallest format
+that can hold that: a fixed header followed by concatenated raw grayscale
+frames, each exactly ``width * height`` bytes, with no per-frame compression.
 
 Format layout::
+
+Communication / relationships
+-----------------------------
+Standard library: pathlib, struct.
+Imported by:
+- biometrics/app.py
+- biometrics/engine/enrollment.py
+- biometrics/engine/verification.py
+- biometrics/features/video_features.py
+- biometrics/samples/sample_generator.py
+Covered by tests: biometrics/tests/test_liveness.py,
+biometrics/tests/test_video_support.py.
+
+Settings / parameters
+---------------------
+- MAGIC = b"BRVID001"
+- HEADER_STRUCT = struct.Struct(">8sIIII")
+- MAX_DIMENSION = 8192
+- MAX_FRAME_COUNT = 100_000 -- generous ceiling; guards a corrupt header from
+  driving an unbounded read.
+- MAX_BODY_BYTES = 512 * 1024 * 1024 -- overall ceiling on the concatenated
+  frame body. width, height, and frame_count are each individually bounded
+  above, but their PRODUCT was not, so a header sitting at each individual
+  maximum implied a body far larger than any real clip and forced a large slice
+  allocation before the length mismatch could even be detected.
+
+Edge cases
+----------
+- encode() raises VideoFormatError: "width and height must be positive."
+- encode() raises VideoFormatError: "width or height exceeds the supported
+  maximum."
+- encode() raises VideoFormatError: "frame_rate must be positive."
+- encode() raises VideoFormatError: "at least one frame is required."
+- encode() raises VideoFormatError: "frame count exceeds the supported maximum
+  of {...}."
+- encode() raises VideoFormatError: "frame {...} is not bytes."
+- encode() raises VideoFormatError: "frame {...} has {...} bytes, expected
+  {...}."
+- decode() raises VideoFormatError: "video data must be bytes."
+- decode() raises VideoFormatError: "data is too short to contain a valid
+  header."
+- decode() raises VideoFormatError: "not a BRVID container (bad magic)."
+- decode() raises VideoFormatError: "width and height must be positive."
+- decode() raises VideoFormatError: "width or height exceeds the supported
+  maximum."
+- decode() raises VideoFormatError: "frame_count must be positive."
+- decode() raises VideoFormatError: "frame count exceeds the supported maximum
+  of {...}."
+- decode() raises VideoFormatError: "frame_rate must be positive."
+- decode() raises VideoFormatError: "frame_count * width * height exceeds the
+  supported body-size ceiling."
+- decode() raises VideoFormatError: "expected {...} bytes of frame data, found
+  {...}."
+- probe() raises VideoFormatError: "data is too short to contain a valid
+  header."
+- probe() raises VideoFormatError: "not a BRVID container (bad magic)."
+- probe() raises VideoFormatError: "width and height must be positive."
+- probe() raises VideoFormatError: "width or height exceeds the supported
+  maximum."
+- probe() raises VideoFormatError: "frame_count must be positive."
+- probe() raises VideoFormatError: "frame count exceeds the supported maximum
+  of {...}."
+- probe() raises VideoFormatError: "frame_rate must be positive."
+- probe() raises VideoFormatError: "frame_count * width * height exceeds the
+  supported body-size ceiling."
+
+Known limitations
+-----------------
+- No known limitations beyond the documented contract of its public interface.
+
+Examples
+--------
+::
 
     magic          8 bytes   b"BRVID001"
     width          4 bytes   big-endian unsigned int
@@ -206,4 +269,7 @@ def write_video(path, width: int, height: int, frame_rate: int, frames: list) ->
     encoded = encode(width, height, frame_rate, frames)
     with open(path, "wb") as handle:
         handle.write(encoded)
+
+
+
 

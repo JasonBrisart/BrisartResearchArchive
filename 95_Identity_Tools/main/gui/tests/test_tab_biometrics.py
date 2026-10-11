@@ -3,62 +3,86 @@ File: gui/tests/test_tab_biometrics.py
 
 Purpose
 -------
-Tests for gui.tabs.tab_biometrics.BiometricsTab -- the Biometrics-tab
-slice of KI-002's remaining gap ("gui/tabs/*.py ... still has no direct
-coverage").
+Tests for gui.tabs.tab_biometrics.BiometricsTab -- the Biometrics-tab slice of
+KI-002's remaining gap ("gui/tabs/*.py ... still has no direct coverage").
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib.
+Verifies: gui/tabs/tab_biometrics.py, biometrics/identity/identity_store.py,
+biometrics/identity/identity_record.py, biometrics/engine/attachments.py,
+biometrics/engine/bulk_attachments.py.
+Contains 11 test case(s) across 1 TestCase class(es).
 
-Settings / parameters
----------------------
-Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for gui.tabs.tab_biometrics.BiometricsTab -- the Biometrics-tab
-slice of KI-002's remaining gap ("gui/tabs/*.py ... still has no direct
-coverage").
-
-Scope is limited to state-inspection and list-refresh logic: identity
-selection helpers (_selected_identity_id / _target_identity_id), the
-identity list refresh (_refresh_list), the attachment list refresh and its
-manifest/chunk display-name logic (_refresh_attachment_list), and
-attachment selection (_selected_attachment_name). Methods that pop a real
-modal dialog or run a background KDF-touching operation (_ensure_keyring,
-_enroll, _verify, _make_samples, _attach_selected_paths,
-_extract_selected_attachment, _remove_selected_attachment -- the last of
-which opens a blocking messagebox.askyesno before doing anything else) are
-intentionally NOT exercised here, for the same reason test_tab_vault.py
-excludes its equivalents: no user is present in an automated run to
-dismiss a modal, so calling one would hang the suite.
+Scope is limited to state-inspection and list-refresh logic: identity selection
+helpers (_selected_identity_id / _target_identity_id), the identity list
+refresh (_refresh_list), the attachment list refresh and its manifest/chunk
+display-name logic (_refresh_attachment_list), and attachment selection
+(_selected_attachment_name). Methods that pop a real modal dialog or run a
+background KDF-touching operation (_ensure_keyring, _enroll, _verify,
+_make_samples, _attach_selected_paths, _extract_selected_attachment,
+_remove_selected_attachment -- the last of which opens a blocking
+messagebox.askyesno before doing anything else) are intentionally NOT exercised
+here, for the same reason test_tab_vault.py excludes its equivalents: no user
+is present in an automated run to dismiss a modal, so calling one would hang
+the suite.
 
 self._store is overridden directly with a real, temp-directory-backed
 IdentityStore after construction (BiometricsTab.__init__ already calls
-_refresh_list() once against the real biometrics_settings.IDENTITY_DIR
-path as a side effect of normal construction; overriding afterward, before
-any test-specific refresh, keeps each test isolated from whatever that
-default directory happens to contain). Attachment fixtures use an injected
-32-byte master key with the real attach_bytes / attach_large_bytes
-sealing calls (fast, sponge-based -- no KDF), the same convention already
-used in biometrics/tests/test_attachments.py and
+_refresh_list() once against the real biometrics_settings.IDENTITY_DIR path as
+a side effect of normal construction; overriding afterward, before any
+test-specific refresh, keeps each test isolated from whatever that default
+directory happens to contain). Attachment fixtures use an injected 32-byte
+master key with the real attach_bytes / attach_large_bytes sealing calls (fast,
+sponge-based -- no KDF), the same convention already used in
+biometrics/tests/test_attachments.py and
 biometrics/tests/test_bulk_attachments.py.
 
-Requires a real Tk root and skips cleanly on a headless runner with no
-display, matching the convention used throughout gui/tests/.
+Requires a real Tk root and skips cleanly on a headless runner with no display,
+matching the convention used throughout gui/tests/.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- gui.tabs.tab_biometrics (gui/tabs/tab_biometrics.py)
+- biometrics.identity.identity_store (biometrics/identity/identity_store.py)
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- biometrics.engine.attachments (biometrics/engine/attachments.py)
+- biometrics.engine.bulk_attachments (biometrics/engine/bulk_attachments.py)
+Standard library: pathlib, secrets, tempfile, tkinter, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+- _HAS_DISPLAY = _tk_display_available()
+
+Edge cases
+----------
+- Selected identity id returns none when nothing selected.
+- Selected identity id returns correct value when selected.
+- Target identity id prefers typed value over selection.
+- Target identity id falls back to selection when field empty.
+- Selected attachment name returns none when nothing selected.
+- Refresh list populates identity rows.
+- Refresh list is empty for a fresh store.
+- Refresh attachment list shows plain attachment.
+- Refresh attachment list strips manifest suffix and hides chunks.
+- Refresh attachment list is empty with no target identity.
+- Selected attachment name returns correct value when selected.
+- Skips (rather than fails) when a prerequisite is missing: "requires a
+  Tk-capable display"
+
+Known limitations
+-----------------
+- Passing proves only the 11 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest gui.tests.test_tab_biometrics -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -207,4 +231,7 @@ class BiometricsTabTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

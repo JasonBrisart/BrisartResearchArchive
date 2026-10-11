@@ -3,34 +3,49 @@ File: hardware/cameras/placeholder_camera.py
 
 Purpose
 -------
-Placeholder camera implementation.
+Stand-in CameraBase implementation that performs no hardware I/O and returns
+fixed values. It lets the hardware manager, registry, and callers be wired and
+exercised end-to-end before a real camera is attached.
+
+Public interface:
+- class PlaceholderCamera(CameraBase). Public methods: name, connect,
+  disconnect, health_check, capture_image.
 
 Communication / relationships
 -----------------------------
-Direct module imports: hardware.base.camera_base.
+Depends on (project modules):
+- hardware.base.camera_base (hardware/base/camera_base.py)
+Standard library: none.
+Imported by: no other module in this tree imports it directly.
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Placeholder camera implementation.
+- Used only for testing architecture until real camera vendors are supported.
+- Not a real device driver: methods return fixed values and perform no hardware
+  I/O. Use it for wiring/tests until a concrete driver exists.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Placeholder camera implementation.
-
-Used only for testing architecture until
-real camera vendors are supported.
+    from hardware.cameras.placeholder_camera import PlaceholderCamera
+    obj = PlaceholderCamera()
+    obj.name
 """
 
 from hardware.base.camera_base import CameraBase
@@ -53,3 +68,6 @@ class PlaceholderCamera(CameraBase):
 
     def capture_image(self):
         return None
+
+
+

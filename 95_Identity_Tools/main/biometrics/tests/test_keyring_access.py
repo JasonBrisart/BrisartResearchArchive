@@ -3,42 +3,61 @@ File: biometrics/tests/test_keyring_access.py
 
 Purpose
 -------
-Tests for biometrics.identity.keyring_access: the shared,
-attempt-throttled entry point both the biometrics CLI (biometrics/app.py)
-and the desktop GUI (gui/tabs/tab_biometrics.py) unlock through.
+Tests for biometrics.identity.keyring_access: the shared, attempt-throttled
+entry point both the biometrics CLI (biometrics/app.py) and the desktop GUI
+(gui/tabs/tab_biometrics.py) unlock through.
+
+Verifies: biometrics/identity/keyring_access.py, crypto/attempt_store.py,
+crypto/keyring.py, crypto/throttle.py.
+Contains 4 test case(s) across 1 TestCase class(es).
+
+Design notes:
+
+SLOW: setUpClass() creates one real BSR2 keyring (Keyring.create(), a single
+~85-90s KDF derivation). Locked-out refusal is tested without any further KDF
+cost (the whole point of check_and_get_state() running before
+Keyring.unlock_with_passphrase() is called), and exactly one more real KDF call
+confirms a genuine wrong-passphrase failure is recorded, plus one more confirms
+a correct unlock clears it.
 
 Communication / relationships
 -----------------------------
-Direct module imports: json, tempfile, unittest, pathlib, biometrics.identity, crypto, crypto.keyring, crypto.throttle.
+Depends on (project modules):
+- biometrics.identity.keyring_access (biometrics/identity/keyring_access.py)
+- crypto.attempt_store (crypto/attempt_store.py)
+- crypto.keyring (crypto/keyring.py)
+- crypto.throttle (crypto/throttle.py)
+Standard library: json, pathlib, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Locked out keyring refuses before any kdf runs.
+- A wrong passphrase records one failure.
+- A correct unlock clears recorded failures.
+- Keyring access error wraps attemptlockedout message.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 4 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
 
-Additional module documentation
--------------------------------
-Tests for biometrics.identity.keyring_access: the shared,
-attempt-throttled entry point both the biometrics CLI (biometrics/app.py)
-and the desktop GUI (gui/tabs/tab_biometrics.py) unlock through.
-
-SLOW: setUpClass() creates one real BSR2 keyring (Keyring.create(), a single
-~85-90s KDF derivation). Locked-out refusal is tested without any further
-KDF cost (the whole point of check_and_get_state() running before
-Keyring.unlock_with_passphrase() is called), and exactly one more real KDF
-call confirms a genuine wrong-passphrase failure is recorded, plus one more
-confirms a correct unlock clears it.
+    python -m unittest biometrics.tests.test_keyring_access -v
+    python tests/run_tests.py
 """
 
 import json
@@ -128,4 +147,7 @@ class KeyringAccessThrottleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

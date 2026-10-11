@@ -3,28 +3,51 @@ File: biometrics/tests/test_multimodal_flow.py
 
 Purpose
 -------
-Tests for multimodal enrollment and verification (voice + fingerprint +
-video together), including require_all vs. any-match semantics.
+Tests for multimodal enrollment and verification (voice + fingerprint + video
+together), including require_all vs. any-match semantics.
+
+Verifies: biometrics/engine/enrollment.py, biometrics/engine/verification.py,
+biometrics/samples/sample_generator.py, biometrics/identity/identity_record.py.
+Contains 7 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.engine, biometrics.samples.
+Depends on (project modules):
+- biometrics.engine.enrollment (biometrics/engine/enrollment.py)
+- biometrics.engine.verification (biometrics/engine/verification.py)
+- biometrics.samples.sample_generator (biometrics/samples/sample_generator.py)
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+Standard library: pathlib, secrets, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- All three modalities enrolled.
+- Verify all three matches with same samples.
+- Require all fails if one modality has no template.
+- Any match true if at least one modality matches.
+- Verify identity requires at least one probe source.
+- Enroll identity requires at least one modality source.
+- Verify modality raises for unenrolled modality.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 7 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest biometrics.tests.test_multimodal_flow -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -120,4 +143,7 @@ class MultimodalFlowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

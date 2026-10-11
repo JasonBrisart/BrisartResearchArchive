@@ -4,51 +4,70 @@ File: tests/run_tests.py
 
 Purpose
 -------
-Run the BrisartIdentityTools test suite.
+Single test runner for the whole BrisartIdentityTools tree. It discovers every
+test_*.py file on disk, loads each by dotted module name (required because the
+tree is a PEP 420 namespace package with no __init__.py files), and can include
+or isolate the deliberately slow real-KDF tests via --fast / --slow.
 
-Communication / relationships
------------------------------
-Direct module imports: argparse, sys, unittest, pathlib.
+Public interface:
+- build_suite(mode)
+- main()
 
-Settings / parameters
----------------------
-Module-level named settings: REPOSITORY_ROOT, SLOW_TEST_CLASSES, _EXCLUDED_PARTS. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Run the BrisartIdentityTools test suite.
+Design notes:
 
 The repository is one flat PEP 420 namespace-package tree with no __init__.py
 files. unittest's discover(start_dir=...) cannot import a namespace sub-package
-as a start directory, so this runner instead finds every test_*.py file on disk,
-converts each path to its dotted module name, and loads it by name. Loading by
-dotted name works for namespace packages as long as the repository root is on
-sys.path (added below).
+as a start directory, so this runner instead finds every test_*.py file on
+disk, converts each path to its dotted module name, and loads it by name.
+Loading by dotted name works for namespace packages as long as the repository
+root is on sys.path (added below).
 
-This file may live at the repository root OR under tests/; the repository root
-is located by walking up to the directory that holds both version.py and
-vendor/, so relocating the runner never breaks discovery or sys.path.
-
-A handful of tests exercise BSR2's real, deliberately-slow password KDF
-(~1 minute per derivation), grouped by class in SLOW_TEST_CLASSES so they can be
+A handful of tests exercise BSR2's real, deliberately-slow password KDF (~1
+minute per derivation), grouped by class in SLOW_TEST_CLASSES so they can be
 run separately:
 
     python tests/run_tests.py            run every test
     python tests/run_tests.py --fast     everything EXCEPT the slow real-KDF tests
     python tests/run_tests.py --slow     ONLY the slow real-KDF tests
     python tests/run_tests.py --fast -v  verbose
+
+Communication / relationships
+-----------------------------
+Standard library: argparse, pathlib, sys, unittest.
+Imported by: no other module in this tree imports it directly (it is an entry
+point).
+Covered by tests: no test file imports this module directly.
+
+Settings / parameters
+---------------------
+- REPOSITORY_ROOT = _find_repo_root(Path(__file__))
+- SLOW_TEST_CLASSES = set of 8 entries
+- _EXCLUDED_PARTS = set of 12 entries
+- --fast: skip the slow real-KDF tests.
+- --slow: run ONLY the slow real-KDF tests.
+- -v/--verbose (command-line option).
+
+Edge cases
+----------
+- build_suite() raises SystemExit: "test collection failed; see the import
+  errors above."
+
+Known limitations
+-----------------
+- This file may live at the repository root OR under tests/; the repository
+  root is located by walking up to the directory that holds both version.py and
+  vendor/, so relocating the runner never breaks discovery or sys.path.
+- Tracked in docs/KNOWN_ISSUES.md: KI-002: GUI had no automated test coverage —
+  RESOLVED
+- No test module imports this file directly; as an entry point it is verified
+  only by running it, so check changes manually.
+
+Examples
+--------
+::
+
+    python -m unittest tests.run_tests -v
+    python tests/run_tests.py
 """
 
 import argparse
@@ -154,4 +173,7 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+
 

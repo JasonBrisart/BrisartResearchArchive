@@ -3,28 +3,53 @@ File: vault/tests/test_label_normalization.py
 
 Purpose
 -------
-Tests for label normalization in vault.records.record_model, and its
-effect on vault-level lookups.
+Tests for label normalization in vault.records.record_model, and its effect on
+vault-level lookups.
+
+Verifies: vault/records/record_model.py, vault/store/vault_service.py.
+Contains 10 test case(s) across 2 TestCase class(es).
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib, vault.records.record_model, vault.store.vault_service.
+Depends on (project modules):
+- vault.records.record_model (vault/records/record_model.py)
+- vault.store.vault_service (vault/store/vault_service.py)
+Standard library: pathlib, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+LabelNormalizationTests:
+- Strips surrounding whitespace.
+- Nfkc normalizes composed and decomposed forms.
+- Rejects empty label.
+- Rejects whitespace only label.
+- Rejects non string label.
+- Rejects overly long label.
+VaultLookupNormalizationTests:
+- Find by label matches after normalization.
+- Find by label matches unicode composition variants.
+- Stored label is the normalized form.
+- List records sorted by normalized label.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest vault.tests.test_label_normalization -v
+    python tests/run_tests.py
 """
 
 import tempfile
@@ -93,4 +118,7 @@ class VaultLookupNormalizationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

@@ -5,32 +5,58 @@ Purpose
 -------
 Tests for crypto.rng.ManagedGenerator / new_generator.
 
+Verifies: crypto/errors.py, crypto/rng.py.
+Contains 10 test case(s) across 3 TestCase class(es).
+
+Design notes:
+
+Fast: seeds from secrets.token_bytes and expands via BSR2's sponge DRBG; no KDF
+involved.
+
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, crypto.errors, crypto.rng.
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+- crypto.rng (crypto/rng.py)
+Standard library: unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+NewGeneratorTests:
+- New generator returns a usable generator.
+- New generator rejects empty purpose.
+- New generator rejects non string purpose.
+GenerateTests:
+- Generate returns the requested length.
+- Generate rejects non positive length.
+- Generate rejects empty additional input.
+- Different additional input yields different output.
+- Two generators produce independent streams.
+PersonalizationTests:
+- Direct construction rejects short personalization.
+- Direct construction rejects non bytes personalization.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
 
-Additional module documentation
--------------------------------
-Tests for crypto.rng.ManagedGenerator / new_generator.
-
-Fast: seeds from secrets.token_bytes and expands via BSR2's sponge DRBG; no
-KDF involved.
+    python -m unittest crypto.tests.test_rng -v
+    python tests/run_tests.py
 """
 
 import unittest
@@ -91,4 +117,7 @@ class PersonalizationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

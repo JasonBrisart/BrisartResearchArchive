@@ -4,122 +4,91 @@ File: hardware/cameras/onvif_camera.py
 Purpose
 -------
 A CameraBase implementation of the ONVIF protocol -- a published,
-    vendor-neutral standard for IP camera interoperability (Axis,
-    Hikvision, Dahua, and most budget IP cameras). This module owns
-    every piece of ONVIF protocol logic BrisartIdentityTools needs:
-    WS-Security UsernameToken digest generation, SOAP envelope
-    construction, GetCapabilities/GetProfiles/GetSnapshotUri/
-    GetSystemDateAndTime request bodies, XML response parsing, and
-    translation of transport-level failures into this project's own
-    exception hierarchy. All of it is implemented with Python's
-    standard library only (hashlib, base64, os, datetime,
-    xml.etree.ElementTree) -- zero third-party packages.
+vendor-neutral standard for IP camera interoperability (Axis, Hikvision, Dahua,
+and most budget IP cameras). This module owns every piece of ONVIF protocol
+logic BrisartIdentityTools needs: WS-Security UsernameToken digest generation,
+SOAP envelope construction, GetCapabilities/GetProfiles/GetSnapshotUri/
+GetSystemDateAndTime request bodies, XML response parsing, and translation of
+transport-level failures into this project's own exception hierarchy.
 
-    This module deliberately does NOT open a network connection. The
-    one operation it cannot do without leaving pure protocol logic --
-    actually sending bytes to the camera and getting bytes back -- is
-    delegated to a hardware.base.onvif_transport.ONVIFTransport
-    instance supplied by the caller at construction time. This project
-    ships the transport contract (hardware/base/onvif_transport.py)
-    but no implementation of it, mirroring the same boundary
-    hardware/base/pcsc_binding.py already draws for smart-card readers.
-    See hardware/README.md, "Why the ONVIF transport is not shipped,"
-    for the full reasoning.
+Public interface:
+- class ONVIFCamera(CameraBase) -- A CameraBase adapter implementing the ONVIF
+  protocol. Owns all SOAP/XML/WS-Security logic; owns zero network
+  connectivity. Every network operation is delegated to a required,
+  caller-supplied hardware.base.onvif_transport.ONVIFTransport instance. Public
+  methods: name, connect, disconnect, health_check, capture_image.
+
+Design notes:
+
+All of it is implemented with Python's standard library only (hashlib, base64,
+os, datetime, xml.etree.ElementTree) -- zero third-party packages. This module
+deliberately does NOT open a network connection. The one operation it cannot do
+without leaving pure protocol logic -- actually sending bytes to the camera and
+getting bytes back -- is delegated to a
+hardware.base.onvif_transport.ONVIFTransport instance supplied by the caller at
+construction time. This project ships the transport contract
+(hardware/base/onvif_transport.py) but no implementation of it, mirroring the
+same boundary hardware/base/pcsc_binding.py already draws for smart-card
+readers. See hardware/README.md, "Why the ONVIF transport is not shipped," for
+the full reasoning.
 
 Communication / relationships
 -----------------------------
-Called by: hardware.hardware_manager.HardwareManager, once
-    registered via hardware.registry.register() (not automatic -- see
-    hardware/README.md), and constructed with an ONVIFTransport
-    instance the operator supplies.
-
-    Calls out to: ONLY the ONVIFTransport instance passed into its
-    constructor, for the two network operations (`post` for SOAP calls,
-    `get` for the snapshot fetch). This file contains no urllib import,
-    no socket call, and no network-library usage anywhere in its
-    source. Every other line is plain Python: SOAP/XML string
-    construction, hashlib/base64 digest computation, and
-    xml.etree.ElementTree parsing.
-
-    Does NOT call into biometrics/, vault/, packages/, or crypto/. This
-    file has zero knowledge of identity records, sealed templates, or
-    BSR2. Wiring a captured frame into the biometrics video/fingerprint
-    pipeline is the caller's responsibility, not this file's.
-
-Why the transport is required, not optional, at construction:
-    A caller with no ONVIFTransport implementation cannot use this
-    class, by design -- there is no default, no silent fallback to
-    urllib, and no partially-working mode. Requiring the transport
-    explicitly is what keeps this file itself free of any network call:
-    it never has to open a socket or make an HTTP request because it
-    never performs that operation at all.
-
-Parameters / settings:
-    DEFAULT_PORT (int, 80):
-        ONVIF's conventional default port. Used only to build the
-        device-service URL passed to the transport; this module never
-        opens the connection itself.
-    _SOAP_NAMESPACES:
-        The small set of XML namespaces this project's SOAP envelopes
-        and parsing need. Kept as a module constant so every method
-        uses the identical namespace map, avoiding the class of bug
-        where one method's namespace prefix silently drifts from
-        another's.
-
-Edge-case behavior:
-    - connect() returns False (not an exception) on any transport-level
-      or protocol-level failure (unreachable host, wrong credentials,
-      malformed SOAP response), consistent with DeviceBase's contract
-      that connect() is a boolean probe. The underlying exception is
-      captured on `self.last_error`.
-    - ONVIFTransportError raised by the transport is caught at every
-      call site and translated into DeviceConnectionError, so a caller
-      of this class never needs to know or handle transport-specific
-      exception types.
-    - WS-Security UsernameToken digest auth is computed fresh for every
-      SOAP call (a new nonce and timestamp each time), since ONVIF
-      digest auth is timestamp-sensitive and a reused nonce/timestamp
-      pair from an earlier call would be rejected by a compliant
-      camera.
-    - capture_image() passes the raw username/password to the
-      transport's get() as explicit arguments, not pre-encoded into a
-      header, since real ONVIF cameras are inconsistent about whether
-      the snapshot endpoint expects HTTP Basic or HTTP Digest
-      authentication and the transport needs the raw credentials to
-      negotiate either. This module never decides which scheme is
-      used; that is the transport's responsibility.
-    - capture_image() returns raw JPEG bytes exactly as the transport's
-      get() returns them -- no decoding, no re-encoding, no assumption
-      about resolution. This project's own image codecs
-      (biometrics/codecs/pgm.py, biometrics/codecs/png.py) do not
-      currently accept JPEG; converting a captured frame into a format
-      this project's biometric pipeline can consume is a separate,
-      currently open piece of work, not something this file silently
-      works around.
-    - health_check() is a lightweight GetSystemDateAndTime call (no
-      WS-Security required by the ONVIF spec for this specific
-      operation), so a health check never itself requires valid
-      credentials to report basic reachability.
-    - GetCapabilities is called once during connect() to discover the
-      camera's own advertised media service address, rather than
-      assuming a fixed URL path, since ONVIF devices are not required
-      to expose the media service at any particular path.
+Depends on (project modules):
+- hardware.base.camera_base (hardware/base/camera_base.py)
+- hardware.base.onvif_transport (hardware/base/onvif_transport.py)
+- hardware.exceptions (hardware/exceptions.py)
+Standard library: base64, datetime, hashlib, os, xml.
+Imported by: no other module in this tree imports it directly.
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: DEFAULT_PORT, _SOAP_NAMESPACES. See their definitions below for values.
+- DEFAULT_PORT = 80
+- _SOAP_NAMESPACES = dict of 6 entries
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- ONVIFCamera.__init__() raises TypeError: "ONVIFCamera requires a
+  hardware.base.onvif_transport.ONVIFTransport instance; got {...} instead.
+  This project ships the transport CONTRACT only -- see hardware/README.md,
+  'Why the ONVIF transport is not shipped,' for how to supply one."
+- ONVIFCamera._post_soap() raises DeviceConnectionError: "SOAP request to {...}
+  failed: {...}"
+- ONVIFCamera._post_soap() raises DeviceConnectionError: "malformed SOAP
+  response from {...}: {...}"
+- ONVIFCamera._discover_media_service_url() raises DeviceConnectionError:
+  "{...} did not advertise a Media service address in GetCapabilities."
+- ONVIFCamera._get_first_profile_token() raises DeviceConnectionError: "{...}
+  reported zero ONVIF media profiles."
+- ONVIFCamera._get_snapshot_uri() raises DeviceConnectionError: "{...} did not
+  return a snapshot URI for profile {...}."
+- ONVIFCamera.capture_image() raises DeviceConnectionError: "{...} is not
+  connected; call connect() first."
+- ONVIFCamera.capture_image() raises DeviceConnectionError: "snapshot fetch
+  from {...} failed: {...}"
+- ONVIFCamera._post_soap(): translates ElementTree.ParseError into
+  DeviceConnectionError, so callers only need to handle this module's own error
+  type.
+- ONVIFCamera._post_soap(), ONVIFCamera.capture_image(): translates
+  ONVIFTransportError into DeviceConnectionError, so callers only need to
+  handle this module's own error type.
+- ONVIFCamera.connect(), ONVIFCamera.health_check(): catches
+  DeviceConnectionError and handles it in place; it does not propagate to the
+  caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from hardware.cameras.onvif_camera import ONVIFCamera
+    obj = ONVIFCamera(transport, host, username, password)
+    obj.name
 """
 
 import base64
@@ -327,4 +296,7 @@ class ONVIFCamera(CameraBase):
             raise DeviceConnectionError(
                 f"snapshot fetch from {self._snapshot_uri} failed: {exc}"
             ) from exc
+
+
+
 

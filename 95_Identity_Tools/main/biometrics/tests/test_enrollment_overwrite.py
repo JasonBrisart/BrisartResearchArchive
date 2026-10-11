@@ -5,33 +5,52 @@ Purpose
 -------
 Tests covering re-enrollment / template overwrite behavior.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.engine, biometrics.identity.identity_record, biometrics.identity.identity_store, biometrics.samples.
+Verifies: biometrics/engine/enrollment.py,
+biometrics/identity/identity_record.py, biometrics/identity/identity_store.py,
+biometrics/samples/sample_generator.py.
+Contains 4 test case(s) across 1 TestCase class(es).
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests covering re-enrollment / template overwrite behavior.
+Design notes:
 
 set_template must replace a modality's template without disturbing any other
 modality already on the record, and without mutating the caller's original
 record object in place.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.engine.enrollment (biometrics/engine/enrollment.py)
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- biometrics.identity.identity_store (biometrics/identity/identity_store.py)
+- biometrics.samples.sample_generator (biometrics/samples/sample_generator.py)
+Standard library: pathlib, secrets, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
+
+Edge cases
+----------
+- Enroll modality does not mutate original record.
+- Re enrolling a modality replaces its template.
+- Enrolling a second modality preserves the first.
+- Store save overwrites existing identity file.
+
+Known limitations
+-----------------
+- Passing proves only the 4 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest biometrics.tests.test_enrollment_overwrite -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -117,4 +136,7 @@ class EnrollmentOverwriteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

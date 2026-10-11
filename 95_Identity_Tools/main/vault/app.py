@@ -3,29 +3,123 @@ File: vault/app.py
 
 Purpose
 -------
-Vault command-line interface: init, unlock, upsert, get, list,
-delete, batch-upsert, and (new) encrypt-file/decrypt-file for arbitrary
-binary files of any kind, extension, or lack thereof.
+Vault command-line interface: init, unlock, upsert, get, list, delete,
+batch-upsert, and (new) encrypt-file/decrypt-file for arbitrary binary files of
+any kind, extension, or lack thereof.
+
+Public interface:
+- class AppError(ValueError)
+- command_init(args)
+- command_upsert(args)
+- command_batch_upsert(args)
+- command_encrypt_file(args) -- Encrypt an arbitrary local file -- any
+  extension, or no extension at all -- into the vault, sealing its exact raw
+  bytes. The file's contents are never inspected, parsed, or assumed to be any
+  particular format.
+- command_decrypt_file(args) -- Decrypt a previously encrypted file record
+  straight back to disk, byte-for-byte identical to what was originally
+  encrypted.
+- command_encrypt_paths(args) -- Encrypt any combination of files, folders,
+  and/or drive roots -- all given as separate positional arguments -- as ONE
+  bundle. Any single file over BSR2's ~16 MiB envelope cap, and the zip built
+  from folders/drives (which will almost always be over that cap), are both
+  transparently chunked and reassembled correctly; the caller never needs to
+  think about the size limit at all.
+- command_restore_paths(args) -- Decrypt and unzip a bundle created by
+  encrypt-paths back into a real directory tree at the given output directory.
+- command_get(args)
+- command_list(args)
+- command_delete(args)
+- build_parser()
+- main(argv=None)
 
 Communication / relationships
 -----------------------------
-Direct module imports: argparse, getpass, json, sys, pathlib, vault.config, vault.store.vault_file, vault.store.vault_service, vault.store.bulk_file_service.
+Depends on (project modules):
+- vault.config.settings (vault/config/settings.py)
+- vault.store.vault_file (vault/store/vault_file.py)
+- vault.store.vault_service (vault/store/vault_service.py)
+- vault.store.bulk_file_service (vault/store/bulk_file_service.py)
+Standard library: argparse, getpass, json, pathlib, sys.
+Imported by:
+- cli.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: MAX_CHUNK_MB. See their definitions below for values.
+- MAX_CHUNK_MB = 15
+- --vault: path to the vault file.
+- label (command-line option).
+- --kind (command-line option).
+- --payload: JSON object string.
+- --record-id (command-line option).
+- items_file: path to a JSON array of items.
+- file_path: path to the file to encrypt.
+- --label: defaults to the file's own name.
+- --record-id (command-line option).
+- record_id (command-line option).
+- output_path (command-line option).
+- paths: one or more file, folder, or drive root paths.
+- --label: defaults to the first path's own name.
+- --record-id (command-line option).
+- --chunk-mb: chunk size in MiB (default 8; must be 1..{...}).
+- record_id (command-line option).
+- output_dir (command-line option).
+- record_id (command-line option).
+- record_id (command-line option).
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _unlock() raises AppError.
+- command_init() raises AppError: "a vault already exists at {...}."
+- command_init() raises AppError: "passphrases did not match."
+- command_upsert() raises AppError: "--payload must be valid JSON: {...}"
+- command_upsert() raises AppError: "--payload must be a JSON object."
+- command_upsert() raises AppError.
+- command_batch_upsert() raises AppError: "could not read --items-file: {...}"
+- command_batch_upsert() raises AppError: "--items-file must contain a JSON
+  array of items."
+- command_batch_upsert() raises AppError.
+- command_encrypt_file() raises AppError.
+- command_decrypt_file() raises AppError.
+- command_encrypt_paths() raises AppError: "--chunk-mb must be between 1 and
+  {...} (a single BSR2 envelope caps at ~16 MiB)."
+- command_encrypt_paths() raises AppError.
+- command_restore_paths() raises AppError.
+- command_get() raises AppError.
+- Run as a script, the process exit status is main()'s return value (via
+  ``raise SystemExit(main())``).
+- _unlock(), command_decrypt_file(), command_get(): translates
+  VaultServiceError into AppError, so callers only need to handle this module's
+  own error type.
+- command_batch_upsert(): translates (OSError, json.JSONDecodeError) into
+  AppError, so callers only need to handle this module's own error type.
+- command_batch_upsert(), command_encrypt_file(), command_upsert(): translates
+  (VaultServiceError, VaultFileError) into AppError, so callers only need to
+  handle this module's own error type.
+- command_encrypt_paths(): translates (BulkFileServiceError, VaultServiceError,
+  VaultFileError) into AppError, so callers only need to handle this module's
+  own error type.
+- command_restore_paths(): translates (BulkFileServiceError, VaultServiceError)
+  into AppError, so callers only need to handle this module's own error type.
+- command_upsert(): translates json.JSONDecodeError into AppError, so callers
+  only need to handle this module's own error type.
+- main(): catches AppError and handles it in place; it does not propagate to
+  the caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; as an entry point it is verified
+  only by running it, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    python -m vault.app --help
+    python -m vault.app init --help
+    python -m vault.app upsert --help
+    python -m vault.app batch-upsert --help
 """
 
 import argparse
@@ -322,4 +416,7 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
 

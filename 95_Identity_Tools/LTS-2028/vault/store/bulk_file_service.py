@@ -5,62 +5,103 @@ Purpose
 -------
 Chunked, multi-path bulk file/folder/drive encryption on top of VaultService.
 
-Communication / relationships
------------------------------
-Direct module imports: tempfile, time, zipfile, pathlib, common.hashing.
+Public interface:
+- class BulkFileServiceError(ValueError) -- Raised when a bulk encrypt/restore
+  operation cannot proceed.
+- class BulkFileService -- Wraps an already-unlocked VaultService with chunked
+  bulk operations. Public methods: upsert_large_bytes, restore_bytes,
+  upsert_paths, restore_paths.
 
-Settings / parameters
----------------------
-Module-level named settings: BUNDLE_MANIFEST_KIND, BUNDLE_CHUNK_KIND, DEFAULT_CHUNK_BYTES. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Chunked, multi-path bulk file/folder/drive encryption on top of VaultService.
+Design notes:
 
 WHY THIS MODULE EXISTS: BSR2's vendored envelope hard-caps a single sealed
 payload at vendor.brisart_security_envelope.MAX_PLAINTEXT_BYTES == 16 MiB
 (crypto/envelope.py's own MAX_PAYLOAD_BYTES trims that further for its
-length-prefix + padding overhead). Calling encrypt() on anything larger
-raises BrisartEnvelopeError outright -- no silent truncation, it simply
-refuses. So "encrypt this file" only works unmodified for content under
-roughly 16 MiB. Anything bigger -- a large single file, a folder, an entire
-drive -- must be split into several separately-sealed chunks and reassembled
-on the way back out. This module is that splitting/reassembly layer, built
-once here so both Vault and Biometrics attachments can share it.
+length-prefix + padding overhead). Calling encrypt() on anything larger raises
+BrisartEnvelopeError outright -- no silent truncation, it simply refuses. So
+"encrypt this file" only works unmodified for content under roughly 16 MiB.
+Anything bigger -- a large single file, a folder, an entire drive -- must be
+split into several separately-sealed chunks and reassembled on the way back
+out. This module is that splitting/reassembly layer, built once here so both
+Vault and Biometrics attachments can share it.
 
-WHAT THIS MODULE DOES NOT DO: it does not stream-encrypt on the fly. A
-bundle (whether one big file or a zip of many files/folders) is first fully
-materialized as a real zip file on local disk via the stdlib `zipfile`
-module, then read back and chunked. The practical ceiling for "encrypt my
-whole drive" is therefore bounded by available local disk space for that
-temporary zip and by how long walking + compressing that many files takes --
-not by anything in this module's own logic, which has no size ceiling of its
-own beyond chunk count (i.e. none). Encrypting a full, multi-hundred-GB drive
-is technically supported but will take a genuinely long time and require that
-much free disk space for the intermediate zip.
+A bundle (whether one big file or a zip of many files/folders) is first fully
+materialized as a real zip file on local disk via the stdlib `zipfile` module,
+then read back and chunked. The practical ceiling for "encrypt my whole drive"
+is therefore bounded by available local disk space for that temporary zip and
+by how long walking + compressing that many files takes -- not by anything in
+this module's own logic, which has no size ceiling of its own beyond chunk
+count (i.e. none). Encrypting a full, multi-hundred-GB drive is technically
+supported but will take a genuinely long time and require that much free disk
+space for the intermediate zip.
 
 MANIFEST + CHUNK MODEL: a bulk encryption produces exactly one small manifest
 record (an ordinary vault JSON record, kind BUNDLE_MANIFEST_KIND) naming how
 many chunk records exist, their ordered record ids, the original total size,
 and a SHA-256 of the COMPLETE reassembled plaintext (the zip bytes, before
-chunking) -- so a restore can verify integrity across the whole chunk set,
-not just per-chunk. Each chunk is a vault FILE record (created via
-VaultService.upsert_file_bytes) sealed under kind BUNDLE_CHUNK_KIND rather
-than the standalone FILE_RECORD_KIND, so its "kind" field distinguishes it as
-an internal bundle piece rather than a real, independently-meaningful
-standalone file record.
+chunking) -- so a restore can verify integrity across the whole chunk set, not
+just per-chunk. Each chunk is a vault FILE record (created via
+VaultService.upsert_file_bytes) sealed under kind BUNDLE_CHUNK_KIND rather than
+the standalone FILE_RECORD_KIND, so its "kind" field distinguishes it as an
+internal bundle piece rather than a real, independently-meaningful standalone
+file record.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- common.hashing (common/hashing.py)
+Standard library: pathlib, tempfile, time, zipfile.
+Imported by:
+- gui/tabs/tab_vault.py
+- vault/app.py
+Covered by tests: vault/tests/test_bulk_file_service.py.
+
+Settings / parameters
+---------------------
+- BUNDLE_MANIFEST_KIND = "bundle-manifest"
+- BUNDLE_CHUNK_KIND = "bundle-chunk"
+- DEFAULT_CHUNK_BYTES = 8 * 1024 * 1024
+
+Edge cases
+----------
+- _build_zip_from_paths() raises BulkFileServiceError: "path does not exist:
+  {...}"
+- BulkFileService._require_unlocked() raises BulkFileServiceError: "vault is
+  locked; unlock it before this operation."
+- BulkFileService.upsert_large_bytes() raises BulkFileServiceError: "data must
+  be bytes."
+- BulkFileService.restore_bytes() raises BulkFileServiceError: "record {...} is
+  not a valid bulk-encryption manifest."
+- BulkFileService.restore_bytes() raises BulkFileServiceError: "manifest chunk
+  count does not match its chunk id list."
+- BulkFileService.restore_bytes() raises BulkFileServiceError: "reassembled
+  size {...} does not match manifest's recorded size {...} -- a chunk is
+  missing, truncated, or out of order."
+- BulkFileService.restore_bytes() raises BulkFileServiceError: "reassembled
+  content's SHA-256 does not match the manifest's recorded hash -- the bundle
+  is corrupted or was tampered with."
+- BulkFileService.upsert_paths() raises BulkFileServiceError: "at least one
+  path is required."
+- BulkFileService.upsert_paths() raises BulkFileServiceError: "no readable
+  files were found under the given path(s)."
+- _build_zip_from_paths(): catches OSError and handles it in place; it does not
+  propagate to the caller.
+- _build_zip_from_paths(): catches ValueError and handles it in place; it does
+  not propagate to the caller.
+
+Known limitations
+-----------------
+- WHAT THIS MODULE DOES NOT DO: it does not stream-encrypt on the fly.
+- Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk file/folder/drive encryption
+  throughput ceiling (~1.4 KB/s)
+
+Examples
+--------
+::
+
+    from vault.store.bulk_file_service import BulkFileService
+    obj = BulkFileService(vault_service)
+    obj.upsert_large_bytes(label, data)
 """
 
 import tempfile
@@ -314,4 +355,7 @@ class BulkFileService:
                 archive.extractall(output_dir)
                 extracted_names = archive.namelist()
         return {"output_dir": str(output_dir), "files_restored": len(extracted_names)}
+
+
+
 

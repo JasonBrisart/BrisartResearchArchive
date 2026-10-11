@@ -3,106 +3,84 @@ File: biometrics/features/liveness.py
 
 Purpose
 -------
-Reintroduces a liveness/anti-spoofing GATE for the video modality, filling
-the gap explicitly documented in biometrics/README.md's Status section
-("there is currently no liveness or anti-spoofing check for any modality --
-a recording or synthetic sample that reproduces the feature vector closely
-enough will verify") and in docs/BSR2_INTEGRATION.md's Residual Risks item 7.
+Reintroduces a liveness/anti-spoofing GATE for the video modality, filling the
+gap explicitly documented in biometrics/README.md's Status section ("there is
+currently no liveness or anti-spoofing check for any modality -- a recording or
+synthetic sample that reproduces the feature vector closely enough will
+verify") and in docs/BSR2_INTEGRATION.md's Residual Risks item 7. This is NOT a
+resurrection of the old 0.6.0-beta LabID_Beta/core/video.py liveness code --
+that code parsed real AVI files and no longer exists; this repository's current
+video pipeline stores frames in the from-scratch BRVID container
+(biometrics/codecs/video.py), which never had liveness logic.
 
-This is NOT a resurrection of the old 0.6.0-beta LabID_Beta/core/video.py
-liveness code -- that code parsed real AVI files and no longer exists; this
-repository's current video pipeline stores frames in the from-scratch BRVID
-container (biometrics/codecs/video.py), which never had liveness logic. This
-module is a new implementation built against BRVID's actual frame data.
+Public interface:
+- class LivenessError(ValueError) -- Raised when liveness cannot be assessed
+  due to malformed input.
+- compute_motion_energy(width, height, frames) -- Mean absolute per-pixel
+  frame-to-frame difference across a clip.
+- assess_liveness(width, height, frames, threshold=DEFAULT_LIVENESS_THRESHOLD)
+  -- Assess whether a decoded BRVID frame sequence shows real motion.
 
-WHAT IT DETECTS
-A still photograph (or any perfectly static scene) held in front of a camera,
-or a synthetic clip built from a single repeated frame, produces near-zero
-frame-to-frame pixel change. A live capture -- even someone sitting still --
-always has some non-zero change from sensor noise, micro-movement, and
-lighting flicker. This module measures exactly that: mean absolute pixel
-difference between consecutive frames, averaged across the whole clip.
+Design notes:
 
-WHAT IT DOES NOT DETECT
-This is a MOTION-PRESENCE check, not a liveness/anti-spoofing check in the
-research sense. It will NOT catch:
-  - A video replay attack (playing a real recorded video of the enrolled
-    person back at the camera) -- that has real motion and passes this gate.
-  - A high-quality 3D mask or deepfake with natural micro-motion.
-  - A photo that is itself physically wobbled/panned in front of the camera
-    to fake motion.
-This is stated plainly rather than left implied, matching this project's
-existing "Research-grade" framing (biometrics/README.md's Status section):
-this closes the specific "one repeated still frame" gap, not the general
+This module is a new implementation built against BRVID's actual frame data.
+WHAT IT DETECTS A still photograph (or any perfectly static scene) held in
+front of a camera, or a synthetic clip built from a single repeated frame,
+produces near-zero frame-to-frame pixel change. A live capture -- even someone
+sitting still -- always has some non-zero change from sensor noise,
+micro-movement, and lighting flicker. This module measures exactly that: mean
+absolute pixel difference between consecutive frames, averaged across the whole
+clip. WHAT IT DOES NOT DETECT This is a MOTION-PRESENCE check, not a
+liveness/anti-spoofing check in the research sense. It will NOT catch: - A
+video replay attack (playing a real recorded video of the enrolled person back
+at the camera) -- that has real motion and passes this gate. - A high-quality
+3D mask or deepfake with natural micro-motion. - A photo that is itself
+physically wobbled/panned in front of the camera to fake motion. This is stated
+plainly rather than left implied, matching this project's existing
+"Research-grade" framing (biometrics/README.md's Status section): this closes
+the specific "one repeated still frame" gap, not the general
 liveness/anti-spoofing problem.
 
 Communication / relationships
 -----------------------------
-- biometrics.engine.verification.verify_modality calls assess_liveness()
-  for the "video" modality only, BEFORE trusting the similarity score,
-  using the exact same decoded frame list biometrics.codecs.video.decode()
-  already produced (no second file read, no second decode).
-- biometrics.engine.enrollment.enroll_modality calls assess_liveness() for
-  the "video" modality at enrollment time too, so a static clip cannot be
-  baked into a template in the first place -- mirroring the 0.6.0-beta
-  design decision ("Static-recording enrollment is refused by default, so a
-  photograph cannot be baked into a template and make the verification-time
-  gate meaningless"), re-implemented here against the current codebase.
-- Both call sites accept an `allow_static: bool = False` parameter that
-  callers thread through from a new --allow-static CLI flag
-  (see biometrics/app.py), mirroring the original 0.6.0-beta
-  --allow-static override exactly by name and behavior.
-
-PARAMETERS
-DEFAULT_LIVENESS_THRESHOLD (float, default 0.75)
-    Minimum required mean absolute per-pixel difference (0-255 grayscale
-    scale) between consecutive frames, averaged across every consecutive
-    pair in the clip. Chosen as a low floor deliberately: it only needs to
-    separate "genuinely zero motion" (a static photo, or a hand-built clip
-    of one repeated frame -- which score exactly 0.0) from "any real
-    motion at all," not to distinguish subtle liveness cues. This value has
-    NOT been calibrated against a real camera; it is calibrated only
-    against this project's own synthetic sample generator
-    (biometrics.samples.sample_generator), which is the same caveat this
-    project's BSR2 cryptography carries for a different reason (see
-    docs/BSR2_INTEGRATION.md) -- a mechanism proven correct against its own
-    test fixtures, not against real-world adversarial input.
-MIN_FRAMES_FOR_LIVENESS (int, default 2)
-    A clip with fewer than this many frames has no frame-to-frame
-    difference to measure at all. Rather than silently reporting "live"
-    for a single-frame clip (which would defeat the entire point of this
-    gate), such a clip is always reported as NOT live, consistent with how
-    biometrics.features.video_features.extract_from_frames already
-    zeroes its own motion component for a single-frame clip.
-
-EDGE-CASE BEHAVIOR
-- Empty frame list: raises LivenessError. Every other function in this
-  codebase's biometrics.codecs.video module already refuses to construct a
-  BRVID container with zero frames (VideoFormatError), so a caller reaching
-  this function with an empty list indicates a bug upstream, not a
-  legitimate "no frames" liveness case.
-- All-identical frames (a hand-built or synthetic all-static clip): scores
-  exactly 0.0, always fails the gate. Verified directly in
-  biometrics/tests/test_liveness.py.
-- Frames of mismatched dimensions: raises LivenessError before any
-  comparison is attempted, rather than letting a bytes-length mismatch
-  produce a confusing IndexError deep inside the comparison loop.
+Depends on (project modules):
+- biometrics.codecs.image_tools (biometrics/codecs/image_tools.py)
+Standard library: none.
+Imported by:
+- biometrics/engine/enrollment.py
+- biometrics/engine/verification.py
+Covered by tests: biometrics/tests/test_liveness.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: DEFAULT_LIVENESS_THRESHOLD, MIN_FRAMES_FOR_LIVENESS. See their definitions below for values.
+- DEFAULT_LIVENESS_THRESHOLD = 0.75
+- MIN_FRAMES_FOR_LIVENESS = 2
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _mean_absolute_frame_difference() raises LivenessError: "frame byte length
+  does not match {...}x{...} dimensions."
+- compute_motion_energy() raises LivenessError: "width and height must be
+  positive."
+- compute_motion_energy() raises LivenessError: "at least one frame is required
+  to assess liveness."
+- assess_liveness() raises LivenessError: "threshold must be positive."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Tracked in docs/KNOWN_ISSUES.md: KI-001: Video liveness threshold is
+  uncalibrated against real camera hardware
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from biometrics.features.liveness import (
+        compute_motion_energy,
+        assess_liveness,
+    )
+    result = compute_motion_energy(width, height, frames)
+    assess_liveness(width, height, frames)
 """
 
 from biometrics.codecs import image_tools
@@ -170,4 +148,7 @@ def assess_liveness(
         "threshold": threshold,
         "is_live": motion_energy >= threshold,
     }
+
+
+
 

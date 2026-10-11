@@ -5,38 +5,57 @@ Purpose
 -------
 Record id generation and validation for the vault.
 
+Public interface:
+- class RecordIdError(ValueError) -- Raised when a record id fails validation.
+- new_record_id() -- Generate a fresh, random record id.
+- validate_record_id(record_id) -- Validate a record id, returning it unchanged
+  on success.
+
+Design notes:
+
+That is a narrower attack surface, but the id still ends up embedded in the
+BSR2 context string (:func:`crypto.context.record_context`), which rejects the
+``|`` separator and NUL bytes itself. Validation here catches those problems
+earlier, with a message that names the actual field, rather than surfacing a
+generic context error from deep inside the sealing call.
+
 Communication / relationships
 -----------------------------
-Direct module imports: secrets.
+Standard library: secrets.
+Imported by:
+- vault/store/vault_service.py
+Covered by tests: vault/tests/test_record_ids_and_time.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: MAX_RECORD_ID_LENGTH, RECORD_ID_TOKEN_BYTES. See their definitions below for values.
+- MAX_RECORD_ID_LENGTH = 128
+- RECORD_ID_TOKEN_BYTES = 16
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- validate_record_id() raises RecordIdError: "record_id must be a non-empty
+  string."
+- validate_record_id() raises RecordIdError: "record_id cannot have leading or
+  trailing whitespace."
+- validate_record_id() raises RecordIdError: "record_id cannot be longer than
+  {...} characters."
+- validate_record_id() raises RecordIdError: "record_id cannot contain '|'."
+- validate_record_id() raises RecordIdError: "record_id cannot contain a NUL
+  byte."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Unlike biometrics identity ids (which become filesystem path segments and so
+  must reject path separators), a vault record id is only ever used as a JSON
+  object key inside a single vault file.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Record id generation and validation for the vault.
-
-Unlike biometrics identity ids (which become filesystem path segments and so
-must reject path separators), a vault record id is only ever used as a JSON
-object key inside a single vault file. That is a narrower attack surface, but
-the id still ends up embedded in the BSR2 context string
-(:func:`crypto.context.record_context`), which rejects the ``|`` separator
-and NUL bytes itself. Validation here catches those problems earlier, with a
-message that names the actual field, rather than surfacing a generic context
-error from deep inside the sealing call.
+    from vault.core.ids import new_record_id, validate_record_id
+    result = new_record_id()
+    validate_record_id(record_id)
 """
 
 import secrets
@@ -79,4 +98,7 @@ def validate_record_id(record_id) -> str:
     if "\x00" in record_id:
         raise RecordIdError("record_id cannot contain a NUL byte.")
     return record_id
+
+
+
 

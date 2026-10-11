@@ -7,37 +7,56 @@ Tests for crypto.attempt_store: the container-field adapter between
 crypto.throttle.AttemptLimiter and the on-disk JSON containers (vault.json,
 biometrics keyring.json) that persist unlock-attempt state.
 
-Communication / relationships
------------------------------
-Direct module imports: unittest, crypto, crypto.throttle.
+Verifies: crypto/attempt_store.py, crypto/throttle.py.
+Contains 8 test case(s) across 1 TestCase class(es).
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for crypto.attempt_store: the container-field adapter between
-crypto.throttle.AttemptLimiter and the on-disk JSON containers (vault.json,
-biometrics keyring.json) that persist unlock-attempt state.
+Design notes:
 
 All tests here inject their own AttemptLimiter (with a fake time_source, and
 usually a low max_attempts) rather than relying on the shared module-level
-default, so lockout/backoff behavior is exercised deterministically and fast
--- consistent with crypto/tests/test_throttle.py's own approach. Fast: no
-KDF involved anywhere in this file.
+default, so lockout/backoff behavior is exercised deterministically and fast --
+consistent with crypto/tests/test_throttle.py's own approach. Fast: no KDF
+involved anywhere in this file.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.attempt_store (crypto/attempt_store.py)
+- crypto.throttle (crypto/throttle.py)
+Standard library: unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
+
+Edge cases
+----------
+- Fresh container has no attempt field.
+- Record failure returns state the caller can store.
+- Reaching max attempts locks out the container.
+- Record success clears a locked out container.
+- Status never raises even when locked out.
+- Recovery code and passphrase share one counter.
+- Default limiter is used when none supplied.
+- Attempt state field name is stable.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 8 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest crypto.tests.test_attempt_store -v
+    python tests/run_tests.py
 """
 
 import unittest
@@ -135,4 +154,7 @@ class AttemptStoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

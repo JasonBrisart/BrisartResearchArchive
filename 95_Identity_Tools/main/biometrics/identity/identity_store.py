@@ -5,39 +5,75 @@ Purpose
 -------
 Filesystem persistence for identity records.
 
+Public interface:
+- class IdentityStoreError(ValueError) -- Raised on invalid identity ids or
+  store I/O failures.
+- class IdentityStore -- A directory of identity records, one JSON file per
+  identity. Public methods: exists, save, load, delete, list_identity_ids,
+  list_records.
+
+Design notes:
+
+One record is stored per file, named by its identity id, under the configured
+identity directory (see ``biometrics.config.settings``). Writes go through
+:mod:`common.atomic_io` so a crash or power loss mid-write cannot leave a
+half-written record behind -- the store either has the old file or the new one,
+never a truncated one.
+
+Record shape validation is delegated entirely to
+:mod:`biometrics.identity.identity_record`, so a record's structural rules live
+in exactly one place.
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, pathlib, biometrics.identity.identity_record, common.atomic_io, common.timestamps.
+Depends on (project modules):
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- common.atomic_io (common/atomic_io.py)
+- common.timestamps (common/timestamps.py)
+Standard library: json, pathlib.
+Imported by:
+- biometrics/app.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: biometrics/tests/test_enrollment_overwrite.py,
+biometrics/tests/test_identity_id_validation.py,
+biometrics/tests/test_sealed_biometrics_flow.py,
+gui/tests/test_tab_biometrics.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: RECORD_SUFFIX. See their definitions below for values.
+- RECORD_SUFFIX = ".json"
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _validate_identity_id() raises IdentityStoreError: "identity_id must be a
+  non-empty string."
+- _validate_identity_id() raises IdentityStoreError: "identity_id cannot
+  contain path separators or '..'."
+- _validate_identity_id() raises IdentityStoreError: "identity_id cannot have
+  leading or trailing whitespace."
+- IdentityStore.load() raises IdentityStoreError: "no identity record found for
+  {...}."
+- IdentityStore.load() raises IdentityStoreError: "identity record for {...}
+  could not be read: {...}"
+- IdentityStore.load() raises IdentityStoreError: "identity record file for
+  {...} is malformed."
+- IdentityStore.list_records(): catches IdentityStoreError and handles it in
+  place; it does not propagate to the caller.
+- IdentityStore.load(): translates (OSError, json.JSONDecodeError) into
+  IdentityStoreError, so callers only need to handle this module's own error
+  type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- This module owns file I/O and directory listing only.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Filesystem persistence for identity records.
-
-One record is stored per file, named by its identity id, under the
-configured identity directory (see ``biometrics.config.settings``). Writes go
-through :mod:`common.atomic_io` so a crash or power loss mid-write cannot
-leave a half-written record behind -- the store either has the old file or
-the new one, never a truncated one.
-
-This module owns file I/O and directory listing only. Record shape validation
-is delegated entirely to :mod:`biometrics.identity.identity_record`, so a
-record's structural rules live in exactly one place.
+    from biometrics.identity.identity_store import IdentityStore
+    obj = IdentityStore(identity_dir)
+    obj.exists(identity_id)
 """
 
 import json
@@ -144,4 +180,7 @@ class IdentityStore:
             except IdentityStoreError:
                 continue
         return records
+
+
+
 

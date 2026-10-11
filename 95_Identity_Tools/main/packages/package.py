@@ -5,45 +5,125 @@ Purpose
 -------
 Identity-Bound Package orchestration: create, add/remove recipients, open.
 
-Communication / relationships
------------------------------
-Direct module imports: crypto.errors, packages, packages.identity, packages.verification.
+Public interface:
+- class PackageError(ValueError) -- Raised for malformed package state or
+  invalid arguments.
+- class PackageAuthorizationError(ValueError) -- Raised when a supplied master
+  key does not match the recipient it claims to belong to.
+- create_package(package_id, creator_label, payload, recipients,
+  audit_dir=None) -- Create a new package sealed for an initial set of
+  recipients.
+- validate_package(state) -- Validate a package's shape, raising
+  :class:`PackageError` on failure.
+- add_recipient(state, identity_id, label, master_key, opener_identity_id,
+  opener_...) -- Add a new recipient to an existing package.
+- remove_recipient(state, identity_id, opener_identity_id, opener_master_key,
+  audit_d...) -- Remove a recipient from an existing package.
+- open_package(state, identity_id, master_key, audit_dir=None) -- Open a
+  package's payload as an authorized recipient.
+- list_recipients(state) -- List every recipient's non-secret descriptor (id
+  and label only).
+- custody_summary(state) -- A compact, display-friendly summary of the
+  package's custody history.
 
-Settings / parameters
----------------------
-Module-level named settings: PACKAGE_FORMAT. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Identity-Bound Package orchestration: create, add/remove recipients, open.
+Design notes:
 
 Ties together every other module in ``packages/``:
 
-* :mod:`packages.ciphers` for content-key generation and per-recipient key
-  slot sealing/unwrapping,
-* :mod:`packages.identity` for recipient descriptor shape,
-* :mod:`packages.verification` for the fast "does this key belong to this
+- :mod:`packages.ciphers` for content-key generation and per-recipient key slot
+  sealing/unwrapping,
+- :mod:`packages.identity` for recipient descriptor shape,
+- :mod:`packages.verification` for the fast "does this key belong to this
   recipient" check before touching a key slot,
-* :mod:`packages.custody` for the package's own tamper-evident history,
-* :mod:`packages.audit` for an external, durable trail of package events.
+- :mod:`packages.custody` for the package's own tamper-evident history,
+- :mod:`packages.audit` for an external, durable trail of package events.
 
 A package's on-disk/in-memory state is a single JSON-serialisable dict with
 four parts: identifying metadata, the sealed payload, a map of recipient key
 slots, and the custody chain. Nothing here performs file I/O directly --
 persistence is left to the caller (typically ``main.py``), matching the
 separation ``vault.store.vault_service`` keeps from ``vault.store.vault_file``.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+- packages.audit (packages/audit.py)
+- packages.ciphers (packages/ciphers.py)
+- packages.custody (packages/custody.py)
+- packages.identity (packages/identity.py)
+- packages.verification (packages/verification.py)
+Standard library: none.
+Imported by:
+- gui/tabs/tab_packages.py
+- packages/demo.py
+- packages/main.py
+Covered by tests: gui/tests/test_tab_packages.py,
+packages/tests/test_package_integrity.py.
+
+Settings / parameters
+---------------------
+- PACKAGE_FORMAT = "brisart-identity-tools/ibp-package/v1"
+
+Edge cases
+----------
+- create_package() raises PackageError: "package_id must be a non-empty
+  string."
+- create_package() raises PackageError: "at least one recipient is required."
+- validate_package() raises PackageError: "package state must be an object."
+- validate_package() raises PackageError: "unsupported package format."
+- validate_package() raises PackageError: "package_id must be a non-empty
+  string."
+- validate_package() raises PackageError: "recipients must be an object."
+- validate_package() raises PackageError: "key_slots must be an object."
+- validate_package() raises PackageError: "recipients and key_slots must have
+  matching identity ids."
+- validate_package() raises PackageError: "payload must be an object."
+- validate_package() raises PackageError: "custody_chain must be a non-empty
+  list."
+- add_recipient() raises PackageError: "recipient {...} is already in this
+  package."
+- remove_recipient() raises PackageError: "recipient {...} is not in this
+  package."
+- remove_recipient() raises PackageError: "cannot remove the last recipient; a
+  package must always have at least one."
+- _authorized_content_key() raises PackageAuthorizationError: "{...} is not a
+  recipient of this package."
+- _authorized_content_key() raises PackageAuthorizationError: "the supplied
+  master key does not match recipient {...}."
+- _authorized_content_key() raises PackageAuthorizationError: "key slot for
+  {...} failed to authenticate: {...}"
+- _authorized_content_key(): translates Bsr2IntegrationError into
+  PackageAuthorizationError, so callers only need to handle this module's own
+  error type.
+- open_package(): catches PackageAuthorizationError for cleanup or bookkeeping,
+  then re-raises it unchanged.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    from packages.package import (
+        create_package,
+        validate_package,
+        add_recipient,
+    )
+    result = create_package(package_id, creator_label, payload, recipients)
+    validate_package(state)
+    add_recipient(
+        state,
+        identity_id,
+        label,
+        master_key,
+        opener_identity_id,
+        opener_master_key,
+    )
 """
 
 from crypto.errors import Bsr2IntegrationError
@@ -274,4 +354,7 @@ def list_recipients(state: dict) -> list:
 def custody_summary(state: dict) -> list:
     """A compact, display-friendly summary of the package's custody history."""
     return custody.summarize(state["custody_chain"])
+
+
+
 

@@ -3,28 +3,54 @@ File: packages/tests/test_custody_chain.py
 
 Purpose
 -------
-Tests for packages.custody: the in-package tamper-evident hash chain,
-including the non-list / non-dict hardening from 0.8.2-beta.
+Tests for packages.custody: the in-package tamper-evident hash chain, including
+the non-list / non-dict hardening from 0.8.2-beta.
+
+Verifies: packages/custody.py.
+Contains 15 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, packages, packages.custody.
+Depends on (project modules):
+- packages.custody (packages/custody.py)
+Standard library: unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- New chain starts with a genesis created entry.
+- Append returns a new list without mutating the original.
+- A clean chain verifies.
+- Each entry links to the previous entry hash.
+- Tampering with an action is detected.
+- Tampering with actor label is detected.
+- Deleting a middle entry breaks the chain.
+- Genesis package id mismatch is detected.
+- Non list chain raises custody error not type error.
+- Chain with a non dict entry raises custody error.
+- Empty chain is rejected.
+- Append to empty chain is rejected.
+- Unknown action is rejected.
+- Empty actor label is rejected.
+- Summarize omits hashes.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 15 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest packages.tests.test_custody_chain -v
+    python tests/run_tests.py
 """
 
 import unittest
@@ -122,4 +148,7 @@ class CustodyChainTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

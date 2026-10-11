@@ -3,51 +3,62 @@ File: vault/tests/test_public_summary_file_metadata.py
 
 Purpose
 -------
-Regression test for a bug found 2026-08-25: VaultService.list_records()
-(and therefore the GUI's "Files / Folders / Drives" tab, which calls
-list_records() on every refresh) silently dropped a file record's plaintext
-size/filename/hash metadata, even though that metadata is stored right on
-the record in the clear (see VaultService.upsert_file_bytes).
+Regression test for a bug found 2026-08-25: VaultService.list_records() (and
+therefore the GUI's "Files / Folders / Drives" tab, which calls list_records()
+on every refresh) silently dropped a file record's plaintext size/filename/hash
+metadata, even though that metadata is stored right on the record in the clear
+(see VaultService.upsert_file_bytes).
+
+Verifies: vault/store/vault_file.py, vault/store/vault_service.py.
+Contains 4 test case(s) across 1 TestCase class(es).
+
+Design notes:
+
+Root cause: vault.records.record_model.public_summary() only ever returned the
+five fixed keys every record kind shares (record_id/label/kind/
+created_at/updated_at). upsert_file_bytes() worked around this by manually
+merging the file-specific fields back in on its own return value -- but
+list_records() (and get_summary()) call public_summary() directly with no such
+merge, so a file record's size/filename/hash were only ever visible immediately
+after upsert, and vanished on every subsequent listing/refresh.
+
+Fix: public_summary() now includes original_filename/file_size_bytes/
+file_sha256 whenever they are present on the record, and omits them otherwise
+(so a normal note/credential record's summary shape is unchanged).
 
 Communication / relationships
 -----------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib, vault.store.vault_file, vault.store.vault_service.
+Depends on (project modules):
+- vault.store.vault_file (vault/store/vault_file.py)
+- vault.store.vault_service (vault/store/vault_service.py)
+Standard library: pathlib, secrets, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- File size survives a fresh list records call.
+- Get summary also surfaces file metadata.
+- Ordinary json records do not gain file metadata keys.
+- Updating a file record keeps metadata current.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 4 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
 
-Additional module documentation
--------------------------------
-Regression test for a bug found 2026-08-25: VaultService.list_records()
-(and therefore the GUI's "Files / Folders / Drives" tab, which calls
-list_records() on every refresh) silently dropped a file record's plaintext
-size/filename/hash metadata, even though that metadata is stored right on
-the record in the clear (see VaultService.upsert_file_bytes).
-
-Root cause: vault.records.record_model.public_summary() only ever returned
-the five fixed keys every record kind shares (record_id/label/kind/
-created_at/updated_at). upsert_file_bytes() worked around this by manually
-merging the file-specific fields back in on its own return value -- but
-list_records() (and get_summary()) call public_summary() directly with no
-such merge, so a file record's size/filename/hash were only ever visible
-immediately after upsert, and vanished on every subsequent listing/refresh.
-
-Fix: public_summary() now includes original_filename/file_size_bytes/
-file_sha256 whenever they are present on the record, and omits them
-otherwise (so a normal note/credential record's summary shape is unchanged).
+    python -m unittest vault.tests.test_public_summary_file_metadata -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -109,3 +120,6 @@ class PublicSummaryFileMetadataTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+

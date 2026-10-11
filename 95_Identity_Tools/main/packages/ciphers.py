@@ -5,37 +5,29 @@ Purpose
 -------
 Low-level cryptographic operations for Identity-Bound Packages.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, crypto.context, crypto.envelope, crypto.rng.
+Public interface:
+- class CiphersError(ValueError) -- Raised on invalid cipher inputs (not on
+  authentication failure -- see :class:`crypto.errors.Bsr2IntegrationError` and
+  its subclasses for that).
+- new_content_key() -- Generate a fresh random content key for one package.
+- wrap_content_key(recipient_master_key, package_id, identity_id, content_key)
+  -- Seal ``content_key`` into one recipient's key slot.
+- unwrap_content_key(recipient_master_key, package_id, identity_id, wrapped) --
+  Recover the content key from one recipient's key slot.
+- seal_payload(content_key, package_id, payload) -- Seal a package's payload
+  under its content key.
+- open_payload(content_key, package_id, sealed_payload) -- Open a package's
+  payload using an already-recovered content key.
 
-Settings / parameters
----------------------
-Module-level named settings: CONTENT_KEY_BYTES. See their definitions below for values.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Low-level cryptographic operations for Identity-Bound Packages.
-
-An IBP separates the secret that protects the *payload* from the secrets
-that protect *access to that secret*, the same envelope-around-a-key pattern
+An IBP separates the secret that protects the *payload* from the secrets that
+protect *access to that secret*, the same envelope-around-a-key pattern
 :mod:`crypto.keyring` uses for a single master key. Here it is generalised to
 many recipients:
 
-* A random 32-byte **content key** seals the actual payload once.
-* The content key itself is sealed once per recipient, each under that
+- A random 32-byte **content key** seals the actual payload once.
+- The content key itself is sealed once per recipient, each under that
   recipient's own master key, in that recipient's own **key slot**.
 
 Consequences that follow from this and are deliberate: adding or removing a
@@ -44,8 +36,56 @@ re-encrypted, and no other recipient's slot is touched. Losing every
 recipient's master key makes the package permanently unopenable, by design;
 there is no back door.
 
-Named ``ciphers.py`` rather than ``crypto.py`` specifically to avoid
-colliding with the top-level ``crypto/`` package this module imports from.
+Named ``ciphers.py`` rather than ``crypto.py`` specifically to avoid colliding
+with the top-level ``crypto/`` package this module imports from.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.context (crypto/context.py)
+- crypto.envelope (crypto/envelope.py)
+- crypto.rng (crypto/rng.py)
+Standard library: secrets.
+Imported by:
+- packages/package.py
+Covered by tests: no test file imports this module directly.
+
+Settings / parameters
+---------------------
+- CONTENT_KEY_BYTES = 32
+
+Edge cases
+----------
+- wrap_content_key() raises CiphersError: "content_key must be exactly {...}
+  bytes."
+- unwrap_content_key() raises CiphersError: "unwrapped content key has an
+  invalid length."
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
+
+Examples
+--------
+::
+
+    from packages.ciphers import (
+        new_content_key,
+        wrap_content_key,
+        unwrap_content_key,
+    )
+    result = new_content_key()
+    wrap_content_key(
+        recipient_master_key,
+        package_id,
+        identity_id,
+        content_key,
+    )
+    unwrap_content_key(recipient_master_key, package_id, identity_id, wrapped)
 """
 
 import secrets
@@ -120,4 +160,7 @@ __all__ = [
     "unwrap_content_key",
     "wrap_content_key",
 ]
+
+
+
 

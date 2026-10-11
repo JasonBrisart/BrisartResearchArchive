@@ -3,46 +3,62 @@ File: biometrics/tests/test_attachments.py
 
 Purpose
 -------
-Tests for the generic file-attachment feature on biometrics identity
-records (biometrics/engine/attachments.py): sealing/opening arbitrary raw
-files, independent of the voice/fingerprint/video modality system,
-independent of file extension, and independent of any assumption about
-what the file's content looks like.
+Tests for the generic file-attachment feature on biometrics identity records
+(biometrics/engine/attachments.py): sealing/opening arbitrary raw files,
+independent of the voice/fingerprint/video modality system, independent of file
+extension, and independent of any assumption about what the file's content
+looks like.
+
+Verifies: biometrics/identity/identity_record.py,
+biometrics/engine/attachments.py.
+Contains 9 test case(s) across 1 TestCase class(es).
+
+Design notes:
+
+Unlike the vault file-record tests, these do not need a real Keyring unlock (no
+~85-90 second BSR2 KDF cost per test): attach/extract only need a 32-byte
+master key, which attachments.py treats identically regardless of how it was
+obtained, so a plain secrets.token_bytes(32) exercises the exact same
+sealing/opening code path a real device-key-derived master key would.
 
 Communication / relationships
 -----------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.identity.identity_record, biometrics.engine.attachments.
+Depends on (project modules):
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- biometrics.engine.attachments (biometrics/engine/attachments.py)
+Standard library: json, pathlib, secrets, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Arbitrary blob with no extension round trips exactly.
+- Pdf shaped content round trips exactly.
+- Public summary exposes metadata but never content.
+- Wrong master key fails to extract.
+- Attachment cannot be moved to a different identity.
+- Attach file reads a real file with no extension.
+- Remove identity attachment removes it.
+- Extracting nonexistent attachment raises.
+- Reattaching under same name replaces it.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 9 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
 
-Additional module documentation
--------------------------------
-Tests for the generic file-attachment feature on biometrics identity
-records (biometrics/engine/attachments.py): sealing/opening arbitrary raw
-files, independent of the voice/fingerprint/video modality system,
-independent of file extension, and independent of any assumption about
-what the file's content looks like.
-
-Unlike the vault file-record tests, these do not need a real Keyring
-unlock (no ~85-90 second BSR2 KDF cost per test): attach/extract only need
-a 32-byte master key, which attachments.py treats identically regardless
-of how it was obtained, so a plain secrets.token_bytes(32) exercises the
-exact same sealing/opening code path a real device-key-derived master key
-would.
+    python -m unittest biometrics.tests.test_attachments -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -133,4 +149,7 @@ class AttachmentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

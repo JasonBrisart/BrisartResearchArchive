@@ -3,27 +3,46 @@ File: hardware/base/biometric_base.py
 
 Purpose
 -------
-Base interface for biometric devices.
+Abstract interface for biometric capture devices. Extends DeviceBase with the
+capture operation that concrete scanners (fingerprint, placeholder) must
+implement.
+
+Public interface:
+- class BiometricBase(DeviceBase). Public methods: scan.
 
 Communication / relationships
 -----------------------------
-Direct module imports: abc, hardware.base.device_base.
+Depends on (project modules):
+- hardware.base.device_base (hardware/base/device_base.py)
+Standard library: abc.
+Imported by:
+- hardware/biometric/fingerprint_scanner.py
+- hardware/biometric/placeholder_biometric.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from hardware.base.biometric_base import BiometricBase
+    obj = BiometricBase()
+    obj.scan()
 """
 
 from abc import abstractmethod
@@ -36,3 +55,6 @@ class BiometricBase(DeviceBase):
     @abstractmethod
     def scan(self):
         pass
+
+
+

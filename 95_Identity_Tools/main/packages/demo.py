@@ -3,100 +3,56 @@ File: packages/demo.py
 
 Purpose
 -------
-Shared demo-package logic for both the CLI (`packages.main`'s `demo`
-    command) and the GUI (`gui.tabs.tab_packages.PackagesTab`'s "Run Demo"
-    button). Runs a complete, real create -> add-recipient -> open ->
-    validate-custody cycle using freshly generated keys, and optionally
-    writes every artifact produced along the way to a plain,
-    human-inspectable folder on disk so a new user can open the actual
-    package file, the actual key material, and the actual custody chain in
-    a text editor rather than only reading a printed transcript.
+Shared demo-package logic for both the CLI (`packages.main`'s `demo` command)
+and the GUI (`gui.tabs.tab_packages.PackagesTab`'s "Run Demo" button). Runs a
+complete, real create -> add-recipient -> open -> validate-custody cycle using
+freshly generated keys, and optionally writes every artifact produced along the
+way to a plain, human-inspectable folder on disk so a new user can open the
+actual package file, the actual key material, and the actual custody chain in a
+text editor rather than only reading a printed transcript. This lives as its
+own module (rather than being written twice, once in packages/main.py and once
+in gui/tabs/tab_packages.py) so the CLI and the GUI can never drift apart from
+each other.
 
-    This lives as its own module (rather than being written twice, once in
-    packages/main.py and once in gui/tabs/tab_packages.py) so the CLI and
-    the GUI can never drift apart from each other.
+Public interface:
+- run_demo(save_to_disk=False, output_root=None) -- Run a full create ->
+  add-recipient -> open -> validate-custody cycle.
 
 Communication / relationships
 -----------------------------
-Called by:
-        - packages.main.command_demo (CLI), via the existing `demo`
-          subcommand's new `--save` / `--output-dir` flags.
-        - gui.tabs.tab_packages.PackagesTab._run_demo and
-          ._run_demo_to_folder (GUI), both run on a background thread via
-          gui.core.busy.run_in_background, since this performs real BSR2
-          sealing/unwrapping work and must not block the Tkinter event
-          loop.
-    Calls out to:
-        - packages.package (create_package / add_recipient / open_package /
-          validate_package / custody_summary) -- the exact same application
-          layer a real package goes through end to end; nothing about the
-          demo path is a stub, a mock, or a simplified re-implementation.
-        - common.timestamps.filename_timestamp -- for the demo folder name,
-          so folders sort chronologically and never collide within the
-          same second.
-        - common.atomic_io.atomic_write_text / atomic_write_json -- every
-          file this module writes goes through the same atomic
-          write-then-rename primitive the rest of the repository uses, so a
-          crash mid-write cannot leave a half-written demo artifact behind.
-
-Parameters / settings:
-    DEMO_FOLDER_PREFIX (str, "DEMO_DO_NOT_USE_"):
-        Every on-disk demo folder starts with this prefix so it is visually
-        unmistakable in a file browser or directory listing, distinct from
-        any real package file a lab might have sitting in the same data/
-        tree. This is a naming convention only.
-    DEFAULT_DEMO_ROOT (Path, "data/packages/demo"):
-        Where a saved demo folder is created when the caller does not pass
-        an explicit output_root. Consistent with this project's existing
-        data/packages/ convention (see packages/main.py's
-        DEFAULT_AUDIT_DIR).
-
-Edge-case behavior:
-    - save_to_disk=False (the default) reproduces the original in-memory-
-      only "Run Demo" behavior exactly: nothing is written anywhere, and
-      the returned "folder" value is None.
-    - save_to_disk=True generates each recipient's master key from a
-      random PASSPHRASE STRING (hashed exactly the way
-      packages.main._prompt_master_key and
-      gui.tabs.tab_packages.PackagesTab._derive_master_key already derive
-      a master key from whatever text an operator types), rather than
-      handing out 32 raw key bytes directly. Every existing CLI command
-      that asks for "master key text" only ever accepts typed text and
-      re-derives a key from it -- there is currently no CLI path that
-      accepts a raw 32-byte key directly. Saving the passphrase TEXT
-      instead means a user can paste it into any existing CLI prompt or
-      GUI "master key text" field and it works immediately, with no
-      changes required anywhere else in the codebase.
-    - The saved passphrase text is still sensitive material in the clear,
-      and the written README.txt says so explicitly, in capital letters,
-      so nobody mistakes this demo convenience for how a real package's
-      key material should ever be handled or stored.
-    - The demo package's custody chain is real and independently
-      verifiable: a user can hand-edit the written package.json (e.g. flip
-      a single hex character inside payload -> ciphertext) and then re-run
-      `python main.py open <path> --identity-id bob` against it to see the
-      rejection firsthand, using the exact same
-      packages.package.open_package code path a genuinely tampered
-      package would hit.
-    - output_root is created (including parents) if it does not already
-      exist; a caller supplying a path on a read-only filesystem will see
-      whatever OSError mkdir() itself raises, uncaught.
+Depends on (project modules):
+- common.atomic_io (common/atomic_io.py)
+- common.timestamps (common/timestamps.py)
+- packages.package (packages/package.py)
+Standard library: hashlib, pathlib, secrets.
+Imported by:
+- gui/tabs/tab_packages.py
+- packages/main.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: DEMO_FOLDER_PREFIX, DEFAULT_DEMO_ROOT, _README_TEMPLATE. See their definitions below for values.
+- DEMO_FOLDER_PREFIX = "DEMO_DO_NOT_USE_"
+- DEFAULT_DEMO_ROOT = Path("data") / "packages" / "demo"
+- _README_TEMPLATE = multi-line text template (2569 chars)
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from packages.demo import run_demo
+    result = run_demo()
 """
 
 import hashlib
@@ -242,4 +198,7 @@ def run_demo(save_to_disk: bool = False, output_root=None) -> dict:
         transcript.append(f"demo artifacts saved to: {folder}")
 
     return {"transcript": transcript, "package_id": package_id, "folder": folder}
+
+
+
 

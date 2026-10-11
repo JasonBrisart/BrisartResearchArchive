@@ -4,42 +4,58 @@ File: gui/tests/test_busy.py
 Purpose
 -------
 Tests for gui.core.busy: the shared BusyDialog + run_in_background
-background-thread/queue contract every slow (BSR2 KDF-touching) GUI action
-goes through.
+background-thread/queue contract every slow (BSR2 KDF-touching) GUI action goes
+through.
+
+Verifies: gui/core/busy.py.
+Contains 5 test case(s) across 2 TestCase class(es).
+
+Design notes:
+
+On a machine with a working Tk/display (any normal desktop, including Windows,
+which is this project's primary target) these run for real. On a headless CI
+runner with no display, the whole class skips cleanly rather than failing the
+suite -- consistent with how GUI tests are conventionally handled when a
+project's CI doesn't provision a display.
 
 Communication / relationships
 -----------------------------
-Direct module imports: time, unittest.
+Depends on (project modules):
+- gui.core.busy (gui/core/busy.py)
+Standard library: threading, time, tkinter, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+- _HAS_DISPLAY = _tk_display_available()
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+RunInBackgroundTests:
+- Successful work calls on success with the return value.
+- Failing work calls on error with the exception.
+- Failing work without on error does not raise out of the poll.
+- Work runs off the main thread.
+BusyDialogTests:
+- Busy dialog constructs and is not user closable.
+- Skips (rather than fails) when a prerequisite is missing: "requires a
+  Tk-capable display"
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- These need a real Tk root to construct a BusyDialog and pump the event loop
+  (run_in_background schedules its poll via root.after(), which only fires
+  inside Tk's own event loop).
+- Passing proves only the 5 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
 
-Additional module documentation
--------------------------------
-Tests for gui.core.busy: the shared BusyDialog + run_in_background
-background-thread/queue contract every slow (BSR2 KDF-touching) GUI action
-goes through.
-
-These need a real Tk root to construct a BusyDialog and pump the event loop
-(run_in_background schedules its poll via root.after(), which only fires
-inside Tk's own event loop). On a machine with a working Tk/display (any
-normal desktop, including Windows, which is this project's primary target)
-these run for real. On a headless CI runner with no display, the whole class
-skips cleanly rather than failing the suite -- consistent with how GUI tests
-are conventionally handled when a project's CI doesn't provision a display.
+    python -m unittest gui.tests.test_busy -v
+    python tests/run_tests.py
 """
 
 import time
@@ -194,4 +210,7 @@ class BusyDialogTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

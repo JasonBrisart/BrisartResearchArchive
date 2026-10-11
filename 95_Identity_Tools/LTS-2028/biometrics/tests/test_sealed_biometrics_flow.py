@@ -3,28 +3,48 @@ File: biometrics/tests/test_sealed_biometrics_flow.py
 
 Purpose
 -------
-End-to-end test that templates are actually sealed (not stored in the
-clear) and that a wrong master key cannot open them.
+End-to-end test that templates are actually sealed (not stored in the clear)
+and that a wrong master key cannot open them.
+
+Verifies: biometrics/engine/enrollment.py, biometrics/engine/verification.py,
+biometrics/identity/identity_store.py, biometrics/samples/sample_generator.py.
+Contains 4 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
-Direct module imports: json, secrets, tempfile, unittest, pathlib, biometrics.engine, biometrics.identity.identity_store, biometrics.samples.
+Depends on (project modules):
+- biometrics.engine.enrollment (biometrics/engine/enrollment.py)
+- biometrics.engine.verification (biometrics/engine/verification.py)
+- biometrics.identity.identity_store (biometrics/identity/identity_store.py)
+- biometrics.samples.sample_generator (biometrics/samples/sample_generator.py)
+Standard library: json, pathlib, secrets, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Stored template is not plaintext json vector.
+- Verification succeeds with correct master key.
+- Verification fails authentication with wrong master key.
+- Template cannot be opened under different identity context.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 4 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest biometrics.tests.test_sealed_biometrics_flow -v
+    python tests/run_tests.py
 """
 
 import json
@@ -104,4 +124,7 @@ class SealedTemplateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

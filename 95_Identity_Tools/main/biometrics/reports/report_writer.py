@@ -5,41 +5,70 @@ Purpose
 -------
 Audit-trail reports for enrollment and verification events.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, pathlib, common.atomic_io, common.timestamps.
+Public interface:
+- class ReportWriterError(ValueError) -- Raised when a report cannot be built
+  or written.
+- build_enrollment_report(identity_id, label, modalities_enrolled) -- Build a
+  report describing an enrollment event.
+- build_verification_report(verification_result) -- Build a report from a
+  ``biometrics.engine.verification.verify_identity`` result.
+- write_report(report_dir, report) -- Persist a report to ``report_dir``,
+  returning the path written to.
+- list_reports(report_dir, identity_id=None) -- List report file paths in
+  ``report_dir``, sorted oldest first.
 
-Settings / parameters
----------------------
-Module-level named settings: REPORT_FORMAT, _SUFFIX_BYTES. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Audit-trail reports for enrollment and verification events.
+Design notes:
 
 Every enroll or verify action that touches an identity is worth a durable
 record independent of the identity file itself: a security review of "who was
 verified, when, and did it match" should not require reconstructing history
 from a mutable record that only holds current state. Reports are therefore
 append-style -- one JSON file per event, named with a timestamp and a short
-random suffix so concurrent events never collide -- rather than one growing
-log file that a partial write could corrupt.
+random suffix so concurrent events never collide -- rather than one growing log
+file that a partial write could corrupt.
 
-Reports never contain sealed template bytes or feature vectors, only
-identity ids, modality names, scores, and outcomes: enough to audit a
-decision without re-exposing the biometric data the decision was made about.
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- common.atomic_io (common/atomic_io.py)
+- common.timestamps (common/timestamps.py)
+Standard library: pathlib, secrets.
+Imported by:
+- biometrics/app.py
+Covered by tests: biometrics/tests/test_report_writer.py.
+
+Settings / parameters
+---------------------
+- REPORT_FORMAT = "brisart-identity-tools/biometrics-report/v1"
+- _SUFFIX_BYTES = 4
+
+Edge cases
+----------
+- build_enrollment_report() raises ReportWriterError: "modalities_enrolled must
+  be a non-empty list."
+- build_verification_report() raises ReportWriterError: "verification_result
+  must contain 'identity_id' and 'results'."
+- write_report() raises ReportWriterError: "report does not have the expected
+  format marker."
+
+Known limitations
+-----------------
+- Reports never contain sealed template bytes or feature vectors, only identity
+  ids, modality names, scores, and outcomes: enough to audit a decision without
+  re-exposing the biometric data the decision was made about.
+
+Examples
+--------
+::
+
+    from biometrics.reports.report_writer import (
+        build_enrollment_report,
+        build_verification_report,
+        write_report,
+    )
+    result = build_enrollment_report(identity_id, label, modalities_enrolled)
+    build_verification_report(verification_result)
+    write_report(report_dir, report)
 """
 
 import secrets
@@ -143,4 +172,7 @@ def list_reports(report_dir, identity_id: str = None) -> list:
     if identity_id is None:
         return paths
     return [path for path in paths if f"_{identity_id}_" in path.name]
+
+
+
 

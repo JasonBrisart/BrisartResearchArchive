@@ -3,27 +3,46 @@ File: hardware/registry.py
 
 Purpose
 -------
-Stores available device registrations.
+Process-wide, in-memory registry mapping a device name to the class that drives
+it. Drivers register themselves here and hardware_manager looks them up by
+name, so new device types can be added without editing the manager.
+
+Public interface:
+- register(device_name, device_class)
+- get(device_name)
+- list_registered()
 
 Communication / relationships
 -----------------------------
-No direct module-level imports are declared.
+Standard library: none.
+Imported by:
+- hardware/hardware_manager.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: _DEVICE_REGISTRY. See their definitions below for values.
+- _DEVICE_REGISTRY = {} -- private name -> device-class map; populated only
+  through register().
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from hardware.registry import register, get, list_registered
+    register(device_name, device_class)
+    get(device_name)
+    list_registered()
 """
 
 _DEVICE_REGISTRY = {}
@@ -39,3 +58,6 @@ def get(device_name: str):
 
 def list_registered():
     return sorted(_DEVICE_REGISTRY.keys())
+
+
+

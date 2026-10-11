@@ -3,40 +3,79 @@ File: biometrics/tests/test_liveness.py
 
 Purpose
 -------
-Tests for biometrics.features.liveness and its integration into
-enrollment.py / verification.py.
+Tests for biometrics.features.liveness and its integration into enrollment.py /
+verification.py.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.codecs, biometrics.engine, biometrics.features.liveness, biometrics.samples.
+Verifies: biometrics/codecs/video.py, biometrics/engine/enrollment.py,
+biometrics/engine/verification.py, biometrics/features/liveness.py,
+biometrics/samples/sample_generator.py.
+Contains 18 test case(s) across 4 TestCase class(es).
 
-Settings / parameters
----------------------
-Module-level named settings: WIDTH, HEIGHT. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for biometrics.features.liveness and its integration into
-enrollment.py / verification.py.
+Design notes:
 
 Uses hand-built frame sequences (not the synthetic sample generator) so the
 static-vs-live cases are exact and unambiguous: an all-identical-bytes frame
 list is EXACTLY zero motion by construction, and a frame list with a real
 pixel-value shift between frames is unambiguously non-zero motion, without
-depending on sample_generator's seed-dependent drift (which can itself be
-zero for some seeds -- see sample_generator.generate_video_frames).
+depending on sample_generator's seed-dependent drift (which can itself be zero
+for some seeds -- see sample_generator.generate_video_frames).
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.codecs.video (biometrics/codecs/video.py)
+- biometrics.engine.enrollment (biometrics/engine/enrollment.py)
+- biometrics.engine.verification (biometrics/engine/verification.py)
+- biometrics.features.liveness (biometrics/features/liveness.py)
+- biometrics.samples.sample_generator (biometrics/samples/sample_generator.py)
+Standard library: pathlib, secrets, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
+
+Edge cases
+----------
+ComputeMotionEnergyTests:
+- Identical frames have zero motion.
+- Shifting frames have positive motion.
+- Single frame returns zero not an error.
+- Empty frame list raises.
+- Mismatched frame length raises.
+AssessLivenessTests:
+- Static clip fails the gate.
+- Moving clip passes the gate.
+- Custom threshold is respected.
+- Non positive threshold rejected.
+- Min frames constant is two.
+EnrollmentLivenessGateTests:
+- Static video enrollment is refused by default.
+- Static video enrollment allowed with override.
+- Moving video enrollment succeeds without override.
+- Liveness gate does not affect other modalities.
+VerificationLivenessGateTests:
+- Static probe reports liveness failed not a score.
+- Static probe with allow static gets a real score.
+- Moving probe is scored normally.
+- Non video modality never gets a liveness key.
+
+Known limitations
+-----------------
+- Tracked in docs/KNOWN_ISSUES.md: KI-001: Video liveness threshold is
+  uncalibrated against real camera hardware
+- Passing proves only the 18 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest biometrics.tests.test_liveness -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -216,4 +255,7 @@ class VerificationLivenessGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

@@ -3,27 +3,64 @@ File: biometrics/config/settings.py
 
 Purpose
 -------
-Defines ensure_data_dirs for 95_Identity_Tools/LTS-2028/biometrics/config.
+Central configuration for the biometrics tool: application identity, the
+on-disk data/ layout (identities, sealed templates, reports, samples), the
+fixed template geometry every feature extractor normalises to, and the default
+match threshold. ensure_data_dirs() creates that layout before any command
+writes to it.
+
+Public interface:
+- ensure_data_dirs()
 
 Communication / relationships
 -----------------------------
-Direct module imports: pathlib, version.
+Depends on (project modules):
+- version (version.py)
+Standard library: pathlib.
+Imported by:
+- biometrics/app.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: APP_NAME, APP_VERSION, DATA_DIR, IDENTITY_DIR, TEMPLATE_DIR, REPORT_DIR, SAMPLE_DIR, TEMPLATE_WIDTH, TEMPLATE_HEIGHT, GRID_SIZE, DEFAULT_THRESHOLD. See their definitions below for values.
+- APP_NAME = "Biometrics" -- display name used in CLI/GUI output and report
+  headers.
+- APP_VERSION = __version__ -- re-exported ecosystem version from version.py.
+- DATA_DIR = Path("data") -- root of all biometrics runtime data, relative to
+  the working directory.
+- IDENTITY_DIR = DATA_DIR / "identities" -- one JSON identity record per
+  enrolled identity.
+- TEMPLATE_DIR = DATA_DIR / "templates" -- sealed (BSR2-encrypted) biometric
+  templates.
+- REPORT_DIR = DATA_DIR / "reports" -- enrollment/verification audit reports.
+- SAMPLE_DIR = DATA_DIR / "samples" -- generated synthetic samples and probes.
+- TEMPLATE_WIDTH = 64 -- pixel width every image input is resampled to before
+  feature extraction.
+- TEMPLATE_HEIGHT = 64 -- pixel height every image input is resampled to before
+  feature extraction.
+- GRID_SIZE = 8 -- cells per side of the grid used to summarise a template
+  image.
+- DEFAULT_THRESHOLD = 0.94 -- similarity score at or above which verification
+  is reported as a match.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from biometrics.config.settings import ensure_data_dirs
+    ensure_data_dirs()
 """
 
 from pathlib import Path
@@ -53,4 +90,7 @@ def ensure_data_dirs() -> None:
         SAMPLE_DIR,
     ):
         directory.mkdir(parents=True, exist_ok=True)
+
+
+
 

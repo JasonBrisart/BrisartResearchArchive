@@ -5,29 +5,24 @@ Purpose
 -------
 BSR2 factor protection, split by the entropy of the input.
 
-Communication / relationships
------------------------------
-Direct module imports: crypto.errors, crypto.vendor.
+Public interface:
+- hash_factor(secret, iterations=ITERATIONS) -- Hash a low-entropy secret with
+  a fresh random salt.
+- verify_factor(secret, encoded) -- Check a low-entropy secret against an
+  encoded hash, in constant time.
+- bind_factor(master_key, factor_name, value) -- Bind a high-entropy factor
+  value under the master key.
+- verify_bound_factor(master_key, factor_name, value, encoded) -- Check a
+  high-entropy factor value against a bound record.
+- is_factor_hash(value) -- Report whether ``value`` is a BSR2 KDF factor hash.
+- is_bound_factor(value) -- Report whether ``value`` is a BSR2 keyed factor
+  record.
+- is_legacy_digest(value) -- Report whether ``value`` looks like a bare legacy
+  SHA-256 hex digest.
+- needs_rehash(encoded) -- Report whether a stored KDF hash is weaker than this
+  build now produces.
 
-Settings / parameters
----------------------
-Module-level named settings: PREFIX, KDF_ALGORITHM, MAC_ALGORITHM, SALT_BYTES, DIGEST_BYTES, ITERATIONS, MINIMUM_ITERATIONS, MAXIMUM_ITERATIONS, _KDF_FIELD_COUNT, _MAC_FIELD_COUNT. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-BSR2 factor protection, split by the entropy of the input.
+Design notes:
 
 This replaces the unsalted single-pass SHA-256 previously used for every factor
 hash. That construction had two concrete problems: identical factors produced
@@ -40,28 +35,119 @@ Both are fixed here, but not by the same mechanism, because the factors are not
 the same kind of secret.
 
 **Low-entropy secrets** (a human-chosen passphrase or spoken phrase) are
-guessable by construction. They need a deliberately expensive derivation so that
-each guess costs real time. :func:`hash_factor` uses BSR2's
+guessable by construction. They need a deliberately expensive derivation so
+that each guess costs real time. :func:`hash_factor` uses BSR2's
 ``derive_password_key`` for this. It is slow on purpose: roughly 70 seconds per
 call at BSR2's enforced minimum of 10,000 iterations.
 
 **High-entropy secrets** (biometric template digests, signature blobs, device
-identifiers) are not guessable, so stretching them buys nothing. What they need
-is a *keyed* digest, so that stealing the stored file does not let an attacker
-confirm a candidate template offline. :func:`bind_factor` uses
-``derive_subkey`` plus ``keyed_mac`` for this, at roughly 15 milliseconds.
+identifiers) are not guessable, so stretching them buys nothing.
 
 Why the split matters in practice: an identity-bound package verifies several
-factors. Running the expensive KDF on all of them would cost minutes per package
-open and hours across the test suite, while adding no security for the inputs
-that already carry far more entropy than the KDF contributes. Applying an
-expensive KDF to a high-entropy input is cost without benefit; applying a fast
-MAC to a low-entropy one is a real weakness. Each factor gets the treatment its
-entropy actually calls for.
-
-Both paths use only vendored BSR2 primitives.
+factors. Running the expensive KDF on all of them would cost minutes per
+package open and hours across the test suite, while adding no security for the
+inputs that already carry far more entropy than the KDF contributes. Applying
+an expensive KDF to a high-entropy input is cost without benefit; applying a
+fast MAC to a low-entropy one is a real weakness. Each factor gets the
+treatment its entropy actually calls for.
 
 Encoded forms::
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+- crypto.vendor (crypto/vendor.py)
+Standard library: none.
+Imported by:
+- biometrics/identity/device_key.py
+- packages/verification.py
+Covered by tests: crypto/tests/test_factors.py.
+
+Settings / parameters
+---------------------
+- PREFIX = "bsr2"
+- KDF_ALGORITHM = "derive_password_key"
+- MAC_ALGORITHM = "keyed_mac"
+- SALT_BYTES = 32
+- DIGEST_BYTES = 32
+- ITERATIONS = 10_000
+- MINIMUM_ITERATIONS = 10_000
+- MAXIMUM_ITERATIONS = 1_000_000
+- _KDF_FIELD_COUNT = 5
+- _MAC_FIELD_COUNT = 4
+
+Edge cases
+----------
+- hash_factor() raises Bsr2IntegrationError: "factor secret must be a non-empty
+  string."
+- hash_factor() raises Bsr2IntegrationError: "iterations must be an integer."
+- hash_factor() raises Bsr2IntegrationError: "iteration count is below the
+  {...} minimum."
+- hash_factor() raises Bsr2IntegrationError: "iteration count is above the
+  {...} maximum."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash must be a string."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash is malformed."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash is not a BSR2 factor
+  hash."
+- _parse_kdf() raises Bsr2IntegrationError: "unsupported factor hash algorithm:
+  {...}"
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash parameters are
+  malformed."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash iteration count is not
+  an integer."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash iteration count is
+  below the supported minimum."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash iteration count is
+  above the supported maximum."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash encoding is invalid."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash salt has an invalid
+  length."
+- _parse_kdf() raises Bsr2IntegrationError: "factor hash digest has an invalid
+  length."
+- _factor_mac() raises Bsr2IntegrationError: "master key must be at least 32
+  bytes."
+- _factor_mac() raises Bsr2IntegrationError: "factor name must be a non-empty
+  string."
+- _factor_mac() raises Bsr2IntegrationError: "factor name cannot contain '$'."
+- _factor_mac() raises Bsr2IntegrationError: "factor value must be a string."
+- _parse_mac() raises Bsr2IntegrationError: "bound factor must be a string."
+- _parse_mac() raises Bsr2IntegrationError: "bound factor is malformed."
+- _parse_mac() raises Bsr2IntegrationError: "bound factor is not a BSR2
+  record."
+- _parse_mac() raises Bsr2IntegrationError: "unsupported bound factor
+  algorithm: {...}"
+- _parse_mac() raises Bsr2IntegrationError: "bound factor name is empty."
+- _parse_mac() raises Bsr2IntegrationError: "bound factor encoding is invalid."
+- _parse_mac() raises Bsr2IntegrationError: "bound factor digest has an invalid
+  length."
+- _parse_kdf(), _parse_mac(): translates BrisartPrimitiveError into
+  Bsr2IntegrationError, so callers only need to handle this module's own error
+  type.
+- _parse_kdf(): translates ValueError into Bsr2IntegrationError, so callers
+  only need to handle this module's own error type.
+- is_bound_factor(), is_factor_hash(), needs_rehash(), verify_bound_factor(),
+  verify_factor(): catches Bsr2IntegrationError and handles it in place; it
+  does not propagate to the caller.
+- verify_bound_factor(): catches (Bsr2IntegrationError, BrisartPrimitiveError)
+  and handles it in place; it does not propagate to the caller.
+- verify_factor(): catches BrisartPrimitiveError and handles it in place; it
+  does not propagate to the caller.
+
+Known limitations
+-----------------
+- What they need is a *keyed* digest, so that stealing the stored file does not
+  let an attacker confirm a candidate template offline. :func:`bind_factor`
+  uses ``derive_subkey`` plus ``keyed_mac`` for this, at roughly 15
+  milliseconds.
+- Both paths use only vendored BSR2 primitives.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
 
     bsr2$derive_password_key$iterations=10000$<hex salt>$<hex digest>
     bsr2$keyed_mac$<factor name>$<hex digest>
@@ -355,4 +441,7 @@ __all__ = [
     "verify_bound_factor",
     "verify_factor",
 ]
+
+
+
 

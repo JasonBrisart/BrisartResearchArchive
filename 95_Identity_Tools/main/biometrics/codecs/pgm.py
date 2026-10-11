@@ -5,40 +5,77 @@ Purpose
 -------
 Binary PGM (Netpbm P5) reader and writer.
 
+Public interface:
+- class PgmFormatError(ValueError) -- Raised when data does not parse as a
+  well-formed binary PGM file.
+- decode(data) -- Parse binary PGM bytes into ``{"width", "height", "maxval",
+  "pixels"}``.
+- encode(width, height, pixels, maxval=MAX_MAXVAL) -- Serialise grayscale pixel
+  data into binary PGM bytes.
+- read_pgm(path) -- Read and decode a binary PGM file from disk.
+- write_pgm(path, width, height, pixels, maxval=MAX_MAXVAL) -- Encode and write
+  grayscale pixel data as a binary PGM file.
+
+Design notes:
+
+PGM is used as this project's canonical still-image interchange format because
+the format itself is a handful of ASCII header tokens followed by a flat run of
+raw grayscale bytes -- nothing to parse that requires a dependency, and nothing
+lossy or compressed to get subtly wrong. ``png.py`` exists for smaller-on-disk
+storage; ``pgm.py`` exists as the format every other codec and feature
+extractor can assume without ambiguity.
+
 Communication / relationships
 -----------------------------
-No direct module-level imports are declared.
+Standard library: none.
+Imported by:
+- biometrics/codecs/image_loader.py
+- biometrics/samples/sample_generator.py
+Covered by tests: biometrics/tests/test_codec_and_dsp_support.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: MAGIC_BINARY_GRAYSCALE, MAX_MAXVAL, MAX_DIMENSION. See their definitions below for values.
+- MAGIC_BINARY_GRAYSCALE = b"P5"
+- MAX_MAXVAL = 255
+- MAX_DIMENSION = 8192 -- generous ceiling; guards against a corrupt header
+  driving an absurd allocation.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _read_token() raises PgmFormatError: "unexpected end of header while reading
+  a token."
+- _read_int_token() raises PgmFormatError: "{...} is not a valid integer."
+- decode() raises PgmFormatError: "PGM data must be bytes."
+- decode() raises PgmFormatError: "not a binary PGM (P5) file."
+- decode() raises PgmFormatError: "width and height must be positive."
+- decode() raises PgmFormatError: "width or height exceeds the supported
+  maximum."
+- decode() raises PgmFormatError: "only 8-bit PGM (maxval 1-255) is supported."
+- decode() raises PgmFormatError: "missing whitespace separator after maxval."
+- decode() raises PgmFormatError: "expected {...} pixel bytes, found {...}."
+- encode() raises PgmFormatError: "width and height must be positive."
+- encode() raises PgmFormatError: "width or height exceeds the supported
+  maximum."
+- encode() raises PgmFormatError: "only 8-bit PGM (maxval 1-255) is supported."
+- encode() raises PgmFormatError: "pixels must be bytes."
+- encode() raises PgmFormatError: "expected {...} pixel bytes, got {...}."
+- _read_int_token(): translates ValueError into PgmFormatError, so callers only
+  need to handle this module's own error type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Only 8-bit grayscale (maxval <= 255) is supported.
+- There is no use for 16-bit imagery here, and supporting it would double the
+  surface area of this parser for a case that never occurs in practice.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Binary PGM (Netpbm P5) reader and writer.
-
-PGM is used as this project's canonical still-image interchange format
-because the format itself is a handful of ASCII header tokens followed by a
-flat run of raw grayscale bytes -- nothing to parse that requires a
-dependency, and nothing lossy or compressed to get subtly wrong. ``png.py``
-exists for smaller-on-disk storage; ``pgm.py`` exists as the format every
-other codec and feature extractor can assume without ambiguity.
-
-Only 8-bit grayscale (maxval <= 255) is supported. There is no use for 16-bit
-imagery here, and supporting it would double the surface area of this parser
-for a case that never occurs in practice.
+    from biometrics.codecs.pgm import decode, encode, read_pgm
+    result = decode(data)
+    encode(width, height, pixels)
+    read_pgm(path)
 """
 
 MAGIC_BINARY_GRAYSCALE = b"P5"
@@ -152,4 +189,7 @@ def write_pgm(path, width: int, height: int, pixels: bytes, maxval: int = MAX_MA
     encoded = encode(width, height, pixels, maxval)
     with open(path, "wb") as handle:
         handle.write(encoded)
+
+
+
 

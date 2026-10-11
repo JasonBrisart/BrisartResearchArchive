@@ -5,49 +5,108 @@ Purpose
 -------
 Verification: comparing fresh biometric input against a stored template.
 
-Communication / relationships
------------------------------
-Direct module imports: biometrics.codecs, biometrics.engine, biometrics.features.liveness, biometrics.identity.identity_record, crypto.context, crypto.envelope, crypto.errors.
+Public interface:
+- class VerificationError(ValueError) -- Raised when verification cannot
+  proceed (missing template, bad input).
+- verify_modality(record, modality, probe_path, master_key, threshold=None,
+  allow_st...) -- Verify a probe file against a record's stored template for
+  ``modality``.
+- verify_identity(record, probe_sources, master_key, thresholds=None,
+  require_all=Tr...) -- Verify several modalities at once, e.g. voice and
+  fingerprint together.
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Verification: comparing fresh biometric input against a stored template.
+Design notes:
 
 The flow is the reverse of enrollment: open the sealed template for the
-requested modality (using the same context construction enrollment used, so
-a mismatched identity id or modality fails authentication before any
-comparison happens), extract a feature vector from the fresh probe input, and
-score the two vectors against each other using the modality's comparison
-function. The caller decides accept/reject by comparing the score to a
-threshold (``biometrics.engine.modalities.default_threshold`` unless
-overridden).
+requested modality (using the same context construction enrollment used, so a
+mismatched identity id or modality fails authentication before any comparison
+happens), extract a feature vector from the fresh probe input, and score the
+two vectors against each other using the modality's comparison function. The
+caller decides accept/reject by comparing the score to a threshold
+(``biometrics.engine.modalities.default_threshold`` unless overridden).
 
-LIVENESS GATE (video modality only): before a video probe's similarity score
-is trusted, its raw decoded frames are checked for real frame-to-frame motion
-via biometrics.features.liveness.assess_liveness(). A static clip (a
-photograph, or any clip with no genuine motion) fails this gate and is
-reported as a non-match with a populated "liveness" field, before its
-similarity score is ever computed against the stored template -- mirroring
+A static clip (a photograph, or any clip with no genuine motion) fails this
+gate and is reported as a non-match with a populated "liveness" field, before
+its similarity score is ever computed against the stored template -- mirroring
 the enforced pass/fail gate design from the project's 0.6.0-beta release,
 re-implemented here against the current BRVID-based video pipeline. Pass
 allow_static=True (wired to the CLI's --allow-static flag) to skip this gate
 entirely, for example to inspect a raw similarity score during debugging.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.codecs.video (biometrics/codecs/video.py)
+- biometrics.engine.modalities (biometrics/engine/modalities.py)
+- biometrics.features.liveness (biometrics/features/liveness.py)
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- crypto.context (crypto/context.py)
+- crypto.envelope (crypto/envelope.py)
+- crypto.errors (crypto/errors.py)
+Standard library: none.
+Imported by:
+- biometrics/app.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: biometrics/tests/test_liveness.py,
+biometrics/tests/test_multimodal_flow.py,
+biometrics/tests/test_sealed_biometrics_flow.py.
+
+Settings / parameters
+---------------------
+No module-level constants. Tunable defaults are exposed as
+keyword arguments:
+- verify_modality(threshold=None)
+- verify_modality(allow_static=False)
+- verify_identity(thresholds=None)
+- verify_identity(require_all=True)
+- verify_identity(allow_static=False)
+
+Edge cases
+----------
+- _check_video_liveness() raises VerificationError: "failed to read video probe
+  for liveness check: {...}"
+- _check_video_liveness() raises VerificationError: "liveness assessment
+  failed: {...}"
+- verify_modality() raises VerificationError: "identity {...} has no enrolled
+  {...} template."
+- verify_modality() raises VerificationError: "stored {...} template for {...}
+  failed to authenticate: {...}"
+- verify_modality() raises VerificationError: "stored template payload does not
+  match the requested modality {...}."
+- verify_modality() raises VerificationError: "stored template payload has no
+  feature vector."
+- verify_modality() raises VerificationError: "failed to extract {...} features
+  from {...}: {...}"
+- verify_identity() raises VerificationError: "at least one probe source is
+  required."
+- _check_video_liveness(): translates LivenessError into VerificationError, so
+  callers only need to handle this module's own error type.
+- _check_video_liveness(): translates video_codec.VideoFormatError into
+  VerificationError, so callers only need to handle this module's own error
+  type.
+- verify_modality(): translates (OSError, ValueError) into VerificationError,
+  so callers only need to handle this module's own error type.
+- verify_modality(): translates Bsr2IntegrationError into VerificationError, so
+  callers only need to handle this module's own error type.
+
+Known limitations
+-----------------
+- LIVENESS GATE (video modality only): before a video probe's similarity score
+  is trusted, its raw decoded frames are checked for real frame-to-frame motion
+  via biometrics.features.liveness.assess_liveness().
+- Tracked in docs/KNOWN_ISSUES.md: KI-001: Video liveness threshold is
+  uncalibrated against real camera hardware
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    from biometrics.engine.verification import verify_modality, verify_identity
+    result = verify_modality(record, modality, probe_path, master_key)
+    verify_identity(record, probe_sources, master_key)
 """
 
 from biometrics.codecs import video as video_codec
@@ -197,4 +256,7 @@ def verify_identity(
         "results": results,
         "matched": matched,
     }
+
+
+
 

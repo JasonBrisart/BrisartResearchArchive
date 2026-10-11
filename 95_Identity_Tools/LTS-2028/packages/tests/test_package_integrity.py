@@ -6,25 +6,63 @@ Purpose
 Integrity tests for Identity-Bound Packages: sealed storage, recipient
 authorization, custody chain tamper-evidence, and open/add/remove flows.
 
+Verifies: packages/package.py, packages/custody.py.
+Contains 22 test case(s) across 4 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: secrets, unittest, packages, packages.custody, packages.package.
+Depends on (project modules):
+- packages.package (packages/package.py)
+- packages.custody (packages/custody.py)
+Standard library: json, secrets, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+PackageCreationTests:
+- Create requires at least one recipient.
+- Create produces a valid package.
+- Payload is not stored in plaintext.
+- Custody chain starts with created entry.
+PackageOpenTests:
+- Correct recipient can open.
+- Non recipient cannot open.
+- Wrong master key for real recipient cannot open.
+- Opening appends to custody chain without mutating original.
+RecipientManagementTests:
+- Add recipient requires authorized existing recipient.
+- Added recipient can open and read same payload.
+- Cannot add duplicate recipient.
+- Remove recipient revokes access.
+- Remaining recipient still has access after removal.
+- Cannot remove the last recipient.
+- Removing recipient does not require removing own access.
+CustodyChainIntegrityTests:
+- Validate package passes for untampered state.
+- Tampering with custody entry action is detected.
+- Tampering with actor label is detected.
+- Deleting a middle entry breaks the chain.
+- Mismatched recipients and key slots is rejected.
+- Verify chain rejects non list chain.
+- Verify chain rejects chain with non dict entry.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 22 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest packages.tests.test_package_integrity -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -218,4 +256,7 @@ class CustodyChainIntegrityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

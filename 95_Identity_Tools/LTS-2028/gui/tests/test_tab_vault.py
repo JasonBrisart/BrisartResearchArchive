@@ -3,61 +3,82 @@ File: gui/tests/test_tab_vault.py
 
 Purpose
 -------
-Tests for gui.tabs.tab_vault.VaultTab -- the piece of KI-002's remaining
-gap ("gui/tabs/*.py ... still has no direct coverage") that this file closes
-for the Vault tab specifically.
+Tests for gui.tabs.tab_vault.VaultTab -- the piece of KI-002's remaining gap
+("gui/tabs/*.py ... still has no direct coverage") that this file closes for
+the Vault tab specifically.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib.
+Verifies: gui/tabs/tab_vault.py, vault/store/vault_file.py,
+vault/store/vault_service.py.
+Contains 10 test case(s) across 1 TestCase class(es).
 
-Settings / parameters
----------------------
-Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for gui.tabs.tab_vault.VaultTab -- the piece of KI-002's remaining
-gap ("gui/tabs/*.py ... still has no direct coverage") that this file closes
-for the Vault tab specifically.
-
-Scope is deliberately limited to state-inspection and list-refresh logic:
-tree selection helpers (_selected_record_id / _selected_file_record_id),
-the Records-vs-Files kind filtering in _refresh_list / _refresh_file_list,
+Scope is deliberately limited to state-inspection and list-refresh logic: tree
+selection helpers (_selected_record_id / _selected_file_record_id), the
+Records-vs-Files kind filtering in _refresh_list / _refresh_file_list,
 _clear_list, and _refresh_path_label. Methods that pop a real modal dialog
-(messagebox.showinfo/showerror, TextPromptDialog, RecordDialog -- all of
-which call Tkinter's blocking wait_window()) are intentionally NOT
-exercised here, since there is no user present in an automated test run to
-dismiss them; that would hang the suite rather than test it. Those
-click-through workflows (_init_vault, _unlock, _new_record, _view_selected,
-_encrypt_selected_paths, _decrypt_selected_bundle, ...) remain an open gap,
-consistent with how KI-002's "Next step" already scoped this pass to
-regression coverage for existing logic, not full workflow simulation.
+(messagebox.showinfo/showerror, TextPromptDialog, RecordDialog -- all of which
+call Tkinter's blocking wait_window()) are intentionally NOT exercised here,
+since there is no user present in an automated test run to dismiss them; that
+would hang the suite rather than test it. Those click-through workflows
+(_init_vault, _unlock, _new_record, _view_selected, _encrypt_selected_paths,
+_decrypt_selected_bundle, ...) remain an open gap, consistent with how KI-002's
+"Next step" already scoped this pass to regression coverage for existing logic,
+not full workflow simulation.
 
 Uses the same injected-master-key convention as
 vault/tests/test_bulk_file_service.py: a real VaultService bound to a real
 (placeholder-keyring) vault file on disk, with the master key set directly
-rather than derived through a real passphrase unlock, so these tests run
-fast and do not pay BSR2's real ~85-90 second KDF cost. Listing records
-does not decrypt anything (VaultService.list_records() only validates
-structure and reports public_summary()), so the master key here exists
-only to let setup fixtures call service.upsert() to create test records.
+rather than derived through a real passphrase unlock, so these tests run fast
+and do not pay BSR2's real ~85-90 second KDF cost.
 
-Requires a real Tk root (ttk.Treeview cannot be constructed without one)
-and skips cleanly on a headless runner with no display, matching the
-convention used throughout gui/tests/.
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- gui.tabs.tab_vault (gui/tabs/tab_vault.py)
+- vault.store.vault_file (vault/store/vault_file.py)
+- vault.store.vault_service (vault/store/vault_service.py)
+Standard library: pathlib, secrets, tempfile, tkinter, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+- _HAS_DISPLAY = _tk_display_available()
+
+Edge cases
+----------
+- Selected record id returns none when nothing selected.
+- Selected record id returns correct id when selected.
+- Selected file record id returns correct id when selected.
+- Clear list empties tree.
+- Refresh list shows note and credential kinds.
+- Refresh list excludes file bundle manifest and bundle chunk kinds.
+- Refresh file list shows only file and bundle manifest kinds.
+- Refresh file list excludes bundle chunk kind.
+- Refresh path label reports exists for existing vault.
+- Refresh path label reports not created yet for missing vault.
+- Skips (rather than fails) when a prerequisite is missing: "requires a
+  Tk-capable display"
+
+Known limitations
+-----------------
+- Listing records does not decrypt anything (VaultService.list_records() only
+  validates structure and reports public_summary()), so the master key here
+  exists only to let setup fixtures call service.upsert() to create test
+  records.
+- Requires a real Tk root (ttk.Treeview cannot be constructed without one) and
+  skips cleanly on a headless runner with no display, matching the convention
+  used throughout gui/tests/.
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest gui.tests.test_tab_vault -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -189,4 +210,7 @@ class VaultTabTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

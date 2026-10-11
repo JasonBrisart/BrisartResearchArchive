@@ -5,25 +5,43 @@ Purpose
 -------
 Tests for cli.py's dispatcher (the fast paths that do not import a tool).
 
+Verifies: cli.py, version.py.
+Contains 6 test case(s) across 1 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: io, unittest, contextlib, cli, version.
+Depends on (project modules):
+- cli (cli.py)
+- version (version.py)
+Standard library: contextlib, io, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Version prints the ecosystem version.
+- Help returns zero.
+- Help flags are aliases.
+- No arguments returns two.
+- Unknown tool returns two.
+- Every documented tool is dispatchable.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 6 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest tests.test_cli_dispatcher -v
+    python tests/run_tests.py
 """
 
 import io
@@ -66,4 +84,7 @@ class CliDispatcherTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

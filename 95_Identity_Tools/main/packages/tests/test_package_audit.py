@@ -5,25 +5,47 @@ Purpose
 -------
 Tests for packages.audit: the external, append-only package audit trail.
 
+Verifies: packages/audit.py.
+Contains 10 test case(s) across 1 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, tempfile, unittest, pathlib, packages, packages.audit.
+Depends on (project modules):
+- packages.audit (packages/audit.py)
+Standard library: json, pathlib, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Build entry has expected shape.
+- Unknown action is rejected.
+- Empty package id is rejected.
+- Record event writes a readable file.
+- Write entry rejects bad format marker.
+- List entries filters by package id.
+- List entries on missing directory returns empty.
+- Open denied and custody violation are valid actions.
+- Entry filename uses microsecond precision.
+- Rapid successive events sort oldest first by filename.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest packages.tests.test_package_audit -v
+    python tests/run_tests.py
 """
 
 import json
@@ -111,4 +133,7 @@ class PackageAuditTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

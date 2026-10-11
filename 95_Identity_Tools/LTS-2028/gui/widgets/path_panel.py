@@ -5,29 +5,11 @@ Purpose
 -------
 The shared multi-select file/folder/drive picker panel.
 
-Communication / relationships
------------------------------
-Direct module imports: tkinter, tkinter.
+Public interface:
+- class PathSelectionPanel(ttk.Frame) -- A reusable panel for building up a
+  list of files/folders/drives to bulk-encrypt or bulk-attach in one operation.
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-The shared multi-select file/folder/drive picker panel.
+Design notes:
 
 Used by both the Vault "Files / Folders / Drives" sub-tab and the Biometrics
 "File Attachments" sub-tab, so the same behavior (add files via a real
@@ -36,6 +18,37 @@ only needs to be built and reasoned about once.
 
 Selection is done entirely through tkinter.filedialog's real, guaranteed
 cross-platform picker dialogs via the buttons below.
+
+Communication / relationships
+-----------------------------
+Standard library: tkinter.
+Imported by:
+- gui/tabs/tab_biometrics.py
+- gui/tabs/tab_vault.py
+Covered by tests: gui/tests/test_path_panel.py.
+
+Settings / parameters
+---------------------
+No module-level constants. Tunable defaults are exposed as
+keyword arguments:
+- PathSelectionPanel(on_change=None)
+
+Edge cases
+----------
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
+
+Known limitations
+-----------------
+- No known limitations beyond the documented contract of its public interface.
+
+Examples
+--------
+::
+
+    from gui.widgets.path_panel import PathSelectionPanel
+    obj = PathSelectionPanel(master)
 """
 
 import tkinter as tk
@@ -111,4 +124,7 @@ class PathSelectionPanel(ttk.Frame):
     def _clear_all(self):
         self.paths = []
         self._refresh_listbox()
+
+
+
 

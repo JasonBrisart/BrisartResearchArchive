@@ -3,33 +3,43 @@ File: hardware/drivers/placeholder_driver.py
 
 Purpose
 -------
-Reserved for future low-level drivers.
+Reserved location for future low-level device drivers. The file is
+intentionally empty: it holds the drivers/ folder in the layout so the planned
+driver tier has an agreed home before any driver is written.
 
 Communication / relationships
 -----------------------------
-No direct module-level imports are declared.
+Standard library: none.
+Imported by: no other module in this tree imports it directly.
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- LTS builds should never contain vendor-specific implementations from this
+  directory.
+- Not a real device driver: methods return fixed values and perform no hardware
+  I/O. Use it for wiring/tests until a concrete driver exists.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Reserved for future low-level drivers.
-
-LTS builds should never contain vendor-specific
-implementations from this directory.
+    import hardware.drivers.placeholder_driver
 """
+
+
+
 

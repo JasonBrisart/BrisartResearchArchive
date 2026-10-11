@@ -7,39 +7,71 @@ The Biometrics tab: create/unlock the keyring, enroll/verify/inspect/delete
 identities, and attach/extract arbitrary files, folders, or drives to/from an
 identity (chunked transparently past BSR2's single-envelope size limit).
 
+Public interface:
+- class BiometricsTab(ttk.Frame) -- Create/unlock the biometrics keyring,
+  enroll/verify/inspect/delete identities, and (new) attach/extract arbitrary
+  files, folders, or drives to/from an identity -- independent of the
+  voice/fingerprint/ video modality system, chunked transparently past BSR2's
+  single- envelope size limit.
+
+Design notes:
+
+UNLOCK THROTTLING (since 1.3.7): the "Unlock / Create Keyring" button's unlock
+branch now goes through biometrics.identity.keyring_access instead of calling
+crypto.keyring.Keyring.unlock_with_passphrase() directly. Before this change,
+the GUI enforced no attempt throttling at all, independent of whatever
+biometrics/app.py's CLI did on the same keyring.json -- an attacker with GUI
+access had unlimited passphrase guesses even after the CLI path was throttled.
+Both interfaces now enforce the identical policy.
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, tkinter, pathlib, tkinter, gui.core.constants, gui.core.busy, gui.widgets.dialogs, gui.widgets.path_panel, biometrics.config, biometrics.engine, biometrics.engine, biometrics.engine, biometrics.engine, biometrics.identity, biometrics.identity.identity_record, biometrics.identity.identity_store, biometrics.samples, crypto.keyring.
+Depends on (project modules):
+- gui.core.constants (gui/core/constants.py)
+- gui.core.busy (gui/core/busy.py)
+- gui.widgets.dialogs (gui/widgets/dialogs.py)
+- gui.widgets.path_panel (gui/widgets/path_panel.py)
+- biometrics.config.settings (biometrics/config/settings.py)
+- biometrics.engine.enrollment (biometrics/engine/enrollment.py)
+- biometrics.engine.verification (biometrics/engine/verification.py)
+- biometrics.engine.attachments (biometrics/engine/attachments.py)
+- biometrics.engine.bulk_attachments (biometrics/engine/bulk_attachments.py)
+- biometrics.identity.keyring_access (biometrics/identity/keyring_access.py)
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- biometrics.identity.identity_store (biometrics/identity/identity_store.py)
+- biometrics.samples.sample_generator (biometrics/samples/sample_generator.py)
+- crypto.keyring (crypto/keyring.py)
+Standard library: json, pathlib, tkinter.
+Imported by:
+- app.py
+Covered by tests: gui/tests/test_tab_biometrics.py.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- BiometricsTab._attach_selected_paths(),
+  BiometricsTab._extract_selected_attachment(),
+  BiometricsTab._inspect_selected(), BiometricsTab._refresh_attachment_list(),
+  BiometricsTab._refresh_list(), BiometricsTab._remove_selected_attachment(),
+  BiometricsTab._verify(): catches IdentityStoreError and handles it in place;
+  it does not propagate to the caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-The Biometrics tab: create/unlock the keyring, enroll/verify/inspect/delete
-identities, and attach/extract arbitrary files, folders, or drives to/from an
-identity (chunked transparently past BSR2's single-envelope size limit).
-
-UNLOCK THROTTLING: the "Unlock / Create Keyring" button's
-unlock branch now goes through biometrics.identity.keyring_access instead of
-calling crypto.keyring.Keyring.unlock_with_passphrase() directly. Before this
-change, the GUI enforced no attempt throttling at all, independent of
-whatever biometrics/app.py's CLI did on the same keyring.json -- an attacker
-with GUI access had unlimited passphrase guesses even after the CLI path was
-throttled. Both interfaces now enforce the identical policy.
+    from gui.tabs.tab_biometrics import BiometricsTab
+    obj = BiometricsTab(master)
 """
 
 import json
@@ -562,4 +594,7 @@ class BiometricsTab(ttk.Frame):
             updated = bio_attachment_engine.remove_identity_attachment(record, name)
         self._store_ref().save(updated)
         self._refresh_attachment_list()
+
+
+
 

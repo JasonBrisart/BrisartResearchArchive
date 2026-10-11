@@ -5,34 +5,64 @@ Purpose
 -------
 Modal dialog helpers shared across the three tabs.
 
+Public interface:
+- class TextPromptDialog(tk.Toplevel) -- A modal dialog collecting one or more
+  labelled single-line fields.
+- class RecordDialog(tk.Toplevel) -- Modal dialog for creating a vault record:
+  label, kind, and a JSON payload body.
+- class TextViewDialog(tk.Toplevel) -- A modal, read-only, scrollable text
+  viewer.
+- class ModalityPathDialog(tk.Toplevel) -- Modal dialog for biometrics
+  enroll/verify: arbitrary extra text fields (identity id, label, ...) plus a
+  file path with a Browse button for every registered modality
+  (biometrics.engine.modalities), so a new modality added there appears here
+  automatically without editing the GUI.
+
+Design notes:
+
+None of these dialogs touch the application/service layer or the BSR2 KDF --
+they only collect input or display text.
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, tkinter, tkinter, gui.core.constants, biometrics.engine.
+Depends on (project modules):
+- gui.core.constants (gui/core/constants.py)
+- biometrics.engine.modalities (biometrics/engine/modalities.py)
+Standard library: json, tkinter.
+Imported by:
+- gui/tabs/tab_biometrics.py
+- gui/tabs/tab_packages.py
+- gui/tabs/tab_vault.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants. Tunable defaults are exposed as
+keyword arguments:
+- RecordDialog(label="")
+- RecordDialog(kind="note")
+- RecordDialog(payload_text="{}")
+- ModalityPathDialog(defaults=None)
+- ModalityPathDialog(include_any_match=False)
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- RecordDialog._on_save(): catches json.JSONDecodeError and handles it in
+  place; it does not propagate to the caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- The slow work a dialog's result feeds into is always run through
+  gui.core.busy.run_in_background by the caller, never here.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Modal dialog helpers shared across the three tabs.
-
-None of these dialogs touch the application/service layer or the BSR2 KDF --
-they only collect input or display text. The slow work a dialog's result feeds
-into is always run through gui.core.busy.run_in_background by the caller, never
-here.
+    from gui.widgets.dialogs import TextPromptDialog
+    obj = TextPromptDialog(parent, title, fields)
 """
 
 import json
@@ -246,4 +276,7 @@ class ModalityPathDialog(tk.Toplevel):
     def _on_cancel(self):
         self.result = None
         self.destroy()
+
+
+
 

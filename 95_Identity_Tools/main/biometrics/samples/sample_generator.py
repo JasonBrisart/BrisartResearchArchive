@@ -5,42 +5,95 @@ Purpose
 -------
 Synthetic sample generation for testing and demos.
 
-Communication / relationships
------------------------------
-Direct module imports: math, biometrics.codecs.
+Public interface:
+- class SampleGeneratorError(ValueError) -- Raised on invalid sample generation
+  parameters.
+- generate_fingerprint_image(seed, size=DEFAULT_IMAGE_SIZE) -- Generate a
+  synthetic grayscale "fingerprint-like" ridge pattern as PGM bytes.
+- generate_voice_sample(seed, sample_rate=DEFAULT_SAMPLE_RATE,
+  duration_seconds=DEFAULT_AU...) -- Generate a synthetic "voice-like" waveform
+  as raw samples.
+- write_voice_sample(path, seed, sample_rate=DEFAULT_SAMPLE_RATE) -- Generate
+  and write a synthetic voice sample as a WAV file.
+- generate_video_frames(seed, width=DEFAULT_IMAGE_SIZE,
+  height=DEFAULT_IMAGE_SIZE, frame_c...) -- Generate a sequence of synthetic
+  grayscale frames with seed-driven motion.
+- write_video_sample(path, seed, width=DEFAULT_IMAGE_SIZE,
+  height=DEFAULT_IMAGE_SIZE, f...) -- Generate and write a synthetic video
+  sample as a BRVID file.
+- write_fingerprint_sample(path, seed, size=DEFAULT_IMAGE_SIZE) -- Generate and
+  write a synthetic fingerprint-like image as a PGM file.
 
-Settings / parameters
----------------------
-Module-level named settings: DEFAULT_IMAGE_SIZE, DEFAULT_SAMPLE_RATE, DEFAULT_AUDIO_SECONDS, DEFAULT_VIDEO_FRAME_COUNT, DEFAULT_VIDEO_FRAME_RATE. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Synthetic sample generation for testing and demos.
+Design notes:
 
 Real biometric captures require real hardware (a microphone, a fingerprint
 scanner, a camera). To exercise enrollment and verification without any of
-that, this module deterministically generates PGM images, WAV audio, and
-BRVID video from a seed string -- the same seed always produces the same
-sample, and two different seeds produce visibly/audibly different samples,
-which is exactly what the test suite and the CLI's "make-samples" command
-need: reproducible positive and negative test fixtures with zero external
-dependencies (no camera, no microphone, no image/audio library).
+that, this module deterministically generates PGM images, WAV audio, and BRVID
+video from a seed string -- the same seed always produces the same sample, and
+two different seeds produce visibly/audibly different samples, which is exactly
+what the test suite and the CLI's "make-samples" command need: reproducible
+positive and negative test fixtures with zero external dependencies (no camera,
+no microphone, no image/audio library).
 
 None of this is meant to resemble a real fingerprint, voice, or face. It is
 patterned synthetic data sized and shaped like the real thing, sufficient to
 drive the feature extractors end-to-end.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.codecs.pgm (biometrics/codecs/pgm.py)
+- biometrics.codecs.video (biometrics/codecs/video.py)
+- biometrics.codecs.wave_tools (biometrics/codecs/wave_tools.py)
+Standard library: math.
+Imported by:
+- biometrics/app.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: biometrics/tests/test_enrollment_overwrite.py,
+biometrics/tests/test_liveness.py, biometrics/tests/test_multimodal_flow.py,
+biometrics/tests/test_sealed_biometrics_flow.py,
+biometrics/tests/test_video_support.py.
+
+Settings / parameters
+---------------------
+- DEFAULT_IMAGE_SIZE = 128
+- DEFAULT_SAMPLE_RATE = 8000
+- DEFAULT_AUDIO_SECONDS = 2
+- DEFAULT_VIDEO_FRAME_COUNT = 10
+- DEFAULT_VIDEO_FRAME_RATE = 5
+
+Edge cases
+----------
+- _seed_to_int() raises SampleGeneratorError: "seed must be a non-empty
+  string."
+- generate_fingerprint_image() raises SampleGeneratorError: "size must be at
+  least 8."
+- generate_voice_sample() raises SampleGeneratorError: "sample_rate must be
+  positive."
+- generate_voice_sample() raises SampleGeneratorError: "duration_seconds must
+  be positive."
+- generate_video_frames() raises SampleGeneratorError: "width and height must
+  be at least 8."
+- generate_video_frames() raises SampleGeneratorError: "frame_count must be at
+  least 1."
+
+Known limitations
+-----------------
+- Tracked in docs/KNOWN_ISSUES.md: KI-001: Video liveness threshold is
+  uncalibrated against real camera hardware
+
+Examples
+--------
+::
+
+    from biometrics.samples.sample_generator import (
+        generate_fingerprint_image,
+        generate_voice_sample,
+        write_voice_sample,
+    )
+    result = generate_fingerprint_image(seed)
+    generate_voice_sample(seed)
+    write_voice_sample(path, seed)
 """
 
 import math
@@ -190,4 +243,7 @@ def write_fingerprint_sample(path, seed: str, size: int = DEFAULT_IMAGE_SIZE) ->
     encoded = generate_fingerprint_image(seed, size)
     with open(path, "wb") as handle:
         handle.write(encoded)
+
+
+
 

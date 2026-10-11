@@ -5,40 +5,61 @@ Purpose
 -------
 The threading core shared by all three tabs.
 
-Communication / relationships
------------------------------
-Direct module imports: queue, threading, tkinter, tkinter, gui.core.constants.
+Public interface:
+- class BusyDialog(tk.Toplevel) -- A small, non-closable modal dialog with an
+  indeterminate progress bar.
+- run_in_background(parent, work, on_success, on_error=None,
+  message="Working...") -- Run ``work()`` on a background thread behind a modal
+  busy dialog.
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-The threading core shared by all three tabs.
+Design notes:
 
 BSR2's password KDF is deliberately slow (tens of seconds to a couple of
 minutes per call -- see docs/BSR2_INTEGRATION.md). Every operation that touches
 the KDF (vault init/unlock, biometrics keyring create/unlock, any package
 operation) therefore runs on a background thread behind a modal "Working..."
-dialog, so the window never appears frozen. Tkinter is not thread-safe:
-background threads never touch a widget directly, they only push a result onto
-a queue that the main thread polls via ``after()``.
+dialog, so the window never appears frozen.
 
 This lives in gui/core because it is the one piece every tab depends on;
 centralizing it here keeps it from being duplicated into each tab file.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- gui.core.constants (gui/core/constants.py)
+Standard library: queue, threading, tkinter.
+Imported by:
+- gui/tabs/tab_biometrics.py
+- gui/tabs/tab_packages.py
+- gui/tabs/tab_vault.py
+Covered by tests: gui/tests/test_busy.py.
+
+Settings / parameters
+---------------------
+No module-level constants. Tunable defaults are exposed as
+keyword arguments:
+- run_in_background(on_error=None)
+- run_in_background(message="Working...")
+
+Edge cases
+----------
+- poll(): catches queue.Empty and handles it in place; it does not propagate to
+  the caller.
+- Broad ``except Exception`` boundary in runner: failures are reported to the
+  user/caller rather than crashing.
+
+Known limitations
+-----------------
+- Tkinter is not thread-safe: background threads never touch a widget directly,
+  they only push a result onto a queue that the main thread polls via
+  ``after()``.
+
+Examples
+--------
+::
+
+    from gui.core.busy import BusyDialog
+    obj = BusyDialog(parent, message)
 """
 
 import queue
@@ -111,4 +132,7 @@ def run_in_background(parent, work, on_success, on_error=None, message="Working.
             messagebox.showerror(APP_TITLE, str(payload), parent=parent)
 
     parent.after(100, poll)
+
+
+
 

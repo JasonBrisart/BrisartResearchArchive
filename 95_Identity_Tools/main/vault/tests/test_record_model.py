@@ -5,33 +5,63 @@ Purpose
 -------
 Tests for vault.records.record_model.
 
-Communication / relationships
------------------------------
-Direct module imports: unittest, vault.records.record_model.
+Verifies: vault/records/record_model.py.
+Contains 17 test case(s) across 5 TestCase class(es).
 
-Settings / parameters
----------------------
-Module-level named settings: _ALGORITHM. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for vault.records.record_model.
+Design notes:
 
 Uses a hand-built envelope-shaped dict (which crypto.envelope.is_envelope
 accepts) so these tests never need to run the KDF or seal anything for real --
 they exercise the record model's shape/validation logic directly.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- vault.records.record_model (vault/records/record_model.py)
+Standard library: unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+- _ALGORITHM = "BSR2-ARX-SPONGE-ETM"
+
+Edge cases
+----------
+LabelNormalizationTests:
+- Strips surrounding whitespace.
+- Nfkc folds composition variants.
+- Empty label is rejected.
+- Non string label is rejected.
+- Overlong label is rejected.
+RecordConstructionTests:
+- New record has expected shape.
+- New record rejects non envelope payload.
+- New record rejects empty record id.
+- New record requires both timestamps.
+- Overlong kind is rejected.
+RecordValidationTests:
+- A good record validates.
+- Non dict is rejected.
+- Wrong format is rejected.
+- Missing payload envelope is rejected.
+ReplacePayloadTests:
+- Replace payload returns a copy and does not mutate.
+- Replace payload rejects non envelope.
+PublicSummaryTests:
+- Public summary omits the sealed payload.
+
+Known limitations
+-----------------
+- Passing proves only the 17 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest vault.tests.test_record_model -v
+    python tests/run_tests.py
 """
 
 import unittest
@@ -163,4 +193,7 @@ class PublicSummaryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

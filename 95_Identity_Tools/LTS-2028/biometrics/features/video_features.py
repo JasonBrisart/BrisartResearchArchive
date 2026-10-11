@@ -6,37 +6,73 @@ Purpose
 Video feature extraction: a BRVID frame sequence reduced to a fixed-length
 vector.
 
+Public interface:
+- class VideoFeatureError(ValueError) -- Raised when video feature extraction
+  cannot proceed.
+- extract_from_frames(width, height, frames) -- Extract a fixed-length
+  spatial+motion vector from grayscale frames.
+- extract_from_video(path) -- Read a BRVID file and extract its fixed-length
+  video feature vector.
+- compare(vector_a, vector_b) -- Distance-based similarity between two video
+  feature vectors, in (0.0, 1.0].
+
+Design notes:
+
+The approach is to treat video as "images plus motion": each frame contributes
+a coarse spatial summary (a block-mean grid, the same technique
+``image_tools.block_grid_means`` uses for still images), and consecutive frame
+differences contribute a motion-energy summary. The two are concatenated and
+averaged across the sequence, producing one fixed-length vector independent of
+how many frames the source video contained.
+
 Communication / relationships
 -----------------------------
-Direct module imports: biometrics.codecs, biometrics.features.similarity.
+Depends on (project modules):
+- biometrics.codecs.image_tools (biometrics/codecs/image_tools.py)
+- biometrics.codecs.video (biometrics/codecs/video.py)
+- biometrics.features.similarity (biometrics/features/similarity.py)
+Standard library: none.
+Imported by:
+- biometrics/engine/modalities.py
+Covered by tests: biometrics/tests/test_video_support.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: GRID_SIZE, MAX_FRAMES_SAMPLED, FEATURE_VECTOR_LENGTH. See their definitions below for values.
+- GRID_SIZE = 6
+- MAX_FRAMES_SAMPLED = 60 -- bounds extraction cost for a very long capture;
+  frames beyond this are evenly subsampled rather than all processed. per-frame
+  grid means + motion-energy grid means
+- FEATURE_VECTOR_LENGTH = (GRID_SIZE * GRID_SIZE) * 2 -- frames beyond this are
+  evenly subsampled rather than all processed. per-frame grid means +
+  motion-energy grid means
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- extract_from_frames() raises VideoFeatureError: "width and height must be
+  positive."
+- extract_from_frames() raises VideoFeatureError: "at least one frame is
+  required."
+- extract_from_frames() raises VideoFeatureError: "frame {...} does not match
+  the given dimensions."
+- compare() raises VideoFeatureError: "feature vectors must be the same
+  length."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No known limitations beyond the documented contract of its public interface.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Video feature extraction: a BRVID frame sequence reduced to a fixed-length
-vector.
-
-The approach is to treat video as "images plus motion": each frame
-contributes a coarse spatial summary (a block-mean grid, the same technique
-``image_tools.block_grid_means`` uses for still images), and consecutive
-frame differences contribute a motion-energy summary. The two are
-concatenated and averaged across the sequence, producing one fixed-length
-vector independent of how many frames the source video contained.
+    from biometrics.features.video_features import (
+        extract_from_frames,
+        extract_from_video,
+        compare,
+    )
+    result = extract_from_frames(width, height, frames)
+    extract_from_video(path)
+    compare(vector_a, vector_b)
 """
 
 from biometrics.codecs import image_tools, video
@@ -125,4 +161,7 @@ def compare(vector_a: list, vector_b: list) -> float:
     if len(vector_a) != len(vector_b):
         raise VideoFeatureError("feature vectors must be the same length.")
     return distance_similarity(vector_a, vector_b)
+
+
+
 

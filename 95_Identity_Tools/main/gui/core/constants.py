@@ -5,29 +5,7 @@ Purpose
 -------
 Shared constants and the repo-root bootstrap for the GUI package.
 
-Communication / relationships
------------------------------
-Direct module imports: sys, pathlib.
-
-Settings / parameters
----------------------
-Module-level named settings: _REPO_ROOT, APP_TITLE, _MODALITY_FILETYPES. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Shared constants and the repo-root bootstrap for the GUI package.
+Design notes:
 
 This module is imported first by every other ``gui`` module, so putting the
 ``sys.path`` bootstrap here guarantees the repository root is importable no
@@ -39,12 +17,48 @@ The root is located by walking UP to the directory that contains ``version.py``
 (the single source of truth for the ecosystem version), rather than assuming a
 fixed number of parent directories. That is deliberate: this file lives at
 ``gui/core/constants.py`` -- two levels below the root -- and using a hardcoded
-``parent.parent`` would break the moment the file's depth changed. The walk is
-the same robust pattern the test runner uses, so relocating GUI files never
-re-breaks imports.
+``parent.parent`` would break the moment the file's depth changed.
 
-Nothing in this module imports a tool package, so importing it can never
-trigger a ``vault``/``biometrics``/``packages`` import before the path is set.
+Communication / relationships
+-----------------------------
+Standard library: pathlib, sys.
+Imported by:
+- app.py
+- gui/core/busy.py
+- gui/tabs/tab_biometrics.py
+- gui/tabs/tab_packages.py
+- gui/tabs/tab_vault.py
+- gui/widgets/dialogs.py
+Covered by tests: no test file imports this module directly.
+
+Settings / parameters
+---------------------
+- _REPO_ROOT = _find_repo_root(Path(__file__)) -- --- repo-root bootstrap (runs
+  on first import of any gui module) ---------
+- APP_TITLE = "BrisartIdentityTools"
+- _MODALITY_FILETYPES = dict of 3 entries
+
+Edge cases
+----------
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
+
+Known limitations
+-----------------
+- The walk is the same robust pattern the test runner uses, so relocating GUI
+  files never re-breaks imports.
+- Nothing in this module imports a tool package, so importing it can never
+  trigger a ``vault``/``biometrics``/``packages`` import before the path is
+  set.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
+
+Examples
+--------
+::
+
+    from gui.core.constants import _REPO_ROOT
 """
 
 import sys
@@ -82,4 +96,7 @@ _MODALITY_FILETYPES = {
 class _Cancelled(Exception):
     """Raised internally when a nested sub-dialog (e.g. a payload editor
     opened from within another dialog) is cancelled by the user."""
+
+
+
 

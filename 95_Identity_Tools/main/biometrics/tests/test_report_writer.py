@@ -5,25 +5,44 @@ Purpose
 -------
 Tests for biometrics.reports.report_writer.
 
+Verifies: biometrics/reports/report_writer.py.
+Contains 7 test case(s) across 1 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, tempfile, unittest, pathlib, biometrics.reports, biometrics.reports.report_writer.
+Depends on (project modules):
+- biometrics.reports.report_writer (biometrics/reports/report_writer.py)
+Standard library: json, pathlib, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Enrollment report sorts modalities.
+- Enrollment report requires at least one modality.
+- Verification report keeps only non secret fields.
+- Verification report requires identity and results.
+- Write report rejects bad format marker.
+- Write and list reports round trip.
+- List reports on missing dir returns empty.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 7 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest biometrics.tests.test_report_writer -v
+    python tests/run_tests.py
 """
 
 import json
@@ -81,4 +100,7 @@ class ReportWriterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

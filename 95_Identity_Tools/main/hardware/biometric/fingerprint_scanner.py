@@ -3,107 +3,97 @@ File: hardware/biometric/fingerprint_scanner.py
 
 Purpose
 -------
-A BiometricBase implementation for any fingerprint scanner reachable
-    through an organization-supplied biometric binding, containing every
-    piece of logic this project can implement in pure Python with zero
-    OS or SDK calls: device-name matching, retry policy, and validation
-    of a capture result's shape before handing it back to the caller.
-    This file deliberately goes no further than that boundary. It does
-    not import ctypes, does not detect the platform, does not speak
-    D-Bus, and does not import any vendor SDK.
+A BiometricBase implementation for any fingerprint scanner reachable through an
+organization-supplied biometric binding, containing every piece of logic this
+project can implement in pure Python with zero OS or SDK calls: device-name
+matching, retry policy, and validation of a capture result's shape before
+handing it back to the caller. This file deliberately goes no further than that
+boundary.
 
-    The one operation this file cannot do in pure Python -- actually
-    talking to a physical fingerprint scanner through the OS's own
-    biometric subsystem or a vendor SDK -- is delegated to a
-    hardware.base.biometric_binding.BiometricBinding instance supplied
-    by the caller at construction time. This project ships the contract
-    for that binding (hardware/base/biometric_binding.py) but no
-    implementation of it, mirroring the same boundary
-    hardware/card_readers/pcsc_reader.py already draws for smart-card
-    readers. See hardware/README.md, "Why the biometric binding is not
-    shipped," for why that line is drawn here specifically.
+Public interface:
+- class FingerNotPresentError(DeviceConnectionError) -- Raised when scan() is
+  called but no finger was presented to the scanner within the binding's own
+  timeout, or the binding otherwise failed to produce a capture.
+- class FingerprintScanner(BiometricBase) -- A BiometricBase adapter for any
+  fingerprint scanner reachable through an organization-supplied binding.
+  Public methods: name, connect, disconnect, health_check, scan.
+
+Design notes:
+
+It does not import ctypes, does not detect the platform, does not speak D-Bus,
+and does not import any vendor SDK. The one operation this file cannot do in
+pure Python -- actually talking to a physical fingerprint scanner through the
+OS's own biometric subsystem or a vendor SDK -- is delegated to a
+hardware.base.biometric_binding.BiometricBinding instance supplied by the
+caller at construction time. This project ships the contract for that binding
+(hardware/base/biometric_binding.py) but no implementation of it, mirroring the
+same boundary hardware/card_readers/pcsc_reader.py already draws for smart-card
+readers. See hardware/README.md, "Why the biometric binding is not shipped,"
+for why that line is drawn here specifically.
 
 Communication / relationships
 -----------------------------
-Called by: hardware.hardware_manager.HardwareManager, once
-    registered via hardware.registry.register() (not automatic -- see
-    hardware/README.md), and constructed with a BiometricBinding
-    instance the operator supplies.
-
-    Calls out to: ONLY the BiometricBinding instance passed into its
-    constructor. This file contains no WinBio call, no D-Bus/fprintd
-    call, no vendor SDK import, and no sys.platform check anywhere in
-    its source. Every method on this class is plain Python: string
-    matching, retry loops, and dict-shape validation.
-
-    Does NOT call into biometrics/ (the application-layer enroll/verify
-    engine), vault/, packages/, or crypto/. This file has zero knowledge
-    of identity records, sealed templates, or BSR2 -- it produces a raw
-    grayscale image, matching the same flat-buffer convention
-    biometrics/codecs/image_tools.py already uses, and nothing more.
-    Wiring a captured image into that engine's enroll_identity/
-    verify_identity pipeline is the caller's responsibility, not this
-    file's.
-
-Why the binding is required, not optional, at construction:
-    A caller with no BiometricBinding implementation cannot use this
-    class, by design -- there is no default, no silent fallback, and no
-    partially-working mode. Requiring the binding explicitly is what
-    keeps this file itself free of any OS or SDK call: it never has to
-    ask "which platform am I on" or "which vendor SDK is installed"
-    because it never makes that decision at all.
-
-Parameters / settings:
-    CAPTURE_RETRY_COUNT (int, 1):
-        One retry absorbs a transient "finger not fully placed / lifted
-        too early" condition without masking a genuinely absent finger
-        or faulty scanner. This retry is pure Python control flow -- it
-        does not touch the binding differently on retry than on first
-        attempt.
-
-Edge-case behavior:
-    - __init__ raises TypeError immediately if `binding` is not a
-      BiometricBinding instance, so a misconfigured caller fails at
-      construction, not on the first real scan() call.
-    - connect() calls binding.open_session() and binding.list_devices();
-      a BiometricBindingError from either is translated into
-      DeviceConnectionError, and connect() itself returns False rather
-      than propagating the exception, consistent with DeviceBase's
-      contract that connect() is a boolean probe.
-    - scan() validates the binding's capture() return value has the
-      exact expected shape ("width", "height", "pixels" keys, and
-      len(pixels) == width * height) before returning it, raising
-      DeviceConnectionError with a specific message if a binding
-      returns a malformed result -- so a buggy binding fails loudly at
-      this boundary rather than handing a silently-corrupt image
-      downstream into biometrics/codecs/image_tools.py.
-    - A "no finger presented" condition (the binding's capture()
-      raising BiometricBindingError) raises FingerNotPresentError (a
-      DeviceConnectionError subclass), never returns None or a blank
-      buffer, so a caller cannot mistake "no finger" for "finger that
-      scanned as all-black."
-    - This file does not know or care whether its binding is a real
-      OS/SDK-calling implementation, a mock used for testing, or a
-      simulator -- it only ever calls the six BiometricBinding methods,
-      so this entire class's logic (retry, shape validation) is fully
-      testable against a minimal fake binding with zero OS or SDK
-      involvement at all.
+Depends on (project modules):
+- hardware.base.biometric_base (hardware/base/biometric_base.py)
+- hardware.base.biometric_binding (hardware/base/biometric_binding.py)
+- hardware.exceptions (hardware/exceptions.py)
+Standard library: none.
+Imported by: no other module in this tree imports it directly.
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: CAPTURE_RETRY_COUNT. See their definitions below for values.
+- CAPTURE_RETRY_COUNT = 1
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- FingerprintScanner.__init__() raises TypeError: "FingerprintScanner requires
+  a hardware.base.biometric_binding.BiometricBinding instance; got {...}
+  instead. This project ships the binding CONTRACT only -- see
+  hardware/README.md, 'Why the biometric binding is not shipped,' for how to
+  supply one."
+- FingerprintScanner.connect() raises DeviceConnectionError: "no fingerprint
+  scanners were reported by the binding, or none matched {...}."
+- FingerprintScanner._find_device_name() raises DeviceConnectionError:
+  "binding.list_devices() failed: {...}"
+- FingerprintScanner.scan() raises DeviceConnectionError: "{...} is not
+  connected; call connect() first."
+- FingerprintScanner.scan() raises FingerNotPresentError: "no finger detected
+  on {...}: {...}"
+- FingerprintScanner._validate_capture_shape() raises DeviceConnectionError:
+  "binding.capture() must return a dict; got {...}."
+- FingerprintScanner._validate_capture_shape() raises DeviceConnectionError:
+  "binding.capture() result is missing key(s): {...}."
+- FingerprintScanner._validate_capture_shape() raises DeviceConnectionError:
+  "binding.capture()'s width/height must be int."
+- FingerprintScanner._validate_capture_shape() raises DeviceConnectionError:
+  "binding.capture()'s pixels must be bytes."
+- FingerprintScanner._validate_capture_shape() raises DeviceConnectionError:
+  "binding.capture() returned {...} pixel bytes; expected width*height =
+  {...}."
+- FingerprintScanner._find_device_name(): translates BiometricBindingError into
+  DeviceConnectionError, so callers only need to handle this module's own error
+  type.
+- FingerprintScanner.connect(), FingerprintScanner.scan(): catches
+  (BiometricBindingError, DeviceConnectionError) and handles it in place; it
+  does not propagate to the caller.
+- FingerprintScanner.disconnect(): catches BiometricBindingError and handles it
+  in place; it does not propagate to the caller.
+- FingerprintScanner.health_check(): catches DeviceConnectionError and handles
+  it in place; it does not propagate to the caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from hardware.biometric.fingerprint_scanner import FingerprintScanner
+    obj = FingerprintScanner(binding)
+    obj.name
 """
 
 from hardware.base.biometric_base import BiometricBase
@@ -263,4 +253,7 @@ class FingerprintScanner(BiometricBase):
                 f"binding.capture() returned {len(pixels)} pixel "
                 f"bytes; expected width*height = {width * height}."
             )
+
+
+
 

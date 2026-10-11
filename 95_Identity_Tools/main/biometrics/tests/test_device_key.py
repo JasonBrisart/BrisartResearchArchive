@@ -5,33 +5,50 @@ Purpose
 -------
 Tests for biometrics.identity.device_key: machine-fingerprint binding.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, unittest, biometrics.identity.
+Verifies: biometrics/identity/device_key.py.
+Contains 6 test case(s) across 2 TestCase class(es).
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for biometrics.identity.device_key: machine-fingerprint binding.
+Design notes:
 
 Fast: bind_device / verify_device use the keyed-MAC factor path (~15 ms), not
 the slow KDF. An injected 32-byte master key stands in for a real unlocked
 device key.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.identity.device_key (biometrics/identity/device_key.py)
+Standard library: secrets, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
+
+Edge cases
+----------
+DeviceFingerprintTests:
+- Current fingerprint is a non empty string.
+DeviceBindingTests:
+- Bind then verify the same fingerprint.
+- A different fingerprint does not verify.
+- A different master key does not verify.
+- Binding and verifying the current machine round trips.
+- The bound value does not expose the fingerprint.
+
+Known limitations
+-----------------
+- Passing proves only the 6 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest biometrics.tests.test_device_key -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -75,4 +92,7 @@ class DeviceBindingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

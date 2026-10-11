@@ -3,38 +3,17 @@ File: app.py
 
 Purpose
 -------
-Tkinter desktop GUI for BrisartIdentityTools: Vault, Biometrics, and
-Packages in one window.
+Tkinter desktop GUI for BrisartIdentityTools: Vault, Biometrics, and Packages
+in one window.
 
-Communication / relationships
------------------------------
-Direct module imports: tkinter, tkinter, gui.core.constants, gui.tabs.tab_vault, gui.tabs.tab_biometrics, gui.tabs.tab_packages.
+Public interface:
+- class App(tk.Tk)
+- main()
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Tkinter desktop GUI for BrisartIdentityTools: Vault, Biometrics, and
-Packages in one window.
-
-Standard-library only (tkinter ships with Python), consistent with the rest of
-this ecosystem's zero-third-party-dependency rule. This module is only the
-application shell -- the window, the three tabs' assembly, and the menu bar.
-Everything else lives in folder-grouped submodules:
+This module is only the application shell -- the window, the three tabs'
+assembly, and the menu bar. Everything else lives in folder-grouped submodules:
 
     gui/
       app.py              <- this file: shell + main() only
@@ -58,13 +37,48 @@ walks up to version.py) before any tool package is imported by the tab modules,
 so python -m gui.app, python cli.py gui, and opening a single submodule in an
 editor all resolve the tool packages correctly.
 
-Run with::
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- gui.core.constants (gui/core/constants.py)
+- gui.tabs.tab_vault (gui/tabs/tab_vault.py)
+- gui.tabs.tab_biometrics (gui/tabs/tab_biometrics.py)
+- gui.tabs.tab_packages (gui/tabs/tab_packages.py)
+- version (version.py)
+Standard library: tkinter.
+Imported by: no other module in this tree imports it directly (it is an entry
+point).
+Covered by tests: no test file imports this module directly.
 
-    python -m gui.app
+Settings / parameters
+---------------------
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
-or via the unified dispatcher::
+Edge cases
+----------
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
-    python cli.py gui
+Known limitations
+-----------------
+- Location mismatch: this file sits at the repository root, but cli.py's gui
+  command runs ``from gui import app`` and the design notes describe it as
+  gui/app.py. No gui/app.py exists in this tree, so ``python cli.py gui`` and
+  ``python -m gui.app`` fail with ImportError until the file is moved to
+  gui/app.py (or cli.py is pointed at the root module). Launch it directly with
+  ``python app.py`` in the meantime.
+- Standard-library only (tkinter ships with Python), consistent with the rest
+  of this ecosystem's zero-third-party-dependency rule.
+- No test module imports this file directly; as an entry point it is verified
+  only by running it, so check changes manually.
+
+Examples
+--------
+::
+
+    python app.py
 """
 
 import tkinter as tk
@@ -118,4 +132,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
 

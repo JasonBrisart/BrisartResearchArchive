@@ -3,29 +3,68 @@ File: common/tests/test_integrity_ledger.py
 
 Purpose
 -------
-Tests for common.integrity_ledger: the external, hash-chained checkpoint
-ledger used to narrow (not close) the edit-then-revert blind spot shared by
-every other tamper-evidence mechanism in this repository.
+Tests for common.integrity_ledger: the external, hash-chained checkpoint ledger
+used to narrow (not close) the edit-then-revert blind spot shared by every
+other tamper-evidence mechanism in this repository.
+
+Verifies: common/integrity_ledger.py, common/hashing.py.
+Contains 20 test case(s) across 4 TestCase class(es).
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib, common, common.integrity_ledger.
+Depends on (project modules):
+- common.integrity_ledger (common/integrity_ledger.py)
+- common.hashing (common/hashing.py)
+Standard library: json, pathlib, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+AppendCheckpointTests:
+- First checkpoint creates a fresh ledger.
+- Second checkpoint chains to the first.
+- Checkpoint missing target raises.
+- Unchanged content still appends a new entry.
+- Checkpoint records correct sha256 and size.
+VerifyLedgerTests:
+- Empty ledger verifies.
+- Intact multi entry ledger verifies.
+- Tampering with an entry field is detected.
+- Deleting a middle entry breaks the chain.
+- Wrong format marker is rejected.
+CurrentStatusTests:
+- Unchanged file matches latest checkpoint.
+- Changed file does not match latest checkpoint.
+- Never checkpointed file reports none.
+- Missing target file reports none for current hash.
+- Edit then revert straddling a checkpoint is caught.
+- Edit then revert entirely between checkpoints is not caught.
+HistoryAndListTrackedTests:
+- History for path filters correctly.
+- History for untracked path is empty.
+- List tracked paths is sorted and deduplicated.
+- All entries returns every entry regardless of target.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Tracked in docs/KNOWN_ISSUES.md: KI-004: Integrity Ledger cannot detect a
+  tamper-then-revert entirely between two checkpoints
+- Passing proves only the 20 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest common.tests.test_integrity_ledger -v
+    python tests/run_tests.py
 """
 
 import tempfile
@@ -228,4 +267,7 @@ class HistoryAndListTrackedTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

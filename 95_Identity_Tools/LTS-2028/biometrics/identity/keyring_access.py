@@ -4,95 +4,68 @@ File: biometrics/identity/keyring_access.py
 Purpose
 -------
 Single shared entry point for unlocking the biometrics BSR2 keyring
-    (data/keyring.json) with online-attempt throttling enforced identically
-    for every caller. Before this module existed, biometrics/app.py's CLI
-    (_unlock_keyring()) and gui/tabs/tab_biometrics.py's GUI
-    (_ensure_keyring()) each called crypto.keyring.Keyring.
-    unlock_with_passphrase() directly, and neither consulted
-    crypto.throttle.AttemptLimiter at all -- an attacker driving either
-    entry point in a loop against a running process paid no cost beyond
-    BSR2's own slow KDF, with no backoff and no lockout, and the two
-    interfaces did not even agree with each other on what (if anything) was
-    enforced. Both entry points now call unlock_with_passphrase() below
-    instead, so the identical throttling policy applies no matter which
-    interface is used to reach it.
+(data/keyring.json) with online-attempt throttling enforced identically for
+every caller. Before this module existed, biometrics/app.py's CLI
+(_unlock_keyring()) and gui/tabs/tab_biometrics.py's GUI (_ensure_keyring())
+each called crypto.keyring.Keyring. unlock_with_passphrase() directly, and
+neither consulted crypto.throttle.AttemptLimiter at all -- an attacker driving
+either entry point in a loop against a running process paid no cost beyond
+BSR2's own slow KDF, with no backoff and no lockout, and the two interfaces did
+not even agree with each other on what (if anything) was enforced. Both entry
+points now call unlock_with_passphrase() below instead, so the identical
+throttling policy applies no matter which interface is used to reach it.
+
+Public interface:
+- class KeyringAccessError(ValueError) -- Raised for a refused or failed
+  biometrics keyring unlock attempt, whether refused by the attempt-throttle
+  gate or rejected by the underlying BSR2 unwrap itself.
+- unlock_with_passphrase(keyring, path, passphrase) -- Unlock `keyring`
+  (already constructed from the state stored at `path`) using `passphrase`,
+  enforcing crypto.attempt_store throttling state persisted in the same file.
 
 Communication / relationships
 -----------------------------
-Called by:
-        - biometrics.app._unlock_keyring(), the CLI's sole unlock path,
-          reached from every command that touches an identity's stored
-          templates or attachments (enroll, verify, attach, attach-paths,
-          extract-attachment, restore-paths, remove-attachment).
-        - gui.tabs.tab_biometrics.BiometricsTab._ensure_keyring()'s unlock
-          branch, the GUI's sole unlock path.
-    Calls out to:
-        - crypto.keyring.Keyring.unlock_with_passphrase() to perform the
-          actual BSR2 KDF derivation and master-key unwrap. This module
-          does not touch cryptography itself; it only gates when that call
-          is allowed to run and records whether it succeeded.
-        - crypto.attempt_store (check_and_get_state / record_failure /
-          record_success), which is the same adapter
-          vault.store.vault_service uses for the vault's own unlock paths,
-          so both tools in the ecosystem persist throttle state the same
-          way even though this module and vault_service.py otherwise share
-          no code (consistent with this repository's existing deliberate
-          separation between the vault and biometrics tools -- see e.g.
-          biometrics.engine.bulk_attachments's own docstring on why it
-          duplicates vault.store.bulk_file_service rather than importing
-          it).
-        - common.atomic_io.atomic_write_json (with
-          common.atomic_io.SENSITIVE_FILE_MODE) to persist the updated
-          attempt state back into keyring.json, matching how
-          biometrics.app._load_or_create_keyring() already writes that
-          file.
-
-Parameters / settings:
-    KeyringAccessError:
-        The single exception type every caller catches. Wraps both a
-        throttled/locked-out refusal (crypto.throttle.AttemptLockedOut,
-        raised BEFORE any KDF is attempted) and a genuine wrong-passphrase
-        failure (crypto.errors.Bsr2IntegrationError, raised by
-        Keyring.unlock_with_passphrase() itself), so callers do not need to
-        import or distinguish between crypto.throttle and crypto.errors
-        exception types -- the same simplification
-        crypto.envelope.EnvelopeAuthenticationError already gives envelope
-        callers.
-
-Edge-case behavior:
-    - A keyring.json with no prior "unlock_attempts" field (every keyring
-      created before this module existed, or a brand-new one) is treated as
-      fresh, unthrottled state on first call -- see crypto.attempt_store's
-      own docstring for why no migration step is needed.
-    - The attempt state is re-read from disk at the START of every call
-      (rather than trusted from a value cached in memory), so a check
-      always reflects the most recently persisted failure/success, even if
-      the in-memory Keyring object passed in was constructed from a
-      slightly earlier read of the same file.
-    - If Keyring.unlock_with_passphrase() itself raises for a reason other
-      than a wrong passphrase (e.g. a structurally corrupted keyring
-      section), that failure is still recorded as one failed attempt and
-      still raises KeyringAccessError -- this module does not attempt to
-      distinguish "wrong secret" from "corrupted keyring" the same way
-      crypto.keyring.Keyring itself deliberately keeps that distinction
-      uniform (see crypto/keyring.py's own docstring on why an unlock
-      failure message does not disclose which one occurred).
+Depends on (project modules):
+- common.atomic_io (common/atomic_io.py)
+- crypto.attempt_store (crypto/attempt_store.py)
+- crypto.errors (crypto/errors.py)
+- crypto.keyring (crypto/keyring.py)
+- crypto.throttle (crypto/throttle.py)
+Standard library: json, pathlib.
+Imported by:
+- biometrics/app.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: biometrics/tests/test_keyring_access.py.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- unlock_with_passphrase() raises KeyringAccessError: "unlock refused: too many
+  recent failed attempts; retry in {...} second(s)."
+- unlock_with_passphrase() raises KeyringAccessError: "unlock failed: {...}"
+- unlock_with_passphrase(): translates AttemptLockedOut into
+  KeyringAccessError, so callers only need to handle this module's own error
+  type.
+- unlock_with_passphrase(): translates Bsr2IntegrationError into
+  KeyringAccessError, so callers only need to handle this module's own error
+  type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from biometrics.identity.keyring_access import unlock_with_passphrase
+    result = unlock_with_passphrase(keyring, path, passphrase)
 """
 
 import json
@@ -149,4 +122,7 @@ def unlock_with_passphrase(keyring: Keyring, path: Path, passphrase: str) -> byt
 
 
 __all__ = ["KeyringAccessError", "unlock_with_passphrase"]
+
+
+
 

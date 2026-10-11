@@ -5,25 +5,75 @@ Purpose
 -------
 Round-trip and correctness tests for biometrics.codecs.*
 
+Verifies: biometrics/codecs/dsp.py, biometrics/codecs/image_tools.py,
+biometrics/codecs/pgm.py, biometrics/codecs/png.py,
+biometrics/codecs/wave_tools.py.
+Contains 28 test case(s) across 5 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, wave, zlib, pathlib, biometrics.codecs.
+Depends on (project modules):
+- biometrics.codecs.dsp (biometrics/codecs/dsp.py)
+- biometrics.codecs.image_tools (biometrics/codecs/image_tools.py)
+- biometrics.codecs.pgm (biometrics/codecs/pgm.py)
+- biometrics.codecs.png (biometrics/codecs/png.py)
+- biometrics.codecs.wave_tools (biometrics/codecs/wave_tools.py)
+Standard library: pathlib, struct, tempfile, unittest, wave, zlib.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) inline and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+PgmRoundTripTests:
+- Encode decode round trip.
+- Rejects wrong pixel length.
+- Rejects bad magic.
+- Handles comments in header.
+PngRoundTripTests:
+- Rejects bad signature.
+- Rejects corrupted crc.
+- Rejects decompression bomb.
+ImageToolsTests:
+- Crop center smaller than source.
+- Crop center pads when source smaller.
+- Resize nearest preserves dimensions.
+- Normalize flat input unchanged.
+- Normalize stretches range.
+- Block grid means shape.
+- Block grid means rejects oversized grid.
+- Sobel gradient flat image is zero.
+- Rejects oversized target dimensions.
+- Valid target dimensions still accepted.
+DspTests:
+- Frame signal pads final frame.
+- Zero crossing rate all positive is zero.
+- Zero crossing rate alternating is high.
+- Short time energy of silence is zero.
+- Band energies count matches request.
+- Normalize vector scales to unit peak.
+- Normalize vector handles silence.
+WaveToolsTests:
+- Rejects absurd sample rate.
+- Normal sample rate round trips.
+- Write wave rejects absurd sample rate.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 28 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest biometrics.tests.test_codec_and_dsp_support -v
+    python tests/run_tests.py
 """
 
 import tempfile
@@ -233,4 +283,7 @@ class WaveToolsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

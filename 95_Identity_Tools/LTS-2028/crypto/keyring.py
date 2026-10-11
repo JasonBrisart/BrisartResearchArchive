@@ -5,55 +5,153 @@ Purpose
 -------
 BSR2 keyring: master key wrapping under a passphrase and a recovery code.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, unicodedata, typing, crypto.context, crypto.envelope, crypto.errors, crypto.rng, crypto.vendor.
+Public interface:
+- generate_recovery_code() -- Generate a fresh recovery code.
+- format_recovery_code(code) -- Format a recovery code in readable groups for
+  display or printing.
+- class Keyring -- A master key wrapped under a passphrase and a recovery code.
+  Public methods: create, unlock_with_passphrase, unlock_with_recovery_code,
+  is_unlocked, master_key, lock, change_passphrase, rotate_recovery_code,
+  to_state, public_summary.
 
-Settings / parameters
----------------------
-Module-level named settings: MASTER_KEY_BYTES, KDF_SALT_BYTES, KDF_ITERATIONS, MAXIMUM_KDF_ITERATIONS, RECOVERY_CODE_GROUPS, RECOVERY_CODE_GROUP_SIZE, _RECOVERY_ALPHABET, _CONFUSABLE_CHARACTERS, KEYRING_FORMAT, _WRAPPER_PASSPHRASE, _WRAPPER_RECOVERY. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-BSR2 keyring: master key wrapping under a passphrase and a recovery code.
+Design notes:
 
 The design problem this solves: BSR2's ``derive_password_key`` is genuinely
 expensive in pure Python (measured at roughly 70 seconds at its own enforced
 minimum of 10,000 iterations, and around 14 minutes at its 120,000 default).
 Deriving a key from the passphrase for every operation would be unusable, and
-lowering the iteration count below BSR2's floor is not permitted by BSR2 itself.
+lowering the iteration count below BSR2's floor is not permitted by BSR2
+itself.
 
 The answer is standard key wrapping, which is what full-disk encryption has
 always done for the same reason:
 
-* The data is encrypted under a random 32-byte **master key**, never directly
+- The data is encrypted under a random 32-byte **master key**, never directly
   under a passphrase-derived key.
-* The master key is sealed twice, once under a key derived from the passphrase
+- The master key is sealed twice, once under a key derived from the passphrase
   and once under a key derived from an offline **recovery code**.
-* Unlocking derives one KDF result, unwraps the master key, and holds it for the
-  session. Every subsequent seal and open is fast.
+- Unlocking derives one KDF result, unwraps the master key, and holds it for
+  the session. Every subsequent seal and open is fast.
 
 Consequences that follow from this, and are deliberate:
 
-* Changing the passphrase re-wraps the master key. It does not re-encrypt any
+- Changing the passphrase re-wraps the master key. It does not re-encrypt any
   data, because the master key does not change.
-* The recovery code is a second full-strength path to the master key. Anyone
+- The recovery code is a second full-strength path to the master key. Anyone
   holding it has the same access the passphrase gives. That is the price of
-  recoverability, and it is why the code is shown exactly once and never stored.
-* Losing both the passphrase and the recovery code is unrecoverable. There is no
-  third path by design.
+  recoverability, and it is why the code is shown exactly once and never
+  stored.
+- Losing both the passphrase and the recovery code is unrecoverable. There is
+  no third path by design.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.context (crypto/context.py)
+- crypto.envelope (crypto/envelope.py)
+- crypto.errors (crypto/errors.py)
+- crypto.rng (crypto/rng.py)
+- crypto.vendor (crypto/vendor.py)
+Standard library: secrets, typing, unicodedata.
+Imported by:
+- biometrics/app.py
+- biometrics/identity/keyring_access.py
+- gui/tabs/tab_biometrics.py
+- vault/store/vault_file.py
+- vault/store/vault_service.py
+Covered by tests: biometrics/tests/test_keyring_access.py,
+crypto/tests/test_keyring.py.
+
+Settings / parameters
+---------------------
+- MASTER_KEY_BYTES = 32
+- KDF_SALT_BYTES = 32
+- KDF_ITERATIONS = 10_000
+- MAXIMUM_KDF_ITERATIONS = 1_000_000
+- RECOVERY_CODE_GROUPS = 8
+- RECOVERY_CODE_GROUP_SIZE = 5
+- _RECOVERY_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ" -- Crockford base32
+  without I, L, O, U: no ambiguity when transcribed by hand.
+- _CONFUSABLE_CHARACTERS = {"I": "1", "L": "1", "O": "0", "U": "V"} -- The
+  characters excluded from the alphabet, mapped to their visual equivalents, so
+  a code transcribed by hand still resolves.
+- KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v1"
+- _WRAPPER_PASSPHRASE = "passphrase"
+- _WRAPPER_RECOVERY = "recovery"
+
+Edge cases
+----------
+- _normalize_recovery_code() raises Bsr2IntegrationError: "recovery code must
+  be a string."
+- _normalize_recovery_code() raises Bsr2IntegrationError: "recovery code
+  contains characters outside its alphabet."
+- _normalize_recovery_code() raises Bsr2IntegrationError: "recovery code must
+  contain {...} characters, got {...}."
+- _normalize_passphrase() raises Bsr2IntegrationError: "passphrase must be a
+  string."
+- _normalize_passphrase() raises Bsr2IntegrationError: "passphrase cannot be
+  empty."
+- _require_int() raises KeyringFormatError: "keyring {...} must be an integer."
+- Keyring.create() raises Bsr2IntegrationError: "iteration count is below the
+  BSR2 research minimum of 10,000."
+- Keyring.create() raises Bsr2IntegrationError: "iteration count is above the
+  {...} maximum."
+- Keyring._validate() raises KeyringFormatError: "keyring state must be an
+  object."
+- Keyring._validate() raises KeyringFormatError: "unsupported keyring format."
+- Keyring._validate() raises KeyringFormatError: "unsupported keyring KDF."
+- Keyring._validate() raises KeyringFormatError: "keyring iteration count is
+  below the BSR2 minimum."
+- Keyring._validate() raises KeyringFormatError: "keyring iteration count is
+  above the supported maximum."
+- Keyring._validate() raises KeyringFormatError: "keyring {...} section must be
+  an object."
+- Keyring._validate() raises KeyringFormatError: "keyring {...} salt must be
+  hexadecimal text."
+- Keyring._validate() raises KeyringFormatError: "keyring {...} salt is not
+  valid hexadecimal."
+- Keyring._validate() raises KeyringFormatError: "keyring {...} salt has an
+  invalid length."
+- Keyring._validate() raises KeyringFormatError: "keyring {...} wrapper is not
+  a BSR2 envelope."
+- Keyring._validate() raises KeyringFormatError: "keyring master key check must
+  be text."
+- Keyring._validate() raises KeyringFormatError: "keyring master key check has
+  an invalid length."
+- Keyring._validate() raises KeyringFormatError: "keyring master key check is
+  not valid hexadecimal."
+- Keyring._unwrap() raises KeyringAuthenticationError: "unlock failed:
+  incorrect secret or modified keyring."
+- Keyring._unwrap() raises KeyringFormatError: "unwrapped master key has an
+  invalid length."
+- Keyring._unwrap() raises KeyringFormatError: "unwrapped master key does not
+  match the keyring check value."
+- Keyring.master_key() raises KeyringLockedError: "keyring is locked; unlock it
+  before using the master key."
+- Keyring.change_passphrase() raises KeyringLockedError: "unlock the keyring
+  before changing its passphrase."
+- Keyring.rotate_recovery_code() raises KeyringLockedError: "unlock the keyring
+  before rotating its recovery code."
+- Keyring._unwrap(): translates (BrisartEnvelopeError, Bsr2IntegrationError)
+  into KeyringAuthenticationError, so callers only need to handle this module's
+  own error type.
+- Keyring._validate(): translates BrisartPrimitiveError into
+  KeyringFormatError, so callers only need to handle this module's own error
+  type.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    from crypto.keyring import generate_recovery_code, format_recovery_code
+    result = generate_recovery_code()
+    format_recovery_code(code)
 """
 
 import secrets
@@ -482,4 +580,7 @@ class Keyring:
             "recovery_code_available": True,
             "unlocked": self.is_unlocked,
         }
+
+
+
 

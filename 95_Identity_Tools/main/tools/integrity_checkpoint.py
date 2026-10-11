@@ -3,68 +3,78 @@ File: tools/integrity_checkpoint.py
 
 Purpose
 -------
-Standalone CLI for common.integrity_ledger. Meant to be invoked either
-    by hand (before/after a sensitive operation on a vault.json, a
-    biometrics keyring.json, or a package's .json file) or by an OS-level
-    scheduler (a cron job, a Windows Scheduled Task) so checkpoints are
-    recorded at a regular cadence with no persistent background process
-    and no third-party scheduling dependency -- consistent with
-    tools/envinfo.py's existing standalone-script pattern in this
-    repository.
+Standalone CLI for common.integrity_ledger. Meant to be invoked either by hand
+(before/after a sensitive operation on a vault.json, a biometrics keyring.json,
+or a package's .json file) or by an OS-level scheduler (a cron job, a Windows
+Scheduled Task) so checkpoints are recorded at a regular cadence with no
+persistent background process and no third-party scheduling dependency --
+consistent with tools/envinfo.py's existing standalone-script pattern in this
+repository.
 
-    Read common/integrity_ledger.py's module docstring before relying on
-    this for anything real: checkpointing narrows, but cannot close, the
-    "edit then revert before the next check" blind spot every tamper-
-    evidence mechanism in this project shares. The smaller the gap between
-    scheduled checkpoints, the smaller that blind spot -- but it is never
-    zero unless checkpoints are continuous, which this tool does not
-    attempt to be.
+Public interface:
+- class AppError(ValueError) -- Raised for user-facing CLI failures.
+- command_checkpoint(args)
+- command_status(args)
+- command_history(args)
+- command_verify(args)
+- command_list_tracked(args)
+- build_parser()
+- main(argv=None)
+
+Design notes:
+
+Read common/integrity_ledger.py's module docstring before relying on this for
+anything real: checkpointing narrows, but cannot close, the "edit then revert
+before the next check" blind spot every tamper- evidence mechanism in this
+project shares. The smaller the gap between scheduled checkpoints, the smaller
+that blind spot -- but it is never zero unless checkpoints are continuous,
+which this tool does not attempt to be.
 
 Communication / relationships
 -----------------------------
-Called by: an operator's shell, or an OS scheduler (cron / Task
-    Scheduler) invoking this script directly. Not imported by any other
-    module in this repository -- it is a thin argument-parsing shell
-    around common.integrity_ledger's public functions, the same
-    relationship packages/main.py has to packages/package.py.
-    Calls out to: common.integrity_ledger (checkpoint/verify/status/
-    history/list-tracked operations).
-
-Parameters / settings:
-    DEFAULT_LEDGER_PATH (Path, "data/integrity/ledger.json"):
-        Used when --ledger is not supplied, consistent with this
-        project's existing data/<tool>/ convention (vault/data,
-        biometrics/data, packages/data).
-
-Edge-case behavior:
-    - Every subcommand's failures are reported as a plain "error: ..."
-      message on stderr with a non-zero exit code, matching the existing
-      AppError handling convention in vault/app.py, biometrics/app.py, and
-      packages/main.py, rather than letting a raw traceback escape.
-    - "status" reports "UNKNOWN (no prior checkpoint)" rather than a
-      True/False match when a target has never been checkpointed, so an
-      operator cannot misread "no checkpoint yet" as "verified clean."
-    - "checkpoint" always appends a new checkpoint, even if the file's
-      hash is identical to the previous checkpoint -- an unchanged file is
-      still worth recording, since the recorded_at timestamp itself is
-      evidence that the file was inspected and found unchanged at that
-      moment.
+Depends on (project modules):
+- common.integrity_ledger (common/integrity_ledger.py)
+Standard library: argparse, pathlib, sys.
+Imported by: no other module in this tree imports it directly (it is an entry
+point).
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: DEFAULT_LEDGER_PATH. See their definitions below for values.
+- DEFAULT_LEDGER_PATH = Path("data") / "integrity" / "ledger.json"
+- --ledger: path to the ledger file (default: {...}).
+- target_file (command-line option).
+- --label: optional actor label to record with this checkpoint.
+- target_file (command-line option).
+- target_file (command-line option).
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- command_checkpoint() raises AppError.
+- command_verify() raises AppError.
+- Run as a script, the process exit status is main()'s return value (via
+  ``raise SystemExit(main())``).
+- command_checkpoint(), command_verify(): translates
+  integrity_ledger.IntegrityLedgerError into AppError, so callers only need to
+  handle this module's own error type.
+- main(): catches AppError and handles it in place; it does not propagate to
+  the caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Tracked in docs/KNOWN_ISSUES.md: KI-004: Integrity Ledger cannot detect a
+  tamper-then-revert entirely between two checkpoints
+- No test module imports this file directly; as an entry point it is verified
+  only by running it, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    python -m tools.integrity_checkpoint --help
+    python -m tools.integrity_checkpoint checkpoint --help
+    python -m tools.integrity_checkpoint status --help
+    python -m tools.integrity_checkpoint history --help
 """
 
 import argparse
@@ -202,4 +212,7 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
 

@@ -5,25 +5,46 @@ Purpose
 -------
 Tests for vault.reports.audit_log.
 
+Verifies: vault/reports/audit_log.py.
+Contains 9 test case(s) across 1 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, re, tempfile, unittest, pathlib, vault.reports, vault.reports.audit_log.
+Depends on (project modules):
+- vault.reports.audit_log (vault/reports/audit_log.py)
+Standard library: json, pathlib, re, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Build entry shape.
+- Unknown action is rejected.
+- Vault level events omit a record id.
+- Record event writes readable json.
+- Write entry rejects bad format marker.
+- List entries filters by record id.
+- All lifecycle actions are valid.
+- Entry filename uses microsecond precision.
+- Rapid successive events sort oldest first by filename.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 9 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest vault.tests.test_audit_log -v
+    python tests/run_tests.py
 """
 
 import json
@@ -106,4 +127,7 @@ class VaultAuditLogTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

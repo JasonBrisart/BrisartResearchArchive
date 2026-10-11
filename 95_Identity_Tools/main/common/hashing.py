@@ -5,35 +5,53 @@ Purpose
 -------
 SHA-256 helpers, the single canonical copy.
 
+Public interface:
+- sha256_bytes(data) -- Return the SHA-256 hex digest of a bytes object.
+- sha256_file(path) -- Return the SHA-256 hex digest of a file, read in 1 MiB
+  chunks.
+
+Design notes:
+
+Replaces the byte-identical sha256_bytes/sha256_file that were pasted into five
+LabID feature modules. These are integrity fingerprints over non-secret
+content; secret material goes through the BSR2 factor and envelope layers
+instead.
+
 Communication / relationships
 -----------------------------
-Direct module imports: hashlib, pathlib, typing.
+Standard library: hashlib, pathlib, typing.
+Imported by:
+- biometrics/engine/attachments.py
+- biometrics/engine/bulk_attachments.py
+- common/integrity_ledger.py
+- packages/custody.py
+- vault/store/bulk_file_service.py
+- vault/store/vault_service.py
+Covered by tests: common/tests/test_common_utils.py,
+common/tests/test_integrity_ledger.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: _CHUNK_BYTES. See their definitions below for values.
+- _CHUNK_BYTES = 1024 * 1024
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- The 1 MiB streaming read is preserved so a large biometric sample is never
+  loaded whole into memory.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-SHA-256 helpers, the single canonical copy.
-
-Replaces the byte-identical sha256_bytes/sha256_file that were pasted into five
-LabID feature modules. The 1 MiB streaming read is preserved so a large
-biometric sample is never loaded whole into memory. These are integrity
-fingerprints over non-secret content; secret material goes through the BSR2
-factor and envelope layers instead.
+    from common.hashing import sha256_bytes, sha256_file
+    result = sha256_bytes(data)
+    sha256_file(path)
 """
 
 import hashlib
@@ -55,4 +73,7 @@ def sha256_file(path: Union[str, Path]) -> str:
         for chunk in iter(lambda: handle.read(_CHUNK_BYTES), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+
 

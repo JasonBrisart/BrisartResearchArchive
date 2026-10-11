@@ -5,67 +5,74 @@ Purpose
 -------
 Canonical context strings that bind every sealed object to what it is.
 
+Public interface:
+- record_context(record_id, kind, label)
+- template_context(identity_id, modality)
+- attachment_context(identity_id, filename)
+- identity_context(identity_id)
+- package_context(package_id)
+- key_slot_context(package_id, identity_id)
+- keyring_context(wrapper)
+
+Design notes:
+
+This module is the single source of the context strings passed to BSR2's
+authenticated envelope (crypto.envelope) and factor layer (crypto.factors). A
+biometric template sealed for one identity/modality cannot be dropped into
+another's slot, a vault record's payload cannot be swapped with a different
+record's, and a package key slot cannot be moved between recipients or packages
+-- in every case the moved envelope fails authentication instead of decrypting
+into the wrong place (see docs/BSR2_INTEGRATION.md's "Context binding"
+section).
+
 Communication / relationships
 -----------------------------
-- crypto.envelope.seal_bytes/seal_json/open_bytes/open_json take a context
-  string produced here and hand it to the vendored BSR2 envelope, which binds
-  it into the authentication tag.
-- vault.store.vault_service uses record_context; biometrics.engine.enrollment
-  /verification use template_context; biometrics.engine.attachments uses
-  attachment_context; packages.ciphers uses package_context and
-  key_slot_context; crypto.keyring uses keyring_context. Each tool depends on
-  this module rather than assembling its own context strings, so the exact
-  binding rules live in exactly one auditable place.
-
-FORMAT
-Every context is SEPARATOR-joined ("|") and begins with the versioned prefix
-"BrisartIdentityTools/v1", followed by a "kind" tag naming the object type,
-followed by the identifying fields for that object. The kind tag is what keeps
-two different object types (e.g. a biometrics-template vs a
-biometrics-attachment for the same identity) from ever producing the same
-context string.
-
-WHY "|" AND NUL ARE REJECTED IN FIELD VALUES
-Because fields are joined with "|", a field value that itself contained "|"
-could shift the boundary between fields and forge a *different* context that
-still authenticates -- e.g. record_context("a", "b|c", ...) colliding with
-record_context("a|b", "c", ...). _clean() therefore rejects "|" and NUL in
-every field value, so no combination of field contents can impersonate a
-different context. This validation is duplicated as friendlier, field-named
-errors in each tool's own id/label validators (e.g. vault.core.ids,
-packages.identity), but this module is the last line that actually enforces
-it before sealing.
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+Standard library: none.
+Imported by:
+- biometrics/engine/attachments.py
+- biometrics/engine/enrollment.py
+- biometrics/engine/verification.py
+- crypto/keyring.py
+- packages/ciphers.py
+- vault/store/vault_service.py
+Covered by tests: crypto/tests/test_context.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: SEPARATOR, _PREFIX. See their definitions below for values.
+- SEPARATOR = "|"
+- _PREFIX = "BrisartIdentityTools/v1"
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _clean() raises Bsr2IntegrationError: "context {...} must be a string."
+- _clean() raises Bsr2IntegrationError: "context {...} cannot be empty."
+- _clean() raises Bsr2IntegrationError: "context {...} cannot contain {...}."
+- _clean() raises Bsr2IntegrationError: "context {...} cannot contain a NUL
+  byte."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- A context is authenticated alongside the ciphertext, so an envelope sealed
+  under one context cannot be opened under another: this is the mechanism that
+  makes cross-substitution detectable across the whole ecosystem.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Canonical context strings that bind every sealed object to what it is.
-
-This module is the single source of the context strings passed to BSR2's
-authenticated envelope (crypto.envelope) and factor layer (crypto.factors).
-A context is authenticated alongside the ciphertext, so an envelope sealed
-under one context cannot be opened under another: this is the mechanism that
-makes cross-substitution detectable across the whole ecosystem. A biometric
-template sealed for one identity/modality cannot be dropped into another's
-slot, a vault record's payload cannot be swapped with a different record's,
-and a package key slot cannot be moved between recipients or packages -- in
-every case the moved envelope fails authentication instead of decrypting into
-the wrong place (see docs/BSR2_INTEGRATION.md's "Context binding" section).
+    from crypto.context import (
+        record_context,
+        template_context,
+        attachment_context,
+    )
+    result = record_context(record_id, kind, label)
+    template_context(identity_id, modality)
+    attachment_context(identity_id, filename)
 """
 
 from crypto.errors import Bsr2IntegrationError
@@ -105,4 +112,7 @@ def key_slot_context(package_id, identity_id):
     return _join("ibp-key-slot", _clean("package_id", package_id), _clean("identity_id", identity_id))
 def keyring_context(wrapper):
     return _join("keyring-wrapper", _clean("wrapper", wrapper))
+
+
+
 

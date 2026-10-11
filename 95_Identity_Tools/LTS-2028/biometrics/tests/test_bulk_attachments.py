@@ -6,35 +6,59 @@ Purpose
 Tests for biometrics.engine.bulk_attachments: chunked, multi-path
 file/folder/drive attachments on an identity record.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, tempfile, unittest, pathlib, biometrics.identity.identity_record, biometrics.engine, biometrics.engine.bulk_attachments.
+Verifies: biometrics/identity/identity_record.py,
+biometrics/engine/bulk_attachments.py.
+Contains 10 test case(s) across 1 TestCase class(es).
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for biometrics.engine.bulk_attachments: chunked, multi-path
-file/folder/drive attachments on an identity record.
+Design notes:
 
 Like biometrics/tests/test_attachments.py, these use an injected 32-byte master
 key (secrets.token_bytes) rather than a real Keyring unlock, so they exercise
-the full chunk/bundle/manifest logic and real BSR2 sealing of each chunk WITHOUT
-paying the slow KDF cost. A small chunk size forces the multi-chunk path.
+the full chunk/bundle/manifest logic and real BSR2 sealing of each chunk
+WITHOUT paying the slow KDF cost. A small chunk size forces the multi-chunk
+path.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- biometrics.engine.bulk_attachments (biometrics/engine/bulk_attachments.py)
+Standard library: pathlib, secrets, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
+
+Edge cases
+----------
+- Small content uses a single chunk.
+- Multi chunk content round trips exactly.
+- Empty content round trips.
+- A manifest attachment is created.
+- Restore detects a missing chunk.
+- Restore missing bundle raises.
+- Attach paths bundles mixed files and folders.
+- Attach paths requires at least one path.
+- Attach paths rejects a nonexistent path.
+- Remove bulk attachment clears chunks and manifest.
+
+Known limitations
+-----------------
+- Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk file/folder/drive encryption
+  throughput ceiling (~1.4 KB/s)
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest biometrics.tests.test_bulk_attachments -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -138,4 +162,7 @@ class BulkAttachmentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

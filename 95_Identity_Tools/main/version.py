@@ -3,38 +3,52 @@ File: version.py
 
 Purpose
 -------
-Single source of truth for the ecosystem version.
+Single source of truth for the ecosystem version. This module defines no
+functions or classes; it exists for the module-level values or package marker
+it provides.
 
-Communication / relationships
------------------------------
-No direct module-level imports are declared.
-
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Single source of truth for the ecosystem version.
+Design notes:
 
 Lives in a plain module rather than __init__.py because this package tree
 deliberately uses no __init__.py files (PEP 420 namespace packages). Everything
 that needs the version imports it from here:
 
     from version import __version__
+
+Communication / relationships
+-----------------------------
+Standard library: none.
+Imported by:
+- app.py
+- biometrics/config/settings.py
+- cli.py
+- vault/config/settings.py
+Covered by tests: tests/test_cli_dispatcher.py.
+
+Settings / parameters
+---------------------
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
+
+Edge cases
+----------
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
+
+Known limitations
+-----------------
+- No known limitations beyond the documented contract of its public interface.
+
+Examples
+--------
+::
+
+    import version
 """
 
 __version__ = "1.9.1"
+
+
+
 

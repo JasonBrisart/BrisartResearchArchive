@@ -3,27 +3,46 @@ File: hardware/exceptions.py
 
 Purpose
 -------
-Hardware-related exceptions.
+Exception hierarchy for the hardware layer. Every hardware failure derives from
+HardwareError so callers can catch the whole family with one clause, while
+DeviceConnectionError and UnsupportedDeviceError let them distinguish an
+unreachable device from a device type this build cannot drive.
+
+Public interface:
+- class HardwareError(Exception)
+- class DeviceConnectionError(HardwareError)
+- class UnsupportedDeviceError(HardwareError)
 
 Communication / relationships
 -----------------------------
-No direct module-level imports are declared.
+Standard library: none.
+Imported by:
+- hardware/biometric/fingerprint_scanner.py
+- hardware/cameras/onvif_camera.py
+- hardware/card_readers/pcsc_reader.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    import hardware.exceptions
 """
 
 class HardwareError(Exception):
@@ -36,3 +55,6 @@ class DeviceConnectionError(HardwareError):
 
 class UnsupportedDeviceError(HardwareError):
     pass
+
+
+

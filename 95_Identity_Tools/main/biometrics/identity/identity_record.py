@@ -5,45 +5,123 @@ Purpose
 -------
 The identity record data model.
 
+Public interface:
+- class IdentityRecordError(ValueError) -- Raised when identity record data is
+  malformed or invalid.
+- new_record(identity_id, label, device_binding) -- Build a fresh identity
+  record with no enrolled templates or attachments yet.
+- validate_record(record) -- Validate a record's shape, raising
+  :class:`IdentityRecordError` on failure. Returns the record unchanged so it
+  can be used inline.
+- set_template(record, modality, envelope) -- Return a copy of ``record`` with
+  ``modality``'s template replaced.
+- remove_template(record, modality) -- Return a copy of ``record`` with
+  ``modality``'s template removed, if present.
+- set_attachment(record, filename, envelope, original_size_bytes, sha256) --
+  Return a copy of ``record`` with a sealed file attachment added or replaced
+  under ``filename``.
+- remove_attachment(record, filename) -- Return a copy of ``record`` with the
+  named attachment removed, if present.
+- enrolled_modalities(record) -- List the modalities this record currently has
+  templates for.
+- has_modality(record, modality) -- Report whether ``record`` has a template
+  for ``modality``.
+- attached_filenames(record) -- List the filenames this record currently has
+  attachments for.
+- has_attachment(record, filename) -- Report whether ``record`` has an
+  attachment named ``filename``.
+- public_summary(record) -- A non-secret summary of a record, safe for listing
+  or logging.
+
+Design notes:
+
+An identity record is the persisted unit for one enrolled person: an id, a
+human-readable label, a device binding, zero or more sealed biometric templates
+keyed by modality (``"voice"``, ``"fingerprint"``, ``"video"``), and (new) zero
+or more sealed FILE ATTACHMENTS keyed by filename -- an arbitrary raw file of
+any kind, any extension, or no extension at all, completely independent of the
+voice/fingerprint/video modality system. Template payloads AND attachment
+payloads are both opaque BSR2 envelopes here -- this module only defines the
+record's shape and its validation, not how a payload is sealed or opened (see
+biometrics.engine.enrollment / biometrics.engine.verification for templates,
+and biometrics.engine.attachments for attachments).
+
+Kept intentionally separate from identity_store.py: this module has no file I/O
+and no knowledge of where records live on disk, so it can be unit tested with
+plain dicts.
+
 Communication / relationships
 -----------------------------
-Direct module imports: crypto.envelope.
+Depends on (project modules):
+- crypto.envelope (crypto/envelope.py)
+Standard library: none.
+Imported by:
+- biometrics/app.py
+- biometrics/engine/attachments.py
+- biometrics/engine/enrollment.py
+- biometrics/engine/verification.py
+- biometrics/identity/identity_store.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: biometrics/tests/test_attachments.py,
+biometrics/tests/test_bulk_attachments.py,
+biometrics/tests/test_enrollment_overwrite.py,
+biometrics/tests/test_identity_id_validation.py,
+biometrics/tests/test_multimodal_flow.py, gui/tests/test_tab_biometrics.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: SUPPORTED_MODALITIES, RECORD_FORMAT, MAX_ATTACHMENT_FILENAME_LENGTH. See their definitions below for values.
+- SUPPORTED_MODALITIES = ("voice", "fingerprint", "video")
+- RECORD_FORMAT = "brisart-identity-tools/biometrics-identity/v1"
+- MAX_ATTACHMENT_FILENAME_LENGTH = 256
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _require_non_empty_string() raises IdentityRecordError: "{...} must be a
+  non-empty string."
+- _validate_attachment_filename() raises IdentityRecordError: "attachment
+  filename must be a non-empty string."
+- _validate_attachment_filename() raises IdentityRecordError: "attachment
+  filename cannot be longer than {...} characters."
+- _validate_attachment_filename() raises IdentityRecordError: "attachment
+  filename cannot contain a path separator."
+- _validate_attachment_filename() raises IdentityRecordError: "attachment
+  filename cannot contain a NUL byte."
+- validate_record() raises IdentityRecordError: "identity record must be an
+  object."
+- validate_record() raises IdentityRecordError: "unsupported identity record
+  format."
+- validate_record() raises IdentityRecordError: "templates must be an object."
+- validate_record() raises IdentityRecordError: "unsupported modality: {...}"
+- validate_record() raises IdentityRecordError: "template for modality {...} is
+  not a BSR2 envelope."
+- validate_record() raises IdentityRecordError: "attachments must be an
+  object."
+- validate_record() raises IdentityRecordError: "attachment {...} is not a
+  valid sealed attachment entry."
+- set_template() raises IdentityRecordError: "unsupported modality: {...}"
+- set_template() raises IdentityRecordError: "template must be a BSR2
+  envelope."
+- set_attachment() raises IdentityRecordError: "attachment payload must be a
+  BSR2 envelope."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-The identity record data model.
-
-An identity record is the persisted unit for one enrolled person: an id, a
-human-readable label, a device binding, zero or more sealed biometric
-templates keyed by modality (``"voice"``, ``"fingerprint"``, ``"video"``),
-and (new) zero or more sealed FILE ATTACHMENTS keyed by filename -- an
-arbitrary raw file of any kind, any extension, or no extension at all,
-completely independent of the voice/fingerprint/video modality system.
-Template payloads AND attachment payloads are both opaque BSR2 envelopes
-here -- this module only defines the record's shape and its validation, not
-how a payload is sealed or opened (see biometrics.engine.enrollment /
-biometrics.engine.verification for templates, and
-biometrics.engine.attachments for attachments).
-
-Kept intentionally separate from identity_store.py: this module has no file
-I/O and no knowledge of where records live on disk, so it can be unit
-tested with plain dicts.
+    from biometrics.identity.identity_record import (
+        new_record,
+        validate_record,
+        set_template,
+    )
+    result = new_record(identity_id, label, device_binding)
+    validate_record(record)
+    set_template(record, modality, envelope)
 """
 
 from crypto.envelope import is_envelope
@@ -232,4 +310,7 @@ def public_summary(record: dict) -> dict:
             for filename, entry in sorted(attachments.items())
         ],
     }
+
+
+
 

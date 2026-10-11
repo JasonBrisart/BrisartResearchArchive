@@ -6,25 +6,50 @@ Purpose
 The Packages tab: create, add/remove recipients on, open, and inspect the
 custody chain of Identity-Bound Packages.
 
+Public interface:
+- class PackagesTab(ttk.Frame) -- Create, add/remove recipients on, open, and
+  inspect the custody chain of Identity-Bound Packages.
+
 Communication / relationships
 -----------------------------
-Direct module imports: hashlib, json, secrets, tkinter, pathlib, tkinter, gui.core.constants, gui.core.busy, gui.widgets.dialogs, packages, packages.custody, packages.package.
+Depends on (project modules):
+- gui.core.constants (gui/core/constants.py)
+- gui.core.busy (gui/core/busy.py)
+- gui.widgets.dialogs (gui/widgets/dialogs.py)
+- packages.package (packages/package.py)
+- packages.custody (packages/custody.py)
+Standard library: hashlib, json, pathlib, secrets, tkinter.
+Imported by:
+- app.py
+Covered by tests: gui/tests/test_tab_packages.py.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- PackagesTab._create_package(): catches _Cancelled and handles it in place; it
+  does not propagate to the caller.
+- PackagesTab._create_package(): catches json.JSONDecodeError and handles it in
+  place; it does not propagate to the caller.
+- PackagesTab._load_state(): catches (OSError, json.JSONDecodeError,
+  PackageError, CustodyError) and handles it in place; it does not propagate to
+  the caller.
+- PackagesTab._verify_custody(): catches (PackageError, CustodyError) and
+  handles it in place; it does not propagate to the caller.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No known limitations beyond the documented contract of its public interface.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from gui.tabs.tab_packages import PackagesTab
+    obj = PackagesTab(master)
 """
 
 import hashlib
@@ -349,4 +374,7 @@ class PackagesTab(ttk.Frame):
             messagebox.showerror(APP_TITLE, str(exc), parent=self)
 
         run_in_background(self, work, on_success, on_error, "Running demo (real BSR2 derivations)...")
+
+
+
 

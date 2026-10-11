@@ -5,40 +5,75 @@ Purpose
 -------
 Tests for crypto.keyring.Keyring.
 
-Communication / relationships
------------------------------
-Direct module imports: copy, unittest, crypto.errors, crypto.keyring.
+Verifies: crypto/errors.py, crypto/keyring.py.
+Contains 20 test case(s) across 3 TestCase class(es).
 
-Settings / parameters
----------------------
-Module-level named settings: _ALGORITHM. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for crypto.keyring.Keyring.
+Design notes:
 
 Split into two classes by cost:
 
-* KeyringValidationTests is FAST. Constructing a Keyring only validates the
+- KeyringValidationTests is FAST. Constructing a Keyring only validates the
   stored state -- it does NOT run the KDF -- so malformed-state rejection,
   iteration-bound rejection (0.8.0-beta), and recovery-code formatting are all
   tested here without any derivation, using a hand-built structurally-valid
   state dict.
-* KeyringUnlockTests is SLOW. It creates one real keyring in setUpClass (two
+- KeyringUnlockTests is SLOW. It creates one real keyring in setUpClass (two
   KDF derivations) and performs a small, fixed number of real unlocks. This is
   the same real-KDF cost the existing vault/package suites already pay.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+- crypto.keyring (crypto/keyring.py)
+Standard library: copy, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+- _ALGORITHM = "BSR2-ARX-SPONGE-ETM"
+
+Edge cases
+----------
+KeyringValidationTests:
+- A valid looking state constructs.
+- Non dict state is rejected.
+- Wrong format is rejected.
+- Wrong kdf is rejected.
+- Iterations below floor is rejected.
+- Iterations above ceiling is rejected.
+- Missing wrapper section is rejected.
+- Bad salt length is rejected.
+- Non envelope wrapper is rejected.
+- Bad master key check length is rejected.
+- Locked keyring refuses to hand out the master key.
+- Public summary reports metadata only.
+- Create rejects iterations below floor fast.
+RecoveryCodeTests:
+- Generated code normalises to forty characters.
+- Formatting uses five char groups.
+- Confusable characters are folded on normalisation.
+KeyringUnlockTests:
+- Create returns an unlocked keyring.
+- Unlock with correct passphrase.
+- Unlock with recovery code.
+- Wrong passphrase is rejected.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 20 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest crypto.tests.test_keyring -v
+    python tests/run_tests.py
 """
 
 import copy
@@ -214,4 +249,7 @@ class KeyringUnlockTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

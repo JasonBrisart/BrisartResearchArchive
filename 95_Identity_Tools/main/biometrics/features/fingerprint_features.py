@@ -6,41 +6,74 @@ Purpose
 Fingerprint feature extraction: a grayscale image reduced to a ridge-
 orientation summary vector.
 
-Communication / relationships
------------------------------
-Direct module imports: math, biometrics.codecs, biometrics.features.similarity.
+Public interface:
+- class FingerprintFeatureError(ValueError) -- Raised when fingerprint feature
+  extraction cannot proceed.
+- extract_from_pixels(width, height, pixels) -- Extract a fixed-length
+  ridge-orientation vector from a grayscale image.
+- extract_from_image(path) -- Load an image file and extract its fingerprint
+  feature vector.
+- compare(vector_a, vector_b) -- Distance-based similarity between two
+  fingerprint feature vectors, in (0.0, 1.0].
 
-Settings / parameters
----------------------
-Module-level named settings: TARGET_WIDTH, TARGET_HEIGHT, GRID_SIZE, FEATURE_VECTOR_LENGTH. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Fingerprint feature extraction: a grayscale image reduced to a ridge-
-orientation summary vector.
+Design notes:
 
 Real fingerprint matching systems use minutiae extraction (ridge endings and
 bifurcations located precisely in the image). That is a substantially more
 complex pipeline than a dependency-free, auditable implementation can
-responsibly cover. This module instead computes a coarser but still
-meaningful summary: local ridge-orientation and ridge-density estimates over
-a fixed grid, derived from Sobel gradients. It is a legitimate, well-known
-class of fingerprint descriptor (orientation-field based), just not a
-minutiae-based one.
+responsibly cover. This module instead computes a coarser but still meaningful
+summary: local ridge-orientation and ridge-density estimates over a fixed grid,
+derived from Sobel gradients. It is a legitimate, well-known class of
+fingerprint descriptor (orientation-field based), just not a minutiae-based
+one.
 
 The output is a fixed-length vector regardless of input image resolution.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.codecs.image_loader (biometrics/codecs/image_loader.py)
+- biometrics.codecs.image_tools (biometrics/codecs/image_tools.py)
+- biometrics.features.similarity (biometrics/features/similarity.py)
+Standard library: math.
+Imported by:
+- biometrics/engine/modalities.py
+Covered by tests: no test file imports this module directly.
+
+Settings / parameters
+---------------------
+- TARGET_WIDTH = 128
+- TARGET_HEIGHT = 128
+- GRID_SIZE = 8
+- FEATURE_VECTOR_LENGTH = GRID_SIZE * GRID_SIZE * 3 -- orientation (as cos, sin
+  pair) + magnitude, per grid cell
+
+Edge cases
+----------
+- extract_from_pixels() raises FingerprintFeatureError: "width and height must
+  be positive."
+- extract_from_pixels() raises FingerprintFeatureError: "pixel buffer does not
+  match dimensions."
+- compare() raises FingerprintFeatureError: "feature vectors must be the same
+  length."
+
+Known limitations
+-----------------
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
+
+Examples
+--------
+::
+
+    from biometrics.features.fingerprint_features import (
+        extract_from_pixels,
+        extract_from_image,
+        compare,
+    )
+    result = extract_from_pixels(width, height, pixels)
+    extract_from_image(path)
+    compare(vector_a, vector_b)
 """
 
 import math
@@ -165,4 +198,7 @@ def compare(vector_a: list, vector_b: list) -> float:
     if len(vector_a) != len(vector_b):
         raise FingerprintFeatureError("feature vectors must be the same length.")
     return distance_similarity(vector_a, vector_b)
+
+
+
 

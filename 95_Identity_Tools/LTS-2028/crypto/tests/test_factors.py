@@ -5,41 +5,74 @@ Purpose
 -------
 Tests for crypto.factors.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, unittest, crypto.errors, crypto.
+Verifies: crypto/errors.py, crypto/factors.py.
+Contains 17 test case(s) across 3 TestCase class(es).
 
-Settings / parameters
----------------------
-Module-level named settings: _HEX32. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for crypto.factors.
+Design notes:
 
 Two factor families are tested:
 
-* The keyed-MAC path (bind_factor / verify_bound_factor) is FAST (~15 ms) and
+- The keyed-MAC path (bind_factor / verify_bound_factor) is FAST (~15 ms) and
   is exercised thoroughly here.
-* The slow-KDF path (hash_factor / verify_factor) is SLOW (~85 s per
+- The slow-KDF path (hash_factor / verify_factor) is SLOW (~85 s per
   derivation). Its parse-time validation (the iteration-count ceiling/floor
   added in 0.8.0-beta) is tested WITHOUT running the KDF by handing
   verify_factor a hand-built, structurally-valid hash string with an
   out-of-range iteration count -- _parse_kdf rejects it before any derivation.
   Exactly ONE real KDF round trip is included, in its own class, and is slow by
   design (consistent with the vault/package suites' real-KDF tests).
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+- crypto.factors (crypto/factors.py)
+Standard library: secrets, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+- _HEX32 = "ab" * 32 -- 64 lowercase hex chars == 32 bytes, a valid salt/digest
+  field
+
+Edge cases
+----------
+BoundFactorTests:
+- Bind then verify matches.
+- Wrong value does not verify.
+- Wrong master key does not verify.
+- A verifier is bound to its factor name.
+- Bind factor rejects short master key.
+- Bind factor rejects dollar in factor name.
+- Is bound factor predicate.
+FactorHashValidationTests:
+- Verify factor rejects above maximum iterations without kdf.
+- Verify factor rejects below minimum iterations without kdf.
+- Verify factor rejects malformed string.
+- Verify factor rejects empty secret.
+- Is factor hash predicate.
+- Is legacy digest predicate.
+- Needs rehash true for malformed.
+- Hash factor rejects below minimum iterations fast.
+- Hash factor rejects above maximum iterations fast.
+FactorHashKdfRoundTripTests:
+- Hash and verify round trip.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 17 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest crypto.tests.test_factors -v
+    python tests/run_tests.py
 """
 
 import secrets
@@ -143,4 +176,7 @@ class FactorHashKdfRoundTripTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

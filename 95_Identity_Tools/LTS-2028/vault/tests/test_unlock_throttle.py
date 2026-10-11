@@ -6,41 +6,62 @@ Purpose
 Tests for the crypto.attempt_store wiring inside
 vault.store.vault_service.VaultService.unlock()/unlock_with_recovery_code().
 
-Communication / relationships
------------------------------
-Direct module imports: tempfile, unittest, pathlib, crypto, crypto.throttle, vault.store.vault_file, vault.store.vault_service.
+Verifies: crypto/attempt_store.py, crypto/throttle.py,
+vault/store/vault_file.py, vault/store/vault_service.py.
+Contains 5 test case(s) across 1 TestCase class(es).
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for the crypto.attempt_store wiring inside
-vault.store.vault_service.VaultService.unlock()/unlock_with_recovery_code().
+Design notes:
 
 SLOW: setUpClass() creates one real vault (VaultService.create(), which pays
 BSR2's real ~85-90s KDF derivation twice -- once for the passphrase wrapper,
 once for the recovery-code wrapper). Individual test methods that simulate a
 LOCKED-OUT container do NOT pay any further KDF cost, because
 check_and_get_state() raises before a Keyring is even constructed -- that
-fast-refusal property is itself part of what this module verifies. Exactly
-two test methods perform a real unlock attempt (one wrong passphrase, one
-correct unlock) to confirm genuine failure/success are recorded correctly,
-and one more confirms a recovery-code unlock clears a counter a prior
-passphrase failure had incremented.
+fast-refusal property is itself part of what this module verifies. Exactly two
+test methods perform a real unlock attempt (one wrong passphrase, one correct
+unlock) to confirm genuine failure/success are recorded correctly, and one more
+confirms a recovery-code unlock clears a counter a prior passphrase failure had
+incremented.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.attempt_store (crypto/attempt_store.py)
+- crypto.throttle (crypto/throttle.py)
+- vault.store.vault_file (vault/store/vault_file.py)
+- vault.store.vault_service (vault/store/vault_service.py)
+Standard library: pathlib, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
+
+Edge cases
+----------
+- Locked out vault refuses before any kdf runs.
+- A wrong passphrase records one failure.
+- A correct unlock clears recorded failures.
+- Recovery code unlock shares the same counter as passphrase.
+- Wrong recovery code also counts against the shared budget.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 5 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest vault.tests.test_unlock_throttle -v
+    python tests/run_tests.py
 """
 
 import tempfile
@@ -141,4 +162,7 @@ class VaultUnlockThrottleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

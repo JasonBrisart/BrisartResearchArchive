@@ -5,41 +5,72 @@ Purpose
 -------
 DRBG construction for BSR2 envelope operations.
 
-Communication / relationships
------------------------------
-Direct module imports: secrets, crypto.errors, crypto.vendor.
+Public interface:
+- class ManagedGenerator -- A BSR2 DRBG that reseeds from the operating system
+  before its limits. Public methods: generate, destroy.
+- new_generator(purpose) -- Build a managed DRBG for a named purpose.
 
-Settings / parameters
----------------------
-Module-level named settings: SEED_BYTES, REQUESTS_BEFORE_RESEED, BYTES_BEFORE_RESEED. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-DRBG construction for BSR2 envelope operations.
+Design notes:
 
 ``brisart_security_envelope.encrypt`` requires a caller-supplied generator and
-deliberately does not create one. That leaves the caller responsible for seeding
-it correctly, and the seed is where a deterministic generator lives or dies:
-BSR2's DRBG expands seed material but cannot create entropy, so a weak seed
-means weak salts and nonces no matter how good the expansion is.
+deliberately does not create one.
 
 This module seeds from ``secrets.token_bytes`` at double the minimum, and wraps
 the generator so the DRBG's lifecycle limits (100,000 requests, 16 MiB output)
 trigger a transparent reseed from fresh operating-system entropy instead of a
 hard failure mid-run. Upstream raises ``BrisartDRBGError`` at those limits by
 design; a long-lived enrollment process should not crash on record 100,001.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+- crypto.vendor (crypto/vendor.py)
+Standard library: secrets.
+Imported by:
+- biometrics/engine/attachments.py
+- biometrics/engine/enrollment.py
+- crypto/keyring.py
+- packages/ciphers.py
+- vault/store/vault_service.py
+Covered by tests: crypto/tests/test_envelope.py, crypto/tests/test_rng.py.
+
+Settings / parameters
+---------------------
+- SEED_BYTES = max(128, MINIMUM_SEED_BYTES * 2) -- Upstream requires 64.
+  Seeding with 128 costs nothing and leaves margin.
+- REQUESTS_BEFORE_RESEED = 50_000 -- Reseed before upstream's own limits rather
+  than at them.
+- BYTES_BEFORE_RESEED = 8 * 1024 * 1024
+
+Edge cases
+----------
+- ManagedGenerator.__init__() raises Bsr2IntegrationError: "personalization
+  must be bytes."
+- ManagedGenerator.__init__() raises Bsr2IntegrationError: "personalization
+  must contain at least {...} bytes."
+- new_generator() raises Bsr2IntegrationError: "generator purpose must be a
+  non-empty string."
+- ManagedGenerator.generate(): catches BrisartDRBGError and handles it in
+  place; it does not propagate to the caller.
+
+Known limitations
+-----------------
+- That leaves the caller responsible for seeding it correctly, and the seed is
+  where a deterministic generator lives or dies: BSR2's DRBG expands seed
+  material but cannot create entropy, so a weak seed means weak salts and
+  nonces no matter how good the expansion is.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    from crypto.rng import ManagedGenerator
+    obj = ManagedGenerator(personalization)
+    obj.generate(length, additional_input)
 """
 
 import secrets
@@ -127,4 +158,7 @@ def new_generator(purpose: str) -> ManagedGenerator:
         b"BrisartIdentityTools/BSR2/v1/" + purpose.encode("utf-8")
     ).ljust(MINIMUM_PERSONALIZATION_BYTES, b"\x00")
     return ManagedGenerator(personalization)
+
+
+
 

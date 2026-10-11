@@ -5,41 +5,91 @@ Purpose
 -------
 Minimal 8-bit grayscale PNG encoder and decoder.
 
+Public interface:
+- class PngFormatError(ValueError) -- Raised when data does not parse as a
+  supported grayscale PNG file.
+- decode(data) -- Decode 8-bit grayscale PNG bytes into ``{"width", "height",
+  "pixels"}``.
+- encode(width, height, pixels) -- Encode flat grayscale pixel data as an 8-bit
+  grayscale PNG file.
+- read_png(path) -- Read and decode a grayscale PNG file from disk.
+- write_png(path, width, height, pixels) -- Encode and write flat grayscale
+  pixel data as a PNG file.
+
+Design notes:
+
+That is a small enough slice of the PNG specification to implement correctly
+and audit in one sitting, at the cost of not reading arbitrary PNGs found in
+the wild -- which these codecs are not asked to do; every PNG in this system
+was written by this module in the first place.
+
+Compression is ``zlib`` and checksums are ``binascii.crc32`` /
+``zlib.adler32``, both from the Python standard library.
+
 Communication / relationships
 -----------------------------
-Direct module imports: struct, zlib.
+Standard library: struct, zlib.
+Imported by:
+- biometrics/codecs/image_loader.py
+Covered by tests: biometrics/tests/test_codec_and_dsp_support.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: PNG_SIGNATURE, COLOR_TYPE_GRAYSCALE, BIT_DEPTH, FILTER_NONE, MAX_DIMENSION. See their definitions below for values.
+- PNG_SIGNATURE = 8-byte constant
+- COLOR_TYPE_GRAYSCALE = 0
+- BIT_DEPTH = 8
+- FILTER_NONE = 0
+- MAX_DIMENSION = 8192
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _read_chunks() raises PngFormatError: "truncated chunk header."
+- _read_chunks() raises PngFormatError: "truncated chunk payload or CRC."
+- _read_chunks() raises PngFormatError: "CRC mismatch in {...} chunk."
+- _unfilter() raises PngFormatError: "scanline data is truncated."
+- _unfilter() raises PngFormatError: "scanline is shorter than the image
+  width."
+- _unfilter() raises PngFormatError: "unsupported scanline filter type {...}."
+- decode() raises PngFormatError: "PNG data must be bytes."
+- decode() raises PngFormatError: "not a PNG file (bad signature)."
+- decode() raises PngFormatError: "IHDR chunk has an invalid length."
+- decode() raises PngFormatError: "only 8-bit grayscale PNG images are
+  supported."
+- decode() raises PngFormatError: "unsupported PNG encoding options."
+- decode() raises PngFormatError: "width and height must be positive."
+- decode() raises PngFormatError: "width or height exceeds the supported
+  maximum."
+- decode() raises PngFormatError: "missing IHDR chunk."
+- decode() raises PngFormatError: "missing IDAT chunk."
+- decode() raises PngFormatError: "IDAT stream decompresses to more data than
+  its IHDR dimensions allow (possible decompression bomb)."
+- decode() raises PngFormatError: "IDAT stream failed to decompress."
+- decode() raises PngFormatError: "decompressed scanline data is {...} bytes,
+  expected {...} for a {...}x{...} image."
+- encode() raises PngFormatError: "width and height must be positive."
+- encode() raises PngFormatError: "width or height exceeds the supported
+  maximum."
+- encode() raises PngFormatError: "pixels must be bytes."
+- encode() raises PngFormatError: "expected {...} pixel bytes, got {...}."
+- decode(): translates zlib.error into PngFormatError, so callers only need to
+  handle this module's own error type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Only what is actually needed is implemented: an unpaletted, uninterlaced,
+  8-bit grayscale image, one IDAT chunk, no ancillary chunks.
+- That is consistent with the project's zero-third-party-dependency rule:
+  nothing here is installed from PyPI, only what ships with the interpreter
+  itself.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Minimal 8-bit grayscale PNG encoder and decoder.
-
-Only what is actually needed is implemented: an unpaletted, uninterlaced,
-8-bit grayscale image, one IDAT chunk, no ancillary chunks. That is a small
-enough slice of the PNG specification to implement correctly and audit in one
-sitting, at the cost of not reading arbitrary PNGs found in the wild -- which
-these codecs are not asked to do; every PNG in this system was written by
-this module in the first place.
-
-Compression is ``zlib`` and checksums are ``binascii.crc32`` /
-``zlib.adler32``, both from the Python standard library. That is consistent
-with the project's zero-third-party-dependency rule: nothing here is
-installed from PyPI, only what ships with the interpreter itself.
+    from biometrics.codecs.png import decode, encode, read_png
+    result = decode(data)
+    encode(width, height, pixels)
+    read_png(path)
 """
 
 import struct
@@ -253,4 +303,7 @@ def write_png(path, width: int, height: int, pixels: bytes) -> None:
     encoded = encode(width, height, pixels)
     with open(path, "wb") as handle:
         handle.write(encoded)
+
+
+
 

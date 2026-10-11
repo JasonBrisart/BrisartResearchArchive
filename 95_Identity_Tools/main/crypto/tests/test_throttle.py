@@ -3,29 +3,62 @@ File: crypto/tests/test_throttle.py
 
 Purpose
 -------
-Tests for crypto.throttle.AttemptLimiter, including the corrupt-state
-hardening from 0.8.0-beta (non-finite fields, and the backoff exponent cap
-that stops a huge persisted failed_attempts from building a giant integer).
+Tests for crypto.throttle.AttemptLimiter, including the corrupt-state hardening
+from 0.8.0-beta (non-finite fields, and the backoff exponent cap that stops a
+huge persisted failed_attempts from building a giant integer).
+
+Verifies: crypto/errors.py, crypto/throttle.py.
+Contains 15 test case(s) across 3 TestCase class(es).
 
 Communication / relationships
 -----------------------------
-Direct module imports: math, unittest, crypto.errors, crypto.throttle.
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+- crypto.throttle (crypto/throttle.py)
+Standard library: math, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+AttemptLimiterBasicTests:
+- Fresh state allows an attempt.
+- First failure records one attempt.
+- Reaching max attempts triggers lockout.
+- Success clears state.
+- Backoff rejects a too soon retry.
+- Backoff allows retry after enough time.
+AttemptLimiterCorruptStateTests:
+- Nan locked until does not silently unlock.
+- Nan failed attempts does not crash.
+- Infinity fields are discarded.
+- Negative fields are discarded.
+- Boolean fields are ignored.
+- Non dict state is rejected.
+- Astronomical failed attempts does not hang.
+AttemptLimiterConstructionTests:
+- Rejects zero max attempts.
+- Rejects negative delay.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 15 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest crypto.tests.test_throttle -v
+    python tests/run_tests.py
 """
 
 import math
@@ -136,4 +169,7 @@ class AttemptLimiterConstructionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

@@ -5,29 +5,20 @@ Purpose
 -------
 Atomic JSON/text file writes, the single canonical copy.
 
-Communication / relationships
------------------------------
-Direct module imports: json, os, secrets, stat, sys, pathlib, typing.
+Public interface:
+- class AtomicWriteError(Exception) -- Raised when a file could not be written
+  atomically.
+- atomic_write_text(path, text, *, fsync_dir=True, make_parents=True,
+  file_mode=None) -- Write text to path atomically via a temp file and
+  os.replace.
+- atomic_write_json(path, data, *, fsync_dir=True, make_parents=True,
+  file_mode=None) -- Serialise data (indent=2, sort_keys=True,
+  ensure_ascii=False) and write it atomically, matching every existing call
+  site's serialisation.
+- warn_if_permissive(path, expected_mode=SENSITIVE_FILE_MODE, label="file") --
+  Check an on-disk file's permissions and print an advisory if too open.
 
-Settings / parameters
----------------------
-Module-level named settings: SENSITIVE_FILE_MODE. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Atomic JSON/text file writes, the single canonical copy.
+Design notes:
 
 Replaces the write-to-temp-then-rename dance that existed in three places
 (vault_file.save_vault_file, identity_store.save_json, report_writer). Two of
@@ -35,9 +26,56 @@ them fsync the containing directory for durability; the report writer did not.
 That difference is preserved as the fsync_dir flag rather than silently
 unified, because a report is regenerable and a vault is not.
 
-A reader sees either the old file or the fully-written new one, never a
-half-written file: bytes land in a uniquely-named temp file that is os.replace-d
-into position only after being flushed and fsync-ed.
+Communication / relationships
+-----------------------------
+Standard library: json, os, pathlib, secrets, stat, sys, typing.
+Imported by:
+- biometrics/app.py
+- biometrics/identity/identity_store.py
+- biometrics/identity/keyring_access.py
+- biometrics/reports/report_writer.py
+- common/integrity_ledger.py
+- packages/audit.py
+- packages/demo.py
+- vault/reports/audit_log.py
+- vault/store/vault_file.py
+Covered by tests: common/tests/test_common_utils.py.
+
+Settings / parameters
+---------------------
+- SENSITIVE_FILE_MODE = 0o600
+
+Edge cases
+----------
+- atomic_write_text() raises AtomicWriteError: "unable to write file: {...}"
+- atomic_write_json() raises AtomicWriteError: "data to write must be a JSON
+  object."
+- _apply_file_mode(), _flush_directory(), atomic_write_text(),
+  warn_if_permissive(): catches OSError and handles it in place; it does not
+  propagate to the caller.
+- atomic_write_text(): translates OSError into AtomicWriteError, so callers
+  only need to handle this module's own error type.
+
+Known limitations
+-----------------
+- A reader sees either the old file or the fully-written new one, never a half-
+  written file: bytes land in a uniquely-named temp file that is os.replace-d
+  into position only after being flushed and fsync-ed.
+- Behaviour branches on the host operating system (sys.platform / os.name
+  checks in the code); verify changes on Windows, macOS, and Linux.
+
+Examples
+--------
+::
+
+    from common.atomic_io import (
+        atomic_write_text,
+        atomic_write_json,
+        warn_if_permissive,
+    )
+    atomic_write_text(path, text)
+    atomic_write_json(path, data)
+    warn_if_permissive(path)
 """
 
 import json
@@ -196,4 +234,7 @@ def warn_if_permissive(
         )
         return True
     return False
+
+
+
 

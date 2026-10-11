@@ -3,40 +3,53 @@ File: crypto/vendor.py
 
 Purpose
 -------
-Import shim for the vendored BSR2 modules.
+Import shim for the vendored BSR2 modules. This module defines no functions or
+classes; it exists for the module-level values or package marker it provides.
 
-Communication / relationships
------------------------------
-Direct module imports: sys, pathlib, brisart_security_drbg, brisart_security_entropy, brisart_security_envelope, brisart_security_primitives.
-
-Settings / parameters
----------------------
-Module-level named settings: _VENDOR_DIR, _VENDOR_PATH. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Import shim for the vendored BSR2 modules.
+Design notes:
 
 The vendored files use flat imports of each other (``from
 brisart_security_primitives import ...``), exactly as they do upstream. Editing
 them into package-relative imports would fork the vendored code and break the
-integrity check, so instead ``vendor/`` is placed on ``sys.path`` once here
-and every consumer imports through this module.
+integrity check, so instead ``vendor/`` is placed on ``sys.path`` once here and
+every consumer imports through this module.
 
-Keeping the path manipulation in one file means there is a single place to audit,
-rather than a scattering of ``sys.path`` edits across the codebase.
+Keeping the path manipulation in one file means there is a single place to
+audit, rather than a scattering of ``sys.path`` edits across the codebase.
+
+Communication / relationships
+-----------------------------
+Standard library: pathlib, sys.
+Imported by:
+- crypto/envelope.py
+- crypto/factors.py
+- crypto/keyring.py
+- crypto/rng.py
+Covered by tests: no test file imports this module directly.
+
+Settings / parameters
+---------------------
+- _VENDOR_DIR = Path(__file__).resolve().parent.parent / "vendor"
+- _VENDOR_PATH = str(_VENDOR_DIR)
+
+Edge cases
+----------
+- module import raises ImportError: "vendored BSR2 directory is missing: {...}.
+  See vendor/README.md for how to restore it."
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
+
+Examples
+--------
+::
+
+    from crypto.vendor import _VENDOR_DIR
 """
 
 import sys
@@ -124,4 +137,7 @@ __all__ = [
     "system_entropy",
     "xor_bytes",
 ]
+
+
+
 

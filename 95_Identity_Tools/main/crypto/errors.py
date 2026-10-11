@@ -5,34 +5,67 @@ Purpose
 -------
 Error types for the BSR2 integration layer.
 
-Communication / relationships
------------------------------
-No direct module-level imports are declared.
+Public interface:
+- class Bsr2IntegrationError(Exception) -- Base class for BSR2 integration
+  failures.
+- class KeyringFormatError(Bsr2IntegrationError) -- Raised when stored keyring
+  material is not well formed.
+- class KeyringAuthenticationError(Bsr2IntegrationError) -- Raised when a
+  passphrase or recovery code does not unwrap the master key.
+- class KeyringLockedError(Bsr2IntegrationError) -- Raised when an operation
+  needs a master key that is not unlocked.
+- class EnvelopeAuthenticationError(Bsr2IntegrationError) -- Raised when a
+  sealed payload fails authentication.
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Error types for the BSR2 integration layer.
+Design notes:
 
 Authentication failure is kept distinct from malformed input. Callers need to
 treat "this is not shaped like a keyring" as a data bug and "the tag did not
 verify" as a security event, and one shared exception type forces them to
 string-match messages to tell those apart.
+
+Communication / relationships
+-----------------------------
+Standard library: none.
+Imported by:
+- biometrics/engine/attachments.py
+- biometrics/engine/verification.py
+- biometrics/identity/keyring_access.py
+- crypto/context.py
+- crypto/envelope.py
+- crypto/factors.py
+- crypto/keyring.py
+- crypto/rng.py
+- crypto/throttle.py
+- packages/package.py
+- packages/verification.py
+- vault/store/vault_service.py
+Covered by tests: crypto/tests/test_context.py, crypto/tests/test_envelope.py,
+crypto/tests/test_factors.py, crypto/tests/test_keyring.py,
+crypto/tests/test_rng.py, crypto/tests/test_throttle.py.
+
+Settings / parameters
+---------------------
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
+
+Edge cases
+----------
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    import crypto.errors
 """
 
 class Bsr2IntegrationError(Exception):
@@ -67,4 +100,7 @@ class EnvelopeAuthenticationError(Bsr2IntegrationError):
 
     The original exception is kept as ``__cause__`` for debugging.
     """
+
+
+
 

@@ -6,30 +6,11 @@ Purpose
 The Packages tab: create, add/remove recipients on, open, and inspect the
 custody chain of Identity-Bound Packages.
 
-Communication / relationships
------------------------------
-Direct module imports: hashlib, json, os, subprocess, sys, tkinter, pathlib, tkinter, gui.core.constants, gui.core.busy, gui.widgets.dialogs, packages, packages.custody, packages.demo, packages.package.
+Public interface:
+- class PackagesTab(ttk.Frame) -- Create, add/remove recipients on, open, and
+  inspect the custody chain of Identity-Bound Packages.
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-The Packages tab: create, add/remove recipients on, open, and inspect the
-custody chain of Identity-Bound Packages.
+Design notes:
 
 Two demo entry points are provided, both backed by the single shared
 packages.demo.run_demo() implementation so the CLI's `demo` command and this
@@ -47,6 +28,51 @@ tab can never drift apart from each other:
                                folder in the OS file manager so a new user
                                can inspect (and try tampering with) real
                                artifacts firsthand.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- gui.core.constants (gui/core/constants.py)
+- gui.core.busy (gui/core/busy.py)
+- gui.widgets.dialogs (gui/widgets/dialogs.py)
+- packages.package (packages/package.py)
+- packages.custody (packages/custody.py)
+- packages.demo (packages/demo.py)
+Standard library: hashlib, json, os, pathlib, subprocess, sys, tkinter.
+Imported by:
+- app.py
+Covered by tests: gui/tests/test_tab_packages.py.
+
+Settings / parameters
+---------------------
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
+
+Edge cases
+----------
+- PackagesTab._create_package(): catches _Cancelled and handles it in place; it
+  does not propagate to the caller.
+- PackagesTab._create_package(): catches json.JSONDecodeError and handles it in
+  place; it does not propagate to the caller.
+- PackagesTab._load_state(): catches (OSError, json.JSONDecodeError,
+  PackageError, CustodyError) and handles it in place; it does not propagate to
+  the caller.
+- PackagesTab._open_folder(): catches OSError and handles it in place; it does
+  not propagate to the caller.
+- PackagesTab._verify_custody(): catches (PackageError, CustodyError) and
+  handles it in place; it does not propagate to the caller.
+
+Known limitations
+-----------------
+- Behaviour branches on the host operating system (sys.platform / os.name
+  checks in the code); verify changes on Windows, macOS, and Linux.
+
+Examples
+--------
+::
+
+    from gui.tabs.tab_packages import PackagesTab
+    obj = PackagesTab(master)
 """
 
 import hashlib
@@ -408,4 +434,7 @@ class PackagesTab(ttk.Frame):
                 subprocess.run(["xdg-open", str(folder)], check=False)
         except OSError:
             pass
+
+
+
 

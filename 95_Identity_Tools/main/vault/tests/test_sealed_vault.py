@@ -6,25 +6,57 @@ Purpose
 End-to-end tests proving vault records are actually sealed, and that
 unlock/lock and wrong-passphrase behavior work correctly.
 
+Verifies: vault/store/vault_service.py, vault/store/vault_file.py.
+Contains 13 test case(s) across 2 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, os, stat, tempfile, unittest, pathlib, vault.store.vault_service.
+Depends on (project modules):
+- vault.store.vault_service (vault/store/vault_service.py)
+- vault.store.vault_file (vault/store/vault_file.py)
+Standard library: json, os, pathlib, stat, tempfile, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings. Each test builds its own isolated fixtures (temporary
+directories, freshly generated keys) in setUp and removes them afterwards, so
+tests are order-independent and never touch real data/ folders.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+SealedVaultTests:
+- Stored record is not plaintext.
+- Get returns the original payload.
+- Unlock with wrong passphrase fails.
+- Unlock with correct passphrase after reopen.
+- Unlock with recovery code works.
+- Lock clears unlocked state.
+- Operations require unlock.
+- Get nonexistent record raises.
+- Delete removes record.
+- Delete missing record returns false.
+- Create refuses to overwrite existing vault.
+VaultFilePermissionTests:
+- Create vault file writes owner only permissions.
+- Save state re applies owner only permissions after widening.
+- Skips (rather than fails) when a prerequisite is missing: "POSIX permission
+  bits are not enforced on Windows"
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Behaviour branches on the host operating system (sys.platform / os.name
+  checks in the code); verify changes on Windows, macOS, and Linux.
+- Passing proves only the 13 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest vault.tests.test_sealed_vault -v
+    python tests/run_tests.py
 """
 
 import json
@@ -142,4 +174,7 @@ class VaultFilePermissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

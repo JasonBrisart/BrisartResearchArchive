@@ -5,38 +5,73 @@ Purpose
 -------
 Attempt limiting for unlock and verification paths.
 
+Public interface:
+- class AttemptLockedOut(Bsr2IntegrationError) -- Raised when an attempt is
+  refused and the caller must wait.
+- class AttemptLimiter -- Exponential-backoff attempt limiter over
+  caller-persisted state. Public methods: new_state, check, record_failure,
+  record_success, status.
+
+Design notes:
+
+BSR2's KDF makes each *offline* guess expensive. This adds exponential backoff
+and a lockout on top.
+
+State is persisted by the caller rather than held in memory. An in-memory
+counter resets when the process restarts, which an attacker controls for free
+by killing the process between guesses.
+
 Communication / relationships
 -----------------------------
-Direct module imports: math, time, crypto.errors.
+Depends on (project modules):
+- crypto.errors (crypto/errors.py)
+Standard library: math, time.
+Imported by:
+- biometrics/identity/keyring_access.py
+- crypto/attempt_store.py
+- vault/store/vault_service.py
+Covered by tests: biometrics/tests/test_keyring_access.py,
+crypto/tests/test_attempt_store.py, crypto/tests/test_throttle.py,
+vault/tests/test_unlock_throttle.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: DEFAULT_MAX_ATTEMPTS, DEFAULT_BASE_DELAY_SECONDS, DEFAULT_MAX_DELAY_SECONDS, DEFAULT_LOCKOUT_SECONDS. See their definitions below for values.
+- DEFAULT_MAX_ATTEMPTS = 5
+- DEFAULT_BASE_DELAY_SECONDS = 1.0
+- DEFAULT_MAX_DELAY_SECONDS = 300.0
+- DEFAULT_LOCKOUT_SECONDS = 900.0
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- AttemptLimiter.__init__() raises Bsr2IntegrationError: "max_attempts must be
+  at least 1."
+- AttemptLimiter.__init__() raises Bsr2IntegrationError: "delays cannot be
+  negative."
+- AttemptLimiter.__init__() raises Bsr2IntegrationError: "lockout_seconds
+  cannot be negative."
+- AttemptLimiter._normalize() raises Bsr2IntegrationError: "limiter state must
+  be an object."
+- AttemptLimiter.check() raises AttemptLockedOut: "too many failed attempts;
+  locked out."
+- AttemptLimiter.check() raises AttemptLockedOut: "attempt rejected; backoff
+  period has not elapsed."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- It does nothing about online guessing against a running process: an attacker
+  who can call unlock in a loop still gets unlimited attempts, and the only
+  cost is time they were going to spend anyway.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Attempt limiting for unlock and verification paths.
-
-BSR2's KDF makes each *offline* guess expensive. It does nothing about online
-guessing against a running process: an attacker who can call unlock in a loop
-still gets unlimited attempts, and the only cost is time they were going to spend
-anyway. This adds exponential backoff and a lockout on top.
-
-State is persisted by the caller rather than held in memory. An in-memory counter
-resets when the process restarts, which an attacker controls for free by killing
-the process between guesses.
+    from crypto.throttle import AttemptLimiter
+    obj = AttemptLimiter()
+    obj.new_state()
 """
 
 import math
@@ -189,4 +224,7 @@ class AttemptLimiter:
             "locked_for_seconds": round(locked_for, 3),
             "backoff_remaining_seconds": round(waiting_for, 3),
         }
+
+
+
 

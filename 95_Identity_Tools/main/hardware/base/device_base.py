@@ -3,33 +3,47 @@ File: hardware/base/device_base.py
 
 Purpose
 -------
-Defines the root interface used by all hardware devices.
+Abstract root interface (DeviceBase) that every hardware device implements: a
+display name plus connect, disconnect, and health_check. The reader, camera,
+and biometric bases extend it, so hardware_manager can treat any device
+uniformly.
 
-All future hardware integrations must inherit from DeviceBase so
-the remainder of BrisartIdentityTools can communicate with hardware
-through a consistent API.
-
-This file intentionally contains no vendor-specific logic.
+Public interface:
+- class DeviceBase(ABC) -- Base class for all supported hardware devices.
+  Public methods: name, connect, disconnect, health_check.
 
 Communication / relationships
 -----------------------------
-Direct module imports: abc.
+Standard library: abc.
+Imported by:
+- hardware/base/biometric_base.py
+- hardware/base/camera_base.py
+- hardware/base/reader_base.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    from hardware.base.device_base import DeviceBase
+    obj = DeviceBase()
+    obj.name
 """
 
 from abc import ABC, abstractmethod
@@ -56,3 +70,6 @@ class DeviceBase(ABC):
     @abstractmethod
     def health_check(self) -> bool:
         pass
+
+
+

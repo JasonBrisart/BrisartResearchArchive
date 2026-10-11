@@ -3,60 +3,132 @@ File: biometrics/engine/bulk_attachments.py
 
 Purpose
 -------
-Chunked, multi-path bulk file/folder/drive attachments on a biometrics
-identity record -- the biometrics-side counterpart to
+Chunked, multi-path bulk file/folder/drive attachments on a biometrics identity
+record -- the biometrics-side counterpart to
 vault.store.bulk_file_service.BulkFileService, built for exactly the same
 reason: a single BSR2 envelope hard-caps at ~16 MiB
-(crypto.envelope.MAX_PAYLOAD_BYTES), so a large file, or a zip built from
-an entire folder/drive, must be split into several sealed chunk
-attachments and reassembled on the way back out.
+(crypto.envelope.MAX_PAYLOAD_BYTES), so a large file, or a zip built from an
+entire folder/drive, must be split into several sealed chunk attachments and
+reassembled on the way back out.
 
-Communication / relationships
------------------------------
-Direct module imports: json, tempfile, time, zipfile, pathlib, common.hashing, biometrics.engine.attachments.
+Public interface:
+- class BulkAttachmentError(ValueError) -- Raised when a bulk attach/restore
+  operation cannot proceed.
+- attach_large_bytes(record, name, data, master_key,
+  chunk_bytes=DEFAULT_CHUNK_BYTES) -- Attach bytes of ANY size under `name`,
+  transparently chunking past BSR2's single-envelope limit. Returns the updated
+  record (attach_bytes' same not-mutate-in-place contract).
+- restore_large_bytes(record, name, master_key) -- Reassemble a (possibly
+  chunked) attach_large_bytes()/attach_paths() bundle back into the exact
+  original bytes, verifying the whole-content SHA-256 recorded in the manifest.
+- attach_paths(record, name, paths, master_key,
+  chunk_bytes=DEFAULT_CHUNK_BYTES) -- Attach any combination of
+  files/folders/drive roots to this identity as ONE bundle under `name`,
+  zipping them first (preserving relative structure) then chunking as needed.
+  Returns (updated_record, report).
+- restore_paths(record, name, master_key, output_dir) -- Reassemble an
+  attach_paths() bundle and unzip it back into a real directory tree at
+  `output_dir`.
+- remove_bulk_attachment(record, name, master_key) -- Remove every chunk + the
+  manifest for a bundle named `name`. Needs the real master_key to decrypt the
+  manifest and discover which chunk attachment names belong to this bundle
+  (attachment names alone don't reveal that -- they're just opaque dict keys on
+  the record). If the manifest cannot be decrypted (wrong key, or it's already
+  gone), this still removes whatever attachment literally matches
+  "{name}.manifest" and reports that the chunks could not be automatically
+  identified, rather than silently doing nothing or raising and blocking the
+  caller from cleaning up at all.
 
-Settings / parameters
----------------------
-Module-level named settings: DEFAULT_CHUNK_BYTES, _MANIFEST_SUFFIX. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Chunked, multi-path bulk file/folder/drive attachments on a biometrics
-identity record -- the biometrics-side counterpart to
-vault.store.bulk_file_service.BulkFileService, built for exactly the same
-reason: a single BSR2 envelope hard-caps at ~16 MiB
-(crypto.envelope.MAX_PAYLOAD_BYTES), so a large file, or a zip built from
-an entire folder/drive, must be split into several sealed chunk
-attachments and reassembled on the way back out.
+Design notes:
 
 Manifest + chunk model: attaching a bundle under `name` actually creates
 several REAL attachments on the record (via the existing
-biometrics.engine.attachments.attach_bytes, unmodified) named
-"{name}.manifest" (a small JSON-shaped payload describing the chunk
-attachment names, order, total size, and whole-content SHA-256) and
-"{name}.chunk0", "{name}.chunk1", ... in order. Nothing about an individual
-chunk attachment's own storage is special -- it is a completely ordinary
-sealed attachment; only the manifest naming convention ties them together.
+biometrics.engine.attachments.attach_bytes, unmodified) named "{name}.manifest"
+(a small JSON-shaped payload describing the chunk attachment names, order,
+total size, and whole-content SHA-256) and "{name}.chunk0", "{name}.chunk1",
+... in order. Nothing about an individual chunk attachment's own storage is
+special -- it is a completely ordinary sealed attachment; only the manifest
+naming convention ties them together.
 
 Since biometrics attachments seal raw bytes (not JSON) via
 crypto.envelope.seal_bytes/open_bytes, the manifest itself is stored as
 UTF-8-encoded JSON bytes through the exact same attach_bytes/
 extract_attachment_bytes path every other attachment uses -- there is no
-separate "JSON attachment" concept here, keeping this module's storage
-shape uniform with single-file attachments rather than introducing a
-second payload format.
+separate "JSON attachment" concept here, keeping this module's storage shape
+uniform with single-file attachments rather than introducing a second payload
+format.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- common.hashing (common/hashing.py)
+- biometrics.engine.attachments (biometrics/engine/attachments.py)
+Standard library: json, pathlib, tempfile, time, zipfile.
+Imported by:
+- biometrics/app.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: biometrics/tests/test_bulk_attachments.py,
+gui/tests/test_tab_biometrics.py.
+
+Settings / parameters
+---------------------
+- DEFAULT_CHUNK_BYTES = 8 * 1024 * 1024
+- _MANIFEST_SUFFIX = ".manifest"
+
+Edge cases
+----------
+- _build_zip_from_paths() raises BulkAttachmentError: "path does not exist:
+  {...}"
+- attach_large_bytes() raises BulkAttachmentError: "data must be bytes."
+- restore_large_bytes() raises BulkAttachmentError: "no bulk attachment bundle
+  named {...}: {...}"
+- restore_large_bytes() raises BulkAttachmentError: "manifest for {...} is
+  corrupted: {...}"
+- restore_large_bytes() raises BulkAttachmentError: "manifest for {...} is
+  missing required fields."
+- restore_large_bytes() raises BulkAttachmentError: "manifest chunk count does
+  not match its chunk name list."
+- restore_large_bytes() raises BulkAttachmentError: "a chunk is missing or
+  unreadable: {...}"
+- restore_large_bytes() raises BulkAttachmentError: "reassembled size {...}
+  does not match manifest's recorded size {...} -- a chunk is missing or
+  truncated."
+- restore_large_bytes() raises BulkAttachmentError: "reassembled content for
+  {...} failed its SHA-256 check -- the bundle is corrupted or was tampered
+  with."
+- attach_paths() raises BulkAttachmentError: "at least one path is required."
+- attach_paths() raises BulkAttachmentError: "no readable files were found
+  under the given path(s)."
+- _build_zip_from_paths(): catches OSError and handles it in place; it does not
+  propagate to the caller.
+- _build_zip_from_paths(): catches ValueError and handles it in place; it does
+  not propagate to the caller.
+- remove_bulk_attachment(): catches (AttachmentError, UnicodeDecodeError,
+  json.JSONDecodeError) and handles it in place; it does not propagate to the
+  caller.
+- restore_large_bytes(): translates (UnicodeDecodeError, json.JSONDecodeError)
+  into BulkAttachmentError, so callers only need to handle this module's own
+  error type.
+- restore_large_bytes(): translates AttachmentError into BulkAttachmentError,
+  so callers only need to handle this module's own error type.
+
+Known limitations
+-----------------
+- Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk file/folder/drive encryption
+  throughput ceiling (~1.4 KB/s)
+
+Examples
+--------
+::
+
+    from biometrics.engine.bulk_attachments import (
+        attach_large_bytes,
+        restore_large_bytes,
+        attach_paths,
+    )
+    result = attach_large_bytes(record, name, data, master_key)
+    restore_large_bytes(record, name, master_key)
+    attach_paths(record, name, paths, master_key)
 """
 
 import json
@@ -282,4 +354,7 @@ def remove_bulk_attachment(record: dict, name: str, master_key: bytes) -> dict:
         # has become unreadable.
         pass
     return remove_identity_attachment(record, f"{name}{_MANIFEST_SUFFIX}")
+
+
+
 

@@ -5,37 +5,73 @@ Purpose
 -------
 Pure-Python grayscale image manipulation used to prepare template inputs.
 
-Communication / relationships
------------------------------
-No direct module-level imports are declared.
+Public interface:
+- class ImageToolsError(ValueError) -- Raised on invalid dimensions or
+  malformed pixel buffers.
+- crop_center(width, height, pixels, target_width, target_height) -- Crop the
+  centered ``target_width x target_height`` region.
+- resize_nearest(width, height, pixels, target_width, target_height) -- Resize
+  via nearest-neighbor sampling.
+- normalize(pixels) -- Stretch pixel values to fill the full 0-255 range.
+- block_grid_means(width, height, pixels, grid_size) -- Reduce an image to a
+  ``grid_size x grid_size`` grid of block-mean values.
+- sobel_gradient_magnitude(width, height, pixels) -- Approximate edge strength
+  at every pixel using a 3x3 Sobel operator.
 
-Settings / parameters
----------------------
-Module-level named settings: MIN_DIMENSION, MAX_DIMENSION. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Pure-Python grayscale image manipulation used to prepare template inputs.
+Design notes:
 
 Every biometric template in this project is ultimately a fixed-size grid of
 values derived from a variable-size input (a captured image, a decoded video
-frame). These functions do the two things every feature extractor needs
-before it can compute anything: get the image to a known size, and reduce it
-to a ``grid_size x grid_size`` block-mean summary. No third-party imaging
-library is used; everything here is nested-loop arithmetic over flat
-``bytes``.
+frame). These functions do the two things every feature extractor needs before
+it can compute anything: get the image to a known size, and reduce it to a
+``grid_size x grid_size`` block-mean summary. No third-party imaging library is
+used; everything here is nested-loop arithmetic over flat ``bytes``.
+
+Communication / relationships
+-----------------------------
+Standard library: none.
+Imported by:
+- biometrics/features/fingerprint_features.py
+- biometrics/features/liveness.py
+- biometrics/features/video_features.py
+Covered by tests: biometrics/tests/test_codec_and_dsp_support.py.
+
+Settings / parameters
+---------------------
+- MIN_DIMENSION = 1
+- MAX_DIMENSION = 8192
+
+Edge cases
+----------
+- _check_image() raises ImageToolsError: "width and height must be at least 1."
+- _check_image() raises ImageToolsError: "width or height exceeds the supported
+  maximum."
+- _check_image() raises ImageToolsError: "expected {...} pixel bytes, got
+  {...}."
+- _check_target() raises ImageToolsError: "target dimensions must be at least
+  1."
+- _check_target() raises ImageToolsError: "target width or height exceeds the
+  supported maximum."
+- block_grid_means() raises ImageToolsError: "grid_size must be at least 1."
+- block_grid_means() raises ImageToolsError: "grid_size cannot exceed the
+  image's width or height."
+
+Known limitations
+-----------------
+- No known limitations beyond the documented contract of its public interface.
+
+Examples
+--------
+::
+
+    from biometrics.codecs.image_tools import (
+        crop_center,
+        resize_nearest,
+        normalize,
+    )
+    result = crop_center(width, height, pixels, target_width, target_height)
+    resize_nearest(width, height, pixels, target_width, target_height)
+    normalize(pixels)
 """
 
 MIN_DIMENSION = 1
@@ -222,4 +258,7 @@ def sobel_gradient_magnitude(width: int, height: int, pixels: bytes) -> list:
             )
             magnitudes[row * width + col] = (gx * gx + gy * gy) ** 0.5
     return magnitudes
+
+
+
 

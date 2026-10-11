@@ -5,25 +5,50 @@ Purpose
 -------
 Tests for vault.core.ids and vault.core.time_tools.
 
+Verifies: vault/core/ids.py, vault/core/time_tools.py.
+Contains 11 test case(s) across 2 TestCase class(es).
+
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, vault.core, vault.core.ids.
+Depends on (project modules):
+- vault.core.ids (vault/core/ids.py)
+- vault.core.time_tools (vault/core/time_tools.py)
+Standard library: unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level settings and no on-disk fixtures; every test constructs its
+inputs in memory.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+RecordIdTests:
+- New record id is valid.
+- New record ids are unique.
+- Empty id is rejected.
+- Whitespace padded id is rejected.
+- Separator in id is rejected.
+- Nul in id is rejected.
+- Overlong id is rejected.
+- Non string id is rejected.
+TimeToolsTests:
+- New record shares one timestamp.
+- Stamp updated preserves creation time.
+- Chronological order is a string comparison.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Passing proves only the 11 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
+
+    python -m unittest vault.tests.test_record_ids_and_time -v
+    python tests/run_tests.py
 """
 
 import unittest
@@ -86,4 +111,7 @@ class TimeToolsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

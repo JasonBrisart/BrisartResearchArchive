@@ -5,36 +5,56 @@ Purpose
 -------
 Format-agnostic image loading, dispatched by file extension.
 
+Public interface:
+- class UnsupportedImageFormatError(ValueError) -- Raised when a file's
+  extension does not map to a known image codec.
+- load_image(path) -- Load an image file, returning ``{"width", "height",
+  "pixels", "path"}``.
+- save_image(path, width, height, pixels) -- Save flat grayscale pixel data,
+  choosing the codec by file extension.
+
+Design notes:
+
+Every other part of biometrics that needs a still image (fingerprint capture, a
+frame lifted from ``video.py``, a generated sample) should go through this
+module rather than importing ``pgm`` or ``png`` directly. That keeps the "which
+codec handles this file" decision in exactly one place, so adding a third
+still-image format later is a one-file change instead of a search across the
+codebase.
+
 Communication / relationships
 -----------------------------
-Direct module imports: pathlib, biometrics.codecs.
+Depends on (project modules):
+- biometrics.codecs.pgm (biometrics/codecs/pgm.py)
+- biometrics.codecs.png (biometrics/codecs/png.py)
+Standard library: pathlib.
+Imported by:
+- biometrics/features/fingerprint_features.py
+Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-Module-level named settings: SUPPORTED_SUFFIXES. See their definitions below for values.
+- SUPPORTED_SUFFIXES = (".pgm", ".png")
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- load_image() raises UnsupportedImageFormatError: "unsupported image extension
+  {...}; expected one of {...}."
+- save_image() raises UnsupportedImageFormatError: "unsupported image extension
+  {...}; expected one of {...}."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Format-agnostic image loading, dispatched by file extension.
-
-Every other part of biometrics that needs a still image (fingerprint capture,
-a frame lifted from ``video.py``, a generated sample) should go through this
-module rather than importing ``pgm`` or ``png`` directly. That keeps the
-"which codec handles this file" decision in exactly one place, so adding a
-third still-image format later is a one-file change instead of a search
-across the codebase.
+    from biometrics.codecs.image_loader import load_image, save_image
+    result = load_image(path)
+    save_image(path, width, height, pixels)
 """
 
 from pathlib import Path
@@ -96,4 +116,7 @@ def _rescale_to_255(decoded: dict) -> dict:
     pixels = decoded["pixels"]
     scaled = bytes(min(255, (value * 255) // maxval) for value in pixels)
     return {"width": decoded["width"], "height": decoded["height"], "pixels": scaled}
+
+
+
 

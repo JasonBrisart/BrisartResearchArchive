@@ -5,47 +5,109 @@ Purpose
 -------
 Generic file attachments on a biometrics identity record.
 
+Public interface:
+- class AttachmentError(ValueError) -- Raised when an attachment cannot be
+  sealed, opened, or is missing.
+- attach_bytes(record, filename, file_bytes, master_key) -- Seal ``file_bytes``
+  (any content whatsoever) as an attachment named ``filename`` on ``record``,
+  replacing any existing attachment under that same name. Returns a NEW record
+  (the input is not mutated), the same contract every other record-mutating
+  function in this project follows (set_template, remove_template, ...).
+- attach_file(record, filename, source_path, master_key) -- Read a REAL file
+  from disk (any name, any extension, or none at all -- the source path's own
+  name/extension is never inspected to decide anything) and attach its exact
+  raw bytes. ``filename`` is the name the attachment will be stored and later
+  retrieved under; it does not need to match ``source_path``'s own filename.
+- extract_attachment_bytes(record, filename, master_key) -- Open a sealed
+  attachment, returning the exact original bytes -- the precise inverse of
+  attach_bytes()/attach_file(). Uses open_bytes (never open_json or any
+  text/format-specific decoder), so whatever bytes were sealed are exactly the
+  bytes returned.
+- extract_attachment_to_file(record, filename, master_key, output_path) --
+  Decrypt a sealed attachment straight to disk at ``output_path``. Returns the
+  resolved output path. No assumption is made about what extension
+  ``output_path`` should have -- the exact original bytes are written
+  regardless.
+- remove_identity_attachment(record, filename) -- Return a copy of ``record``
+  with the named attachment removed.
+
+Design notes:
+
+This is deliberately independent of the voice/fingerprint/video modality system
+in engine/modalities.py: a modality template is always the OUTPUT of a feature
+extractor run over a specific file format (WAV, PGM/PNG, BRVID). An attachment
+is the RAW ORIGINAL FILE ITSELF, completely unprocessed and un-interpreted --
+any extension, no extension, any binary content whatsoever -- sealed and later
+returned byte-for-byte identical to what was attached. Nothing here ever
+inspects a file's name or contents to decide how to handle it; every attachment
+is handled exactly the same way regardless of what it actually is.
+
+Sealed under the same keyring master key templates use (see crypto.keyring and
+biometrics/README.md's "Storage Model" section), bound to a context naming both
+the identity id and the attachment's filename
+(crypto.context.attachment_context), so a sealed attachment can never be moved
+to a different identity, or relabeled under a different filename, without
+failing authentication -- exactly the same protection template_context already
+gives modality templates.
+
 Communication / relationships
 -----------------------------
-Direct module imports: pathlib, common.hashing, crypto.context, crypto.envelope, crypto.errors, crypto.rng, biometrics.identity.identity_record.
+Depends on (project modules):
+- common.hashing (common/hashing.py)
+- crypto.context (crypto/context.py)
+- crypto.envelope (crypto/envelope.py)
+- crypto.errors (crypto/errors.py)
+- crypto.rng (crypto/rng.py)
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+Standard library: pathlib.
+Imported by:
+- biometrics/app.py
+- biometrics/engine/bulk_attachments.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: biometrics/tests/test_attachments.py,
+gui/tests/test_tab_biometrics.py.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- attach_bytes() raises AttachmentError: "file_bytes must be bytes."
+- attach_bytes() raises AttachmentError: "failed to seal attachment {...}:
+  {...}"
+- attach_bytes() raises AttachmentError.
+- attach_file() raises AttachmentError: "no file found at {...}."
+- extract_attachment_bytes() raises AttachmentError: "identity {...} has no
+  attachment named {...}."
+- extract_attachment_bytes() raises AttachmentError: "attachment {...} for
+  identity {...} failed to authenticate: {...}"
+- attach_bytes(): translates Exception into AttachmentError, so callers only
+  need to handle this module's own error type.
+- attach_bytes(): translates IdentityRecordError into AttachmentError, so
+  callers only need to handle this module's own error type.
+- extract_attachment_bytes(): translates Bsr2IntegrationError into
+  AttachmentError, so callers only need to handle this module's own error type.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Generic file attachments on a biometrics identity record.
-
-This is deliberately independent of the voice/fingerprint/video modality
-system in engine/modalities.py: a modality template is always the OUTPUT
-of a feature extractor run over a specific file format (WAV, PGM/PNG,
-BRVID). An attachment is the RAW ORIGINAL FILE ITSELF, completely
-unprocessed and un-interpreted -- any extension, no extension, any binary
-content whatsoever -- sealed and later returned byte-for-byte identical to
-what was attached. Nothing here ever inspects a file's name or contents to
-decide how to handle it; every attachment is handled exactly the same way
-regardless of what it actually is.
-
-Sealed under the same keyring master key templates use (see
-crypto.keyring and biometrics/README.md's "Storage Model" section), bound
-to a context naming both the identity id and the attachment's filename
-(crypto.context.attachment_context), so a sealed attachment can never be
-moved to a different identity, or relabeled under a different filename,
-without failing authentication -- exactly the same protection
-template_context already gives modality templates.
+    from biometrics.engine.attachments import (
+        attach_bytes,
+        attach_file,
+        extract_attachment_bytes,
+    )
+    result = attach_bytes(record, filename, file_bytes, master_key)
+    attach_file(record, filename, source_path, master_key)
+    extract_attachment_bytes(record, filename, master_key)
 """
 
 from pathlib import Path
@@ -138,4 +200,7 @@ def extract_attachment_to_file(record: dict, filename: str, master_key: bytes, o
 def remove_identity_attachment(record: dict, filename: str) -> dict:
     """Return a copy of ``record`` with the named attachment removed."""
     return remove_attachment(record, filename)
+
+
+
 

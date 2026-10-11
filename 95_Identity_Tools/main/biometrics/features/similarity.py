@@ -5,44 +5,27 @@ Purpose
 -------
 Shared similarity scoring for biometric feature vectors.
 
-Communication / relationships
------------------------------
-Direct module imports: math.
+Public interface:
+- distance_similarity(vector_a, vector_b) -- Similarity in (0.0, 1.0] based on
+  Euclidean distance between two equal-length feature vectors, normalized by
+  their own average magnitude and mapped through exponential decay so identical
+  vectors score exactly 1.0 and similarity falls off smoothly and boundedly as
+  the vectors diverge.
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Used by fingerprint_features.py, video_features.py, and voice_features.py so
+the scoring logic exists in exactly one place instead of being copied into all
+three modality modules.
 
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
+For these feature spaces -- fingerprint orientation and magnitude values, raw
+video pixel-brightness block-means, and voice energy/band-DCT vectors -- two
+genuinely different people's vectors still point in a broadly similar direction
+(they're mostly positive, similarly shaped data), so cosine reported near-1.0
+"matches" between impostors.
 
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Shared similarity scoring for biometric feature vectors.
-
-Used by fingerprint_features.py, video_features.py, and voice_features.py
-so the scoring logic exists in exactly one place instead of being copied
-into all three modality modules.
-
-BACKGROUND: all three modalities previously used plain cosine similarity,
-which only measures the ANGLE between two vectors, not how far apart their
-actual values are. For these feature spaces -- fingerprint orientation and
-magnitude values, raw video pixel-brightness block-means, and voice
-energy/band-DCT vectors -- two genuinely different people's vectors still
-point in a broadly similar direction (they're mostly positive, similarly
-shaped data), so cosine reported near-1.0 "matches" between impostors.
-
-Confirmed directly against real generated samples (ci-enroll vs ci-other
-seeds, the same ones the CLI smoke test uses):
+Confirmed directly against real generated samples (ci-enroll vs ci-other seeds,
+the same ones the CLI smoke test uses):
 
     Modality       old cosine (bug)   new distance-sim   default threshold
     fingerprint    0.9974             0.6189             0.80  (now rejected)
@@ -50,11 +33,46 @@ seeds, the same ones the CLI smoke test uses):
     voice          0.9762             0.6213             0.85  (now rejected)
 
 Genuine self-matches stayed at 1.0000 in all three cases -- only impostor
-scores moved. Mean-centering (Pearson-correlation-style cosine) was tried
-first and barely helped (fingerprint only moved 0.9974 -> 0.9961): cosine
-is fundamentally an angle-only metric, and this feature space's
-impostor/genuine separation lives in magnitude of difference, not angle.
-Normalized Euclidean distance was needed instead.
+scores moved. Normalized Euclidean distance was needed instead.
+
+Communication / relationships
+-----------------------------
+Standard library: math.
+Imported by:
+- biometrics/features/fingerprint_features.py
+- biometrics/features/video_features.py
+- biometrics/features/voice_features.py
+Covered by tests: no test file imports this module directly.
+
+Settings / parameters
+---------------------
+No module-level constants, environment variables, or defaulted arguments:
+behaviour is controlled entirely by the values callers pass in.
+
+Edge cases
+----------
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the standard library or a dependency reaches the caller
+unchanged.
+
+Known limitations
+-----------------
+- BACKGROUND: all three modalities previously used plain cosine similarity,
+  which only measures the ANGLE between two vectors, not how far apart their
+  actual values are.
+- Mean-centering (Pearson-correlation-style cosine) was tried first and barely
+  helped (fingerprint only moved 0.9974 -> 0.9961): cosine is fundamentally an
+  angle-only metric, and this feature space's impostor/genuine separation lives
+  in magnitude of difference, not angle.
+- No test module imports this file directly; it is exercised only through its
+  callers' tests, so check changes manually.
+
+Examples
+--------
+::
+
+    from biometrics.features.similarity import distance_similarity
+    result = distance_similarity(vector_a, vector_b)
 """
 
 import math
@@ -92,4 +110,7 @@ def distance_similarity(vector_a: list, vector_b: list) -> float:
         # match rather than dividing by zero.
         return 1.0
     return math.exp(-distance / scale)
+
+
+
 

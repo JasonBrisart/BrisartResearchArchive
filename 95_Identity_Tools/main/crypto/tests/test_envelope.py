@@ -6,34 +6,65 @@ Purpose
 Tests for crypto.envelope: length-hiding padding, JSON canonicalisation,
 context binding, and uniform authentication failure.
 
-Communication / relationships
------------------------------
-Direct module imports: unittest, crypto.envelope, crypto.errors, crypto.rng, secrets.
+Verifies: crypto/envelope.py, crypto/errors.py, crypto/rng.py.
+Contains 15 test case(s) across 4 TestCase class(es).
 
-Settings / parameters
----------------------
-Module-level named settings: _ALGORITHM. See their definitions below for values.
-
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for crypto.envelope: length-hiding padding, JSON canonicalisation,
-context binding, and uniform authentication failure.
+Design notes:
 
 These use a random 32-byte master key plus a real crypto.rng generator, NOT a
 passphrase, so they exercise the full BSR2 seal/open path WITHOUT paying the
 slow KDF cost (envelope sealing is sponge-based, not KDF-based).
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- crypto.envelope (crypto/envelope.py)
+- crypto.errors (crypto/errors.py)
+- crypto.rng (crypto/rng.py)
+Standard library: secrets, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
+
+Settings / parameters
+---------------------
+- _ALGORITHM = "BSR2-ARX-SPONGE-ETM"
+
+Edge cases
+----------
+EnvelopeRoundTripTests:
+- Seal bytes round trips exactly.
+- Empty bytes round trip.
+- Seal json round trips.
+- Sealed object reports as an envelope.
+- Is envelope false for junk.
+EnvelopeAuthenticationTests:
+- Modified ciphertext fails authentication.
+- Wrong key fails authentication.
+- Wrong context fails authentication.
+- Authentication error is a bsr2 integration error.
+EnvelopePaddingTests:
+- Short plaintexts share a ciphertext length bucket.
+- Ciphertext length is a multiple of the padding block.
+EnvelopeLimitTests:
+- Oversized plaintext is refused.
+- Seal bytes rejects non bytes.
+- Seal json rejects non dict.
+- Open json on non json payload raises after auth.
+
+Known limitations
+-----------------
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+- Passing proves only the 15 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
+
+Examples
+--------
+::
+
+    python -m unittest crypto.tests.test_envelope -v
+    python tests/run_tests.py
 """
 
 import unittest
@@ -163,4 +194,7 @@ class EnvelopeLimitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 

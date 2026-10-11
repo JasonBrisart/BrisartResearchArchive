@@ -5,46 +5,104 @@ Purpose
 -------
 Enrollment: turning raw biometric input into a sealed, stored template.
 
-Communication / relationships
------------------------------
-Direct module imports: biometrics.codecs, biometrics.engine, biometrics.features.liveness, biometrics.identity, biometrics.identity.identity_record, crypto.context, crypto.envelope, crypto.rng.
+Public interface:
+- class EnrollmentError(ValueError) -- Raised when enrollment cannot proceed.
+- create_identity(identity_id, label, master_key) -- Create a fresh identity
+  record bound to the current device.
+- enroll_modality(record, modality, source_path, master_key,
+  allow_static=False) -- Extract, seal, and attach a template for one modality.
+- enroll_identity(identity_id, label, master_key, modality_sources,
+  allow_static=False) -- Convenience wrapper: create an identity and enroll
+  several modalities at once.
 
-Settings / parameters
----------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Design notes:
 
-Edge cases
-----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
-
-Known limitations
------------------
-This header update does not establish complete behavioral, platform, or security validation.
-
-Examples
---------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Enrollment: turning raw biometric input into a sealed, stored template.
-
-The flow for enrolling one modality is: extract a feature vector from the
-input file (via ``biometrics.engine.modalities``), serialise it as JSON,
-seal it as a BSR2 envelope bound to a context that names the identity and
-modality (via ``crypto.context.template_context``), and attach the sealed
-envelope to the identity record. Persisting the record is the caller's
-responsibility (typically ``biometrics.app``), so this module can be
-exercised in tests without touching the filesystem.
+The flow for enrolling one modality is: extract a feature vector from the input
+file (via ``biometrics.engine.modalities``), serialise it as JSON, seal it as a
+BSR2 envelope bound to a context that names the identity and modality (via
+``crypto.context.template_context``), and attach the sealed envelope to the
+identity record. Persisting the record is the caller's responsibility
+(typically ``biometrics.app``), so this module can be exercised in tests
+without touching the filesystem.
 
 LIVENESS GATE (video modality only): a static clip is refused at enrollment
 time by default, exactly as it was in the project's 0.6.0-beta release
-("Static-recording enrollment is refused by default, so a photograph cannot
-be baked into a template and make the verification-time gate meaningless").
+("Static-recording enrollment is refused by default, so a photograph cannot be
+baked into a template and make the verification-time gate meaningless").
 Re-implemented here against the current BRVID-based video pipeline via
-biometrics.features.liveness.assess_liveness(). Pass allow_static=True
-(wired to the CLI's --allow-static flag) to override this and enroll a
-static clip anyway.
+biometrics.features.liveness.assess_liveness(). Pass allow_static=True (wired
+to the CLI's --allow-static flag) to override this and enroll a static clip
+anyway.
+
+Communication / relationships
+-----------------------------
+Depends on (project modules):
+- biometrics.codecs.video (biometrics/codecs/video.py)
+- biometrics.engine.modalities (biometrics/engine/modalities.py)
+- biometrics.features.liveness (biometrics/features/liveness.py)
+- biometrics.identity.device_key (biometrics/identity/device_key.py)
+- biometrics.identity.identity_record (biometrics/identity/identity_record.py)
+- crypto.context (crypto/context.py)
+- crypto.envelope (crypto/envelope.py)
+- crypto.rng (crypto/rng.py)
+Standard library: none.
+Imported by:
+- biometrics/app.py
+- gui/tabs/tab_biometrics.py
+Covered by tests: biometrics/tests/test_enrollment_overwrite.py,
+biometrics/tests/test_liveness.py, biometrics/tests/test_multimodal_flow.py,
+biometrics/tests/test_sealed_biometrics_flow.py.
+
+Settings / parameters
+---------------------
+No module-level constants. Tunable defaults are exposed as
+keyword arguments:
+- enroll_modality(allow_static=False)
+- enroll_identity(allow_static=False)
+
+Edge cases
+----------
+- _require_video_liveness() raises EnrollmentError: "failed to read video
+  source for liveness check: {...}"
+- _require_video_liveness() raises EnrollmentError: "liveness assessment
+  failed: {...}"
+- _require_video_liveness() raises EnrollmentError: "video source shows no
+  genuine motion (motion_energy={...}, threshold={...}); a static photograph
+  cannot be enrolled as a video template. Pass --allow-static to override
+  this."
+- enroll_modality() raises EnrollmentError: "failed to extract {...} features
+  from {...}: {...}"
+- enroll_identity() raises EnrollmentError: "at least one modality source is
+  required."
+- _require_video_liveness(): translates LivenessError into EnrollmentError, so
+  callers only need to handle this module's own error type.
+- _require_video_liveness(): translates video_codec.VideoFormatError into
+  EnrollmentError, so callers only need to handle this module's own error type.
+- enroll_modality(): translates (OSError, ValueError) into EnrollmentError, so
+  callers only need to handle this module's own error type.
+- enroll_modality(): catches modalities.UnsupportedModalityError for cleanup or
+  bookkeeping, then re-raises it unchanged.
+
+Known limitations
+-----------------
+- Tracked in docs/KNOWN_ISSUES.md: KI-001: Video liveness threshold is
+  uncalibrated against real camera hardware
+- Security rests on BSR2, a custom research construction that has not been
+  independently audited (see docs/SECURITY.md); do not treat it as a
+  replacement for vetted, audited cryptography.
+
+Examples
+--------
+::
+
+    from biometrics.engine.enrollment import (
+        create_identity,
+        enroll_modality,
+        enroll_identity,
+    )
+    result = create_identity(identity_id, label, master_key)
+    enroll_modality(record, modality, source_path, master_key)
+    enroll_identity(identity_id, label, master_key, modality_sources)
 """
 
 from biometrics.codecs import video as video_codec
@@ -144,4 +202,7 @@ def enroll_identity(
     for modality, source_path in modality_sources.items():
         record = enroll_modality(record, modality, source_path, master_key, allow_static=allow_static)
     return record
+
+
+
 

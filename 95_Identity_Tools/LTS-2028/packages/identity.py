@@ -5,41 +5,75 @@ Purpose
 -------
 Recipient identity shape for Identity-Bound Packages.
 
+Public interface:
+- class RecipientIdentityError(ValueError) -- Raised when recipient identity
+  data is malformed or invalid.
+- validate_identity_id(identity_id) -- Validate a recipient identity id.
+- validate_label(label) -- Validate a recipient's human-readable label.
+- new_recipient(identity_id, label) -- Build a fresh recipient descriptor.
+- validate_recipient(recipient) -- Validate a recipient descriptor's shape,
+  returning it unchanged.
+
+Design notes:
+
+Kept free of any crypto import, matching the layering already used in
+``biometrics.identity.identity_record`` and ``vault.records.record_model``: the
+data shape is unit-testable with plain dicts.
+
 Communication / relationships
 -----------------------------
-No direct module-level imports are declared.
+Standard library: none.
+Imported by:
+- packages/main.py
+- packages/package.py
+Covered by tests: packages/tests/test_identity.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: MAX_IDENTITY_ID_LENGTH, MAX_LABEL_LENGTH. See their definitions below for values.
+- MAX_IDENTITY_ID_LENGTH = 128
+- MAX_LABEL_LENGTH = 256
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- validate_identity_id() raises RecipientIdentityError: "identity_id must be a
+  non-empty string."
+- validate_identity_id() raises RecipientIdentityError: "identity_id cannot
+  have leading or trailing whitespace."
+- validate_identity_id() raises RecipientIdentityError: "identity_id cannot be
+  longer than {...} characters."
+- validate_identity_id() raises RecipientIdentityError: "identity_id cannot
+  contain '|'."
+- validate_identity_id() raises RecipientIdentityError: "identity_id cannot
+  contain a NUL byte."
+- validate_label() raises RecipientIdentityError: "label must be a non-empty
+  string."
+- validate_label() raises RecipientIdentityError: "label cannot be longer than
+  {...} characters."
+- validate_recipient() raises RecipientIdentityError: "recipient must be an
+  object."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- A recipient here is deliberately lightweight compared to
+  ``biometrics.identity.identity_record``: a package does not care whether a
+  recipient enrolled a fingerprint or a voice template, only that they hold a
+  master key and can be referred to by a stable id and a human-readable label.
+- This module owns that shape and its validation only; whether a supplied
+  master key actually matches a recipient is ``verification.py``'s job, and
+  sealing/opening key slots is ``ciphers.py``'s job.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Recipient identity shape for Identity-Bound Packages.
-
-A recipient here is deliberately lightweight compared to
-``biometrics.identity.identity_record``: a package does not care whether a
-recipient enrolled a fingerprint or a voice template, only that they hold a
-master key and can be referred to by a stable id and a human-readable label.
-This module owns that shape and its validation only; whether a supplied
-master key actually matches a recipient is ``verification.py``'s job, and
-sealing/opening key slots is ``ciphers.py``'s job.
-
-Kept free of any crypto import, matching the layering already used in
-``biometrics.identity.identity_record`` and ``vault.records.record_model``:
-the data shape is unit-testable with plain dicts.
+    from packages.identity import (
+        validate_identity_id,
+        validate_label,
+        new_recipient,
+    )
+    result = validate_identity_id(identity_id)
+    validate_label(label)
+    new_recipient(identity_id, label)
 """
 
 MAX_IDENTITY_ID_LENGTH = 128
@@ -105,4 +139,7 @@ def validate_recipient(recipient: dict) -> dict:
     validate_identity_id(recipient.get("identity_id"))
     validate_label(recipient.get("label"))
     return recipient
+
+
+
 

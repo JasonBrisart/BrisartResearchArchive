@@ -5,43 +5,83 @@ Purpose
 -------
 Tamper-evident chain of custody, embedded inside the package itself.
 
+Public interface:
+- class CustodyError(ValueError) -- Raised when a custody chain is malformed,
+  invalid, or fails verification.
+- new_chain(creator_label, package_id) -- Start a fresh custody chain with a
+  single ``"created"`` entry.
+- append(chain, action, actor_label, details=None) -- Return a new chain with
+  one more entry appended.
+- verify_chain(chain, package_id=None)
+- summarize(chain) -- A compact, display-friendly summary of a custody chain's
+  history.
+
+Design notes:
+
+Each entry commits to the previous entry's hash, so altering, deleting, or
+reordering a past entry changes every hash after it -- the same tamper-evidence
+property a git history or a blockchain-style hash chain relies on, implemented
+here with nothing more than :mod:`common.hashing`.
+
+That decision is ``verification.py`` and ``ciphers.py``'s job.
+
 Communication / relationships
 -----------------------------
-Direct module imports: json, common.hashing, common.timestamps.
+Depends on (project modules):
+- common.hashing (common/hashing.py)
+- common.timestamps (common/timestamps.py)
+Standard library: json.
+Imported by:
+- gui/tabs/tab_packages.py
+- packages/main.py
+- packages/package.py
+Covered by tests: packages/tests/test_custody_chain.py,
+packages/tests/test_package_integrity.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: GENESIS_PREVIOUS_HASH, _VALID_ACTIONS. See their definitions below for values.
+- GENESIS_PREVIOUS_HASH = "0" * 64
+- _VALID_ACTIONS = tuple of 5 entries
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- _build_entry() raises CustodyError: "unsupported custody action {...};
+  expected one of {...}."
+- _build_entry() raises CustodyError: "actor_label must be a non-empty string."
+- append() raises CustodyError: "cannot append to an empty custody chain."
+- verify_chain() raises CustodyError: "custody chain must be a list."
+- verify_chain() raises CustodyError: "custody chain cannot be empty."
+- verify_chain() raises CustodyError: "every custody chain entry must be an
+  object."
+- verify_chain() raises CustodyError: "custody chain's first entry is not a
+  genesis entry."
+- verify_chain() raises CustodyError: "custody chain's first entry must be a
+  'created' entry."
+- verify_chain() raises CustodyError: "custody chain's genesis entry does not
+  match this package's id."
+- verify_chain() raises CustodyError: "custody chain is broken at entry {...}:
+  previous_hash does not match the prior entry's recorded hash."
+- verify_chain() raises CustodyError: "custody chain entry {...} has been
+  tampered with: stored hash does not match its recomputed content."
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Unlike ``audit.py`` (an external, append-only log of package events written
+  to the filesystem), the custody chain travels *inside* the package's own
+  state: every package carries its own history of who created it, who was added
+  or removed as a recipient, and who opened it.
+- This is integrity evidence, not access control: a broken chain tells you the
+  package's history was edited after the fact, but the chain itself does not
+  decide who is allowed to open the package.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
 
-Additional module documentation
--------------------------------
-Tamper-evident chain of custody, embedded inside the package itself.
-
-Unlike ``audit.py`` (an external, append-only log of package events written
-to the filesystem), the custody chain travels *inside* the package's own
-state: every package carries its own history of who created it, who was
-added or removed as a recipient, and who opened it. Each entry commits to
-the previous entry's hash, so altering, deleting, or reordering a past entry
-changes every hash after it -- the same tamper-evidence property a git
-history or a blockchain-style hash chain relies on, implemented here with
-nothing more than :mod:`common.hashing`.
-
-This is integrity evidence, not access control: a broken chain tells you the
-package's history was edited after the fact, but the chain itself does not
-decide who is allowed to open the package. That decision is
-``verification.py`` and ``ciphers.py``'s job.
+    from packages.custody import new_chain, append, verify_chain
+    result = new_chain(creator_label, package_id)
+    append(chain, action, actor_label)
+    verify_chain(chain)
 """
 
 import json
@@ -186,4 +226,7 @@ def summarize(chain: list) -> list:
         }
         for entry in chain
     ]
+
+
+
 

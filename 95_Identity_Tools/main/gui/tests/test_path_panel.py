@@ -7,41 +7,58 @@ Tests for gui.widgets.path_panel.PathSelectionPanel: the shared
 file/folder/drive picker used by both the Vault "Files / Folders / Drives"
 sub-tab and the Biometrics "File Attachments" sub-tab.
 
+Verifies: gui/widgets/path_panel.py.
+Contains 10 test case(s) across 1 TestCase class(es).
+
+Design notes:
+
+Only the panel's own state management (paths list, dedup, on_change callback,
+listbox sync) is under test here -- the actual file/folder picker dialogs
+(tkinter.filedialog.askopenfilenames / askdirectory) are real OS dialogs and
+are deliberately NOT exercised; _add_paths() is called directly instead,
+exactly as the dialog callbacks themselves do internally.
+
 Communication / relationships
 -----------------------------
-Direct module imports: unittest.
+Depends on (project modules):
+- gui.widgets.path_panel (gui/widgets/path_panel.py)
+Standard library: tkinter, unittest.
+Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
+nothing imports it.
 
 Settings / parameters
 ---------------------
-Module-level named settings: _HAS_DISPLAY. See their definitions below for values.
+- _HAS_DISPLAY = _tk_display_available()
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- Starts with no paths.
+- Add paths appends and syncs listbox.
+- Add paths deduplicates.
+- Add paths preserves first seen order.
+- Clear all empties paths and listbox.
+- Remove selected removes only the selected indices.
+- Remove selected with multiple selection removes all of them.
+- Remove selected with nothing selected is a no op.
+- On change callback fires with current paths.
+- Panel without on change does not raise.
+- Skips (rather than fails) when a prerequisite is missing: "requires a
+  Tk-capable display"
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Requires a real Tk root (a Listbox cannot be constructed without one) and
+  skips cleanly on a headless runner with no display, matching the convention
+  used in test_busy.py.
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
+  outside them is not asserted here.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+::
 
-Additional module documentation
--------------------------------
-Tests for gui.widgets.path_panel.PathSelectionPanel: the shared
-file/folder/drive picker used by both the Vault "Files / Folders / Drives"
-sub-tab and the Biometrics "File Attachments" sub-tab.
-
-Only the panel's own state management (paths list, dedup, on_change
-callback, listbox sync) is under test here -- the actual file/folder picker
-dialogs (tkinter.filedialog.askopenfilenames / askdirectory) are real OS
-dialogs and are deliberately NOT exercised; _add_paths() is called directly
-instead, exactly as the dialog callbacks themselves do internally.
-
-Requires a real Tk root (a Listbox cannot be constructed without one) and
-skips cleanly on a headless runner with no display, matching the convention
-used in test_busy.py.
+    python -m unittest gui.tests.test_path_panel -v
+    python tests/run_tests.py
 """
 
 import unittest
@@ -148,4 +165,7 @@ class PathSelectionPanelTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
 
