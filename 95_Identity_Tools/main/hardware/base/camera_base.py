@@ -27,9 +27,9 @@ behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Defines no error paths of its own: it raises nothing and catches nothing, so
-any exception from the standard library or a dependency reaches the caller
-unchanged.
+The interface declares abstract methods. Instantiating the abstract class
+raises TypeError; a concrete subclass must implement every inherited abstract
+method. Runtime device errors belong to the concrete implementation.
 
 Known limitations
 -----------------
@@ -38,11 +38,33 @@ Known limitations
 
 Examples
 --------
+Concrete subclass skeleton. This example demonstrates the abstract contract,
+not a real hardware integration. Replace the method bodies before deployment.
+The methods return demonstration values and perform no hardware I/O.
+
 ::
 
     from hardware.base.camera_base import CameraBase
-    obj = CameraBase()
-    obj.capture_image()
+
+    class ExampleCameraBase(CameraBase):
+        @property
+        def name(self):
+            return "Example device"
+
+        def connect(self):
+            return True
+
+        def disconnect(self):
+            return None
+
+        def health_check(self):
+            return True
+
+        def capture_image(self):
+            return None
+
+    example = ExampleCameraBase()
+    assert example.connect() is True
 """
 
 from abc import abstractmethod

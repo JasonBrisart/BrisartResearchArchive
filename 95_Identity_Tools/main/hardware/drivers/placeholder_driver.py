@@ -15,23 +15,20 @@ Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No module-level constants, environment variables, or defaulted arguments:
-behaviour is controlled entirely by the values callers pass in.
+No constants, parameters, or runtime settings are defined. This module
+contains documentation only.
 
 Edge cases
 ----------
-Defines no error paths of its own: it raises nothing and catches nothing, so
-any exception from the standard library or a dependency reaches the caller
-unchanged.
+No functions, classes, or executable operations are defined, so there are
+no module-specific runtime error paths.
 
 Known limitations
 -----------------
-- LTS builds should never contain vendor-specific implementations from this
-  directory.
-- Not a real device driver: methods return fixed values and perform no hardware
-  I/O. Use it for wiring/tests until a concrete driver exists.
-- No test module imports this file directly; it is exercised only through its
-  callers' tests, so check changes manually.
+- This is a reserved module, not a device driver. It provides no methods,
+  fixed return values, hardware access, or callable API.
+- LTS builds should not contain vendor-specific implementations from this
+  directory; this reserved location is part of the main hardware layout.
 
 Examples
 --------

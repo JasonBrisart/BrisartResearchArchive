@@ -23,7 +23,9 @@ reordering a past entry changes every hash after it -- the same tamper-evidence
 property a git history or a blockchain-style hash chain relies on, implemented
 here with nothing more than :mod:`common.hashing`.
 
-That decision is ``verification.py`` and ``ciphers.py``'s job.
+The custody chain records events and checks their internal consistency;
+it does not decide whether a recipient is authorized or unwrap encryption
+keys. Those responsibilities belong to ``verification.py`` and ``ciphers.py``.
 
 Communication / relationships
 -----------------------------
@@ -41,7 +43,8 @@ packages/tests/test_package_integrity.py.
 Settings / parameters
 ---------------------
 - GENESIS_PREVIOUS_HASH = "0" * 64
-- _VALID_ACTIONS = tuple of 5 entries
+- _VALID_ACTIONS = ('created', 'recipient_added', 'recipient_removed',
+  'opened', 'payload_rewrapped')
 
 Edge cases
 ----------

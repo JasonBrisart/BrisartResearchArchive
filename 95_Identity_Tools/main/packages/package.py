@@ -16,9 +16,10 @@ Public interface:
 - validate_package(state) -- Validate a package's shape, raising
   :class:`PackageError` on failure.
 - add_recipient(state, identity_id, label, master_key, opener_identity_id,
-  opener_...) -- Add a new recipient to an existing package.
+  opener_master_key, audit_dir=None) -- Add a new recipient to an existing
+  package.
 - remove_recipient(state, identity_id, opener_identity_id, opener_master_key,
-  audit_d...) -- Remove a recipient from an existing package.
+  audit_dir=None) -- Remove a recipient from an existing package.
 - open_package(state, identity_id, master_key, audit_dir=None) -- Open a
   package's payload as an authorized recipient.
 - list_recipients(state) -- List every recipient's non-secret descriptor (id

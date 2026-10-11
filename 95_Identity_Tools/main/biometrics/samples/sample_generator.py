@@ -11,15 +11,16 @@ Public interface:
 - generate_fingerprint_image(seed, size=DEFAULT_IMAGE_SIZE) -- Generate a
   synthetic grayscale "fingerprint-like" ridge pattern as PGM bytes.
 - generate_voice_sample(seed, sample_rate=DEFAULT_SAMPLE_RATE,
-  duration_seconds=DEFAULT_AU...) -- Generate a synthetic "voice-like" waveform
-  as raw samples.
+  duration_seconds=DEFAULT_AUDIO_SECONDS) -- Generate a synthetic "voice-like"
+  waveform as raw samples.
 - write_voice_sample(path, seed, sample_rate=DEFAULT_SAMPLE_RATE) -- Generate
   and write a synthetic voice sample as a WAV file.
 - generate_video_frames(seed, width=DEFAULT_IMAGE_SIZE,
-  height=DEFAULT_IMAGE_SIZE, frame_c...) -- Generate a sequence of synthetic
-  grayscale frames with seed-driven motion.
+  height=DEFAULT_IMAGE_SIZE, frame_count=DEFAULT_VIDEO_FRAME_COUNT) -- Generate
+  a sequence of synthetic grayscale frames with seed-driven motion.
 - write_video_sample(path, seed, width=DEFAULT_IMAGE_SIZE,
-  height=DEFAULT_IMAGE_SIZE, f...) -- Generate and write a synthetic video
+  height=DEFAULT_IMAGE_SIZE, frame_count=DEFAULT_VIDEO_FRAME_COUNT,
+  frame_rate=DEFAULT_VIDEO_FRAME_RATE) -- Generate and write a synthetic video
   sample as a BRVID file.
 - write_fingerprint_sample(path, seed, size=DEFAULT_IMAGE_SIZE) -- Generate and
   write a synthetic fingerprint-like image as a PGM file.

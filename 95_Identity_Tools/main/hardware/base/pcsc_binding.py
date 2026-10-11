@@ -48,9 +48,9 @@ behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Defines no error paths of its own: it raises nothing and catches nothing, so
-any exception from the standard library or a dependency reaches the caller
-unchanged.
+The interface declares abstract methods. Instantiating the abstract class
+raises TypeError; a concrete subclass must implement every inherited abstract
+method. Runtime device errors belong to the concrete implementation.
 
 Known limitations
 -----------------
@@ -59,11 +59,37 @@ Known limitations
 
 Examples
 --------
+Concrete subclass skeleton. This example demonstrates the abstract contract,
+not a real hardware integration. Replace the method bodies before deployment.
+The binding/transport skeleton raises NotImplementedError when called.
+
 ::
 
     from hardware.base.pcsc_binding import PCSCBinding
-    obj = PCSCBinding()
-    obj.establish_context()
+
+    class ExamplePCSCBinding(PCSCBinding):
+        def establish_context(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def release_context(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def list_readers(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def connect(self, reader_name):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def disconnect(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def get_atr(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def transmit(self, apdu):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+    example = ExamplePCSCBinding()
 """
 
 from abc import ABC, abstractmethod

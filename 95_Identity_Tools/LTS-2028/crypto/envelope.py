@@ -58,11 +58,11 @@ Settings / parameters
 ---------------------
 - PADDING_BLOCK_BYTES = 256
 - _LENGTH_PREFIX_BYTES = 8
-- _ENVELOPE_FIELDS = frozenset( {"algorithm", "version", "salt", "nonce",
-  "cip...
+- _ENVELOPE_FIELDS = frozenset({'algorithm', 'version', 'salt', 'nonce',
+  'ciphertext', 'tag'})
 - MAX_PAYLOAD_BYTES = MAX_PLAINTEXT_BYTES - _LENGTH_PREFIX_BYTES -
-  PADDING_BLOC... -- Leave room for the prefix and one full padding block under
-  BSR2's own limit.
+  PADDING_BLOCK_BYTES -- Leave room for the prefix and one full padding block
+  under BSR2's own limit.
 
 Edge cases
 ----------

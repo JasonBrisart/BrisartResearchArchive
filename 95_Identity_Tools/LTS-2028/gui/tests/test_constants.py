@@ -23,8 +23,8 @@ nothing imports it.
 
 Settings / parameters
 ---------------------
-- _CONSTANTS_PATH = Path(__file__).resolve().parent.parent / "core" /
-  "consta...
+- _CONSTANTS_PATH = Path(__file__).resolve().parent.parent / 'core' /
+  'constants.py'
 
 Edge cases
 ----------

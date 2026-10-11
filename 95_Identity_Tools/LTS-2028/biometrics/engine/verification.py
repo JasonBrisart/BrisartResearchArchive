@@ -9,11 +9,11 @@ Public interface:
 - class VerificationError(ValueError) -- Raised when verification cannot
   proceed (missing template, bad input).
 - verify_modality(record, modality, probe_path, master_key, threshold=None,
-  allow_st...) -- Verify a probe file against a record's stored template for
-  ``modality``.
+  allow_static=False) -- Verify a probe file against a record's stored template
+  for ``modality``.
 - verify_identity(record, probe_sources, master_key, thresholds=None,
-  require_all=Tr...) -- Verify several modalities at once, e.g. voice and
-  fingerprint together.
+  require_all=True, allow_static=False) -- Verify several modalities at once,
+  e.g. voice and fingerprint together.
 
 Design notes:
 
@@ -22,13 +22,14 @@ requested modality (using the same context construction enrollment used, so a
 mismatched identity id or modality fails authentication before any comparison
 happens), extract a feature vector from the fresh probe input, and score the
 two vectors against each other using the modality's comparison function. The
-caller decides accept/reject by comparing the score to a threshold
+module reports matched by comparing the score to the selected threshold
 (``biometrics.engine.modalities.default_threshold`` unless overridden).
 
-A static clip (a photograph, or any clip with no genuine motion) fails this
-gate and is reported as a non-match with a populated "liveness" field, before
-its similarity score is ever computed against the stored template -- mirroring
-the enforced pass/fail gate design from the project's 0.6.0-beta release,
+For video only, a motion-presence gate runs before similarity comparison. A
+static clip with insufficient frame-to-frame change fails this gate and is
+reported as a non-match with a populated "liveness" field, before its
+similarity score is ever computed against the stored template -- mirroring the
+enforced pass/fail gate design from the project's 0.6.0-beta release,
 re-implemented here against the current BRVID-based video pipeline. Pass
 allow_static=True (wired to the CLI's --allow-static flag) to skip this gate
 entirely, for example to inspect a raw similarity score during debugging.
@@ -92,8 +93,10 @@ Edge cases
 Known limitations
 -----------------
 - LIVENESS GATE (video modality only): before a video probe's similarity score
-  is trusted, its raw decoded frames are checked for real frame-to-frame motion
+  is trusted, its raw decoded frames are checked for frame-to-frame pixel changes
   via biometrics.features.liveness.assess_liveness().
+- Motion presence is not proof of genuine liveness: this gate does not
+  establish that a moving probe is a live person rather than a replay.
 - Tracked in docs/KNOWN_ISSUES.md: KI-001: Video liveness threshold is
   uncalibrated against real camera hardware
 - Security rests on BSR2, a custom research construction that has not been
@@ -102,6 +105,9 @@ Known limitations
 
 Examples
 --------
+API usage with an enrolled record, probe paths, and an unlocked master key
+supplied by the caller.
+
 ::
 
     from biometrics.engine.verification import verify_modality, verify_identity

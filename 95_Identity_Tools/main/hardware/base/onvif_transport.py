@@ -51,9 +51,9 @@ behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Defines no error paths of its own: it raises nothing and catches nothing, so
-any exception from the standard library or a dependency reaches the caller
-unchanged.
+The interface declares abstract methods. Instantiating the abstract class
+raises TypeError; a concrete subclass must implement every inherited abstract
+method. Runtime device errors belong to the concrete implementation.
 
 Known limitations
 -----------------
@@ -62,11 +62,22 @@ Known limitations
 
 Examples
 --------
+Concrete subclass skeleton. This example demonstrates the abstract contract,
+not a real hardware integration. Replace the method bodies before deployment.
+The binding/transport skeleton raises NotImplementedError when called.
+
 ::
 
     from hardware.base.onvif_transport import ONVIFTransport
-    obj = ONVIFTransport()
-    obj.post(url, body, headers)
+
+    class ExampleONVIFTransport(ONVIFTransport):
+        def post(self, url, body, headers):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def get(self, url, headers, username=None, password=None):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+    example = ExampleONVIFTransport()
 """
 
 from abc import ABC, abstractmethod

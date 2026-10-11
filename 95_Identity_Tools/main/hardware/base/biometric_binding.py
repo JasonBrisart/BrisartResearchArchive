@@ -57,9 +57,9 @@ behaviour is controlled entirely by the values callers pass in.
 
 Edge cases
 ----------
-Defines no error paths of its own: it raises nothing and catches nothing, so
-any exception from the standard library or a dependency reaches the caller
-unchanged.
+The interface declares abstract methods. Instantiating the abstract class
+raises TypeError; a concrete subclass must implement every inherited abstract
+method. Runtime device errors belong to the concrete implementation.
 
 Known limitations
 -----------------
@@ -68,11 +68,34 @@ Known limitations
 
 Examples
 --------
+Concrete subclass skeleton. This example demonstrates the abstract contract,
+not a real hardware integration. Replace the method bodies before deployment.
+The binding/transport skeleton raises NotImplementedError when called.
+
 ::
 
     from hardware.base.biometric_binding import BiometricBinding
-    obj = BiometricBinding()
-    obj.open_session()
+
+    class ExampleBiometricBinding(BiometricBinding):
+        def open_session(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def close_session(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def list_devices(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def open_device(self, device_name):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def close_device(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+        def capture(self):
+            raise NotImplementedError("Provide a deployment implementation.")
+
+    example = ExampleBiometricBinding()
 """
 
 from abc import ABC, abstractmethod

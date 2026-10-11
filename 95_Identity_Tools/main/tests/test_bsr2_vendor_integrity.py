@@ -3,45 +3,65 @@ File: tests/test_bsr2_vendor_integrity.py
 
 Purpose
 -------
-Digest pin for the vendored BSR2 files.
+Regression tests for the exact vendored BSR2 file inventory and raw-byte
+SHA-256 digests. Detects missing, unexpected, or changed Python files under
+vendor/ without importing or executing those files.
+
+Design notes:
+
+Hashing raw bytes makes comments, documentation, whitespace, and line endings
+part of the pinned artifact. A mismatch reports a difference from the stored
+pins; this test does not determine whether that difference is legitimate or
+whether the cryptography is secure. Pins must not be changed merely to hide
+an unexplained mismatch.
+
+The repository root is found by walking upward from this file until both
+version.py and vendor/ exist. If no matching ancestor exists, the helper
+returns this file's parent; the directory-presence test then exposes the
+missing vendor location.
 
 Communication / relationships
 -----------------------------
-Direct module imports: hashlib, unittest, pathlib.
+Standard library: hashlib, pathlib, unittest.
+Reads the four vendor files named in PINNED_DIGESTS; it does not import them.
+Executed by tests/run_tests.py or the explicit unittest command below.
 
 Settings / parameters
 ---------------------
-Module-level named settings: _VENDOR_DIR, PINNED_DIGESTS. See their definitions below for values.
+- _VENDOR_DIR = _find_repo_root(Path(__file__)) / "vendor" -- Directory whose
+  inventory and file contents are checked.
+- PINNED_DIGESTS -- Four filename-to-SHA-256 entries for
+  brisart_security_drbg.py, brisart_security_entropy.py,
+  brisart_security_envelope.py, and brisart_security_primitives.py. Exact
+  expected hashes are stored in the mapping below and are not recalculated
+  from the files being tested.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- test_vendor_directory_exists checks that the vendor directory is present.
+- test_every_pinned_file_is_present checks every filename in PINNED_DIGESTS.
+- test_no_unexpected_python_files_in_vendor rejects additional Python files
+  outside the expected inventory.
+- test_vendored_files_match_their_pinned_digests compares raw-byte hashes and
+  reports mismatched filenames with their actual digests.
+- Changes to line endings or comments also change the raw-byte digest.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Matching the pins establishes byte identity only, not security, correctness,
+  or independent review of BSR2.
+- This test covers the pinned vendor inventory, not the rest of the project.
+- Filesystem failures can prevent a digest from being read; no recovery or
+  repair is performed by this test.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+Run from the relevant LTS-2028 or main project root.
 
-Additional module documentation
--------------------------------
-Digest pin for the vendored BSR2 files.
+::
 
-Hashes every file in vendor/ and compares against the pinned SHA-256 values
-below, so an accidental edit to a vendored file fails the suite instead of
-silently changing what ships.
-
-The pinned digests are the SHA-256 of the EXACT bytes on disk (the same values
-recorded in PROJECT_MANIFEST.json). They are authoritative and correct -- this
-test hashes the raw file bytes with NO line-ending conversion, so the digest it
-produces is directly comparable to those pinned raw-byte hashes. If your vendor/
-files are byte-for-byte what you pinned (they are), this passes.
-
-This file may live at the repository root OR under tests/; vendor/ is located by
-walking up to the directory that holds both version.py and vendor/, so moving
-the test never re-breaks the path.
+    python tests/run_tests.py --fast
+    python -m unittest tests.test_bsr2_vendor_integrity -v
 """
 
 import hashlib
