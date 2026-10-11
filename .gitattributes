@@ -9,4 +9,4 @@
 # wins -- putting it first lets "* text=auto" override it. "-text" disables all
 # line-ending conversion so the raw-byte SHA-256 pins in
 # tests/test_bsr2_vendor_integrity.py match on Windows and Linux/CI alike.
-vendor/** -text
+**/vendor/** -text
