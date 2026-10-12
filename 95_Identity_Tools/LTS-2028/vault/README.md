@@ -139,7 +139,7 @@ disk space, storage space, and substantial processing time.
 A selected drive root is treated as a directory tree of readable files, not as
 a sector-level disk image or complete system backup.
 
-See [file and bundle encryption](../docs/FULL_FILE_ENCRYPTION.md).
+See [file and bundle encryption](../docs/FILE_AND_BUNDLE_ENCRYPTION.md).
 
 ## Automation
 

@@ -154,7 +154,7 @@ cryptographic implementation.
 - ../common/README.md
 - ../crypto/README.md
 - [BSR2 integration and threat model](BSR2_INTEGRATION.md)
-- [File and bundle encryption](FULL_FILE_ENCRYPTION.md)
+- [File and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md)
 - KNOWN_ISSUES.md
 - [Security policy](SECURITY.md)
 - [Release history](CHANGELOG.md)

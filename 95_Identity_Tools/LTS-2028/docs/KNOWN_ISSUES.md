@@ -79,7 +79,7 @@ reflects only what is genuinely still outstanding.
 - **Next step:** Measure representative deployment data and document resource
   requirements. A bounded-memory implementation would require an explicit
   streaming redesign. Keep independent backups until restore results have
-  been checked. See [file and bundle encryption](FULL_FILE_ENCRYPTION.md).
+  been checked. See [file and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md).
 
 ---
 

@@ -247,7 +247,7 @@ interrupted.
 
 - KNOWN_ISSUES.md
 - [Security policy](SECURITY.md)
-- [File and bundle encryption](FULL_FILE_ENCRYPTION.md)
+- [File and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md)
 - ../vault/README.md
 - ../biometrics/README.md
 - ../packages/README.md

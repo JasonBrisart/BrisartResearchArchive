@@ -112,4 +112,4 @@ Support status does not change:
 - Physical-device validation requirements.
 
 See KNOWN_ISSUES.md and
-[file and bundle encryption](FULL_FILE_ENCRYPTION.md).
+[file and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md).

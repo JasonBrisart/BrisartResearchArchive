@@ -84,7 +84,7 @@ class BulkFileServiceTests(unittest.TestCase):
         self.service = VaultService(self.vault_path)
         self.service._master_key = secrets.token_bytes(32)
         # NOTE: BSR2's pure-Python stream cipher runs at roughly 1.4 KB/s
-        # (see docs/README_FULL_FILE_ENCRYPTION.md), and every sealed
+        # (see docs/FILE_AND_BUNDLE_ENCRYPTION.md), and every sealed
         # payload is padded up to at least a 256-byte block regardless of
         # its real size. A tiny chunk size here still forces the same
         # multi-chunk/restore code paths under test while keeping the

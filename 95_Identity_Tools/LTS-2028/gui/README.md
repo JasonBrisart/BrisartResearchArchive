@@ -107,4 +107,4 @@ The presence of these tests does not establish full visual, platform,
 accessibility, hardware, or end-to-end GUI validation.
 
 See ../docs/KNOWN_ISSUES.md and
-[file and bundle encryption](../docs/FULL_FILE_ENCRYPTION.md).
+[file and bundle encryption](../docs/FILE_AND_BUNDLE_ENCRYPTION.md).
