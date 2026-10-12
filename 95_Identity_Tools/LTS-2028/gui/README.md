@@ -1,133 +1,110 @@
 # GUI
 
-BrisartIdentityTools includes a standard-library-only Tkinter desktop interface
-for Vault, Biometrics, and Packages. The GUI remains local-first, works without
-cloud services, and adds no third-party dependency.
+Tkinter desktop interface for Vault, Biometrics, and Packages.
 
-Version 1.2.0 replaces the former single-module GUI layout with a small root
-entry point and focused GUI submodules. This keeps the interface easier to
-inspect, test, change, and maintain without duplicating application logic.
+The GUI uses the application services for storage, matching, and cryptographic
+operations. It is not a separate implementation of those services.
 
----
+## Launch
 
-## Run the GUI
-
-From the repository root:
+From the selected application root:
 
 ```bash
 python app.py
 ```
 
-The root-level `app.py` is the GUI application shell. It creates the main
-window, adds the Vault, Biometrics, and Packages tabs, builds the menu bar, and
-starts Tkinter's event loop.
+The executable shell is the root-level `app.py`, not `gui/app.py`.
 
----
+The supplied dispatcher imports `gui.app` for its `gui` command, but that
+module is absent. Do not use `python cli.py gui` or `python -m gui.app` for
+this snapshot.
+
+A working Tkinter installation and graphical display are required.
 
 ## Layout
 
 ```text
 app.py
-└── gui/
-    ├── README.md
-    ├── core/
-    │   ├── constants.py
-    │   └── busy.py
-    ├── widgets/
-    │   ├── dialogs.py
-    │   └── path_panel.py
-    └── tabs/
-        ├── tab_vault.py
-        ├── tab_biometrics.py
-        └── tab_packages.py
+gui/
+├── core/
+│   ├── constants.py
+│   └── busy.py
+├── widgets/
+│   ├── dialogs.py
+│   └── path_panel.py
+├── tabs/
+│   ├── tab_vault.py
+│   ├── tab_biometrics.py
+│   └── tab_packages.py
+└── tests/
 ```
 
-### `app.py`
+### Application shell
 
-The executable shell only. It owns the main `tk.Tk` window, notebook assembly,
-File and Help menus, About dialog, and `main()` entry point.
+`app.py` creates the main window, assembles the tabs, creates the menus, and
+starts the Tkinter event loop.
 
-### `gui/core/constants.py`
+### Shared core
 
-Provides shared constants and modality file-type filters. It also locates the
-repository root by walking upward until it finds `version.py`, then makes that
-root importable before any tab imports Vault, Biometrics, or Packages.
+`gui/core/constants.py` provides shared constants, file-type filters, and the
+application-root import bootstrap.
 
-### `gui/core/busy.py`
+`gui/core/busy.py` provides the busy dialog and background-operation runner.
 
-Provides the shared busy dialog and background-operation runner used for slow
-operations. Worker code runs away from Tkinter's main thread, while all widget
-updates remain on the main thread.
+### Shared widgets
 
-### `gui/widgets/dialogs.py`
+`gui/widgets/dialogs.py` contains reusable dialogs.
 
-Contains reusable modal-dialog helpers shared by the three tabs.
+`gui/widgets/path_panel.py` contains the file, folder, and drive-root selection
+panel.
 
-### `gui/widgets/path_panel.py`
+### Application tabs
 
-Contains the shared file, folder, and drive selection panel used by bulk Vault
-operations and biometric attachments.
+- `tab_vault.py`: record and file/bundle workflows.
+- `tab_biometrics.py`: enrollment, verification, and attachments.
+- `tab_packages.py`: recipient-bound package workflows.
 
-### `gui/tabs/tab_vault.py`
+## Background operations
 
-Contains the Vault interface, including record operations and the Files /
-Folders / Drives workflow.
+The shared runner executes supplied work in a background thread and delivers
+completion handling through the GUI's polling mechanism.
 
-### `gui/tabs/tab_biometrics.py`
+Worker functions must not access Tkinter widgets. Widget values should be
+captured on the main thread before starting work, and widget updates should
+occur in completion callbacks.
 
-Contains biometric enrollment, verification, inspection, deletion, sample
-generation, and attachment workflows.
+The existence of a background runner does not establish that every GUI action
+is non-blocking or that every call site is thread-safe.
 
-### `gui/tabs/tab_packages.py`
+## File selection
 
-Contains identity-bound package creation, recipient management, opening,
-verification, custody-chain display, and demo workflows.
+The path panel uses Tkinter file and directory pickers. It supports selecting
+files, folders, and drive roots for the relevant bundle workflows.
 
----
+Native drag-and-drop is not supplied by this layout.
 
-## Architecture Rule
+Selecting a drive root means selecting its readable directory contents. It
+does not create a sector-level image or preserve every filesystem attribute.
 
-No cryptography, validation, identity policy, or persistence implementation
-belongs in `app.py` or `gui/`. GUI controls call the same application and
-service layers used by the command-line tools:
+## Security and usability boundaries
 
-- `vault.store.vault_service`
-- `biometrics.engine.enrollment`
-- `biometrics.engine.verification`
-- `packages.package`
+- The GUI inherits BSR2's research-cryptography limitations.
+- Biometric results are research matching results, not validated identity
+  probabilities.
+- Video motion checks are not general anti-spoofing.
+- Package text-to-key prompts use demonstration SHA-256 key derivation, not a
+  slow password KDF.
+- Bulk operations remain constrained by memory, temporary disk space, storage
+  space, and throughput.
+- Closing or interrupting a workflow is not a guarantee of transactional
+  rollback or secure removal of temporary data.
 
-The GUI is wiring and presentation, not a second implementation of the system.
+## Testing
 
----
+`gui/tests/` contains regression tests for shared GUI helpers and tab behavior.
 
-## Slow Operations
+The presence of these tests does not establish full visual, platform,
+accessibility, hardware, or end-to-end GUI validation.
 
-BSR2 key derivation and large encrypted-data operations can take noticeable
-time. Operations that would block the interface use the shared background
-runner in `gui/core/busy.py` and display a modal working indicator.
-
-Tkinter widgets are only read or changed on the main thread. Background workers
-return results through the shared runner, which schedules completion handling
-back onto Tkinter's event loop.
-
----
-
-## File, Folder, and Drive Selection
-
-The shared `PathSelectionPanel` supports the GUI workflows that accept files,
-folders, or drive roots. Selection uses Tkinter's standard file and directory
-pickers. Native drag-and-drop support is not part of the 1.2.0 GUI layout.
-
----
-
-## Dependency Policy
-
-The GUI uses only Python's standard library:
-
-- `tkinter`
-- `threading`
-- `queue`
-- `pathlib`
-
-It does not require a GUI framework, package manager install, cloud service, or
-network connection.
+See ../docs/KNOWN_ISSUES.md and
+[file and bundle encryption](../docs/FULL_FILE_ENCRYPTION.md).

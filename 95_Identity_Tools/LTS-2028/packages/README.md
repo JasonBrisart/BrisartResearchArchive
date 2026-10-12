@@ -1,111 +1,132 @@
 # Packages
 
-Identity-Bound Packages: content sealed so that only a specific set of
-recipient identities can open it, with a tamper-evident history traveling
-inside the package itself. No cloud services, no third-party dependencies —
-BSR2 (vendored in `vendor/`) provides the encryption.
+Local, symmetric recipient-bound payload encryption.
 
----
+A package seals its payload under a content key and stores a separately wrapped
+copy of that content key for each recipient.
 
-## How it works
+## Key model
 
-Every package separates the secret that protects the **payload** from the
-secrets that protect **access** to that secret:
+1. A random 32-byte content key seals the payload.
+2. Each recipient's master key wraps that content key into a recipient key slot.
+3. Opening verifies the recipient material, unwraps the content key, and opens
+   the payload.
 
-1. A random 32-byte **content key** seals the actual payload once
-   (`packages/ciphers.py`).
-2. That content key is itself sealed once per recipient, each under that
-   recipient's own master key, in that recipient's own **key slot**.
+Creating a package requires the intended recipients' master keys to be
+available to the creator. Adding a recipient also requires that recipient's
+master key.
 
-Adding or removing a recipient only ever touches that recipient's key slot —
-the payload is never re-encrypted, and no other recipient's slot is touched.
-Losing every recipient's master key makes the package permanently unopenable;
-there is no back door.
+This is not public-key encryption. It does not let a creator encrypt to a
+recipient while remaining unable to open the content.
 
-**Consequence worth knowing up front:** because BSR2 is symmetric and this
-project takes no third-party dependencies, there is no public-key mechanism
-to seal a payload to a recipient the creator cannot open. Creating a package,
-and adding a recipient to an existing one, both require that recipient's
-identity to be unlocked at that moment.
+Removing a recipient removes that recipient's slot from the current package.
+It does not revoke previously copied packages, previously recovered content
+keys, or plaintext already obtained by that recipient.
 
-### Custody chain vs. audit trail — two different histories
+## CLI key prompts
 
-These solve different problems and are easy to conflate:
+The CLI prompts for text and derives a 32-byte demonstration key using a
+single unsalted SHA-256 operation.
 
-- **`custody.py`** — a tamper-evident history that travels **inside** the
-  package's own state. Every lifecycle event (`created`, `recipient_added`,
-  `recipient_removed`, `opened`) commits to the previous event's hash, so
-  editing, deleting, or reordering a past entry is detectable by recomputing
-  the chain (`verify_chain`). This is integrity evidence, not access
-  control, and not a digital signature — an entry's `actor_label` is a
-  caller-supplied string, not cryptographically bound to a signing key.
-- **`audit.py`** — an external, append-only log written to a separate audit
-  directory on disk. Losing or never having the package file at all still
-  leaves this trail intact, which is what distinguishes it from the custody
-  chain. Never contains content keys, master keys, or sealed payload bytes —
-  only package id, action, and actor label.
+The Packages GUI uses the same demonstration approach.
 
----
+This is not a slow password KDF. Guessable input text produces guessable key
+material, and repeated text produces the same key.
 
-## CLI
+Application integrations should supply appropriately generated and managed
+master keys rather than treating the demonstration prompt as production
+password authentication.
+
+## CLI usage
+
+Run from the selected application root.
 
 ```bash
-cd packages
+python -m packages.main --help
 
-# Create a package with one initial recipient. --payload is a JSON object string.
-python main.py create pkg.json --package-id demo-1 \
+python -m packages.main create pkg.json --package-id demo-1 \
   --identity-id alice --label "Alice" --payload '{"message": "hello"}'
 
-# Add a recipient (requires an existing, authorized recipient to authorize it)
-python main.py add-recipient pkg.json --identity-id bob --label "Bob" \
-  --opener-identity-id alice
+python -m packages.main add-recipient pkg.json \
+  --identity-id bob --label "Bob" --opener-identity-id alice
 
-# Remove a recipient (cannot remove the last one)
-python main.py remove-recipient pkg.json --identity-id bob --opener-identity-id alice
+python -m packages.main remove-recipient pkg.json \
+  --identity-id bob --opener-identity-id alice
 
-# Open the payload as an authorized recipient
-python main.py open pkg.json --identity-id alice
+python -m packages.main open pkg.json --identity-id alice
 
-python main.py list-recipients pkg.json
-python main.py verify-custody pkg.json
+python -m packages.main list-recipients pkg.json
+python -m packages.main verify-custody pkg.json
 
-# Full create -> add-recipient -> open cycle with generated keys, no setup required
-python main.py demo
+python -m packages.main demo
 ```
 
-Every command that touches a master key prompts for it via `getpass` (any
-text you type is stretched to a fixed-length key for demo purposes — a real
-integration should supply an actual 32-byte master key, e.g. one unlocked
-from `crypto.keyring.Keyring`, instead of typed text).
+The dispatcher is also available:
 
----
-
-## Repository Layout
-
-```
-packages/
-├── main.py            CLI entry point
-├── package.py          orchestration: create, add/remove recipient, open, validate
-├── ciphers.py          content-key generation, per-recipient key-slot seal/unwrap
-├── identity.py         recipient descriptor shape/validation (id + label, no key material)
-├── verification.py     fast "does this master key belong to this recipient" check
-├── custody.py          in-package tamper-evident hash chain
-├── audit.py            external, append-only audit trail
-└── tests/
+```bash
+python cli.py package --help
 ```
 
----
+Removing the last recipient is refused.
 
-## Security notes
+## Custody chain
 
-- Package validation runs cheap structural checks (format, custody chain,
-  recipient/key-slot consistency) **before** expensive factor verification,
-  so a tampered package is rejected without paying for a key derivation.
-- Digest and MAC comparisons throughout use constant-time equality.
-- Malformed input (a truncated custody chain, a missing signed field) is
-  reported as a validation failure rather than crashing with a raw
-  `KeyError`/`TypeError` — see `docs/CHANGELOG.md` for the specific
-  hardening passes this went through.
+`custody.py` stores lifecycle entries inside package state. Entries include
+action information, timestamps, caller-supplied actor labels, and hashes linking
+them to previous entries.
 
-Full threat model, including what encryption here does and does not protect
-against: [docs/BSR2_INTEGRATION.md](../docs/BSR2_INTEGRATION.md).
+Verification checks the chain's internal consistency.
+
+This is not a digital signature or proof of authorship:
+
+- Actor labels are caller-supplied strings.
+- A party able to rewrite the entire chain can recompute its unkeyed hashes.
+- Removing a valid suffix can leave an internally consistent shorter chain.
+- A valid chain does not prove that every historical event was recorded.
+
+Stronger historical evidence requires an independently protected checkpoint,
+signature, or external record.
+
+## External audit files
+
+`audit.py` writes event records outside the package file.
+
+The application uses append-style event writing, but the filesystem does not
+enforce an append-only store. Files can be edited or removed by a party with
+sufficient access.
+
+Audit records are not authenticated proof of actor identity. Caller-supplied
+labels and package identifiers must not be treated as trusted identities or
+safe filesystem paths without additional validation.
+
+## Persistence
+
+The package CLI saves state using direct JSON file writing rather than the
+shared atomic-write helper. An interrupted save can leave a truncated file.
+
+Keep backups of package state and avoid concurrent writers.
+
+## Module map
+
+- `main.py`: CLI and demonstration text-to-key prompts.
+- `package.py`: package orchestration and validation.
+- `ciphers.py`: content-key generation and key-slot sealing.
+- `identity.py`: recipient descriptors.
+- `verification.py`: recipient factor verification.
+- `custody.py`: internal custody-chain construction and checking.
+- `audit.py`: external event files.
+- `demo.py`: demonstration workflow.
+- `tests/`: regression tests.
+
+## Security boundaries
+
+Structural validation is performed before some cryptographic operations, but
+it is not a guarantee that arbitrary malformed input is harmless.
+
+Digest comparison helpers do not make the entire Python implementation
+constant-time.
+
+BSR2 remains unreviewed research cryptography. Recipient binding, custody
+records, and passing tests do not remove that limitation.
+
+See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).

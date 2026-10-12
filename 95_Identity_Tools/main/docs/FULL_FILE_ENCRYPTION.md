@@ -1,112 +1,167 @@
-# Full file / folder / drive encryption
+# File and Bundle Encryption
 
-BrisartIdentityTools can encrypt **any file** (any extension, no extension, any
-binary content), and **any combination of files, folders, and whole drives** in
-one operation, with automatic chunking so a single BSR2 envelope's size limit
-is no longer a hard ceiling. This is available from both the CLI and the GUI.
+Vault and Biometrics can seal arbitrary file bytes. Bulk workflows combine
+selected files and directory trees into a ZIP bundle, then seal that bundle
+as chunks plus a manifest.
 
-**Read the "Real-world throughput" section below before encrypting anything
-large — it changes what "drives" realistically means here.**
+File extensions do not determine whether bytes can be sealed. Successful
+processing still depends on readable inputs, valid parameters, available
+resources, and the cryptographic integration's limits.
 
-## The size limit this had to solve
+## Single-envelope limit
 
-BSR2's vendored envelope hard-caps a single sealed payload at **~16 MiB**
-(`vendor/brisart_security_envelope.py`'s `MAX_PLAINTEXT_BYTES`;
-`crypto/envelope.py`'s `MAX_PAYLOAD_BYTES` trims that slightly further for its
-length-prefix and padding overhead). Calling `encrypt()` on anything larger
-raises outright — no truncation, no silent failure, just a refusal.
+A BSR2 envelope accepts at most 16 MiB of plaintext.
 
-**`vault/store/bulk_file_service.py`** and
-**`biometrics/engine/bulk_attachments.py`** remove that ceiling with real
-chunking: content is split into sealed chunks (default 8 MiB) plus one small
-JSON manifest recording chunk order, total size, and a whole-content SHA-256.
-Restoring reassembles the chunks in order and verifies that hash, so a missing
-or corrupted chunk is caught immediately rather than silently returning
-truncated data.
+The integration layer's length prefix and padding reduce the usable
+application payload below that raw envelope limit.
 
-## What each file adds
+Bulk workflows use multiple envelopes to store content larger than one
+envelope can hold. The default chunk size is 8 MiB.
 
-| File | Role |
-|---|---|
-| `vault/store/bulk_file_service.py` | `BulkFileService`: chunked encrypt/decrypt of any size, plus `upsert_paths()`/`restore_paths()` — zips any mix of files/folders/drive roots into one bundle (preserving relative structure) before chunking. |
-| `biometrics/engine/bulk_attachments.py` | Same chunking/bundling logic, biometrics-side, storing chunks as ordinary attachments named `{name}.chunk0`, `{name}.chunk1`, ... plus a `{name}.manifest`. |
-| `vault/store/vault_service.py` | `upsert_file`/`upsert_file_bytes`/`get_file`/`get_file_bytes` for single files (sealed as raw bytes, never parsed as JSON). |
-| `biometrics/engine/attachments.py` | Attach an arbitrary raw file to an identity, sealed under the same master key, byte-for-byte recoverable. |
-| `vault/app.py` | CLI: `encrypt-file`, `decrypt-file`, `encrypt-paths` (multi-path, any size), `restore-paths`. |
-| `biometrics/app.py` | CLI: `attach`, `attach-paths`, `extract-attachment`, `restore-paths`, `remove-attachment`. |
-| `app.py`, `gui/tabs/tab_vault.py`, `gui/tabs/tab_biometrics.py`, `gui/widgets/path_panel.py` | The root `app.py` shell loads the Vault and Biometrics tabs. The Vault tab has a "Files / Folders / Drives" sub-tab; the Biometrics tab has a "File Attachments" sub-tab. Both share the modular `PathSelectionPanel` (multi-select files, folder picker, and an "Add Drive..." shortcut, all via `tkinter.filedialog`). |
+## Chunk and manifest model
 
-File/folder/drive selection in the GUI is provided by the shared
-`gui/widgets/path_panel.py` component using `tkinter.filedialog`'s standard
-picker dialogs. Native Windows drag-and-drop is not part of the current GUI
-layout (the earlier `gui/windows_dnd.py` module was removed in 1.2.0).
+The bulk representation records chunk order, total content size, and a
+whole-content SHA-256 fingerprint.
 
-## Real-world throughput — read this before encrypting anything large
+Restore opens the chunks, reassembles the content, and checks the recorded
+size and fingerprint.
 
-BSR2's pure-Python throughput is low by nature. Measured directly:
+This detects missing or inconsistent content relative to the stored manifest.
+It is not an independently authenticated historical record or proof that the
+original source files were trustworthy.
 
-```text
-Sealed   10 KB in 7.44s  → ~1,376 bytes/sec
-Restored 10 KB in 6.93s  → ~1,479 bytes/sec
-```
+## Memory and temporary storage
 
-This is inherent to BSR2's vendored primitives (`stream_bytes` calls a full
-sponge-based `keyed_mac` every 64 bytes of output, and each of those runs dozens
-of permutation rounds in plain Python with no hardware acceleration), not the
-chunking layer. At ~1.4 KB/s:
+The current implementation is not a bounded-memory streaming archive system.
 
-| Size | Estimated time (seal only) |
-|---|---|
-| 1 MB | ~13 minutes |
-| 100 MB | ~21 hours |
-| 1 GB | ~9 days |
-| A real hard drive (100s of GB–TBs) | weeks to months |
+For path bundles:
 
-**What this means practically:** chunking removes the *architectural* 16 MiB
-ceiling — proven by real, passing round-trip tests. But the *practical* ceiling
-for "drives" is now throughput, not a hard limit. This is realistically a tool
-for individual files, documents, photo collections, and folders up to tens of
-MB in a reasonable amount of time — not a "back up my whole 2 TB drive tonight"
-tool, unless you are prepared to let it run for a very long time. The
-"unlimited size" framing is accurate about the mechanism, not about speed.
+1. A plaintext ZIP is created in a temporary directory.
+2. The complete ZIP is read into memory.
+3. Its bytes are divided into chunks for sealing.
 
-## Test coverage
+Restore reassembles the complete bundle in memory and writes a temporary ZIP
+before extraction.
 
-Covered by passing round-trip tests (real BSR2, not mocked):
+Consequences:
 
-- Biometrics-side chunked attach/restore across multiple chunks + manifest — round-trips exactly.
-- Biometrics-side mixed file+folder bundle (including a no-extension file inside a nested folder) — bundles and restores with structure intact.
-- Bulk-removal cleans up every chunk + manifest.
-- Vault-side chunking round-trips exactly, with the measured throughput above.
-- A direct `seal_bytes()` call on 17 MB genuinely raises (confirms the envelope limit).
-- `zipfile`-based bundling of a standalone file plus folders — correct structure and content, verified byte-for-byte.
+- Large bundles can exhaust memory.
+- Temporary disk space is required.
+- The stored JSON representation adds overhead.
+- Plaintext exists in temporary storage during bundling and restore.
+- Temporary-file cleanup is not secure erasure.
+- Chunking does not establish an unlimited-size guarantee.
 
-See `vault/tests/test_bulk_file_service.py`, `vault/tests/test_file_records.py`,
-and `biometrics/tests/test_attachments.py`.
+## Files, folders, and drive roots
 
-## CLI usage
+Drive roots are traversed as directory trees. This is not sector-level disk
+imaging or a complete system-backup mechanism.
+
+Unreadable files can be skipped. A completed operation must be checked for its
+reported skipped-file information.
+
+The workflow does not promise a consistent snapshot of files changing during
+collection, preservation of every filesystem attribute, or complete recovery
+of a running operating system.
+
+## Throughput
+
+Earlier development documentation reports approximately:
+
+- 1,376 bytes per second for sealing a small sample.
+- 1,479 bytes per second for restoring a small sample.
+
+Those are historical sample measurements, not current-machine benchmarks or
+guaranteed sustained rates.
+
+Measure representative data on the intended deployment before selecting a
+bundle size. Whole-drive processing should not be described as practical
+merely because chunking can represent multiple envelopes.
+
+## Vault CLI
+
+Run from the selected application root.
 
 ```bash
-# Vault: any combination of files/folders/drives, any size
-python -m vault.app --vault v.json encrypt-paths ./report.pdf ./Photos "D:\"
-python -m vault.app --vault v.json restore-paths <record_id> ./restored_output
+python -m vault.app --vault v.json encrypt-file report.pdf
 
-# Biometrics: same, attached to an identity
-python cli.py biometrics attach-paths alice my-bundle ./report.pdf ./Photos
-python cli.py biometrics restore-paths alice my-bundle ./restored_output
+python -m vault.app --vault v.json decrypt-file \
+  RECORD_ID restored-report.pdf
 
-# Single files (auto-chunks if needed)
-python -m vault.app --vault v.json encrypt-file ./anything_at_all
-python cli.py biometrics attach alice ./anything_at_all
+python -m vault.app --vault v.json encrypt-paths \
+  report.pdf Photos --label research-bundle
+
+python -m vault.app --vault v.json restore-paths \
+  RECORD_ID restored-output
 ```
 
-## GUI usage
+Replace `RECORD_ID` with the actual identifier returned by the application.
+
+## Biometrics CLI
+
+An enrolled identity is required.
+
+```bash
+python cli.py biometrics attach alice report.pdf --name report.pdf
+
+python cli.py biometrics extract-attachment \
+  alice report.pdf restored-report.pdf
+
+python cli.py biometrics attach-paths \
+  alice research-bundle report.pdf Photos
+
+python cli.py biometrics restore-paths \
+  alice research-bundle restored-output
+
+python cli.py biometrics remove-attachment alice research-bundle
+```
+
+## GUI
 
 ```bash
 python app.py
 ```
 
-Open the **Vault** tab's "Files / Folders / Drives" sub-tab, or the
-**Biometrics** tab's "File Attachments" sub-tab, to run the same
-encrypt/restore workflows through the shared `PathSelectionPanel` instead of
-the CLI.
+Use the Vault file/bundle controls or the Biometrics attachment controls.
+
+The shared path-selection panel uses Tkinter file and directory pickers.
+Native drag-and-drop is not part of this layout.
+
+## Restore safety
+
+Restore writes files into the selected destination. Use a dedicated output
+directory and check the result before replacing original data.
+
+The implementation delegates archive extraction to `zipfile`; it is not a
+complete hostile-archive sandbox, resource quota system, or transactional
+restore engine.
+
+An interrupted operation can leave partial output or stored chunks. Keep
+independent backups until a restore has been checked.
+
+## Implementation map
+
+- `vault/store/vault_service.py`: standalone file records.
+- `vault/store/bulk_file_service.py`: Vault chunks and path bundles.
+- `biometrics/engine/attachments.py`: standalone identity attachments.
+- `biometrics/engine/bulk_attachments.py`: attachment chunks and path bundles.
+- `gui/widgets/path_panel.py`: shared path selection.
+
+## Tests
+
+Relevant regression tests include:
+
+- `vault/tests/test_file_records.py`
+- `vault/tests/test_bulk_file_service.py`
+- `biometrics/tests/test_attachments.py`
+- `biometrics/tests/test_bulk_attachments.py`
+
+These tests are not a certification of unlimited-size processing, full-drive
+backup correctness, crash recovery, or every platform's filesystem behavior.
+
+## Cryptographic caveat
+
+BSR2 is unreviewed research cryptography. Chunking and successful round trips
+do not establish independent security assurance.
+
+See [BSR2 integration and threat model](BSR2_INTEGRATION.md).

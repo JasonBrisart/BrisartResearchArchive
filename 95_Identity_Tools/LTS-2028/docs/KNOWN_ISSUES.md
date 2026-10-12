@@ -46,31 +46,40 @@ reflects only what is genuinely still outstanding.
 
 ---
 
-## KI-003: Bulk file/folder/drive encryption throughput ceiling (~1.4 KB/s)
+## KI-003: Bulk processing is constrained by throughput, memory, and temporary storage
 
 - **Reported date:** 2026-08-25
-- **Severity:** Low (documented limitation, not a defect)
-- **Environment:** All platforms; affects `vault/store/bulk_file_service.py`
-  and `biometrics/engine/bulk_attachments.py`.
-- **Component:** Bulk file/folder/drive encryption (chunked BSR2 sealing)
-- **Steps to Reproduce:** Encrypt a folder or drive larger than a few tens
-  of MB via `encrypt-paths` / `attach-paths` and measure elapsed time.
-- **Expected behavior:** N/A — this is a performance characteristic of the
-  pure-Python BSR2 primitives, not a bug to "fix" without changing the
-  cryptographic implementation itself.
-- **Actual behavior:** Measured throughput is roughly 1.4 KB/s for both
-  sealing and restoring, because `stream_bytes` runs a full sponge-based
-  keyed MAC every 64 bytes of output in plain Python. A 100 MB folder takes
-  on the order of 21 hours; a full multi-hundred-GB drive would take weeks.
-- **Tried / Ruled out:** The chunking/manifest logic itself is correct and
-  tested (`vault/tests/test_bulk_file_service.py`,
-  `biometrics/tests/test_bulk_attachments.py`); the ceiling is inherent to
-  BSR2, not the chunking layer built on top of it.
-- **Next step:** Already documented explicitly in
-  [`FULL_FILE_ENCRYPTION.md`](FULL_FILE_ENCRYPTION.md)
-  so users size expectations correctly (individual files/folders, not full
-  drives, in a reasonable timeframe). No code change planned unless a
-  faster (still dependency-free) primitive is adopted.
+- **Severity:** Low for the documented performance limitation; deployment
+  impact depends on bundle size and available resources.
+- **Environment:** All platforms; Vault bulk bundles and Biometrics bulk
+  attachments.
+- **Component:** `vault/store/bulk_file_service.py`,
+  `biometrics/engine/bulk_attachments.py`
+- **Steps to Reproduce:**
+  1. Select a representative file or directory tree.
+  2. Run `encrypt-paths` or `attach-paths`.
+  3. Observe elapsed processing, memory use, temporary storage, and skipped
+     files.
+  4. Restore the resulting bundle and observe the same resource requirements.
+- **Expected behavior:** Chunking permits multiple envelopes to represent
+  content larger than the single-envelope payload limit. It does not promise
+  unlimited-size or bounded-memory processing.
+- **Actual behavior:** Path bundles are materialized as plaintext temporary
+  ZIP files and read completely into memory. Restore reassembles complete
+  content before extraction. Earlier development documentation reports small
+  sample rates around 1.4 KB/s, but those measurements are not guaranteed
+  sustained throughput on another machine. Large operations can exhaust
+  memory or disk space, and unreadable source files can be skipped.
+- **Tried/Ruled out:** Regression tests exist for file and bundle round trips
+  in `vault/tests/test_bulk_file_service.py`,
+  `vault/tests/test_file_records.py`,
+  `biometrics/tests/test_bulk_attachments.py`, and
+  `biometrics/tests/test_attachments.py`. Their presence does not establish
+  full-drive backup correctness, unlimited-size processing, or crash recovery.
+- **Next step:** Measure representative deployment data and document resource
+  requirements. A bounded-memory implementation would require an explicit
+  streaming redesign. Keep independent backups until restore results have
+  been checked. See [file and bundle encryption](FULL_FILE_ENCRYPTION.md).
 
 ---
 

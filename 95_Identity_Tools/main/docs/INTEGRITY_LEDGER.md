@@ -1,89 +1,109 @@
 # Integrity Ledger
 
-An external, hash-chained ledger of periodic file checkpoints. Read this
-before relying on it for anything real — the honest scope of what it does
-and does not do is the entire point of this document.
+An external JSON ledger of periodic file checkpoints.
 
----
+The ledger records observed file states. It is not continuous monitoring,
+authenticated authorship evidence, or an immutable audit service.
 
-## What problem this addresses
+## What a checkpoint records
 
-Every tamper-evidence mechanism already in this repository — BSR2's
-authentication tag, `packages.custody`'s in-package hash chain, the external
-audit logs in `vault/`, `biometrics/`, and `packages/` — only ever inspects a
-file's **current state**. That is a structural property of comparing a
-snapshot against itself, not a defect in any of them. It means a file that is
-edited and then restored to its exact original bytes before the next
-inspection leaves **no trace whatsoever** in any of those mechanisms.
+A checkpoint records a target file's SHA-256 fingerprint, size, timestamp,
+and associated metadata.
 
-The Integrity Ledger does not close that gap. It narrows it, and only by as
-much as your checkpoint frequency allows.
+Entries are linked by unkeyed hashes.
 
-## How it works
+The CLI is `tools/integrity_checkpoint.py`; the implementation is
+`common/integrity_ledger.py`.
 
-`tools/integrity_checkpoint.py checkpoint <file>` records that file's SHA-256
-and size into an external, hash-chained ledger (`common/integrity_ledger.py`),
-with a timestamp. Run it again later — by hand, or on a schedule (cron, a
-Windows Scheduled Task) — and you get a second checkpoint.
+## What it can show
 
-If someone tampers with the file and reverts it **entirely between two of
-your checkpoints**, this is indistinguishable from nothing having happened.
-If a checkpoint happens to land **inside** the tamper window — before the
-revert — that checkpoint's recorded hash will disagree with its neighbors,
-and the history will show it, even after the file has been put back exactly
-the way it was.
+If a checkpoint captures a changed file, its fingerprint can differ from
+earlier or later checkpoints.
 
-```text
-checkpoint (hash A) --- TAMPER --- checkpoint (hash B, mid-tamper) --- REVERT --- checkpoint (hash A again)
-                                          ^^^^^^^^^^^^^^^^^^^^^^^^
-                                This is what exposes the tamper window.
-```
+That difference remains visible in retained history after the target file is
+restored, provided the ledger history itself has not been altered.
 
-**The smaller the gap between checkpoints, the smaller the window a
-tamper-then-revert can hide in. It is never zero unless checkpoints are
-continuous**, which this tool intentionally does not attempt to be — that
-would mean either a persistent background process (this project runs none)
-or a third-party scheduling dependency (this project takes none).
+A difference establishes that observed bytes changed. It does not establish
+whether the change was authorized, malicious, accidental, or caused by normal
+application activity.
 
-## What it does NOT do
+## Observation gaps
 
-- It cannot detect a tamper-then-revert that happens entirely between two
-  checkpoints. See `common/integrity_ledger.py`'s module docstring for the
-  full statement of this limitation.
-- It does not protect its own ledger file's directory. Storing the ledger
-  beside the data it watches, writable by the same untrusted party, defeats
-  the purpose — put it somewhere only you (or your backup/audit process) can
-  write to.
-- It does not encrypt or seal anything. It records a plaintext SHA-256 and
-  size only, the same non-secret integrity-fingerprint role
-  `common.hashing` already plays everywhere else in this repository.
+A file changed and restored to exactly the same bytes entirely between
+checkpoints produces identical before-and-after observations.
+
+Increasing checkpoint frequency reduces the observation gap. It does not
+guarantee that every change is captured.
+
+The tool does not schedule itself or run a monitoring daemon.
+
+## Hash-chain limits
+
+`verify` checks the ledger's internal hash consistency.
+
+It does not prove:
+
+- Who wrote an entry.
+- That every event was recorded.
+- That timestamps came from a trusted clock.
+- That the ledger has not been completely rewritten.
+- That a valid suffix has not been removed.
+
+A party able to rewrite the ledger can recompute its unkeyed hashes. A valid
+prefix can remain internally consistent after later entries are removed.
+
+Use independently protected ledger copies or trusted checkpoints if historical
+integrity matters.
 
 ## CLI usage
 
+Run from the `main/` application root.
+
+`--ledger` is a global option and belongs before the subcommand.
+
 ```bash
-# Record a checkpoint of any file this project produces
-python tools/integrity_checkpoint.py checkpoint data/vault/vault.json --label "nightly cron"
+# Record an observed file state.
+python tools/integrity_checkpoint.py \
+  --ledger data/integrity/ledger.json \
+  checkpoint data/vaults/main_vault.json --label "manual checkpoint"
 
-# Compare a file's current hash against its most recent checkpoint
-python tools/integrity_checkpoint.py status data/vault/vault.json
+# Compare current bytes with the latest retained checkpoint.
+python tools/integrity_checkpoint.py \
+  --ledger data/integrity/ledger.json \
+  status data/vaults/main_vault.json
 
-# See every checkpoint ever recorded for a file
-python tools/integrity_checkpoint.py history data/vault/vault.json
+# Show retained checkpoints for the target.
+python tools/integrity_checkpoint.py \
+  --ledger data/integrity/ledger.json \
+  history data/vaults/main_vault.json
 
-# Verify the ledger's OWN hash chain hasn't been edited, deleted, or reordered
-python tools/integrity_checkpoint.py verify
+# Check internal ledger consistency.
+python tools/integrity_checkpoint.py \
+  --ledger data/integrity/ledger.json verify
 
-# List every file path currently tracked in a ledger
-python tools/integrity_checkpoint.py list-tracked
+# List tracked paths.
+python tools/integrity_checkpoint.py \
+  --ledger data/integrity/ledger.json list-tracked
 ```
 
-All commands accept `--ledger <path>` to point at a specific ledger file
-(default: `data/integrity/ledger.json`).
+The default ledger path is `data/integrity/ledger.json`.
 
-## Suggested use
+## Deployment considerations
 
-Run `checkpoint` against your `vault.json`, your biometrics `keyring.json`,
-and any package `.json` files you consider sensitive, on whatever cadence
-your threat model calls for — nightly via cron/Task Scheduler is a reasonable
-default for most labs. Keep the ledger file itself somewhere the same
-untrusted parties who could tamper with your data cannot also write to.
+- Store the ledger outside the writable trust boundary of untrusted parties.
+- Keep independently protected copies or checkpoints.
+- Coordinate checkpointing with application writes to avoid observing an
+  unintended intermediate state.
+- Treat actor labels as caller-supplied metadata.
+- Treat paths, sizes, and fingerprints as potentially sensitive metadata.
+- Do not interpret a matching fingerprint as proof that no activity occurred
+  between observations.
+
+## Tests
+
+`common/tests/test_integrity_ledger.py` exercises checkpoint and comparison
+behavior, including changes captured during a checkpoint and changes reverted
+entirely between checkpoints.
+
+Those tests do not establish immutable storage, authenticated history, or
+continuous observation.

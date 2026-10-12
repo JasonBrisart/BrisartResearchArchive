@@ -1,55 +1,102 @@
-# Crypto
+# Crypto Integration Layer
 
-The integration layer between vendored BSR2 and the three tools (`biometrics/`,
-`vault/`, `packages/`). No cryptographic primitive is implemented in this
-directory — everything here composes the vendored primitives in `vendor/`
-into the higher-level operations the rest of the repo actually calls:
-sealing/opening a payload, wrapping a master key, hashing a factor, binding an
-object to a context, rate-limiting an unlock attempt.
+Application integration between BSR2 and Vault, Biometrics, and Packages.
 
-If you're auditing the cryptography, start at
-[docs/BSR2_INTEGRATION.md](../docs/BSR2_INTEGRATION.md) for the full threat
-model and rationale. This README is a map of the module, not a replacement
-for that document.
-
----
+This directory composes the supplied BSR2 primitives into application
+operations. It does not independently validate the security of those
+primitives.
 
 ## Module map
 
-| File | Role |
+| Module | Responsibility |
 | --- | --- |
-| `vendor.py` | Puts `vendor/` on `sys.path` once and re-exports the vendored primitives. The single place that knows the vendored files use flat imports of each other. |
-| `errors.py` | The exception family every caller catches: `Bsr2IntegrationError` and subclasses (`KeyringFormatError`, `KeyringAuthenticationError`, `KeyringLockedError`, `EnvelopeAuthenticationError`). Callers never import a vendor exception type directly. |
-| `context.py` | Canonical context strings (`record_context`, `template_context`, `package_context`, `key_slot_context`, `keyring_context`, ...). Every sealed object is bound to one of these, so a ciphertext cannot be moved between records, identities, modalities, or recipients without failing authentication. |
-| `envelope.py` | `seal_bytes`/`open_bytes`/`seal_json`/`open_json` on top of the vendored envelope: adds length-hiding padding (8-byte prefix, 256-byte blocks) inside the authenticated plaintext, and canonical (sorted-key) JSON serialisation. |
-| `keyring.py` | Master-key wrapping: a random 32-byte master key sealed once under a passphrase-derived key and once under an offline recovery code, so unlocking costs one slow KDF derivation per session instead of one per operation. Used by `vault/` and `biometrics/`. |
-| `factors.py` | Factor protection split by input entropy — `hash_factor`/`verify_factor` (slow KDF, for passphrases and spoken phrases) versus `bind_factor`/`verify_bound_factor` (fast keyed MAC, for template digests and device ids). Also bounds KDF iteration counts above *and* below the sane range, so a tampered stored value can't force a cheap derivation or a years-long one. |
-| `rng.py` | `ManagedGenerator` / `new_generator`: seeds the vendored DRBG from `secrets.token_bytes` and transparently reseeds before upstream's own request/byte lifecycle limits, so a long-lived process doesn't crash mid-run. |
-| `throttle.py` | `AttemptLimiter`: exponential-backoff + lockout for *online* guessing against a running process, on top of what the slow KDF already does for *offline* guessing. State is caller-persisted, not held in memory. |
-| `attempt_store.py` | (since 1.3.7) The persistence adapter that actually wires `AttemptLimiter` into a stored container -- reads/writes a plain `"unlock_attempts"` field on whatever JSON dict a caller already has open (`vault.json`, biometrics `keyring.json`), so `vault/store/vault_service.py` and `biometrics/identity/keyring_access.py` persist throttle state the same way without sharing any other code. |
+| `vendor.py` | Makes the supplied flat-import BSR2 modules available and re-exports their interfaces |
+| `errors.py` | Application-facing integration exception types |
+| `context.py` | Context strings for records, templates, packages, key slots, and keyring wrappers |
+| `envelope.py` | Byte and JSON sealing/opening, including length-prefix padding |
+| `keyring.py` | Master-key creation, passphrase and recovery wrapping, unlocking, and rewrapping |
+| `factors.py` | Slow password-derived factors and fast master-key-bound factors |
+| `rng.py` | OS-entropy-seeded generator management and lifecycle handling |
+| `throttle.py` | Retry delays and lockout decisions |
+| `attempt_store.py` | Persisted attempt-state integration for Vault and Biometrics |
 
----
+## Context binding
 
-## Why this layer exists at all
+Context strings identify the application object a payload belongs to.
 
-BSR2 (vendored in `vendor/`) is a research construction that implements the
-actual cryptographic primitives — a sponge hash, a keyed MAC, a password KDF,
-an authenticated envelope, a DRBG. It is deliberately minimal and has no
-opinion about application concerns like "what should a template's context
-string look like" or "how many failed unlock attempts should trigger a
-lockout." Everything in this directory is that missing application layer,
-kept separate from the vendored files so upstream can be re-synced (see
-`vendor/README.md`) without touching a single line of integration logic.
+Opening uses the expected context. Moving an envelope into a different
+identity, modality, record, or key-slot context should fail authentication.
 
-## A note on trust
+This is object binding, not proof of the caller's identity or authorization.
 
-Every fix and hardening pass in this layer — bounding iteration counts,
-rejecting non-finite limiter state, uniform authentication-failure messages —
-reduces the ways *this code* can misuse BSR2. None of it increases confidence
-in BSR2 itself. BSR2's own `SECURITY.md` says it should not be the sole
-protection for credentials, identity records, or recovery secrets, and that
-caveat is inherited here without softening.
+## Padding
 
-As of 1.3.7, `attempt_store.py` closes the previously open item of actually
-wiring `AttemptLimiter` into a real unlock path; see
-`docs/BSR2_INTEGRATION.md`'s Attempt limiting section for specifics.
+The integration layer prefixes the original length and pads plaintext into
+256-byte buckets before sealing.
+
+Ciphertext length still reveals a bucket and other surrounding metadata.
+Padding is not complete traffic or size concealment.
+
+## Keyring model
+
+A random master key protects application payloads.
+
+Passphrase-derived and recovery-code-derived keys wrap that master key.
+Unlocking derives a wrapping key; subsequent operations in the same session
+reuse the unwrapped master key.
+
+Separate processes do not automatically share an unlocked session.
+
+KDF runtime depends on parameters and the execution environment. Historical
+timings are not fixed performance guarantees.
+
+## Factor handling
+
+`hash_factor()` and `verify_factor()` use the password-KDF path.
+
+`bind_factor()` and `verify_bound_factor()` use master-key-derived keyed
+binding.
+
+The fast binding path relies on protection of the master key. Device names,
+device identifiers, template digests, and similar values must not automatically
+be described as secret or high-entropy simply because they use this path.
+
+A keyed binding can prevent verification without the key; it does not make
+predictable input unpredictable.
+
+## Generator management
+
+`rng.py` seeds the BSR2 generator from operating-system entropy and manages
+request and byte lifecycle limits.
+
+The generator expands supplied entropy. It does not create entropy or
+establish independent cryptographic assurance.
+
+## Attempt limiting
+
+Vault and Biometrics persist attempt state in their JSON containers.
+
+The default limiter uses exponential delays and a lockout after repeated
+failures.
+
+This is not distributed coordination or an authenticated, tamper-resistant
+counter. It does not prevent offline guessing against copied files, and a
+party able to edit the stored state can reset it.
+
+## Error handling
+
+Application callers use the exception family in `errors.py`.
+
+Authentication errors and malformed-data errors are not universally
+interchangeable. Callers should handle the documented exception types rather
+than assuming every invalid input produces one uniform message.
+
+## Tests and trust
+
+Regression tests exercise integration behavior. They do not prove BSR2's
+cryptographic security or constant-time behavior throughout Python execution.
+
+BSR2 is custom, unreviewed research cryptography and must not be the sole
+protection for high-value or irreplaceable secrets.
+
+See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).

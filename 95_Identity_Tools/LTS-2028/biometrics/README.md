@@ -1,205 +1,229 @@
 # Biometrics
 
-Local, multimodal biometric enrollment and verification for
-BrisartIdentityTools. No cloud services, no third-party imaging/audio/ML
-libraries — decoding, feature extraction, and matching are all hand-rolled
-Python over the standard library.
+Research-grade, local enrollment and verification for voice, fingerprint, and
+video samples.
 
----
+The implementation uses standard-library Python for decoding, feature
+extraction, matching, storage, and integration with BSR2. It does not use a
+trained biometric model or a cloud recognition service.
 
-## What it does
+## Supported modalities
 
-Biometrics enrolls an identity against one or more of three modalities, then
-verifies a fresh capture against the stored templates:
-
-| Modality | Input format | Feature summary |
+| Modality | Input | Feature representation |
 | --- | --- | --- |
-| Voice | WAV (PCM) | Framed, windowed energy / zero-crossing-rate / band-energy DCT coefficients, averaged across the recording |
-| Fingerprint | PGM or PNG | Grid of local ridge-orientation (cos/sin) + magnitude estimates from Sobel gradients |
-| Video | BRVID (a minimal custom frame-sequence container — see below) | Per-frame block-mean spatial summary + frame-to-frame motion-energy summary |
+| Voice | Supported PCM WAV files | Averaged frame-level energy, zero-crossing, and DCT-based summary features |
+| Fingerprint | Supported PGM or PNG images | Grid-based orientation and gradient-magnitude features |
+| Video | BRVID grayscale frame sequences | Spatial block means and frame-difference motion summaries |
 
-Every extractor produces a **fixed-length vector** regardless of the input's
-original size or duration, so a 2-second and a 20-second recording — or a
-64x64 and a 4000x3000 image — compare on equal footing. Matching is
-**normalized Euclidean distance** (`biometrics/features/similarity.py`'s
-`distance_similarity`, in `(0.0, 1.0]`) against a per-modality default
-threshold (`biometrics/engine/modalities.py`), deliberately conservative:
-this is a research/reference implementation, not a tuned production biometric
-system, and there is no learned model.
+Supported input formats are narrower than all possible WAV, PNG, or video
+encodings. The codec modules define the accepted variants.
 
-Matching used plain cosine similarity through 1.0.x, which measured only the
-*angle* between two feature vectors and not how far apart their actual values
-were. For these magnitude-heavy feature spaces that let two different people's
-vectors score a near-perfect match; 1.1.0 switched all three modalities to the
-distance-based score above (see `docs/CHANGELOG.md` [1.1.0] for the measured
-before/after impostor scores).
+A fixed-length vector makes samples compatible with the matching function.
+It does not establish equal recognition quality across different resolutions,
+recording durations, devices, or capture conditions.
 
-### Liveness gate (video only)
+## Matching
 
-Since 1.3.0 the video modality has a **motion-presence liveness gate**
-(`biometrics/features/liveness.py`). A static clip — a photograph, or any clip
-built from a single repeated frame — scores zero motion and is refused at
-enrollment and reported as a non-match at verification, before its similarity
-score is ever trusted. `--allow-static` overrides the gate on both `enroll`
-and `verify`.
+Each modality uses `distance_similarity()` from
+`biometrics/features/similarity.py`, a normalized Euclidean-distance score.
 
-This is a **motion-presence check, not general anti-spoofing.** It does *not*
-catch a played-back video recording of the real person, a physically wobbled
-photograph, or a high-quality mask/deepfake with natural micro-motion. It
-closes only the specific "one repeated still frame" gap. The default threshold
-is also calibrated only against this project's own synthetic sample generator,
-not real camera hardware — see `docs/KNOWN_ISSUES.md` KI-001 and the
-`liveness.py` module docstring for the full scope statement.
+Scores are similarity measurements, not identity probabilities or confidence
+levels calibrated against a real-world population.
 
-### BRVID: why not just use a real video format
+Default acceptance thresholds come from
+`biometrics/engine/modalities.py`. The extractors and modality registry are
+authoritative for current vector dimensions and thresholds.
 
-There's no dependency on an actual video codec (no H.264, no container
-muxer) because none is needed here: video enrollment is a short sequence of
-grayscale frames, not general playback. `biometrics/codecs/video.py` defines
-the smallest format that can hold that — a fixed header (magic, width,
-height, frame count, frame rate) followed by concatenated raw grayscale
-frames, no per-frame compression. `record-video` assembles a BRVID file from
-individual PGM/PNG frames already on disk; there's no live camera capture,
-since that would need a platform-specific driver (i.e. a dependency).
+Historical before-and-after scores in the changelog refer to particular
+fixtures and releases. They are not general accuracy guarantees.
 
----
+## Fingerprint geometry
 
-## CLI
+Fingerprint extraction resizes input to the dimensions defined in
+`biometrics/features/fingerprint_features.py`:
 
-All commands are also reachable via the repo-root dispatcher:
-`python cli.py biometrics <command> ...`.
+- `TARGET_WIDTH = 128`
+- `TARGET_HEIGHT = 128`
+- `GRID_SIZE = 8`
+- Three values per grid cell.
+- Feature-vector length: 192.
+
+The `TEMPLATE_WIDTH` and `TEMPLATE_HEIGHT` values in
+`biometrics/config/settings.py` are not the dimensions used by this extractor.
+Changing those settings alone does not change fingerprint extraction geometry.
+
+## Video features and motion checks
+
+Video extraction uses a 6-by-6 grid:
+
+- 36 spatial-summary values.
+- 36 motion-summary values.
+- Total feature-vector length: 72.
+
+`MAX_FRAMES_SAMPLED` controls frame subsampling separately from vector length.
+The supplied extractor samples at most 60 frames for feature extraction.
+
+Enrollment and verification also use a video motion-presence gate unless
+`--allow-static` is supplied.
+
+This gate measures frame-to-frame pixel changes. It is not proof that the
+capture depicts a live person and is not general anti-spoofing. Replayed video,
+moving photographs, synthetic motion, and other moving inputs are outside
+what this check can reliably distinguish.
+
+The default motion threshold has not been calibrated against representative
+real-camera data. Voice and fingerprint matching do not provide equivalent
+liveness checks.
+
+## BRVID and synthetic video
+
+BRVID is a custom container holding a header and raw grayscale frames. It is
+not a general-purpose compressed video format.
+
+The `record-video` CLI command generates a synthetic BRVID sequence. It does
+not capture a camera or assemble positional image filenames.
+
+Correct usage:
 
 ```bash
-cd biometrics
+python cli.py biometrics record-video clip.brvid --seed my-seed --frames 12 --frame-rate 12
+python cli.py biometrics probe-video clip.brvid
+```
 
-# Generate deterministic synthetic samples for testing/demo purposes
-python app.py make-samples my-seed
-python app.py make-samples my-seed --modalities voice fingerprint --output-dir data/samples
+Different seeds can change generated parameters, but distinct seeds do not
+guarantee distinct feature vectors or visible motion. Some generated video
+parameters can produce zero drift.
 
-# Enroll an identity against one or more modalities at once
-python app.py enroll alice --label "Alice" \
+## CLI usage
+
+Run these commands from the selected application root, containing `cli.py`.
+
+```bash
+python cli.py biometrics --help
+
+# Generate deterministic synthetic samples.
+python cli.py biometrics make-samples my-seed --output-dir data/samples
+
+# Enroll using generated voice and fingerprint samples.
+python cli.py biometrics enroll alice --label "Alice" \
+  --voice data/samples/my-seed_voice.wav \
+  --fingerprint data/samples/my-seed_fingerprint.pgm
+
+# Verify one modality.
+python cli.py biometrics verify alice --voice data/samples/my-seed_voice.wav
+
+# Require all supplied modalities to match.
+python cli.py biometrics verify alice \
+  --voice data/samples/my-seed_voice.wav \
+  --fingerprint data/samples/my-seed_fingerprint.pgm
+
+# Accept any one supplied modality.
+python cli.py biometrics verify alice \
   --voice data/samples/my-seed_voice.wav \
   --fingerprint data/samples/my-seed_fingerprint.pgm \
-  --video data/samples/my-seed_video.brvid
+  --any-match
 
-# Verify a probe against a stored identity
-python app.py verify alice --voice probe.wav                     # single modality
-python app.py verify alice --voice probe.wav --fingerprint probe.pgm   # requires ALL by default
-python app.py verify alice --voice probe.wav --fingerprint probe.pgm --any-match  # any ONE suffices
+# Inspect public metadata.
+python cli.py biometrics inspect alice
+python cli.py biometrics list
 
-# Skip the video liveness gate (score a static clip anyway)
-python app.py enroll alice --label "Alice" --video clip.brvid --allow-static
-python app.py verify alice --video clip.brvid --allow-static
-
-python app.py inspect alice     # non-secret summary: id, label, enrolled modalities
-python app.py list              # every enrolled identity
-python app.py delete alice
-
-# Build/inspect a BRVID clip from individual frame images
-python app.py record-video clip.brvid frame1.png frame2.png frame3.png
-python app.py probe-video clip.brvid
+# Delete an identity.
+python cli.py biometrics delete alice
 ```
 
-Re-enrolling an identity that already exists is refused outright — there is
-no overwrite flag. Delete the identity first if you need to replace its
-stored templates.
+For video enrollment:
 
-On first run in a fresh data directory, enroll/verify create a local
-keyring and prompt you to set a passphrase, printing a one-time recovery code
-to stderr. See **Storage Model** below.
-
----
-
-## Storage Model
-
-Templates are sealed under a local BSR2 keyring (`crypto/keyring.py`), the
-same master-key-wrapped-under-a-passphrase-and-recovery-code construction
-`vault/` uses. Unlocking runs the slow KDF once per session (via `getpass`);
-every template seal/open after that is fast. Each template is additionally
-bound to a context string naming the identity id and modality
-(`crypto/context.py`), so a template sealed for one identity or modality can
-never be swapped into another's slot — a moved envelope fails authentication
-instead of decrypting into the wrong place.
-
-The keyring itself (`keyring.json`) holds the BSR2-wrapped master key. Since
-1.3.2 it is written with owner-only (`0600`) permissions on POSIX platforms,
-and the loader warns to stderr if it is found more permissive than that (a
-no-op on Windows — see `common/atomic_io.py`'s docstring for why POSIX
-permission bits are not meaningfully enforceable there). This is filesystem
-defense-in-depth; BSR2's own encryption is what actually protects the wrapped
-key inside.
-
-Since 1.3.7, repeated failed unlock attempts against the biometrics
-keyring are throttled identically to the vault's own throttling (5
-attempts, exponential backoff, a 15-minute lockout), via
-`biometrics/identity/keyring_access.py`. Both the CLI and the GUI unlock
-through this same module, so neither interface can be used to bypass the
-throttling the other enforces.
-
-A separate, weaker **device binding** (`biometrics/identity/device_key.py`)
-records a keyed-MAC of machine-specific fingerprint material (hostname,
-platform, MAC address) under the master key, as one more thing an attacker
-must also reproduce on a different machine. It is explicitly *not* a strong
-boundary and *not* a stored key file — only a bound value is kept, never a
-recoverable device key.
-
-Identity **records** (id, label, which modalities are enrolled) stay
-readable in the clear so `list`/`inspect` work without unlocking. Template
-**payloads** — the actual feature vectors — are what's encrypted.
-
-The full threat model — what BSR2 does and does not protect against here —
-is documented centrally in
-[docs/BSR2_INTEGRATION.md](../docs/BSR2_INTEGRATION.md). Read that before
-relying on this for anything real.
-
----
-
-## Repository Layout
-
-```text
-biometrics/
-├── app.py                       CLI entry point (keyring unlock, enroll/verify/attach)
-├── config/
-│   └── settings.py              paths, template dimensions, default threshold
-├── codecs/                      format decode/encode, zero dependencies
-│   ├── dsp.py                   framing, windowing, DCT, band energies (voice)
-│   ├── image_loader.py          dispatches to pgm.py / png.py by extension
-│   ├── image_tools.py           resize, crop, normalize, block-grid-means, Sobel
-│   ├── pgm.py                   binary PGM (P5) reader/writer
-│   ├── png.py                   minimal 8-bit grayscale PNG reader/writer
-│   ├── video.py                 BRVID container reader/writer
-│   └── wave_tools.py            WAV PCM reader/writer (8/16/32-bit, mono downmix)
-├── engine/
-│   ├── attachments.py           attach arbitrary raw files to an identity
-│   ├── bulk_attachments.py      chunked multi-file/folder/drive attachments
-│   ├── enrollment.py            extract -> (liveness gate) -> seal -> attach template
-│   ├── modalities.py            per-modality dispatch table (extract/compare/threshold)
-│   └── verification.py          open template -> (liveness gate) -> extract probe -> score
-├── features/
-│   ├── similarity.py            shared normalized-Euclidean distance_similarity()
-│   ├── voice_features.py        MFCC-adjacent summary vector + distance compare
-│   ├── fingerprint_features.py  ridge-orientation grid + distance compare
-│   ├── video_features.py        spatial + motion-energy grid + distance compare
-│   └── liveness.py              video motion-presence gate (1.3.0)
-├── identity/
-│   ├── device_key.py            weak machine-fingerprint binding (defense in depth only)
-│   ├── identity_record.py       record shape/validation, no file I/O
-│   ├── identity_store.py        one JSON file per identity, atomic writes
-│   └── keyring_access.py        shared, attempt-throttled keyring unlock (1.3.7; CLI + GUI)
-├── reports/
-│   └── report_writer.py         append-only enrollment/verification audit reports
-├── samples/
-│   └── sample_generator.py      deterministic synthetic voice/fingerprint/video samples
-└── tests/
+```bash
+python cli.py biometrics enroll video-demo --label "Video Demo" --video clip.brvid
+python cli.py biometrics verify video-demo --video clip.brvid
 ```
 
----
+A static synthetic clip can be rejected by the motion gate. `--allow-static`
+explicitly bypasses that gate; it does not make the input a live capture.
 
-## Status
+```bash
+python cli.py biometrics enroll static-demo --label "Static Demo" \
+  --video clip.brvid --allow-static
 
-Research-grade. Matching is threshold-based hand-rolled DSP, not a trained
-model. The video liveness gate (1.3.0) closes the "static repeated frame" gap
-only and is uncalibrated against real cameras; no other modality has any
-liveness or anti-spoofing check, and a recording or synthetic sample that
-reproduces the feature vector closely enough will still verify. Do not treat
-this as a production biometric authentication system.
+python cli.py biometrics verify static-demo --video clip.brvid --allow-static
+```
+
+Re-enrollment of an existing identity is refused. There is no overwrite flag.
+Deleting an identity before replacement also removes its stored identity state;
+it is not an in-place template update.
+
+## Storage and keyring
+
+Identity records contain readable metadata such as the identity identifier,
+label, and enrolled modalities.
+
+Template payloads are sealed under a local master key. A keyring wraps that
+master key under a passphrase-derived key and an offline recovery-code-derived
+key.
+
+Operations that need the master key load or create the keyring and prompt for
+the required secret material. Creating a new keyring displays its recovery
+code once.
+
+The CLI and GUI use the shared passphrase-unlock path in
+`biometrics/identity/keyring_access.py`, including persisted attempt limiting.
+
+Attempt state is stored in the keyring JSON. It is not protection against an
+attacker who can copy or edit that file and perform offline guesses.
+
+POSIX file-mode hardening is best effort. Windows access control requires
+appropriate filesystem permissions outside these POSIX mode checks.
+
+Device binding records a keyed value derived from machine information. It is
+a weak additional check, not hardware-backed identity or an independent
+security boundary.
+
+## Reports
+
+`biometrics/reports/report_writer.py` writes separate JSON files for enrollment
+and verification events.
+
+Verification reports retain:
+
+- Identity identifier and event metadata.
+- Overall match outcome.
+- Per-modality name, similarity score, threshold, and match outcome.
+
+They do not retain feature vectors or sealed template bytes.
+
+They also do not retain the complete video motion/liveness result, including
+its motion energy and gate details. A stored report therefore cannot fully
+reconstruct why a video gate passed or failed.
+
+New-file-per-event writing is append-style behavior, not an enforced
+append-only or authenticated audit store. A party with filesystem write access
+can alter or remove reports.
+
+## Attachments
+
+Arbitrary file bytes can be attached to an identity. Bulk attachments use
+chunks and a manifest.
+
+See [file and bundle encryption](../docs/FULL_FILE_ENCRYPTION.md) for memory,
+temporary-file, throughput, and restore limitations.
+
+## Module map
+
+- `app.py`: CLI parsing and command orchestration.
+- `codecs/`: supported image, audio, and BRVID decoding.
+- `features/`: extraction, similarity, and video motion checks.
+- `engine/`: enrollment, verification, modality dispatch, and attachments.
+- `identity/`: record validation, storage, device binding, and keyring access.
+- `reports/`: report construction and persistence.
+- `samples/`: deterministic synthetic samples.
+- `tests/`: regression tests for the supplied application components.
+
+## Security status
+
+This is a research implementation, not production biometric authentication.
+
+BSR2 is unreviewed research cryptography. Matching thresholds and motion
+checks are not substitutes for independently validated authentication controls.
+
+See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md) and
+../docs/KNOWN_ISSUES.md.

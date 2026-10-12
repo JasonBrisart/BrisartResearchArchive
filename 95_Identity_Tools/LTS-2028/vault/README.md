@@ -1,233 +1,175 @@
 # Vault
 
-Local identity record storage for BrisartIdentityTools, encrypted at rest with
-BSR2.
+Local JSON record storage with BSR2-sealed payloads.
 
-Vault stores identity records, notes, metadata, biometric references, and
-related information in a single local JSON file. Record **values** are sealed
-with authenticated encryption; record **shells** stay readable so the vault
-can be listed without unlocking.
+Vault separates readable record metadata from protected values. It also
+supports raw file records and chunked bundles.
 
-No cloud services.
-No external infrastructure.
-No third-party Python packages.
-Standard-library Python only.
+## Storage model
 
----
+The vault JSON contains:
 
-## Purpose
+- A keyring with wrapped master-key material.
+- Record identifiers and record-shell metadata.
+- Sealed record payloads.
+- Persisted unlock-attempt state.
 
-Vault is intended to provide:
+A random 32-byte master key protects payloads. The keyring wraps that key under
+both a passphrase-derived key and a recovery-code-derived key.
 
-- local identity records
-- biometric template references
-- verification metadata
-- audit logging
-- local record management
+Payload context strings bind sealed data to its record identifier, kind, and
+label. Integration-layer padding groups plaintext lengths into 256-byte
+buckets; it does not hide all size information.
 
----
+## Information visible while locked
 
-## Storage Model
+Record-shell metadata remains readable, including identifiers, kinds, labels,
+and timestamps.
 
-Encryption is [BSR2](https://github.com/JasonBrisart/BrisartSecurityResearch),
-vendored byte-identical in `vendor/` at the repository root. No cryptographic
-primitive is implemented here.
+File records can additionally expose original filenames, sizes, and plaintext
+SHA-256 fingerprints. Such fingerprints can reveal that a stored file matches
+a known candidate even when its contents are sealed.
 
-`vendor/` is pinned by `tests/test_bsr2_vendor_integrity.py`, which SHA-256s
-every vendored file against a byte-for-byte digest and fails the suite if any
-file drifts, is edited, or an unpinned `.py` file appears — so an accidental
-edit to `vendor/` is caught by CI. See `vendor/README.md` and
-`docs/BSR2_INTEGRATION.md`.
+Do not place secrets in labels or assume all metadata is encrypted.
 
-A vault holds a **keyring**: a random 32-byte master key, sealed once under a
-passphrase-derived key and once under an offline recovery code. Record payloads
-are encrypted under that master key, never directly under the passphrase.
+Listing records does not require unlocking. Reading protected payloads does.
 
-The shape below is real output from a sealed vault, abbreviated:
+## Unlocking and recovery
 
-```json
-{
-  "format": "brisart-identity-tools/vault-file/v1",
-  "keyring": {
-    "format": "brisart-identity-tools/bsr2-keyring/v1",
-    "kdf": "BSR2/derive_password_key",
-    "iterations": 10000,
-    "master_key_check": "...",
-    "passphrase": { "salt": "...", "wrapped_master_key": { "algorithm": "BSR2-ARX-SPONGE-ETM", "...": "..." } },
-    "recovery":   { "salt": "...", "wrapped_master_key": { "algorithm": "BSR2-ARX-SPONGE-ETM", "...": "..." } }
-  },
-  "records": {
-    "a1b2c3d4e5f6...": {
-      "format": "brisart-identity-tools/vault-record/v1",
-      "record_id": "a1b2c3d4e5f6...",
-      "kind": "identity",
-      "label": "CI Record",
-      "created_at": "2026-08-04T00:42:53+00:00",
-      "updated_at": "2026-08-04T00:42:53+00:00",
-      "payload": {
-        "algorithm": "BSR2-ARX-SPONGE-ETM",
-        "ciphertext": "5a109452b1662b15...",
-        "nonce": "...",
-        "salt": "...",
-        "tag": "..."
-      }
-    }
-  }
-}
-```
+Unlocking derives a wrapping key and opens the master-key wrapper. Subsequent
+operations within the same unlocked service session reuse the master key.
 
-`iterations` is recorded in the keyring and **validated on read**, so a
-tampered header cannot ask for a cheap derivation. `master_key_check` lets a
-wrong passphrase be reported as such instead of surfacing as corrupt records.
+KDF runtime depends on iteration count, hardware, interpreter, and system
+load. Earlier documentation contains development-machine measurements, not a
+fixed runtime guarantee.
 
-Each payload is bound to a context string derived from its record id, kind, and
-label, so a ciphertext cannot be moved between records without failing
-authentication. Plaintext is padded to 256-byte blocks before sealing, so
-ciphertext length does not reveal the exact length of a stored value.
+Separate CLI invocations do not share an unlocked in-memory session.
 
-Files, folders, and whole drives can also be sealed into the vault as file
-records and chunked bundles (any size), via the `encrypt-file` / `encrypt-paths`
-CLI commands or the GUI's "Files / Folders / Drives" tab. See
-[docs/README_FULL_FILE_ENCRYPTION.md](../docs/README_FULL_FILE_ENCRYPTION.md).
+Creating a keyring displays a recovery code once. The recovery code provides
+another route to the same master key; it is not a lower-privilege credential.
 
-### What is readable while locked
+If neither the passphrase nor recovery code is available, this implementation
+provides no additional recovery route.
 
-`record_id`, `kind`, `label`, and timestamps — which is what `list` reports,
-so it does not need a passphrase.
+## Attempt limiting
 
-This is a deliberate trade-off. It means the vault discloses that a record
-labelled `bank-login` exists while protecting its value. Encrypting labels would
-require decrypting every record for any lookup, which would make listing
-unusable. If a label is itself sensitive, do not put the secret in the label.
+Passphrase and recovery-code unlocks share persisted attempt state.
 
-`get` does read a record's value, so it unlocks and pays the KDF cost.
+The default limiter uses:
 
-### Unlock cost
+- Exponential retry delays starting at one second.
+- A maximum retry delay of 300 seconds.
+- A 900-second lockout after the fifth failure.
 
-BSR2's password KDF is slow on purpose: roughly **one minute** per derivation.
-`init` derives both the passphrase and recovery wrappers, so it costs about
-twice that. That is the KDF working as intended, not a hang.
+Attempt state is stored in the vault JSON. It is not distributed coordination,
+an authenticated counter, or protection against offline guessing after a file
+has been copied. A party able to edit the state can reset it.
 
-Key wrapping is what makes this workable. One derivation unwraps the master key,
-and every record operation after that is fast.
+## File permissions
 
-Since 1.3.7, repeated failed unlock attempts (via either the passphrase
-or the recovery code) are throttled: after 5 failures the vault refuses
-further attempts with an exponential backoff, capping at a 15-minute
-lockout. This state lives in a plain `"unlock_attempts"` field inside
-`vault.json` itself (see `crypto/attempt_store.py`), and a caller who has
-exhausted the budget is refused immediately -- before the slow KDF even
-runs.
+Vault writes request owner-only `0600` permissions on POSIX platforms through
+the shared atomic-write helper.
 
-### Recovery
+This is best effort:
 
-`init` prints a recovery code **once**: 40 characters of Crockford base32, 200
-bits of entropy. Write it down and store it offline.
+- Permissions are tightened after replacement.
+- Permission-setting failures are not treated as failed data writes.
+- Windows POSIX-mode checks do not enforce Windows ACLs.
+- Existing permissive files can produce an advisory warning.
 
-- It is a **second full-strength path** to the master key. Anyone holding it has
-  the access the passphrase gives.
-- It is never stored anywhere, which is why it cannot be shown again.
-- **Losing both the passphrase and the recovery code means the vault cannot be
-  opened by anyone, including you.** There is no third path, by design.
+Filesystem access control remains a deployment responsibility.
 
----
+## CLI usage
 
-## Quick Start
+Run from the selected application root.
 
-`--vault` is a **global** option, so it goes before the subcommand.
-
-Initialize a vault (prompts for a passphrase, prints the recovery code):
+`--vault` is a global option and belongs before the subcommand.
 
 ```bash
+# Initialize a vault.
 python -m vault.app --vault data/vaults/main_vault.json init
-```
 
-Create or update a record:
-
-```bash
+# Create a record.
 python -m vault.app --vault data/vaults/main_vault.json upsert \
   "Researcher One" --kind identity --payload '{"value": "example"}'
-```
 
-Re-running `upsert` with the same `--record-id` updates that record's payload
-in place instead of creating a new one; omitting `--record-id` always creates
-a new record.
-
-List records (no passphrase needed):
-
-```bash
+# List readable metadata without unlocking.
 python -m vault.app --vault data/vaults/main_vault.json list
-```
 
-Read a record (unlocks, so expect the KDF cost):
-
-```bash
+# Read a protected payload.
 python -m vault.app --vault data/vaults/main_vault.json get RECORD_ID
-```
 
-Delete a record:
-
-```bash
+# Delete a record.
 python -m vault.app --vault data/vaults/main_vault.json delete RECORD_ID
-```
 
-Batch-create or update many records from a JSON array file in one pass (one
-save instead of one per item):
-
-```bash
+# Create or update records from a JSON array.
 python -m vault.app --vault data/vaults/main_vault.json batch-upsert items.json
 ```
 
-All commands are also reachable via the repo-root dispatcher, e.g.
-`python cli.py vault --vault data/vaults/main_vault.json list`.
+Replace `RECORD_ID` with an actual identifier returned by the application.
 
-### Scripting
+Supplying `--record-id` to `upsert` targets an existing identifier. Omitting it
+creates a new identifier.
 
-`vault/app.py` always prompts for the passphrase via `getpass`, and there is
-currently no environment-variable bypass built into the CLI. `getpass` falls
-back to a plain stdin read (with a warning) when stdin isn't a terminal, so
-piping the passphrase in works for non-interactive use:
+The dispatcher provides the same application interface:
 
 ```bash
-printf 'my-passphrase\n' | python -m vault.app --vault data/vaults/main_vault.json list
+python cli.py vault --vault data/vaults/main_vault.json list
 ```
 
-Piped input lands in shell history and process listings just like an
-environment variable would; prefer the interactive prompt for anything real.
+## Files and bundles
 
----
+```bash
+python -m vault.app --vault data/vaults/main_vault.json encrypt-file report.pdf
 
-## Repository Layout
+python -m vault.app --vault data/vaults/main_vault.json decrypt-file \
+  RECORD_ID restored-report.pdf
 
-```text
-vault/
-├── app.py
-├── config/
-│   └── settings.py
-├── core/
-│   ├── ids.py
-│   └── time_tools.py
-├── records/
-│   └── record_model.py
-├── reports/
-│   └── audit_log.py
-├── store/
-│   ├── bulk_file_service.py
-│   ├── vault_file.py
-│   └── vault_service.py
-├── tests/
-└── README.md
+python -m vault.app --vault data/vaults/main_vault.json encrypt-paths \
+  report.pdf Photos --label research-bundle
+
+python -m vault.app --vault data/vaults/main_vault.json restore-paths \
+  RECORD_ID restored-output
 ```
 
----
+Chunking bypasses the single-envelope payload limit. It does not provide
+unlimited-size processing: the implementation still requires memory, temporary
+disk space, storage space, and substantial processing time.
 
-## Status
+A selected drive root is treated as a directory tree of readable files, not as
+a sector-level disk image or complete system backup.
 
-Part of the production/stable release line. Stored formats are stable; vaults
-written by earlier betas load unchanged.
+See [file and bundle encryption](../docs/FULL_FILE_ENCRYPTION.md).
 
-BSR2 itself is unreviewed research cryptography. Upstream's SECURITY.md states
-it should not be used as the sole protection for credentials, identity records,
-or recovery secrets, and that caveat is inherited here rather than softened. The
-full threat model, including what this encryption does not protect against, is
-in [docs/BSR2_INTEGRATION.md](../docs/BSR2_INTEGRATION.md).
+## Automation
+
+The CLI uses interactive secret prompts for operations that need unlocking.
+It does not provide a dedicated environment-variable credential interface.
+
+The `list` command does not require a passphrase, so piping a passphrase into
+`list` is not an unlock example.
+
+For controlled automation, use the application API with an explicitly managed
+secret source rather than embedding credentials in shell commands.
+
+## Layout
+
+- `app.py`: CLI.
+- `config/`: default storage settings.
+- `core/`: identifiers and record timestamps.
+- `records/`: record shape and validation.
+- `reports/`: local audit files.
+- `store/`: vault persistence, service operations, and bulk bundles.
+- `tests/`: regression tests.
+
+## Security status
+
+BSR2 is custom, unreviewed research cryptography. A stable release label or
+passing regression suite does not establish independent cryptographic
+assurance.
+
+Local audit files are not an independently protected evidence store.
+Concurrent writers and filesystem-level attackers require controls beyond
+these application helpers.
+
+See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).
