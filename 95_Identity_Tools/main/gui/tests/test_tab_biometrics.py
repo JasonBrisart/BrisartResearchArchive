@@ -4,7 +4,8 @@ File: gui/tests/test_tab_biometrics.py
 Purpose
 -------
 Tests for gui.tabs.tab_biometrics.BiometricsTab -- the Biometrics-tab slice of
-KI-002's remaining gap ("gui/tabs/*.py ... still has no direct coverage").
+the gui/tabs/*.py coverage that closed KI-002 (now listed as resolved in
+docs/KNOWN_ISSUES.md).
 
 Verifies: gui/tabs/tab_biometrics.py, biometrics/identity/identity_store.py,
 biometrics/identity/identity_record.py, biometrics/engine/attachments.py,

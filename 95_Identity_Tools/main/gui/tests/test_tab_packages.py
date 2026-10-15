@@ -4,7 +4,8 @@ File: gui/tests/test_tab_packages.py
 Purpose
 -------
 Tests for gui.tabs.tab_packages.PackagesTab -- the Packages-tab slice of
-KI-002's remaining gap ("gui/tabs/*.py ... still has no direct coverage").
+the gui/tabs/*.py coverage that closed KI-002 (now listed as resolved in
+docs/KNOWN_ISSUES.md).
 
 Verifies: gui/tabs/tab_packages.py, packages/package.py.
 Contains 8 test case(s) across 1 TestCase class(es).

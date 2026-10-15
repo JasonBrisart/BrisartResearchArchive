@@ -3,9 +3,9 @@ File: gui/tests/test_tab_vault.py
 
 Purpose
 -------
-Tests for gui.tabs.tab_vault.VaultTab -- the piece of KI-002's remaining gap
-("gui/tabs/*.py ... still has no direct coverage") that this file closes for
-the Vault tab specifically.
+Tests for gui.tabs.tab_vault.VaultTab -- the Vault-tab slice of the
+gui/tabs/*.py coverage that closed KI-002 (now listed as resolved in
+docs/KNOWN_ISSUES.md).
 
 Verifies: gui/tabs/tab_vault.py, vault/store/vault_file.py,
 vault/store/vault_service.py.
@@ -22,9 +22,9 @@ call Tkinter's blocking wait_window()) are intentionally NOT exercised here,
 since there is no user present in an automated test run to dismiss them; that
 would hang the suite rather than test it. Those click-through workflows
 (_init_vault, _unlock, _new_record, _view_selected, _encrypt_selected_paths,
-_decrypt_selected_bundle, ...) remain an open gap, consistent with how KI-002's
-"Next step" already scoped this pass to regression coverage for existing logic,
-not full workflow simulation.
+_decrypt_selected_bundle, ...) remain untested, consistent with KI-002's
+resolution, which scoped this coverage to regression tests for existing logic
+rather than full workflow simulation.
 
 Uses the same injected-master-key convention as
 vault/tests/test_bulk_file_service.py: a real VaultService bound to a real
