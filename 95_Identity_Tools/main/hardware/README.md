@@ -28,6 +28,8 @@ hardware/
 ├── biometric/
 │   ├── placeholder_biometric.py
 │   └── fingerprint_scanner.py
+├── drivers/
+│   └── placeholder_driver.py
 ├── exceptions.py
 ├── hardware_manager.py
 └── registry.py
@@ -105,6 +107,10 @@ Placeholder implementations demonstrate interface shape.
 
 They are not physical-device drivers, real captures, or evidence of hardware
 compatibility.
+
+`drivers/placeholder_driver.py` is different: it is an intentionally empty
+module that reserves the `drivers/` folder for future low-level drivers. It
+defines no classes or functions.
 
 ## Dependencies
 

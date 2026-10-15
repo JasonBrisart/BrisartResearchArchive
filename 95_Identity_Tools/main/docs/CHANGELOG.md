@@ -493,7 +493,7 @@ integration for its full support lifetime.
   packages and zero OS calls of its own**. This file makes no `ctypes`
   call and contains no platform check anywhere in its source.
 - **`hardware/base/pcsc_binding.py`**: `PCSCBinding`, an abstract
-  five-method contract (`establish_context`, `release_context`,
+  seven-method contract (`establish_context`, `release_context`,
   `list_readers`, `connect`, `disconnect`, `get_atr`, `transmit`) for the
   one operation this project deliberately does not implement: the raw
   call into an operating system's own PC/SC service (`winscard.dll` on
