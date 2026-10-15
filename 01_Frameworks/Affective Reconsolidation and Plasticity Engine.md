@@ -2,12 +2,12 @@
 
 ## A Neurocognitive Model of Emotion-Driven Memory Updating and Structural Plasticity
 
-**Jason Brisart**  
-Brisart Research Archive  
-[jason@brisartresearcharchive.com](mailto:jason@brisartresearcharchive.com)  
-[www.brisartresearcharchive.com](http://www.brisartresearcharchive.com/)
-
-**August 2026**
+- **Author:** Jason Brisart
+- **Affiliation:** Brisart Research Archive
+- **Contact:** [jason@brisartresearcharchive.com](mailto:jason@brisartresearcharchive.com)
+- **ORCID / Website:** [Brisart Research Archive](http://www.brisartresearcharchive.com/)
+- **Version:** v1.0
+- **Date:** August 2026
 
 ## Abstract
 
