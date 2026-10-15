@@ -84,7 +84,8 @@ Edge cases
   EnvelopeAuthenticationError; other exceptions may still propagate.
 - open_json(): translates (UnicodeDecodeError, json.JSONDecodeError) into
   Bsr2IntegrationError; other exceptions may still propagate.
-- seal_json(): translates (TypeError, ValueError) into Bsr2IntegrationError; other exceptions may still propagate.
+- seal_json(): translates (TypeError, ValueError) into Bsr2IntegrationError;
+  other exceptions may still propagate.
 
 Known limitations
 -----------------

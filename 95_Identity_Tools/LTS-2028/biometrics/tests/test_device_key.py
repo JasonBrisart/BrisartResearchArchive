@@ -10,7 +10,7 @@ Contains 6 test case(s) across 2 TestCase class(es).
 
 Design notes:
 
-Fast: bind_device / verify_device use the keyed-MAC factor path (~15 ms), not
+Fast: bind_device / verify_device use the keyed-MAC factor path (hardware-dependent runtime), not
 the slow KDF. An injected 32-byte master key stands in for a real unlocked
 device key.
 

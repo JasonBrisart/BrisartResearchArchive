@@ -96,14 +96,18 @@ Edge cases
 - command_open() raises AppError.
 - Run as a script, the process exit status is main()'s return value (via
   ``raise SystemExit(main())``).
-- _load_state(): translates (OSError, json.JSONDecodeError) into AppError; other exceptions may still propagate.
-- _load_state(): translates (PackageError, CustodyError) into AppError; other exceptions may still propagate.
+- _load_state(): translates (OSError, json.JSONDecodeError) into AppError;
+  other exceptions may still propagate.
+- _load_state(): translates (PackageError, CustodyError) into AppError; other
+  exceptions may still propagate.
 - command_add_recipient(): translates (PackageError, PackageAuthorizationError,
   RecipientIdentityError) into AppError; other exceptions may still propagate.
 - command_create(): translates (PackageError, RecipientIdentityError) into
   AppError; other exceptions may still propagate.
-- command_create(): translates json.JSONDecodeError into AppError; other exceptions may still propagate.
-- command_open(): translates PackageAuthorizationError into AppError; other exceptions may still propagate.
+- command_create(): translates json.JSONDecodeError into AppError; other
+  exceptions may still propagate.
+- command_open(): translates PackageAuthorizationError into AppError; other
+  exceptions may still propagate.
 - command_remove_recipient(): translates (PackageError,
   PackageAuthorizationError) into AppError; other exceptions may still propagate.
 - main(): catches AppError and handles it in place; it does not propagate to

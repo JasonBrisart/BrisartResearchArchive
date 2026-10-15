@@ -127,7 +127,8 @@ Edge cases
   tampered with: stored hash does not match its recomputed content."
 - _load_state(): translates (OSError, json.JSONDecodeError) into
   IntegrityLedgerError; other exceptions may still propagate.
-- append_checkpoint(): translates OSError into IntegrityLedgerError; other exceptions may still propagate.
+- append_checkpoint(): translates OSError into IntegrityLedgerError; other
+  exceptions may still propagate.
 
 Known limitations
 -----------------

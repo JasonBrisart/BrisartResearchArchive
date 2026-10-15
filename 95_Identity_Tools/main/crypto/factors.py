@@ -131,7 +131,8 @@ Edge cases
   length."
 - _parse_kdf(), _parse_mac(): translates BrisartPrimitiveError into
   Bsr2IntegrationError; other exceptions may still propagate.
-- _parse_kdf(): translates ValueError into Bsr2IntegrationError; other exceptions may still propagate.
+- _parse_kdf(): translates ValueError into Bsr2IntegrationError; other
+  exceptions may still propagate.
 - is_bound_factor(), is_factor_hash(), needs_rehash(), verify_bound_factor(),
   verify_factor(): catches Bsr2IntegrationError and handles it in place; it
   does not propagate to the caller.

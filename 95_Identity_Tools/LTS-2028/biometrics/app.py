@@ -195,10 +195,12 @@ Edge cases
   command_verify(): translates IdentityStoreError into AppError; other exceptions may still propagate.
 - command_attach_paths(), command_restore_paths(): translates
   bulk_attachments.BulkAttachmentError into AppError; other exceptions may still propagate.
-- command_enroll(): translates enrollment.EnrollmentError into AppError; other exceptions may still propagate.
+- command_enroll(): translates enrollment.EnrollmentError into AppError; other
+  exceptions may still propagate.
 - command_list(): catches IdentityStoreError and handles it in place; it does
   not propagate to the caller.
-- command_verify(): translates verification.VerificationError into AppError; other exceptions may still propagate.
+- command_verify(): translates verification.VerificationError into AppError;
+  other exceptions may still propagate.
 - main(): catches AppError and handles it in place; it does not propagate to
   the caller.
 

@@ -83,8 +83,10 @@ Edge cases
   attachment named {...}."
 - extract_attachment_bytes() raises AttachmentError: "attachment {...} for
   identity {...} failed to authenticate: {...}"
-- attach_bytes(): translates Exception into AttachmentError; other exceptions may still propagate.
-- attach_bytes(): translates IdentityRecordError into AttachmentError; other exceptions may still propagate.
+- attach_bytes(): translates Exception into AttachmentError; other exceptions
+  may still propagate.
+- attach_bytes(): translates IdentityRecordError into AttachmentError; other
+  exceptions may still propagate.
 - extract_attachment_bytes(): translates Bsr2IntegrationError into
   AttachmentError; other exceptions may still propagate.
 

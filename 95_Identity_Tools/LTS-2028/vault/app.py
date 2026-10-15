@@ -123,7 +123,8 @@ Edge cases
   VaultFileError) into AppError; other exceptions may still propagate.
 - command_restore_paths(): translates (BulkFileServiceError, VaultServiceError)
   into AppError; other exceptions may still propagate.
-- command_upsert(): translates json.JSONDecodeError into AppError; other exceptions may still propagate.
+- command_upsert(): translates json.JSONDecodeError into AppError; other
+  exceptions may still propagate.
 - main(): catches AppError and handles it in place; it does not propagate to
   the caller.
 

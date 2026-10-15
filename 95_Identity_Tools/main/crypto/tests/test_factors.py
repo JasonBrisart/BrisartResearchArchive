@@ -12,10 +12,10 @@ Design notes:
 
 Two factor families are tested:
 
-- The keyed-MAC path (bind_factor / verify_bound_factor) is FAST (~15 ms) and
-  is exercised thoroughly here.
-- The slow-KDF path (hash_factor / verify_factor) is SLOW (hardware-dependent KDF per
-  derivation). Its parse-time validation (the iteration-count ceiling/floor
+- The keyed-MAC path (bind_factor / verify_bound_factor) is exercised here
+  without password derivation; elapsed time depends on the environment.
+- The slow-KDF path (hash_factor / verify_factor) performs expensive password
+  derivation, with hardware-dependent runtime. Its parse-time validation (the iteration-count ceiling/floor
   added in 0.8.0-beta) is tested WITHOUT running the KDF by handing
   verify_factor a hand-built, structurally-valid hash string with an
   out-of-range iteration count -- _parse_kdf rejects it before any derivation.
@@ -165,7 +165,7 @@ class FactorHashValidationTests(unittest.TestCase):
 
 
 class FactorHashKdfRoundTripTests(unittest.TestCase):
-    """SLOW: exercises the real password KDF (hardware-dependent KDF per derivation)."""
+    """SLOW: exercises the real password KDF (hardware-dependent runtime per derivation)."""
 
     def test_hash_and_verify_round_trip(self):
         encoded = factors.hash_factor("correct horse battery staple")

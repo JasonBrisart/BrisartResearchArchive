@@ -108,7 +108,8 @@ Edge cases
   caller.
 - restore_large_bytes(): translates (UnicodeDecodeError, json.JSONDecodeError)
   into BulkAttachmentError; other exceptions may still propagate.
-- restore_large_bytes(): translates AttachmentError into BulkAttachmentError; other exceptions may still propagate.
+- restore_large_bytes(): translates AttachmentError into BulkAttachmentError;
+  other exceptions may still propagate.
 
 Known limitations
 -----------------

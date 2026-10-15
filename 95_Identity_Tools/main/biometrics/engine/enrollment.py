@@ -74,10 +74,12 @@ Edge cases
   from {...}: {...}"
 - enroll_identity() raises EnrollmentError: "at least one modality source is
   required."
-- _require_video_liveness(): translates LivenessError into EnrollmentError; other exceptions may still propagate.
+- _require_video_liveness(): translates LivenessError into EnrollmentError;
+  other exceptions may still propagate.
 - _require_video_liveness(): translates video_codec.VideoFormatError into
   EnrollmentError; other exceptions may still propagate.
-- enroll_modality(): translates (OSError, ValueError) into EnrollmentError; other exceptions may still propagate.
+- enroll_modality(): translates (OSError, ValueError) into EnrollmentError;
+  other exceptions may still propagate.
 - enroll_modality(): catches modalities.UnsupportedModalityError for cleanup or
   bookkeeping, then re-raises it unchanged.
 

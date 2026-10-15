@@ -12,9 +12,9 @@ Contains 5 test case(s) across 1 TestCase class(es).
 
 Design notes:
 
-SLOW: setUpClass() creates one real vault (VaultService.create(), which pays
-BSR2's real hardware-dependent KDF derivation twice -- once for the passphrase wrapper,
-once for the recovery-code wrapper). Individual test methods that simulate a
+SLOW: setUpClass() creates one real vault through VaultService.create().
+This performs two BSR2 password derivations: one for the passphrase wrapper
+and one for the recovery-code wrapper. Runtime depends on the environment. Individual test methods that simulate a
 LOCKED-OUT container do NOT pay any further KDF cost, because
 check_and_get_state() raises before a Keyring is even constructed -- that
 fast-refusal property is itself part of what this module verifies. Exactly two

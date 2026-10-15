@@ -12,7 +12,7 @@ Contains 4 test case(s) across 1 TestCase class(es).
 Design notes:
 
 Fast: build_recipient_verifier / verify_recipient_master_key use the keyed-MAC
-factor path (~15 ms), not the slow KDF.
+factor path (hardware-dependent runtime), not the slow KDF.
 
 Communication / relationships
 -----------------------------

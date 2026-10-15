@@ -3,9 +3,9 @@ File: version.py
 
 Purpose
 -------
-Single source of truth for the ecosystem version. This module defines no
-functions or classes; it exists for the module-level values or package marker
-it provides.
+Single source of truth for this application tree's release version.
+This module defines the __version__ string and no functions or classes.
+It is a plain module, not a package marker.
 
 Design notes:
 

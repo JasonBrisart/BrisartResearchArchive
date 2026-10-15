@@ -16,7 +16,7 @@ Contains 9 test case(s) across 1 TestCase class(es).
 Design notes:
 
 Unlike the vault file-record tests, these do not need a real Keyring unlock (no
-hardware-dependent KDF BSR2 KDF cost per test): attach/extract only need a 32-byte
+BSR2 password-derivation cost per test): attach/extract only need a 32-byte
 master key, which attachments.py treats identically regardless of how it was
 obtained, so a plain secrets.token_bytes(32) exercises the exact same
 sealing/opening code path a real device-key-derived master key would.

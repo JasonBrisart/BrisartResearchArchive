@@ -62,7 +62,8 @@ Edge cases
 - atomic_write_text(): catches and ignores an OSError raised while
   deleting its temporary file after a failed write, so cleanup never masks the
   original failure.
-- atomic_write_text(): translates OSError into AtomicWriteError; other exceptions may still propagate.
+- atomic_write_text(): translates OSError into AtomicWriteError; other
+  exceptions may still propagate.
 
 Known limitations
 -----------------

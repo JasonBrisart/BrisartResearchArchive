@@ -30,7 +30,7 @@ Uses the same injected-master-key convention as
 vault/tests/test_bulk_file_service.py: a real VaultService bound to a real
 (placeholder-keyring) vault file on disk, with the master key set directly
 rather than derived through a real passphrase unlock, so these tests run fast
-and do not pay BSR2's real hardware-dependent KDF cost.
+and do not pay BSR2's hardware-dependent password-derivation cost.
 
 Communication / relationships
 -----------------------------
