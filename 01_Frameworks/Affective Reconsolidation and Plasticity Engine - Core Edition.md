@@ -68,8 +68,6 @@ The framework is implementation-neutral. It does not require one measurement tec
 
 The variables require domain-specific operational definitions before empirical use. Their inclusion does not imply that they are already measurable on a universal scale.
 
----
-
 ### 2.1 Threshold-Governed Loop Opening
 
 The loop-opening gate is:
@@ -89,8 +87,6 @@ The proposed interpretation is:
 The product $A(t)E(t)$ is a proposed interaction term, not an empirically established biological law. It assumes that $A(t)$ and $E(t)$ are represented on compatible, nonnegative scales. That assumption must be defined and tested in any implementation.
 
 Threshold crossing opens the possibility of update. It does not guarantee successful integration, coherence recovery, or durable change.
-
----
 
 ### 2.2 Structural Update Relation
 
@@ -139,8 +135,6 @@ ARPE organizes the proposed update loop into seven phases:
 
 These phases are functional distinctions within the framework. They are not presented as a demonstrated sequence of discrete biological events.
 
----
-
 ### 3.1 Outcome Classes
 
 ARPE distinguishes several outcomes:
@@ -156,8 +150,6 @@ ARPE distinguishes several outcomes:
 | **Effective non-update** | The carried-forward structure is functionally indistinguishable from the prior structure under the selected assessment. |
 
 These classes require operational criteria. They must not be assigned solely because a participant reports insight, emotional intensity, or immediate subjective change.
-
----
 
 ### 3.2 Core Claims
 
@@ -189,8 +181,6 @@ ARPE generates predictions that can be evaluated after its variables are operati
 
 These are proposed predictions. The framework does not yet specify universally valid measures, effect sizes, timing windows, or parameter values.
 
----
-
 ### 4.1 Candidate Application Domains
 
 ARPE may be evaluated in domains where a target structure can be identified before activation and reassessed after restabilization, including:
@@ -205,8 +195,6 @@ ARPE may be evaluated in domains where a target structure can be identified befo
 - research on therapeutic change.
 
 Use in a candidate domain does not establish clinical efficacy or biological validity. Each domain requires its own operational definitions, controls, safety considerations, and validation methods.
-
----
 
 ### 4.2 Falsifiability and Evaluation
 
