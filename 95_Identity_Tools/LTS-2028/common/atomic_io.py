@@ -26,7 +26,7 @@ them fsync the containing directory for durability; the report writer did not.
 That difference was preserved as the fsync_dir flag rather than silently
 unified, because a report is regenerable and a vault is not. No application
 caller passes fsync_dir=False today (only tests do), so every production write
-fsyncs its directory where the platform supports it.
+attempts directory fsync where supported; failures are best effort.
 
 Communication / relationships
 -----------------------------
@@ -53,16 +53,23 @@ Edge cases
 - atomic_write_text() raises AtomicWriteError: "unable to write file: {...}"
 - atomic_write_json() raises AtomicWriteError: "data to write must be a JSON
   object."
-- _apply_file_mode(), _flush_directory(), warn_if_permissive(): catches
-  OSError and handles it in place; it does not propagate to the caller.
+- _apply_file_mode(): ignores OSError from chmod. warn_if_permissive() ignores
+  OSError from stat, but failures while printing its warning can propagate.
+- _flush_directory(): ignores OSError from opening or fsyncing the directory;
+  an OSError from closing its descriptor can propagate.
 - atomic_write_text(): catches and ignores an OSError raised while
   deleting its temporary file after a failed write, so cleanup never masks the
   original failure.
-- atomic_write_text(): translates OSError into AtomicWriteError, so callers
-  only need to handle this module's own error type.
+- atomic_write_text(): translates OSError into AtomicWriteError; other exceptions may still propagate.
 
 Known limitations
 -----------------
+- Parent-directory creation occurs before the write try/except, so its
+  OSError can escape without AtomicWriteError. JSON serialization can raise
+  TypeError or ValueError before the atomic write begins.
+- Temporary-file permissions follow the process umask; requested POSIX mode
+  is tightened only after replacement. This is not secure temporary-file
+  creation, a multi-file transaction, or a universal durability guarantee.
 - A reader sees either the old file or the fully-written new one, never a half-
   written file: bytes land in a uniquely-named temp file that is os.replace-d
   into position only after being flushed and fsync-ed.
@@ -154,9 +161,10 @@ def atomic_write_text(
 ) -> None:
     """Write text to path atomically via a temp file and os.replace.
 
-    file_mode: optional. When given (e.g. SENSITIVE_FILE_MODE), the file is
-    chmod'd to exactly that mode immediately after the atomic rename, on
-    POSIX platforms only (see _apply_file_mode). Defaults to None, which
+    file_mode: optional. When given (e.g. SENSITIVE_FILE_MODE), the
+    requested mode is applied after the atomic rename on POSIX only
+    (see _apply_file_mode). chmod is best effort: failure is ignored, so
+    the requested mode is not guaranteed. Defaults to None, which
     preserves this function's pre-existing behavior exactly: no permission
     change is made and the file keeps whatever mode the process umask
     produced when the temp file was created.
@@ -216,10 +224,11 @@ def warn_if_permissive(
     this protection existed, or one that was widened later by hand, gets
     flagged instead of silently trusted.
 
-    Returns True if a warning was printed, False otherwise. Never raises: a
-    missing file, a permissions API failure, or running on Windows (where
-    POSIX permission bits are not meaningfully comparable) all result in a
-    quiet False rather than an exception, because this is an advisory
+    Returns True if a warning was printed, False otherwise. An OSError from
+    stat (including a missing file) returns False. Windows also returns False
+    because POSIX modes are not meaningfully comparable there. Invalid
+    arguments or a failure while writing to stderr can still raise. This is an
+    advisory
     best-effort check, not a security control in its own right -- BSR2's
     encryption is what actually protects the file's contents.
 

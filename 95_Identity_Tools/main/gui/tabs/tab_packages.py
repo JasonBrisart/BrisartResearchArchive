@@ -435,12 +435,10 @@ class PackagesTab(ttk.Frame):
     def _open_folder(folder: Path) -> None:
         """Open a folder in the OS's file manager, best-effort only.
 
-        Uses os.startfile on Windows (this project's primary development
-        platform per version.py's git history), and falls back to `open`
-        (macOS) / `xdg-open` (Linux) elsewhere. Never raises: if none of
-        these succeed, the folder path was already shown in the dialog the
-        caller just displayed, so a failure here only means the user
-        navigates there manually instead of automatically.
+        Uses os.startfile on Windows, `open` on macOS, and `xdg-open`
+        elsewhere. OSError is ignored and subprocess return codes are not
+        checked; other exceptions are not suppressed. The caller displays
+        the folder path so it can be opened manually if launch fails.
         """
         try:
             if os.name == "nt":

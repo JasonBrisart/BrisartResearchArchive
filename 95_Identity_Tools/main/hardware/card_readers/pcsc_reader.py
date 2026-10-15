@@ -65,8 +65,7 @@ Edge cases
 - PCSCReader.read_card() raises CardAbsentError: "no card detected on {...}:
   {...}"
 - PCSCReader._find_reader_name(): translates PCSCBindingError into
-  DeviceConnectionError, so callers only need to handle this module's own error
-  type.
+  DeviceConnectionError; other exceptions may still propagate.
 - PCSCReader.connect(), PCSCReader.read_card(): catches (PCSCBindingError,
   DeviceConnectionError) and handles it in place; it does not propagate to the
   caller.

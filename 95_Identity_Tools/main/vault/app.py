@@ -114,20 +114,16 @@ Edge cases
 - Run as a script, the process exit status is main()'s return value (via
   ``raise SystemExit(main())``).
 - _unlock(), command_decrypt_file(), command_get(): translates
-  VaultServiceError into AppError, so callers only need to handle this module's
-  own error type.
+  VaultServiceError into AppError; other exceptions may still propagate.
 - command_batch_upsert(): translates (OSError, json.JSONDecodeError) into
-  AppError, so callers only need to handle this module's own error type.
+  AppError; other exceptions may still propagate.
 - command_batch_upsert(), command_encrypt_file(), command_upsert(): translates
-  (VaultServiceError, VaultFileError) into AppError, so callers only need to
-  handle this module's own error type.
+  (VaultServiceError, VaultFileError) into AppError; other exceptions may still propagate.
 - command_encrypt_paths(): translates (BulkFileServiceError, VaultServiceError,
-  VaultFileError) into AppError, so callers only need to handle this module's
-  own error type.
+  VaultFileError) into AppError; other exceptions may still propagate.
 - command_restore_paths(): translates (BulkFileServiceError, VaultServiceError)
-  into AppError, so callers only need to handle this module's own error type.
-- command_upsert(): translates json.JSONDecodeError into AppError, so callers
-  only need to handle this module's own error type.
+  into AppError; other exceptions may still propagate.
+- command_upsert(): translates json.JSONDecodeError into AppError; other exceptions may still propagate.
 - main(): catches AppError and handles it in place; it does not propagate to
   the caller.
 

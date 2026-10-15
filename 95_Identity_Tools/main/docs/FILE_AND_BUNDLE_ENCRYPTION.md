@@ -165,3 +165,10 @@ BSR2 is unreviewed research cryptography. Chunking and successful round trips
 do not establish independent security assurance.
 
 See [BSR2 integration and threat model](BSR2_INTEGRATION.md).
+
+### Direct API chunk-size limitation
+
+CLI validation is not a substitute for API validation. Direct bulk-service
+callers must provide a positive integer chunk size below the envelope payload
+limit. Zero and negative sizes are not safely rejected by a dedicated
+validator; nonempty input can raise ValueError or yield no chunks. See KI-006.

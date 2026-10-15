@@ -14,7 +14,7 @@ Contains 4 test case(s) across 1 TestCase class(es).
 Design notes:
 
 SLOW: setUpClass() creates one real BSR2 keyring (Keyring.create(), a single
-~85-90s KDF derivation). Locked-out refusal is tested without any further KDF
+hardware-dependent KDF derivation). Locked-out refusal is tested without any further KDF
 cost (the whole point of check_and_get_state() running before
 Keyring.unlock_with_passphrase() is called), and exactly one more real KDF call
 confirms a genuine wrong-passphrase failure is recorded, plus one more confirms

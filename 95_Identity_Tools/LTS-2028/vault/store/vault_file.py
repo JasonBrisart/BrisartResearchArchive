@@ -65,8 +65,7 @@ Edge cases
   section."
 - save_state() raises VaultFileError: "state does not have the expected vault
   format marker."
-- load_state(): translates (OSError, json.JSONDecodeError) into VaultFileError,
-  so callers only need to handle this module's own error type.
+- load_state(): translates (OSError, json.JSONDecodeError) into VaultFileError; other exceptions may still propagate.
 
 Known limitations
 -----------------

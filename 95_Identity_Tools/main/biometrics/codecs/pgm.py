@@ -59,8 +59,7 @@ Edge cases
 - encode() raises PgmFormatError: "only 8-bit PGM (maxval 1-255) is supported."
 - encode() raises PgmFormatError: "pixels must be bytes."
 - encode() raises PgmFormatError: "expected {...} pixel bytes, got {...}."
-- _read_int_token(): translates ValueError into PgmFormatError, so callers only
-  need to handle this module's own error type.
+- _read_int_token(): translates ValueError into PgmFormatError; other exceptions may still propagate.
 
 Known limitations
 -----------------

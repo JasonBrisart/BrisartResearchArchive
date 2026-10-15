@@ -91,6 +91,10 @@ Edge cases
 
 Known limitations
 -----------------
+- The service constructor does not validate chunk_bytes. Direct callers
+  must supply a positive integer below the envelope payload limit. Zero
+  raises ValueError for nonempty data; a negative value can produce no
+  chunks. CLI validation does not protect direct API calls (KI-006).
 - WHAT THIS MODULE DOES NOT DO: it does not stream-encrypt on the fly.
 - Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk processing is constrained by
   throughput, memory, and temporary storage

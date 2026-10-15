@@ -66,8 +66,7 @@ Edge cases
 - Run as a script, the process exit status is main()'s return value (via
   ``raise SystemExit(main())``).
 - command_checkpoint(), command_verify(): translates
-  integrity_ledger.IntegrityLedgerError into AppError, so callers only need to
-  handle this module's own error type.
+  integrity_ledger.IntegrityLedgerError into AppError; other exceptions may still propagate.
 - main(): catches AppError and handles it in place; it does not propagate to
   the caller.
 

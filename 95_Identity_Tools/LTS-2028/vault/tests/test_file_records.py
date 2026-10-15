@@ -13,7 +13,7 @@ Contains 10 test case(s) across 1 TestCase class(es).
 Design notes:
 
 Follows the same convention as test_sealed_vault.py: setUp() runs a real
-VaultService.create() call, which pays BSR2's real ~85-90 second KDF cost per
+VaultService.create() call, which pays BSR2's real hardware-dependent KDF cost per
 test method. That is consistent with how this repository's existing vault test
 suite is written and how its own CI documents the expected runtime (see
 .github/workflows/tests.yml's "vault and package CLIs each run BSR2's

@@ -60,8 +60,7 @@ Edge cases
 - IdentityStore.list_records(): catches IdentityStoreError and handles it in
   place; it does not propagate to the caller.
 - IdentityStore.load(): translates (OSError, json.JSONDecodeError) into
-  IdentityStoreError, so callers only need to handle this module's own error
-  type.
+  IdentityStoreError; other exceptions may still propagate.
 
 Known limitations
 -----------------

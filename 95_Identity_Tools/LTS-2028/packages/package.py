@@ -94,8 +94,7 @@ Edge cases
 - _authorized_content_key() raises PackageAuthorizationError: "key slot for
   {...} failed to authenticate: {...}"
 - _authorized_content_key(): translates Bsr2IntegrationError into
-  PackageAuthorizationError, so callers only need to handle this module's own
-  error type.
+  PackageAuthorizationError; other exceptions may still propagate.
 - open_package(): catches PackageAuthorizationError for cleanup or bookkeeping,
   then re-raises it unchanged.
 

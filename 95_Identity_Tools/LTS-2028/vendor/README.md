@@ -25,9 +25,10 @@ known-answer vectors.
 `vendor/` is pinned by `tests/test_bsr2_vendor_integrity.py`, which SHA-256s
 every file in this directory against a byte-for-byte digest and fails the suite
 if any file drifts, is edited, or an unpinned `.py` file appears. An accidental
-edit here **will** be caught by CI. The pinned digests are the raw-byte SHA-256
-of each file (identical to the values recorded in a PROJECT_MANIFEST export), so
-the check runs cleanly on every platform.
+edit is detected when this test is collected and run. The pins cover the
+raw bytes, including comments and line endings. A checkout that changes line
+endings can fail on another platform even when the Python code is equivalent.
+Preserve the pinned artifact bytes; matching pins does not establish security.
 
 To take an upstream update: re-copy all four files, update the commit SHA above,
 recompute the pinned digests (see **Re-syncing** below), update

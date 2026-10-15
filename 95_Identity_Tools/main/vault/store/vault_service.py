@@ -85,14 +85,17 @@ Edge cases
   vault before rotating its recovery code."
 - VaultService.get(), VaultService.get_file_bytes(), VaultService.unlock(),
   VaultService.unlock_with_recovery_code(): translates Bsr2IntegrationError
-  into VaultServiceError, so callers only need to handle this module's own
-  error type.
+  into VaultServiceError; other exceptions may still propagate.
 - VaultService.unlock(), VaultService.unlock_with_recovery_code(): translates
-  AttemptLockedOut into VaultServiceError, so callers only need to handle this
-  module's own error type.
+  AttemptLockedOut into VaultServiceError; other exceptions may still propagate.
 
 Known limitations
 -----------------
+- Updating an existing record through upsert(), batch_upsert(), or
+  upsert_file_bytes() retains its stored label/kind while sealing with the
+  supplied label/kind. Changing either context value can make later reads
+  fail authentication. Keep both values unchanged for an existing record id
+  until this defect is corrected (KI-005).
 - This module only sequences them, holds the unlocked master key for the
   session, and records an audit event for every mutation.
 - Security rests on BSR2, a custom research construction that has not been

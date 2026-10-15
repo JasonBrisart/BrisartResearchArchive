@@ -50,6 +50,10 @@ Edge cases
 
 Known limitations
 -----------------
+- The worker catches Exception from work(). Completion callbacks, dialog
+  destruction, and Tk scheduling run outside that boundary; their failures
+  are not converted into worker-error results. Caller-supplied work must not
+  access Tk widgets from its background thread.
 - Tkinter is not thread-safe: background threads never touch a widget directly,
   they only push a result onto a queue that the main thread polls via
   ``after()``.
@@ -77,7 +81,8 @@ class BusyDialog(tk.Toplevel):
     """A small, non-closable modal dialog with an indeterminate progress bar.
 
     Shown while a background thread runs a slow BSR2 KDF operation, so the
-    main window never looks frozen or unresponsive.
+    main event loop can continue polling; responsiveness still depends on
+    worker behavior, callback duration, and thread scheduling.
     """
 
     def __init__(self, parent, message):

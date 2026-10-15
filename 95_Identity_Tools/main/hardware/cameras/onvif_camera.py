@@ -70,11 +70,9 @@ Edge cases
 - ONVIFCamera.capture_image() raises DeviceConnectionError: "snapshot fetch
   from {...} failed: {...}"
 - ONVIFCamera._post_soap(): translates ElementTree.ParseError into
-  DeviceConnectionError, so callers only need to handle this module's own error
-  type.
+  DeviceConnectionError; other exceptions may still propagate.
 - ONVIFCamera._post_soap(), ONVIFCamera.capture_image(): translates
-  ONVIFTransportError into DeviceConnectionError, so callers only need to
-  handle this module's own error type.
+  ONVIFTransportError into DeviceConnectionError; other exceptions may still propagate.
 - ONVIFCamera.connect(), ONVIFCamera.health_check(): catches
   DeviceConnectionError and handles it in place; it does not propagate to the
   caller.

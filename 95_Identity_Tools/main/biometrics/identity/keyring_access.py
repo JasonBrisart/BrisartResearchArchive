@@ -48,11 +48,9 @@ Edge cases
   recent failed attempts; retry in {...} second(s)."
 - unlock_with_passphrase() raises KeyringAccessError: "unlock failed: {...}"
 - unlock_with_passphrase(): translates AttemptLockedOut into
-  KeyringAccessError, so callers only need to handle this module's own error
-  type.
+  KeyringAccessError; other exceptions may still propagate.
 - unlock_with_passphrase(): translates Bsr2IntegrationError into
-  KeyringAccessError, so callers only need to handle this module's own error
-  type.
+  KeyringAccessError; other exceptions may still propagate.
 
 Known limitations
 -----------------

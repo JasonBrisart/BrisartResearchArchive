@@ -72,8 +72,7 @@ Edge cases
   "binding.capture() returned {...} pixel bytes; expected width*height =
   {...}."
 - FingerprintScanner._find_device_name(): translates BiometricBindingError into
-  DeviceConnectionError, so callers only need to handle this module's own error
-  type.
+  DeviceConnectionError; other exceptions may still propagate.
 - FingerprintScanner.connect(), FingerprintScanner.scan(): catches
   (BiometricBindingError, DeviceConnectionError) and handles it in place; it
   does not propagate to the caller.

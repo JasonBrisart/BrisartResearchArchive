@@ -54,8 +54,7 @@ Edge cases
 - write_wave() raises WaveFormatError: "sample rate {...} exceeds the supported
   maximum of {...}."
 - write_wave() raises WaveFormatError: "unsupported sample width: {...} bytes."
-- read_wave(): translates wave.Error into WaveFormatError, so callers only need
-  to handle this module's own error type.
+- read_wave(): translates wave.Error into WaveFormatError; other exceptions may still propagate.
 
 Known limitations
 -----------------

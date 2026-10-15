@@ -48,8 +48,8 @@ Known limitations
   (gui/tests/test_tab_vault.py). The dialog workflows (init, unlock, new
   record, view, encrypt, decrypt) are not exercised by tests and are checked by
   hand.
-- Init and unlock run BSR2 key derivations (about a minute each at the
-  10,000-iteration floor, and init runs two), and bulk encryption is slow
+- Init and unlock run BSR2 key derivations (hardware-dependent duration at
+  the 10,000-iteration floor, and init runs two), and bulk encryption is slow
   (docs/KNOWN_ISSUES.md KI-003). They run in a background thread behind a modal
   "Working..." dialog, so the window stays responsive but the action takes that
   long.

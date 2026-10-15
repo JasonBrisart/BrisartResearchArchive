@@ -37,8 +37,8 @@ the same kind of secret.
 **Low-entropy secrets** (a human-chosen passphrase or spoken phrase) are
 guessable by construction. They need a deliberately expensive derivation so
 that each guess costs real time. :func:`hash_factor` uses BSR2's
-``derive_password_key`` for this. It is slow on purpose: roughly 70 seconds per
-call at BSR2's enforced minimum of 10,000 iterations.
+``derive_password_key`` for this. It is deliberately expensive, with a
+minimum of 10,000 iterations; elapsed time depends on the runtime and hardware.
 
 **High-entropy secrets** (biometric template digests, signature blobs, device
 identifiers) are not guessable, so stretching them buys nothing.
@@ -130,10 +130,8 @@ Edge cases
 - _parse_mac() raises Bsr2IntegrationError: "bound factor digest has an invalid
   length."
 - _parse_kdf(), _parse_mac(): translates BrisartPrimitiveError into
-  Bsr2IntegrationError, so callers only need to handle this module's own error
-  type.
-- _parse_kdf(): translates ValueError into Bsr2IntegrationError, so callers
-  only need to handle this module's own error type.
+  Bsr2IntegrationError; other exceptions may still propagate.
+- _parse_kdf(): translates ValueError into Bsr2IntegrationError; other exceptions may still propagate.
 - is_bound_factor(), is_factor_hash(), needs_rehash(), verify_bound_factor(),
   verify_factor(): catches Bsr2IntegrationError and handles it in place; it
   does not propagate to the caller.

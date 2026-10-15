@@ -48,8 +48,7 @@ Edge cases
 - build_recipient_verifier() raises VerificationError: "failed to build
   recipient verifier: {...}"
 - build_recipient_verifier(): translates Bsr2IntegrationError into
-  VerificationError, so callers only need to handle this module's own error
-  type.
+  VerificationError; other exceptions may still propagate.
 
 Known limitations
 -----------------

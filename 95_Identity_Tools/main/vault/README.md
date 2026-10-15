@@ -173,3 +173,11 @@ Concurrent writers and filesystem-level attackers require controls beyond
 these application helpers.
 
 See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).
+
+### Existing-record update limitation
+
+When reusing a record id, keep its existing label and kind unchanged. The
+current update paths seal using the supplied context but retain the previous
+metadata; changing that context can make the record fail authentication on
+read. This is an unresolved correctness defect, not a supported rename
+operation. Keep a backup before updating records. See KI-005.

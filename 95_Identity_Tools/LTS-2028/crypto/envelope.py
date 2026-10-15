@@ -81,13 +81,10 @@ Edge cases
 - open_json() raises Bsr2IntegrationError: "decrypted payload must be an
   object."
 - open_bytes(): translates BrisartEnvelopeError into
-  EnvelopeAuthenticationError, so callers only need to handle this module's own
-  error type.
+  EnvelopeAuthenticationError; other exceptions may still propagate.
 - open_json(): translates (UnicodeDecodeError, json.JSONDecodeError) into
-  Bsr2IntegrationError, so callers only need to handle this module's own error
-  type.
-- seal_json(): translates (TypeError, ValueError) into Bsr2IntegrationError, so
-  callers only need to handle this module's own error type.
+  Bsr2IntegrationError; other exceptions may still propagate.
+- seal_json(): translates (TypeError, ValueError) into Bsr2IntegrationError; other exceptions may still propagate.
 
 Known limitations
 -----------------
@@ -182,9 +179,10 @@ def open_bytes(master_key: bytes, envelope: dict, context: str) -> bytes:
     """Verify, decrypt, and unpad a BSR2 envelope.
 
     An authentication failure from the vendored layer is re-raised as
-    :class:`EnvelopeAuthenticationError` so callers only ever need to catch
-    ``Bsr2IntegrationError`` and its subclasses, never a vendor exception type.
-    The original is preserved as ``__cause__``.
+    :class:`EnvelopeAuthenticationError`, preserving the original as
+    ``__cause__``. This translation covers BrisartEnvelopeError from decrypt;
+    it does not promise that every invalid input or runtime failure is
+    converted into Bsr2IntegrationError.
     """
     try:
         padded = decrypt(master_key, envelope, context)

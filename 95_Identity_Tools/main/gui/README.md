@@ -111,3 +111,10 @@ accessibility, hardware, or end-to-end GUI validation.
 
 See ../docs/KNOWN_ISSUES.md and
 [file and bundle encryption](../docs/FILE_AND_BUNDLE_ENCRYPTION.md).
+
+### Attachment-list limitation
+
+The Biometrics attachment list hides every name containing `.chunk`. A real
+attachment using that substring can therefore be hidden from the list. This
+is a display-filter defect, not evidence that the attachment was deleted.
+See KI-007.

@@ -80,15 +80,11 @@ Edge cases
   from {...}: {...}"
 - verify_identity() raises VerificationError: "at least one probe source is
   required."
-- _check_video_liveness(): translates LivenessError into VerificationError, so
-  callers only need to handle this module's own error type.
+- _check_video_liveness(): translates LivenessError into VerificationError; other exceptions may still propagate.
 - _check_video_liveness(): translates video_codec.VideoFormatError into
-  VerificationError, so callers only need to handle this module's own error
-  type.
-- verify_modality(): translates (OSError, ValueError) into VerificationError,
-  so callers only need to handle this module's own error type.
-- verify_modality(): translates Bsr2IntegrationError into VerificationError, so
-  callers only need to handle this module's own error type.
+  VerificationError; other exceptions may still propagate.
+- verify_modality(): translates (OSError, ValueError) into VerificationError; other exceptions may still propagate.
+- verify_modality(): translates Bsr2IntegrationError into VerificationError; other exceptions may still propagate.
 
 Known limitations
 -----------------

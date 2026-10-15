@@ -36,8 +36,8 @@ Public interface:
 Design notes:
 
 The design problem this solves: BSR2's derive_password_key is genuinely
-expensive in pure Python (measured at roughly 70 seconds at its own enforced
-minimum of 10,000 iterations, and around 14 minutes at its 120,000 default).
+expensive in pure Python (its enforced minimum is 10,000 iterations and
+its upstream default is 120,000). Runtime depends on hardware and workload.
 Deriving a key from the passphrase for every operation would be unusable, and
 lowering the iteration count below BSR2's floor is not permitted by BSR2
 itself.
@@ -114,8 +114,8 @@ Settings / parameters
 - KDF_SALT_BYTES = 32 -- Length of the random salt stored with each wrapper. A
   new salt is drawn whenever a wrapper is rebuilt.
 - KDF_ITERATIONS = 10_000 -- Default iteration count, and BSR2's enforced
-  minimum. It is the strongest setting that still lets an unlock finish in
-  under a couple of minutes at roughly 7 ms per iteration. The count is stored
+  minimum. This default does not guarantee any particular unlock duration.
+  The count is stored
   in each keyring, so a different default would not invalidate existing ones.
 - MAXIMUM_KDF_ITERATIONS = 1_000_000 -- Ceiling, checked by create() and when a
   state is loaded. Legitimate keyrings sit between 10,000 and 120,000; a
@@ -212,20 +212,18 @@ Errors, in the order the code raises them:
 
 Translated errors:
 - Keyring._unwrap(): translates (BrisartEnvelopeError, Bsr2IntegrationError)
-  into KeyringAuthenticationError, so callers only need to handle this module's
-  own error type.
+  into KeyringAuthenticationError; other exceptions may still propagate.
 - Keyring._validate(): translates BrisartPrimitiveError into
-  KeyringFormatError, so callers only need to handle this module's own error
-  type.
+  KeyringFormatError; other exceptions may still propagate.
 
 Loading is structural only: a keyring whose envelopes were modified still
 loads, and fails with KeyringAuthenticationError only when unlocked.
 
 Known limitations
 -----------------
-- Slow by design. Each unlock costs one key derivation (about a minute at the
-  floor) and create() costs two. It cannot be made faster without going below
-  BSR2's minimum iteration count, which BSR2 does not allow.
+- Slow by design. Each unlock performs one key derivation and create()
+  performs two. The minimum iteration count is enforced by BSR2; elapsed
+  time also depends on hardware, interpreter, and workload.
 - No way to raise the iteration count of an existing keyring. The count is
   stored per keyring, but no method here changes it, and create() always draws
   a new master key, so strengthening a keyring means starting a new one.

@@ -186,23 +186,19 @@ Edge cases
 - Run as a script, the process exit status is main()'s return value (via
   ``raise SystemExit(main())``).
 - _unlock_keyring(): translates keyring_access.KeyringAccessError into
-  AppError, so callers only need to handle this module's own error type.
+  AppError; other exceptions may still propagate.
 - command_attach(), command_extract_attachment(): translates
   (attachment_engine.AttachmentError, bulk_attachments.BulkAttachmentError)
-  into AppError, so callers only need to handle this module's own error type.
+  into AppError; other exceptions may still propagate.
 - command_attach(), command_attach_paths(), command_extract_attachment(),
   command_inspect(), command_remove_attachment(), command_restore_paths(),
-  command_verify(): translates IdentityStoreError into AppError, so callers
-  only need to handle this module's own error type.
+  command_verify(): translates IdentityStoreError into AppError; other exceptions may still propagate.
 - command_attach_paths(), command_restore_paths(): translates
-  bulk_attachments.BulkAttachmentError into AppError, so callers only need to
-  handle this module's own error type.
-- command_enroll(): translates enrollment.EnrollmentError into AppError, so
-  callers only need to handle this module's own error type.
+  bulk_attachments.BulkAttachmentError into AppError; other exceptions may still propagate.
+- command_enroll(): translates enrollment.EnrollmentError into AppError; other exceptions may still propagate.
 - command_list(): catches IdentityStoreError and handles it in place; it does
   not propagate to the caller.
-- command_verify(): translates verification.VerificationError into AppError, so
-  callers only need to handle this module's own error type.
+- command_verify(): translates verification.VerificationError into AppError; other exceptions may still propagate.
 - main(): catches AppError and handles it in place; it does not propagate to
   the caller.
 

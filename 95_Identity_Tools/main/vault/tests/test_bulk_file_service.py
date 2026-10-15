@@ -14,7 +14,7 @@ Contains 11 test case(s) across 1 TestCase class(es).
 Design notes:
 
 Uses an injected master key (like test_file_records.py could, but doesn't
-currently) to avoid paying the real ~85-90 second KDF cost per test -- the
+currently) to avoid paying the real hardware-dependent KDF cost per test -- the
 chunking/reassembly/zip-bundling logic under test here is independent of HOW
 the master key was obtained, so this is a faithful test of the actual logic
 without the unrelated KDF cost.

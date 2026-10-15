@@ -76,7 +76,8 @@ Known limitations
 -----------------
 - This file may live at the repository root OR under tests/; the repository
   root is located by walking up to the directory that holds both version.py and
-  vendor/, so relocating the runner never breaks discovery or sys.path.
+  vendor/. Relocation works only when such an ancestor exists; namespace
+  collisions and missing project files can still break collection.
 - Tracked in docs/KNOWN_ISSUES.md: KI-002: GUI had no automated test coverage —
   RESOLVED
 - No test module imports this file directly; as an entry point it is verified

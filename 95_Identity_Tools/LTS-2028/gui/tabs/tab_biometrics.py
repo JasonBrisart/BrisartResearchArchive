@@ -75,6 +75,9 @@ Edge cases
 
 Known limitations
 -----------------
+- Attachment-list filtering hides any filename containing '.chunk', not
+  just internal chunk entries. A legitimate attachment with that substring
+  may be absent from the GUI list even though it remains stored (KI-007).
 - The 0o600 mode and the permissions warning are POSIX-only; on Windows both
   are no-ops, exactly as in common/atomic_io.py.
 - warn_if_permissive() prints its advisory to stderr, which is not visible when

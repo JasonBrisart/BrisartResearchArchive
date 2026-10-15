@@ -71,8 +71,7 @@ Edge cases
   maximum."
 - encode() raises PngFormatError: "pixels must be bytes."
 - encode() raises PngFormatError: "expected {...} pixel bytes, got {...}."
-- decode(): translates zlib.error into PngFormatError, so callers only need to
-  handle this module's own error type.
+- decode(): translates zlib.error into PngFormatError; other exceptions may still propagate.
 
 Known limitations
 -----------------

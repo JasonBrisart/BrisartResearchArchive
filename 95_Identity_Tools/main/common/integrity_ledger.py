@@ -126,10 +126,8 @@ Edge cases
 - verify_ledger() raises IntegrityLedgerError: "ledger entry {...} has been
   tampered with: stored hash does not match its recomputed content."
 - _load_state(): translates (OSError, json.JSONDecodeError) into
-  IntegrityLedgerError, so callers only need to handle this module's own error
-  type.
-- append_checkpoint(): translates OSError into IntegrityLedgerError, so callers
-  only need to handle this module's own error type.
+  IntegrityLedgerError; other exceptions may still propagate.
+- append_checkpoint(): translates OSError into IntegrityLedgerError; other exceptions may still propagate.
 
 Known limitations
 -----------------

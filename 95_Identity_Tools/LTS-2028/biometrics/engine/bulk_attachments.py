@@ -107,13 +107,15 @@ Edge cases
   json.JSONDecodeError) and handles it in place; it does not propagate to the
   caller.
 - restore_large_bytes(): translates (UnicodeDecodeError, json.JSONDecodeError)
-  into BulkAttachmentError, so callers only need to handle this module's own
-  error type.
-- restore_large_bytes(): translates AttachmentError into BulkAttachmentError,
-  so callers only need to handle this module's own error type.
+  into BulkAttachmentError; other exceptions may still propagate.
+- restore_large_bytes(): translates AttachmentError into BulkAttachmentError; other exceptions may still propagate.
 
 Known limitations
 -----------------
+- Direct API callers must supply a positive integer chunk_bytes below the
+  envelope payload limit. No dedicated validation enforces this: zero
+  raises ValueError for nonempty data, and a negative value can produce no
+  chunks (KI-006).
 - Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk processing is constrained by
   throughput, memory, and temporary storage
 
