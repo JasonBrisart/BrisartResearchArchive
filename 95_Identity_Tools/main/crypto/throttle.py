@@ -207,7 +207,11 @@ class AttemptLimiter:
         return self.new_state()
 
     def status(self, state) -> dict:
-        """Report limiter state without raising, for display purposes."""
+        """Report limiter state for display purposes.
+
+        Unlike check(), this never raises AttemptLockedOut. A stored state that
+        is not an object is rejected with Bsr2IntegrationError.
+        """
         current = self._normalize(state)
         now = self._time()
         locked_for = max(0.0, current["locked_until"] - now)

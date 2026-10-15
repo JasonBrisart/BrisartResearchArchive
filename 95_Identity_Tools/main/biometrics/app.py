@@ -55,7 +55,8 @@ enrolling or verifying a --video source that shows no genuine frame-to-frame
 motion (a static photograph, or a hand-built all-identical- frame clip) is
 refused/reported as a non-match.
 
-UNLOCK THROTTLING (since 1.3.7): keyring unlock (the passphrase prompt in
+UNLOCK THROTTLING (since 1.3.7 on LTS-2028, 1.9.0 on main): keyring unlock
+(the passphrase prompt in
 _unlock_keyring()) is enforced through biometrics.identity.keyring_access,
 which persists crypto.throttle.AttemptLimiter state directly inside
 keyring.json and refuses an unlock attempt outright once the attempt budget is
@@ -87,7 +88,8 @@ Depends on (project modules):
 Standard library: argparse, getpass, json, pathlib, sys.
 Imported by:
 - cli.py
-Covered by tests: no test file imports this module directly.
+Covered by tests: biometrics/tests/test_video_support.py,
+tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------
@@ -211,8 +213,9 @@ Known limitations
 - Security rests on BSR2, a custom research construction that has not been
   independently audited (see docs/SECURITY.md); do not treat it as a
   replacement for vetted, audited cryptography.
-- No test module imports this file directly; as an entry point it is verified
-  only by running it, so check changes manually.
+- Only record-video and probe-video are exercised through main() by tests;
+  every other command is verified only by running it, so check changes
+  manually.
 
 Examples
 --------

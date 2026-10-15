@@ -42,7 +42,7 @@ Depends on (project modules):
 Standard library: argparse, getpass, hashlib, json, pathlib, sys.
 Imported by:
 - cli.py
-Covered by tests: no test file imports this module directly.
+Covered by tests: tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------
@@ -127,8 +127,9 @@ Known limitations
   interrupted save leaves the previous package file intact rather than a
   truncated one. It does not lock the file: two processes saving the same
   package at once can still lose one update.
-- No test module imports this file directly; as an entry point it is verified
-  only by running it, so check changes manually.
+- No test runs this module's commands; tests/test_cli_dispatcher.py imports it
+  only to check exit-status pass-through with main() replaced. Verify changes
+  by running it manually.
 
 Examples
 --------

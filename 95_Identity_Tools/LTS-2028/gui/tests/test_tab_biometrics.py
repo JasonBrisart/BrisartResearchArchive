@@ -52,7 +52,6 @@ Depends on (project modules):
 - biometrics.identity.identity_record (biometrics/identity/identity_record.py)
 - biometrics.engine.attachments (biometrics/engine/attachments.py)
 - biometrics.engine.bulk_attachments (biometrics/engine/bulk_attachments.py)
-- common.atomic_io (common/atomic_io.py)
 Standard library: json, os, pathlib, secrets, stat, tempfile, tkinter,
 unittest.
 Discovered and run by tests/run_tests.py (and by ``python -m unittest``);

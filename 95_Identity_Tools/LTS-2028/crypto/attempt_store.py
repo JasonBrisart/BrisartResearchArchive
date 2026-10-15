@@ -22,8 +22,9 @@ Public interface:
   a failed unlock attempt.
 - record_success(container, limiter=None) -- Return cleared attempt state after
   a successful unlock attempt.
-- status(container, limiter=None) -- Report attempt state without raising, for
-  display purposes.
+- status(container, limiter=None) -- Report attempt state for display; never
+  raises AttemptLockedOut. A stored state that is not an object is rejected
+  with Bsr2IntegrationError.
 
 Communication / relationships
 -----------------------------
@@ -106,7 +107,10 @@ def record_success(container: dict, limiter: AttemptLimiter = None) -> dict:
 
 
 def status(container: dict, limiter: AttemptLimiter = None) -> dict:
-    """Report attempt state without raising, for display purposes."""
+    """Report attempt state for display; never raises AttemptLockedOut.
+
+    A stored state that is not an object is rejected with Bsr2IntegrationError.
+    """
     active_limiter = limiter or _DEFAULT_LIMITER
     return active_limiter.status(container.get(ATTEMPT_STATE_FIELD))
 

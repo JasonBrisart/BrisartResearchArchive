@@ -51,8 +51,8 @@ Edge cases
 
 Known limitations
 -----------------
-- Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk file/folder/drive encryption
-  throughput ceiling (~1.4 KB/s)
+- Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk processing is constrained by
+  throughput, memory, and temporary storage
 - Passing proves only the 11 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 

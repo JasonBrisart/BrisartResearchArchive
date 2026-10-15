@@ -118,7 +118,6 @@ of package state.
 - `verification.py`: recipient factor verification.
 - `custody.py`: internal custody-chain construction and checking.
 - `audit.py`: external event files.
-- `demo.py`: demonstration workflow.
 - `tests/`: regression tests.
 
 ## Security boundaries

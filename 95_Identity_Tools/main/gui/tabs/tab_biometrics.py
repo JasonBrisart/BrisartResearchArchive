@@ -70,9 +70,9 @@ Edge cases
   BiometricsTab._refresh_list(), BiometricsTab._remove_selected_attachment(),
   BiometricsTab._verify(): catches IdentityStoreError and handles it in place;
   it does not propagate to the caller.
-- _save_new_keyring(): lets AtomicWriteError (and any OSError from the
-  directory fsync path) propagate; _ensure_keyring() reports it as "Could not
-  create keyring" and leaves no partially written keyring.json behind.
+- _save_new_keyring(): lets AtomicWriteError propagate; the create branch of
+  _ensure_keyring() reports it as "Could not create keyring" through its error
+  callback, and no partially written keyring.json is left behind.
 
 Known limitations
 -----------------

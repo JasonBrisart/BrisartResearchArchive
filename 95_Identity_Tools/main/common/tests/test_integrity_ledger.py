@@ -54,8 +54,8 @@ HistoryAndListTrackedTests:
 
 Known limitations
 -----------------
-- Tracked in docs/KNOWN_ISSUES.md: KI-004: Integrity Ledger cannot detect a
-  tamper-then-revert entirely between two checkpoints
+- Tracked in docs/KNOWN_ISSUES.md: KI-004: Integrity checkpoints have
+  observation gaps and unkeyed-history limitations
 - Passing proves only the 20 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 

@@ -23,8 +23,10 @@ Design notes:
 Replaces the write-to-temp-then-rename dance that existed in three places
 (vault_file.save_vault_file, identity_store.save_json, report_writer). Two of
 them fsync the containing directory for durability; the report writer did not.
-That difference is preserved as the fsync_dir flag rather than silently
-unified, because a report is regenerable and a vault is not.
+That difference was preserved as the fsync_dir flag rather than silently
+unified, because a report is regenerable and a vault is not. No application
+caller passes fsync_dir=False today (only tests do), so every production write
+fsyncs its directory where the platform supports it.
 
 Communication / relationships
 -----------------------------
@@ -51,9 +53,11 @@ Edge cases
 - atomic_write_text() raises AtomicWriteError: "unable to write file: {...}"
 - atomic_write_json() raises AtomicWriteError: "data to write must be a JSON
   object."
-- _apply_file_mode(), _flush_directory(), atomic_write_text(),
-  warn_if_permissive(): catches OSError and handles it in place; it does not
-  propagate to the caller.
+- _apply_file_mode(), _flush_directory(), warn_if_permissive(): catches
+  OSError and handles it in place; it does not propagate to the caller.
+- atomic_write_text(): catches and ignores an OSError raised while
+  deleting its temporary file after a failed write, so cleanup never masks the
+  original failure.
 - atomic_write_text(): translates OSError into AtomicWriteError, so callers
   only need to handle this module's own error type.
 

@@ -51,8 +51,7 @@ Depends on (project modules):
 Standard library: tkinter.
 Imported by:
 - cli.py (only inside the gui command's handler)
-Covered by tests: tests/test_cli_dispatcher.py imports it to confirm the gui
-command resolves to this module, with main() replaced so no window opens.
+Covered by tests: tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------

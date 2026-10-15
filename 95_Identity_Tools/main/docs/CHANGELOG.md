@@ -43,6 +43,8 @@ migration.
   error while the top-level `python cli.py ...` process still exited
   successfully. Each handler now returns the underlying tool's exit status:
   `0` for success, `1` for a negative result, and `2` for a reported error.
+  Scripts that call `python cli.py` and check its exit status will now see `1`
+  or `2` where they previously always saw `0`.
 
 - **`cli.py`: the `gui` command now imports the actual GUI entry point.** The
   dispatcher attempted to import `gui.app`, even though the GUI shell was moved
@@ -174,7 +176,7 @@ migration.
 
 - `python tests/run_tests.py --fast` was run on Linux with Python 3.12 in a
   headless environment: 441 tests ran and 47 GUI tests were skipped because no
-  display was available.
+  display was available; all other tests passed.
 
 Not verified in that environment: the real-KDF slow suite
 (`python tests/run_tests.py --slow`) and opening the Tkinter GUI on a physical

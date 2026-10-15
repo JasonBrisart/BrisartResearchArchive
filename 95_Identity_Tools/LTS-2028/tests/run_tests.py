@@ -16,16 +16,19 @@ Public interface:
 
 Design notes:
 
-The application folders are PEP 420 namespace packages with no __init__.py
-files. The one exception is tests/, which has an empty __init__.py: a
-namespace folder loses to any regular package with the same name anywhere on
-sys.path, so without it a third-party ``tests`` package installed in
-site-packages would shadow this folder and break collection of
-tests/test_*.py. unittest's discover(start_dir=...) cannot import a
+The application folders, including tests/, are PEP 420 namespace packages
+with no __init__.py files. unittest's discover(start_dir=...) cannot import a
 namespace sub-package as a start directory, so this runner instead finds every
 test_*.py file on disk, converts each path to its dotted module name, and
-loads it by name. Loading by dotted name works for namespace packages as long as the repository
-root is on sys.path (added below).
+loads it by name. Loading by dotted name works for namespace packages as long
+as the repository root is on sys.path (added below).
+
+Because these folders are namespace packages, an installed regular package
+with the same name (for example a third-party ``tests`` package in
+site-packages) takes precedence over them and breaks collection of
+tests/test_*.py. Run the suite in a clean environment;
+``python -S tests/run_tests.py --fast`` helps diagnose that kind of
+site-packages interference.
 
 A handful of tests exercise BSR2's real, deliberately-slow password KDF (~1
 minute per derivation), grouped by class in SLOW_TEST_CLASSES so they can be

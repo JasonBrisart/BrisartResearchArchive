@@ -44,7 +44,7 @@ Depends on (project modules):
 Standard library: argparse, getpass, json, pathlib, sys.
 Imported by:
 - cli.py
-Covered by tests: no test file imports this module directly.
+Covered by tests: tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------
@@ -133,8 +133,9 @@ Edge cases
 
 Known limitations
 -----------------
-- No test module imports this file directly; as an entry point it is verified
-  only by running it, so check changes manually.
+- No test runs this module's commands; tests/test_cli_dispatcher.py imports it
+  only to check exit-status pass-through with main() replaced. Verify changes
+  by running it manually.
 
 Examples
 --------

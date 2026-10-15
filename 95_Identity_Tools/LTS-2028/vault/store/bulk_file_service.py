@@ -92,8 +92,8 @@ Edge cases
 Known limitations
 -----------------
 - WHAT THIS MODULE DOES NOT DO: it does not stream-encrypt on the fly.
-- Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk file/folder/drive encryption
-  throughput ceiling (~1.4 KB/s)
+- Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk processing is constrained by
+  throughput, memory, and temporary storage
 
 Examples
 --------

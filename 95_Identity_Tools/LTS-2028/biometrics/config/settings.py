@@ -27,7 +27,7 @@ Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-- APP_NAME = "Biometrics" -- display name. Not read by other modules.
+- APP_NAME = "Biometrics" -- tool name. Not read by other modules.
 - APP_VERSION = __version__ -- re-exported ecosystem version from version.py.
   Not read by other modules.
 - DATA_DIR = Path("data") -- root of all biometrics runtime data, relative to

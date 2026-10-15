@@ -36,6 +36,7 @@ PgmRoundTripTests:
 - Rejects bad magic.
 - Handles comments in header.
 PngRoundTripTests:
+- Encode decode round trip.
 - Rejects bad signature.
 - Rejects corrupted crc.
 - Rejects decompression bomb.

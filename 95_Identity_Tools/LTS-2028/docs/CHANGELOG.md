@@ -47,7 +47,7 @@ Per LTS-2028 policy, this release makes no changes to cryptographic primitives, 
 
 **Gap.** The `biometrics`, `vault`, and `package` handlers called the tool and then always returned `0`. `python cli.py biometrics verify ...` therefore exited `0` on `NO MATCH` and on errors, so a script checking the exit status would treat a failed verification as a success. Running the tool directly (`python -m biometrics.app`) returned the correct status.
 
-**Fix.** Each handler now returns the tool's own exit status: `0` on success, `1` for a negative result, and `2` for a reported error.
+**Fix.** Each handler now returns the tool's own exit status: `0` on success, `1` for a negative result, and `2` for a reported error. Scripts that call `python cli.py` and check its exit status will now see `1` or `2` where they previously always saw `0`.
 
 **Verification.** New tests confirm that statuses `0`, `1`, and `2` pass through unchanged for all three tools.
 
@@ -170,7 +170,7 @@ Verified on Linux, Python 3.12, without Tkinter or a display:
 - CLI smoke tests: `version`, `help`, unknown-tool handling, `make-samples`, `record-video`, `probe-video`, `list`, `package demo`, and the package create/open round trip.
 - No broken cross-module references; every documented CLI flag exists.
 - Documentation spot-checked against code: thresholds, grid sizes, frame limits, motion threshold, throttle timings, padding, chunk size, recovery-code format, and demonstration key derivation.
-- `python tests/run_tests.py --fast`: 421 tests ran in about 2 minutes 50 seconds (previously over 20 minutes). 47 GUI tests were skipped (no display). All others passed except the vendored-file digest test.
+- `python tests/run_tests.py --fast`: 421 tests ran in about 2 minutes 50 seconds (previously over 20 minutes). 47 GUI tests were skipped (no display); all other tests passed.
 
 Not verified in this environment: the real-KDF slow suite (`python tests/run_tests.py --slow`), and opening the GUI window on a display.
 

@@ -14,10 +14,10 @@ Depends on (project modules):
 - cli (cli.py)
 - version (version.py)
 - app (app.py) -- imported only by the gui test, with main() patched out
-- biometrics.app, vault.app, packages.main -- imported by the exit-status
-  tests, with main() patched out
-Standard library: contextlib, io, unittest, unittest.mock (tkinter is probed,
-not required).
+- biometrics.app (biometrics/app.py) -- exit-status tests, main() patched out
+- vault.app (vault/app.py) -- exit-status tests, main() patched out
+- packages.main (packages/main.py) -- exit-status tests, main() patched out
+Standard library: contextlib, io, tkinter, unittest.
 Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
 nothing imports it.
 
