@@ -1,4 +1,4 @@
-# Affective Reconsolidation and Plasticity Engine (ARPE): A Neurocognitive Model of Emotion-Driven Memory Updating and Structural Plasticity
+## Affective Reconsolidation and Plasticity Engine (ARPE): A Neurocognitive Model of Emotion-Driven Memory Updating and Structural Plasticity
 
 - **Author:** Jason Brisart
 - **Affiliation:** Brisart Research Archive
@@ -9,7 +9,7 @@
 
 ---
 
-## Abstract
+### Abstract
 
 The Affective Reconsolidation and Plasticity Engine (ARPE) is a conceptual framework for modeling durable psychological change as a threshold-governed structural update loop.
 
