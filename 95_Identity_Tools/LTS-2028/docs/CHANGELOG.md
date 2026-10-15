@@ -4,6 +4,186 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ---
 
+## [1.3.10] - 2026-10-12 — LTS-2028 Documentation Overhaul and Correctness Update
+
+A documentation overhaul combined with seven correctness fixes and one security-hardening fix. Every README and architecture document was rewritten to describe current behavior and its limits, every Python module header was checked against its code, and the defects found during that review are fixed here.
+
+Per LTS-2028 policy, this release makes no changes to cryptographic primitives, authentication policy, stored formats, hardware or device integration, or external dependencies. All fixes originate on LTS-2028.
+
+### Documentation overhaul
+
+**Repository-wide rewrite.** All README files and architecture documents were rewritten to describe what the code actually does, including its limits:
+
+- `docs/README.md`, and the `vault/`, `biometrics/`, `packages/`, `gui/`, `common/`, and `crypto/` READMEs.
+- `docs/BSR2_INTEGRATION.md`: rewritten as a threat-model document covering key wrapping, KDF parameters, metadata disclosure, attempt-limiting boundaries, custody and audit limitations, filesystem hardening, bulk-file boundaries, and residual risks.
+- `docs/SECURITY.md`: separates the maintenance policy from security assurance.
+- `docs/KNOWN_ISSUES.md`: KI-003 now covers memory and temporary-storage limits, not only throughput.
+
+**Corrected documentation claims.**
+
+- Fingerprint extraction is documented as 128×128 with an 8×8 grid and a 192-value vector.
+- Video features are documented as a 72-value vector (36 spatial plus 36 motion values); frame subsampling is documented separately.
+- `record-video` is documented as generating synthetic BRVID data, not assembling image frames.
+- Video motion checks are documented as motion presence, not general anti-spoofing.
+- Verification reports are documented as omitting the full video motion result.
+- Chunked bulk encryption is documented as bypassing the per-envelope limit, not memory, temporary-storage, or throughput limits.
+- Package text-to-key prompts are documented as single unsalted SHA-256 for demonstration use.
+- Custody chains and audit files are documented as unkeyed history, not authenticated or immutable records.
+- `biometrics/config/settings.py` no longer describes `TEMPLATE_WIDTH`, `TEMPLATE_HEIGHT`, `GRID_SIZE`, and `DEFAULT_THRESHOLD` as controlling extraction or matching. Nothing reads them; the names and values are unchanged. Its header also no longer claims that `APP_NAME` is displayed or that `TEMPLATE_DIR` holds sealed templates.
+
+**Renamed.** `docs/FULL_FILE_ENCRYPTION.md` is now `docs/FILE_AND_BUNDLE_ENCRYPTION.md`, matching its title. All references were updated.
+
+**Module headers.** Every Python module header follows the six-section format (Purpose, Communication / relationships, Settings / parameters, Edge cases, Known limitations, Examples), and headers changed by the fixes below were updated to match.
+
+### Fix 1 of 8 — CLI dispatcher discarded each tool's exit status
+
+| Field | Details |
+|---|---|
+| **ID** | `LTS-2028-COR-3` |
+| **Severity** | Medium |
+| **Component** | `cli.py` |
+| **Affected versions** | 1.3.9 and earlier |
+| **Files changed** | `cli.py`; `tests/test_cli_dispatcher.py` |
+
+**Gap.** The `biometrics`, `vault`, and `package` handlers called the tool and then always returned `0`. `python cli.py biometrics verify ...` therefore exited `0` on `NO MATCH` and on errors, so a script checking the exit status would treat a failed verification as a success. Running the tool directly (`python -m biometrics.app`) returned the correct status.
+
+**Fix.** Each handler now returns the tool's own exit status: `0` on success, `1` for a negative result, and `2` for a reported error.
+
+**Verification.** New tests confirm that statuses `0`, `1`, and `2` pass through unchanged for all three tools.
+
+### Fix 2 of 8 — `python cli.py gui` raised ImportError
+
+| Field | Details |
+|---|---|
+| **ID** | `LTS-2028-COR-4` |
+| **Severity** | Low |
+| **Component** | `cli.py`, GUI entry point |
+| **Affected versions** | 1.3.9 and earlier |
+| **Files changed** | `cli.py`; `app.py`; `gui/core/constants.py`; `tests/test_cli_dispatcher.py`; `docs/README.md`; `gui/README.md` |
+
+**Gap.** The dispatcher imported `gui.app`, which does not exist. The GUI shell lives at the repository root as `app.py`, so the advertised `gui` command always failed.
+
+**Fix.** The dispatcher now imports the root-level `app.py`, the same shell `python app.py` runs. No files were moved. Headers and READMEs list both supported launch commands.
+
+**Verification.** A new test confirms the `gui` command reaches the root shell's `main()` without opening a window. It is skipped when Tkinter is unavailable.
+
+### Fix 3 of 8 — GUI-created biometrics keyrings skipped atomic, owner-only writes
+
+| Field | Details |
+|---|---|
+| **ID** | `LTS-2028-SEC-3` |
+| **Severity** | Low |
+| **Component** | `gui/tabs/tab_biometrics.py` |
+| **Affected versions** | 1.3.9 and earlier |
+| **Files changed** | `gui/tabs/tab_biometrics.py`; `gui/tests/test_tab_biometrics.py`; `common/atomic_io.py` (header) |
+
+**Gap.** Creating a keyring from the Biometrics tab wrote `keyring.json` with a plain `open()` / `json.dump()`. The CLI writes the same file atomically with owner-only (`0600`) permissions on POSIX. A GUI-created keyring got neither, and loading one skipped the permissions warning.
+
+**Fix.** The tab now writes new keyrings through `atomic_write_json` with `SENSITIVE_FILE_MODE`, and loading an existing keyring runs `warn_if_permissive`, matching the CLI.
+
+**Verification.** New tests confirm the keyring is written as its JSON state and with mode `0600` on POSIX. The permissions test is skipped on Windows, where POSIX modes do not apply.
+
+### Fix 4 of 8 — Package saves could leave a truncated file
+
+| Field | Details |
+|---|---|
+| **ID** | `LTS-2028-COR-5` |
+| **Severity** | Low |
+| **Component** | `packages/main.py`, `gui/tabs/tab_packages.py` |
+| **Affected versions** | 1.3.9 and earlier |
+| **Files changed** | `packages/main.py`; `gui/tabs/tab_packages.py`; `common/atomic_io.py` (header); `packages/README.md`; `docs/BSR2_INTEGRATION.md`; `common/README.md` |
+
+**Gap.** The package CLI and the GUI Packages tab saved package files with a plain `open()` / `json.dump()`. An interrupted save could truncate the package file and lose its key slots and custody chain.
+
+**Fix.** Both now save through `atomic_write_json`, so an interrupted save leaves the previous file intact. File permissions are unchanged. The helper does not lock the file, so concurrent saves of the same package can still lose an update; this is documented.
+
+**Verification.** A CLI create, list-recipients, and open round trip succeeds; opening with the wrong key reports an error and exits `2`.
+
+### Fix 5 of 8 — `record-video` and `probe-video` crashed with tracebacks
+
+| Field | Details |
+|---|---|
+| **ID** | `LTS-2028-COR-6` |
+| **Severity** | Low |
+| **Component** | `biometrics/app.py` |
+| **Affected versions** | 1.3.9 and earlier |
+| **Files changed** | `biometrics/app.py`; `biometrics/tests/test_video_support.py` |
+
+**Gap.** `record-video` into a folder that did not exist, or with `--frames 0`, and `probe-video` on a missing or non-BRVID file, all ended in a raw Python traceback instead of the CLI's usual `error:` message.
+
+**Fix.** `record-video` creates missing parent folders. All four cases now print an `error:` message and exit `2`.
+
+**Verification.** Four new tests cover the four cases.
+
+### Fix 6 of 8 — `--fast` ran multi-minute tests
+
+| Field | Details |
+|---|---|
+| **ID** | `LTS-2028-COR-8` |
+| **Severity** | Low |
+| **Component** | `tests/run_tests.py`, `biometrics/tests/` |
+| **Affected versions** | 1.3.9 and earlier |
+| **Files changed** | `tests/run_tests.py`; `biometrics/tests/test_bulk_attachments.py` |
+
+**Gap.** Two groups of tests made `--fast` take far longer than intended:
+
+- The bulk-attachment tests used 32 KiB chunks. At BSR2's pure-Python sealing rate, single tests took minutes.
+- `vault.tests.test_sealed_vault.VaultFilePermissionTests` creates a real vault, which runs the real password KDF twice per test, but was not listed in `SLOW_TEST_CLASSES`.
+
+**Fix.** The bulk-attachment tests now use 256-byte chunks, matching `vault/tests/test_bulk_file_service.py`, and still exercise the multi-chunk path. `VaultFilePermissionTests` is now classified as slow, so it runs under `--slow` and in a full run. No production code changed.
+
+**Verification.** The bulk-attachment module's 10 tests now complete in roughly 35 seconds, and no remaining `--fast` test runs the real password KDF.
+
+### Fix 7 of 8 — Biometrics settings header described unused values as active
+
+| Field | Details |
+|---|---|
+| **ID** | `LTS-2028-COR-9` |
+| **Severity** | Low |
+| **Component** | `biometrics/config/settings.py` |
+| **Affected versions** | 1.3.9 and earlier |
+| **Files changed** | `biometrics/config/settings.py`; `biometrics/README.md` |
+
+**Gap.** The header described `TEMPLATE_WIDTH` and `TEMPLATE_HEIGHT` (64×64) as the size every image is resampled to, and `DEFAULT_THRESHOLD` (0.94) as the match threshold. Nothing reads them. Extraction uses 128×128, and thresholds come from `biometrics.engine.modalities.DEFAULT_THRESHOLDS`.
+
+**Fix.** Documentation only. The header and README now state that nothing reads these values and point to where geometry and thresholds actually live. The names and values are unchanged, so existing imports keep working.
+
+### Fix 8 of 8 — `version.py` header was inaccurate
+
+| Field | Details |
+|---|---|
+| **ID** | `LTS-2028-COR-10` |
+| **Severity** | Low |
+| **Component** | `version.py` |
+| **Affected versions** | 1.3.9 and earlier |
+| **Files changed** | `version.py` |
+
+**Gap.** The header stated the module defines no constants, although it defines `__version__`.
+
+**Fix.** Header corrected. Version set to `1.3.10`.
+
+### Verification
+
+Verified on Linux, Python 3.12, without Tkinter or a display:
+
+- All new and changed tests pass. GUI tests that need Tkinter or a display are skipped.
+- CLI smoke tests: `version`, `help`, unknown-tool handling, `make-samples`, `record-video`, `probe-video`, `list`, `package demo`, and the package create/open round trip.
+- No broken cross-module references; every documented CLI flag exists.
+- Documentation spot-checked against code: thresholds, grid sizes, frame limits, motion threshold, throttle timings, padding, chunk size, recovery-code format, and demonstration key derivation.
+- `python tests/run_tests.py --fast`: 421 tests ran in about 2 minutes 50 seconds (previously over 20 minutes). 47 GUI tests were skipped (no display). All others passed except the vendored-file digest test.
+
+Not verified in this environment: the real-KDF slow suite (`python tests/run_tests.py --slow`), and opening the GUI window on a display.
+
+### Notes
+
+- This release does not change cryptographic primitives, authentication policy, attempt-limiting behavior, or KDF parameters.
+- No stored Vault, identity, keyring, biometric-template, attachment, package, or custody-chain format changed.
+- No migration is required. Data written by earlier LTS-2028 releases loads unchanged.
+- No new external dependencies were introduced. The project remains pure Python and standard-library only, consistent with the LTS-2028 dependency-free guarantee.
+
+
+---
+
 ## [1.3.9] - 2026-09-12 — LTS-2028 Test-Correctness Follow-Up
 
 A narrowly scoped test-correctness follow-up to 1.3.8. The production unlock-throttling implementation introduced in 1.3.7 remains unchanged and continues to behave correctly.

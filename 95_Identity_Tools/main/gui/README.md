@@ -13,11 +13,14 @@ From the selected application root:
 python app.py
 ```
 
-The executable shell is the root-level `app.py`, not `gui/app.py`.
+Or through the dispatcher:
 
-The supplied dispatcher imports `gui.app` for its `gui` command, but that
-module is absent. Do not use `python cli.py gui` or `python -m gui.app` for
-this snapshot.
+```bash
+python cli.py gui
+```
+
+Both run the same executable shell: the root-level `app.py`. There is no
+`gui/app.py`, so `python -m gui.app` is not a launch command.
 
 A working Tkinter installation and graphical display are required.
 

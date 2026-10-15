@@ -13,10 +13,11 @@ Public interface:
 Design notes:
 
 This module is only the application shell -- the window, the three tabs'
-assembly, and the menu bar. Everything else lives in folder-grouped submodules:
+assembly, and the menu bar. It sits at the repository root; everything else
+lives in folder-grouped submodules under gui/:
 
+    app.py                <- this file: shell + main() only
     gui/
-      app.py              <- this file: shell + main() only
       core/
         constants.py      APP_TITLE, filetypes, and the repo-root bootstrap
         busy.py           BusyDialog + run_in_background (the threading core)
@@ -33,9 +34,11 @@ every button is wired directly to the same already-tested application layer the
 three CLIs use.
 
 Importing gui.core.constants first runs the repo-root sys.path bootstrap (it
-walks up to version.py) before any tool package is imported by the tab modules,
-so python -m gui.app, python cli.py gui, and opening a single submodule in an
-editor all resolve the tool packages correctly.
+walks up to version.py) before any tool package is imported by the tab modules.
+
+Supported launch commands, both run from the repository root:
+- ``python app.py`` -- runs this file directly.
+- ``python cli.py gui`` -- the dispatcher imports this module and calls main().
 
 Communication / relationships
 -----------------------------
@@ -46,9 +49,10 @@ Depends on (project modules):
 - gui.tabs.tab_packages (gui/tabs/tab_packages.py)
 - version (version.py)
 Standard library: tkinter.
-Imported by: no other module in this tree imports it directly (it is an entry
-point).
-Covered by tests: no test file imports this module directly.
+Imported by:
+- cli.py (only inside the gui command's handler)
+Covered by tests: tests/test_cli_dispatcher.py imports it to confirm the gui
+command resolves to this module, with main() replaced so no window opens.
 
 Settings / parameters
 ---------------------
@@ -63,16 +67,11 @@ unchanged.
 
 Known limitations
 -----------------
-- Location mismatch: this file sits at the repository root, but cli.py's gui
-  command runs ``from gui import app`` and the design notes describe it as
-  gui/app.py. No gui/app.py exists in this tree, so ``python cli.py gui`` and
-  ``python -m gui.app`` fail with ImportError until the file is moved to
-  gui/app.py (or cli.py is pointed at the root module). Launch it directly with
-  ``python app.py`` in the meantime.
+- There is no gui/app.py, so ``python -m gui.app`` is not a launch command.
 - Standard-library only (tkinter ships with Python), consistent with the rest
   of this ecosystem's zero-third-party-dependency rule.
-- No test module imports this file directly; as an entry point it is verified
-  only by running it, so check changes manually.
+- Tests confirm only that the gui command reaches this module's main(); the
+  window itself is not exercised, so check visual changes by running it.
 
 Examples
 --------

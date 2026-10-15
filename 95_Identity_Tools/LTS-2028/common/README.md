@@ -31,8 +31,8 @@ It also does not provide:
 - Lost-update prevention.
 - Secure temporary-file erasure.
 
-Not every application persistence path uses these helpers. In particular,
-the package CLI writes package JSON directly.
+Vault files, biometrics keyrings and identity records, package files, reports,
+and audit files are written through these helpers.
 
 ## File modes
 

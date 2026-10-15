@@ -101,10 +101,13 @@ safe filesystem paths without additional validation.
 
 ## Persistence
 
-The package CLI saves state using direct JSON file writing rather than the
-shared atomic-write helper. An interrupted save can leave a truncated file.
+The package CLI and the GUI Packages tab save state through the shared
+atomic-write helper, so an interrupted save leaves the previous package file
+intact rather than a truncated one.
 
-Keep backups of package state and avoid concurrent writers.
+The helper does not lock the file. Two processes saving the same package at
+once can still lose one update, so avoid concurrent writers and keep backups
+of package state.
 
 ## Module map
 

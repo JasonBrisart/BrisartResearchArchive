@@ -73,8 +73,14 @@ Edge cases
 
 Known limitations
 -----------------
-- Tracked in docs/KNOWN_ISSUES.md: KI-004: Integrity Ledger cannot detect a
-  tamper-then-revert entirely between two checkpoints
+- Tracked in docs/KNOWN_ISSUES.md: KI-004: Integrity checkpoints have
+  observation gaps and unkeyed-history limitations.
+- Run it as a module from the repository root (``python -m
+  tools.integrity_checkpoint``). Running the file directly (``python
+  tools/integrity_checkpoint.py``) fails with ModuleNotFoundError because the
+  repository root is not on sys.path.
+- ``status`` exits 0 even when the file no longer matches its latest
+  checkpoint; read the printed result rather than the exit status.
 - No test module imports this file directly; as an entry point it is verified
   only by running it, so check changes manually.
 

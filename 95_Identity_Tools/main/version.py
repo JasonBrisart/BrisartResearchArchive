@@ -9,9 +9,9 @@ it provides.
 
 Design notes:
 
-Lives in a plain module rather than __init__.py because this package tree
-deliberately uses no __init__.py files (PEP 420 namespace packages). Everything
-that needs the version imports it from here:
+Lives in a plain module rather than __init__.py because the application
+folders deliberately use no __init__.py files (PEP 420 namespace packages).
+Everything that needs the version imports it from here:
 
     from version import __version__
 
@@ -27,8 +27,7 @@ Covered by tests: tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------
-No module-level constants, environment variables, or defaulted arguments:
-behaviour is controlled entirely by the values callers pass in.
+- __version__ = "1.9.2" -- the release version of this tree.
 
 Edge cases
 ----------
@@ -54,7 +53,7 @@ Examples
     import version
 """
 
-__version__ = "1.9.1"
+__version__ = "1.9.2"
 
 
 

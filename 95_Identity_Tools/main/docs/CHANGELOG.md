@@ -4,6 +4,209 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ---
 
+## [1.9.2] - 2026-10-12
+
+A documentation-overhaul and correctness release bringing the current codebase,
+module headers, READMEs, architecture documentation, and regression coverage back
+into alignment with the behavior actually implemented by BrisartIdentityTools.
+
+The documentation review also exposed several correctness issues in the CLI, GUI,
+package persistence, biometric video commands, and test classification. Those
+issues are corrected in this release. Main-only functionality, including
+`hardware/`, the Integrity Ledger, and the saved-files package demo, remains in
+place and is unaffected except where shared infrastructure is explicitly listed
+below.
+
+No stored Vault, identity, keyring, biometric-template, attachment, package,
+custody-chain, hardware, or Integrity Ledger format changed. There is no data
+migration.
+
+### Security
+
+- **`gui/tabs/tab_biometrics.py`: GUI-created Biometrics keyrings now use the
+  same protected write path as the command-line interface.** The Biometrics tab
+  previously created `keyring.json` using a normal `open()` / `json.dump()`
+  write, while the CLI already used the shared atomic-write infrastructure and
+  requested owner-only (`0600`) permissions on POSIX. New GUI-created keyrings
+  are now written through `common.atomic_io.atomic_write_json()` with
+  `SENSITIVE_FILE_MODE`, and loading an existing keyring calls
+  `warn_if_permissive()`. This removes the protection mismatch between the GUI
+  and CLI paths. POSIX permission enforcement remains platform-specific and is
+  not claimed on Windows.
+
+### Fixed
+
+- **`cli.py`: tool exit statuses are now propagated correctly.** The
+  `biometrics`, `vault`, and `package` dispatcher handlers previously discarded
+  the status returned by the underlying tool and returned `0` themselves. This
+  meant commands such as a biometric verification could report `NO MATCH` or an
+  error while the top-level `python cli.py ...` process still exited
+  successfully. Each handler now returns the underlying tool's exit status:
+  `0` for success, `1` for a negative result, and `2` for a reported error.
+
+- **`cli.py`: the `gui` command now imports the actual GUI entry point.** The
+  dispatcher attempted to import `gui.app`, even though the GUI shell was moved
+  to the repository-root `app.py` during the 1.2.0 architecture split. Running
+  `python cli.py gui` therefore raised `ImportError`. The dispatcher now imports
+  the root-level `app.py` and calls the same `main()` entry point used by
+  `python app.py`. No GUI files were moved as part of this fix.
+
+- **`packages/main.py` and `gui/tabs/tab_packages.py`: package saves are now
+  atomic.** Package writes previously used direct file writes, allowing an
+  interrupted write to leave the destination file partially written or
+  truncated. Both the CLI and GUI package-save paths now use
+  `common.atomic_io.atomic_write_json()`, so the completed replacement is
+  performed through the project's shared atomic-write mechanism. Package file
+  permissions are otherwise unchanged. The helper does not provide file
+  locking, so concurrent writers targeting the same package can still overwrite
+  one another's updates. Main's saved-files demonstration workflow remains
+  otherwise unchanged.
+
+- **`biometrics/app.py`: `record-video` and `probe-video` now report ordinary
+  input failures without uncaught tracebacks.** `record-video` now creates a
+  missing parent directory before writing its BRVID output. A request with
+  `--frames 0` is rejected with an `error:` message and exit status `2`.
+  `probe-video` likewise reports a missing file or invalid/non-BRVID input as an
+  `error:` and exits `2` instead of allowing the underlying exception to escape
+  to the command line.
+
+- **`tests/run_tests.py` and the bulk-attachment regression tests: `--fast`
+  no longer includes work that belongs to the slow test set.** The
+  bulk-attachment tests now use 256-byte chunks rather than 32 KiB chunks,
+  retaining their chunking coverage without doing unnecessarily large amounts
+  of encrypted test work. `vault.tests.test_sealed_vault.VaultFilePermissionTests`
+  is now registered in `SLOW_TEST_CLASSES` because it exercises the real
+  password KDF. This changes test classification and test fixture size only;
+  production encryption behavior is unchanged.
+
+- **`biometrics/config/settings.py` and `biometrics/README.md`: biometric
+  settings documentation now distinguishes compatibility values from active
+  runtime configuration.** The previous header implied that
+  `TEMPLATE_WIDTH`, `TEMPLATE_HEIGHT`, `GRID_SIZE`, and `DEFAULT_THRESHOLD`
+  directly controlled the current extraction and matching paths even though
+  those paths do not read these values. The documentation now identifies them
+  accurately and points to the code where extraction geometry and matching
+  thresholds are actually defined. The existing names and values are
+  unchanged.
+
+- **`version.py`: the module header now describes the version constant it
+  actually contains.** The standardized header previously stated that the
+  module defined no constants even though it defines `__version__`. The header
+  now reflects the module's real responsibility, and the Current-line version
+  is `1.9.2`.
+
+### Added
+
+- **`tests/test_cli_dispatcher.py`:** added regression coverage confirming that
+  the top-level dispatcher preserves the exit statuses returned by Biometrics,
+  Vault, and Packages. Coverage also verifies that the `gui` command reaches
+  the root GUI shell's `main()` function without needing to open the actual
+  application window; that GUI-dispatch test is skipped when Tkinter is
+  unavailable.
+
+- **`gui/tests/test_tab_biometrics.py`:** added coverage for the GUI Biometrics
+  keyring-creation path, including verification that the serialized keyring
+  state is written and, on POSIX, that a newly created keyring receives mode
+  `0600`. The permission-specific test is skipped on Windows.
+
+- **`biometrics/tests/test_video_support.py`:** expanded regression coverage for
+  the `record-video` and `probe-video` command error paths, including zero-frame
+  recording requests and missing or invalid probe inputs.
+
+### Changed
+
+- **Repository-wide documentation was rewritten against the current
+  implementation.** `docs/README.md` and the READMEs under `vault/`,
+  `biometrics/`, `packages/`, `gui/`, `common/`, and `crypto/` now describe
+  the behavior and limitations of the code they accompany rather than carrying
+  forward stale descriptions from earlier layouts.
+
+- **`docs/BSR2_INTEGRATION.md`:** rewritten around the actual integration
+  boundary and threat model so the document distinguishes the guarantees
+  supplied by the surrounding application from the guarantees and limitations
+  of the vendored BSR2 implementation.
+
+- **`docs/SECURITY.md`:** revised so project maintenance/support policy and
+  security assurance are described separately rather than implying that long
+  support lifetime itself provides additional security assurance.
+
+- **`docs/KNOWN_ISSUES.md`:** KI-003 now documents the memory and temporary-
+  storage considerations of bulk encryption alongside its throughput
+  limitation.
+
+- **Biometric documentation was corrected to match the implemented feature
+  shapes and checks.** Fingerprint extraction is documented as operating on
+  128x128 input with an 8x8 grid and producing a 192-value feature vector.
+  Video extraction is documented as producing a 72-value vector composed of
+  36 spatial and 36 motion values. `record-video` is described as generating
+  synthetic BRVID data, and the video liveness mechanism is described as a
+  motion-presence check rather than general anti-spoofing.
+
+- **Bulk-encryption documentation now distinguishes envelope-size handling from
+  resource usage.** Chunking allows content larger than the per-envelope limit
+  to be processed, but is no longer described as eliminating memory,
+  temporary-storage, or throughput constraints.
+
+- **Package key and history documentation was tightened.** Package
+  text-to-key prompts are documented as using a single unsalted SHA-256
+  derivation for demonstration use. Custody chains and audit files are
+  documented as unkeyed history/tamper-evidence mechanisms rather than
+  authenticated or immutable records.
+
+- **`docs/FULL_FILE_ENCRYPTION.md` was renamed to
+  `docs/FILE_AND_BUNDLE_ENCRYPTION.md`.** The new filename reflects that the
+  document covers both individual-file encryption and the bundled
+  file/folder/drive workflows. References to the old documentation filename
+  were updated.
+
+- **Python module headers were standardized.** Project-owned Python modules now
+  use the six-section documentation structure: Purpose,
+  Communication / relationships, Settings / parameters, Edge cases,
+  Known limitations, and Examples. The pass also corrected headers whose
+  descriptions had drifted from the implementations beneath them.
+
+### Verification
+
+- Regression coverage was expanded for CLI exit-status propagation, GUI
+  dispatch, Biometrics GUI keyring creation, and video-command error handling.
+  Package-save call sites and fast/slow test registration were inspected
+  directly.
+
+- `python tests/run_tests.py --fast` was run on Linux with Python 3.12 in a
+  headless environment: 441 tests ran and 47 GUI tests were skipped because no
+  display was available.
+
+Not verified in that environment: the real-KDF slow suite
+(`python tests/run_tests.py --slow`) and opening the Tkinter GUI on a physical
+display.
+
+### Compatibility and residual risk
+
+- No stored Vault, identity, keyring, biometric-template, attachment, package,
+  custody-chain, hardware, or Integrity Ledger format changed. No migration is
+  required.
+
+- No BSR2 cryptographic primitive, envelope behavior, authentication policy,
+  attempt-limiting behavior, or KDF parameter changed.
+
+- The GUI keyring correction aligns that creation path with the existing POSIX
+  sensitive-file behavior; it does not introduce a portable Windows ACL
+  mechanism.
+
+- Atomic package writes protect against an interrupted replacement leaving the
+  destination partially written, but they do not provide concurrent-writer
+  locking.
+
+- The video liveness mechanism remains a motion-presence check rather than
+  general anti-spoofing, and the documentation now states that limitation
+  explicitly.
+
+- No new external dependencies were introduced. Main remains standard-library
+  only outside the deliberately optional, caller-supplied bindings and
+  transports used by its hardware subsystem.
+
+---
+
 ## [1.9.1] - 2026-09-12
 
 A test-correctness follow-up to 1.9.0.

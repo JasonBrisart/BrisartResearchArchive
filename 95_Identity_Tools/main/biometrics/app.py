@@ -170,6 +170,11 @@ Edge cases
 - command_verify() raises AppError: "at least one of --voice, --fingerprint, or
   --video is required."
 - command_inspect() raises AppError.
+- command_probe_video() raises AppError when the file is missing, unreadable,
+  or not a valid BRVID file.
+- command_record_video() creates missing parent directories of the output
+  path, and raises AppError when the file cannot be written or the frame
+  count or frame rate is invalid.
 - command_attach() raises AppError.
 - command_attach() raises AppError: "no file found at {...}."
 - command_attach_paths() raises AppError.
@@ -449,15 +454,23 @@ def command_delete(args) -> int:
 
 def command_probe_video(args) -> int:
     from biometrics.codecs import video
-    info = video.probe(args.path)
+    try:
+        info = video.probe(args.path)
+    except (OSError, video.VideoFormatError) as exc:
+        raise AppError(f"cannot read BRVID file {args.path}: {exc}") from exc
     print(json.dumps(info, indent=2, sort_keys=True))
     return 0
 
 
 def command_record_video(args) -> int:
-    sample_generator.write_video_sample(
-        args.output, args.seed, frame_count=args.frames, frame_rate=args.frame_rate
-    )
+    output = Path(args.output)
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        sample_generator.write_video_sample(
+            output, args.seed, frame_count=args.frames, frame_rate=args.frame_rate
+        )
+    except (OSError, ValueError) as exc:
+        raise AppError(f"cannot write synthetic video to {args.output}: {exc}") from exc
     print(f"wrote synthetic video capture to {args.output}")
     return 0
 

@@ -60,12 +60,14 @@ From the selected application root:
 python app.py
 ```
 
-The GUI entry point is the root-level `app.py`.
+Or through the dispatcher:
 
-The supplied CLI dispatcher still tries to import `gui.app` for its `gui`
-command, but no `gui/app.py` exists in this tree. Consequently,
-`python cli.py gui` and `python -m gui.app` are not supported launch commands
-for this snapshot. Use `python app.py`.
+```bash
+python cli.py gui
+```
+
+Both run the same shell: the root-level `app.py`. There is no `gui/app.py`,
+so `python -m gui.app` is not a launch command.
 
 ## Command-line interfaces
 

@@ -16,13 +16,22 @@ Public interface:
 
 Design notes:
 
-UNLOCK THROTTLING (since 1.3.7): the "Unlock / Create Keyring" button's unlock
-branch now goes through biometrics.identity.keyring_access instead of calling
+UNLOCK THROTTLING (since 1.9.0, forward-ported from LTS-2028-SEC-2): the
+"Unlock / Create Keyring" button's unlock branch now goes through
+biometrics.identity.keyring_access instead of calling
 crypto.keyring.Keyring.unlock_with_passphrase() directly. Before this change,
 the GUI enforced no attempt throttling at all, independent of whatever
 biometrics/app.py's CLI did on the same keyring.json -- an attacker with GUI
 access had unlimited passphrase guesses even after the CLI path was throttled.
 Both interfaces now enforce the identical policy.
+
+KEYRING PERSISTENCE: a keyring created from this tab is written by
+_save_new_keyring(), which uses common.atomic_io.atomic_write_json with
+SENSITIVE_FILE_MODE -- the same write the CLI (biometrics/app.py) and the
+throttled unlock path (biometrics/identity/keyring_access.py) use. Loading an
+existing keyring.json runs warn_if_permissive(), also matching the CLI. Earlier
+versions wrote the new keyring with a plain open()/json.dump(), so a
+GUI-created keyring got neither the atomic replace nor the owner-only mode.
 
 Communication / relationships
 -----------------------------
@@ -41,6 +50,7 @@ Depends on (project modules):
 - biometrics.identity.identity_store (biometrics/identity/identity_store.py)
 - biometrics.samples.sample_generator (biometrics/samples/sample_generator.py)
 - crypto.keyring (crypto/keyring.py)
+- common.atomic_io (common/atomic_io.py)
 Standard library: json, pathlib, tkinter.
 Imported by:
 - app.py
@@ -48,8 +58,9 @@ Covered by tests: gui/tests/test_tab_biometrics.py.
 
 Settings / parameters
 ---------------------
-No module-level constants, environment variables, or defaulted arguments:
-behaviour is controlled entirely by the values callers pass in.
+- BiometricsTab.KEYRING_FILE_NAME = "keyring.json" -- stored in
+  biometrics_settings.DATA_DIR, the same file the CLI uses.
+- New keyrings are written with SENSITIVE_FILE_MODE (0o600) on POSIX.
 
 Edge cases
 ----------
@@ -59,9 +70,16 @@ Edge cases
   BiometricsTab._refresh_list(), BiometricsTab._remove_selected_attachment(),
   BiometricsTab._verify(): catches IdentityStoreError and handles it in place;
   it does not propagate to the caller.
+- _save_new_keyring(): lets AtomicWriteError (and any OSError from the
+  directory fsync path) propagate; _ensure_keyring() reports it as "Could not
+  create keyring" and leaves no partially written keyring.json behind.
 
 Known limitations
 -----------------
+- The 0o600 mode and the permissions warning are POSIX-only; on Windows both
+  are no-ops, exactly as in common/atomic_io.py.
+- warn_if_permissive() prints its advisory to stderr, which is not visible when
+  the GUI is started without a console (for example with pythonw).
 - Security rests on BSR2, a custom research construction that has not been
   independently audited (see docs/SECURITY.md); do not treat it as a
   replacement for vetted, audited cryptography.
@@ -95,7 +113,14 @@ from biometrics.identity import keyring_access
 from biometrics.identity.identity_record import public_summary as bio_public_summary
 from biometrics.identity.identity_store import IdentityStore, IdentityStoreError
 from biometrics.samples import sample_generator
+from common.atomic_io import SENSITIVE_FILE_MODE, atomic_write_json, warn_if_permissive
 from crypto.keyring import Keyring
+
+
+def _save_new_keyring(path: Path, keyring) -> None:
+    """Persist a newly created keyring the same way the CLI does: an atomic
+    temp-file-then-replace write, restricted to owner-only (0o600) on POSIX."""
+    atomic_write_json(path, keyring.to_state(), file_mode=SENSITIVE_FILE_MODE)
 
 
 class BiometricsTab(ttk.Frame):
@@ -217,6 +242,7 @@ class BiometricsTab(ttk.Frame):
         if path.is_file():
             with open(path, "r", encoding="utf-8") as handle:
                 state = json.load(handle)
+            warn_if_permissive(path, label="biometrics keyring")
             keyring = Keyring(state)
             prompt = TextPromptDialog(self, "Unlock Biometrics", [("passphrase", "Passphrase", True)])
             if prompt.result is None:
@@ -249,8 +275,7 @@ class BiometricsTab(ttk.Frame):
 
             def work():
                 keyring, recovery_code = Keyring.create(passphrase)
-                with open(path, "w", encoding="utf-8") as handle:
-                    json.dump(keyring.to_state(), handle, indent=2, sort_keys=True)
+                _save_new_keyring(path, keyring)
                 return keyring, recovery_code
 
             def on_success(result):

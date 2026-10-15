@@ -23,6 +23,7 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - version (version.py)
+- app (app.py) -- the root-level GUI shell, imported only by the gui command
 - biometrics.app (biometrics/app.py)
 - vault.app (vault/app.py)
 - packages.main (packages/main.py)
@@ -44,14 +45,22 @@ Edge cases
 ----------
 - Run as a script, the process exit status is main()'s return value (via
   ``raise SystemExit(main())``).
+- biometrics, vault, and package return the tool's own exit status unchanged:
+  0 on success, 1 for a negative result (for example a biometrics verify that
+  does not match), and 2 for an error the tool reports. Earlier versions
+  always returned 0 for these three tools.
 - main(): catches SystemExit and handles it in place; it does not propagate to
   the caller.
 
 Known limitations
 -----------------
-- The gui command imports ``gui.app``, which does not exist in this tree (the
-  GUI shell currently lives at the repository-root app.py), so ``python cli.py
-  gui`` raises ImportError until that file is moved to gui/app.py.
+- The gui command imports the root-level ``app`` module (app.py), the same
+  shell that ``python app.py`` runs. It therefore needs tkinter and a graphical
+  display, exactly like launching app.py directly.
+- ``app`` is a generic top-level module name: the gui command relies on the
+  repository root being first on sys.path (true when cli.py is run as a script
+  or imported by tests/run_tests.py), so an unrelated ``app`` module earlier on
+  sys.path would be imported instead.
 - Tool modules are imported lazily so `version`/`help` never pay an import cost
   for a tool they are not running.
 
@@ -64,6 +73,7 @@ Examples
     python cli.py vault --vault v.json init
     python cli.py package demo
     python cli.py biometrics --help
+    python cli.py gui
 """
 
 import sys
@@ -89,27 +99,25 @@ Tools:
 def _run_biometrics(rest):
     from biometrics import app
     sys.argv = ["brisart-biometrics", *rest]
-    app.main()
-    return 0
+    return app.main()
 
 
 def _run_vault(rest):
     from vault import app
     sys.argv = ["brisart-vault", *rest]
-    app.main()
-    return 0
+    return app.main()
 
 
 def _run_package(rest):
     from packages import main as package_main
     sys.argv = ["brisart-package", *rest]
-    package_main.main()
-    return 0
+    return package_main.main()
 
 
 def _run_gui(_rest):
-    from gui import app
-    app.main()
+    # The GUI shell lives at the repository root (app.py), not in gui/app.py.
+    import app as gui_shell
+    gui_shell.main()
     return 0
 
 

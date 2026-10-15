@@ -3,11 +3,12 @@ File: biometrics/tests/test_video_support.py
 
 Purpose
 -------
-Tests for biometrics.codecs.video and biometrics.features.video_features.
+Tests for biometrics.codecs.video, biometrics.features.video_features, and the
+biometrics CLI's record-video and probe-video commands.
 
 Verifies: biometrics/codecs/video.py, biometrics/features/video_features.py,
-biometrics/samples/sample_generator.py.
-Contains 13 test case(s) across 2 TestCase class(es).
+biometrics/samples/sample_generator.py, biometrics/app.py.
+Contains 17 test case(s) across 3 TestCase class(es).
 
 Communication / relationships
 -----------------------------
@@ -15,7 +16,8 @@ Depends on (project modules):
 - biometrics.codecs.video (biometrics/codecs/video.py)
 - biometrics.features.video_features (biometrics/features/video_features.py)
 - biometrics.samples.sample_generator (biometrics/samples/sample_generator.py)
-Standard library: pathlib, tempfile, unittest.
+- biometrics.app (biometrics/app.py)
+Standard library: contextlib, io, pathlib, tempfile, unittest.
 Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
 nothing imports it.
 
@@ -42,10 +44,15 @@ VideoFeatureTests:
 - Compare identical vectors is near one.
 - Compare rejects mismatched lengths.
 - Extract from video file round trip.
+VideoCliTests:
+- record-video creates missing parent directories.
+- record-video reports an invalid frame count as an error, not a traceback.
+- probe-video reports a missing file as an error, not a traceback.
+- probe-video reports a non-BRVID file as an error, not a traceback.
 
 Known limitations
 -----------------
-- Passing proves only the 13 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 17 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -56,10 +63,13 @@ Examples
     python tests/run_tests.py
 """
 
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
+from biometrics import app as biometrics_app
 from biometrics.codecs import video
 from biometrics.features import video_features
 from biometrics.samples import sample_generator
@@ -166,6 +176,45 @@ class VideoFeatureTests(unittest.TestCase):
             sample_generator.write_video_sample(path, "seed-d", width=16, height=16, frame_count=4)
             vector = video_features.extract_from_video(path)
             self.assertEqual(len(vector), video_features.FEATURE_VECTOR_LENGTH)
+
+
+class VideoCliTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp_dir = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self._tmp_dir.name)
+
+    def tearDown(self):
+        self._tmp_dir.cleanup()
+
+    def _run(self, argv):
+        stderr = io.StringIO()
+        with redirect_stdout(io.StringIO()), redirect_stderr(stderr):
+            code = biometrics_app.main(argv)
+        return code, stderr.getvalue()
+
+    def test_record_video_creates_missing_parent_directories(self):
+        output = self.tmp_path / "new" / "nested" / "clip.brvid"
+        code, _ = self._run(["record-video", str(output), "--frames", "3"])
+        self.assertEqual(code, 0)
+        self.assertTrue(output.is_file())
+
+    def test_record_video_invalid_frame_count_is_reported_as_error(self):
+        output = self.tmp_path / "clip.brvid"
+        code, stderr = self._run(["record-video", str(output), "--frames", "0"])
+        self.assertEqual(code, 2)
+        self.assertIn("error:", stderr)
+
+    def test_probe_video_missing_file_is_reported_as_error(self):
+        code, stderr = self._run(["probe-video", str(self.tmp_path / "missing.brvid")])
+        self.assertEqual(code, 2)
+        self.assertIn("error:", stderr)
+
+    def test_probe_video_non_brvid_file_is_reported_as_error(self):
+        junk = self.tmp_path / "junk.brvid"
+        junk.write_bytes(b"not a video")
+        code, stderr = self._run(["probe-video", str(junk)])
+        self.assertEqual(code, 2)
+        self.assertIn("error:", stderr)
 
 
 if __name__ == "__main__":

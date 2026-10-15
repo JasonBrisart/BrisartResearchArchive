@@ -63,26 +63,26 @@ Run from the `main/` application root.
 
 ```bash
 # Record an observed file state.
-python tools/integrity_checkpoint.py \
+python -m tools.integrity_checkpoint \
   --ledger data/integrity/ledger.json \
   checkpoint data/vaults/main_vault.json --label "manual checkpoint"
 
 # Compare current bytes with the latest retained checkpoint.
-python tools/integrity_checkpoint.py \
+python -m tools.integrity_checkpoint \
   --ledger data/integrity/ledger.json \
   status data/vaults/main_vault.json
 
 # Show retained checkpoints for the target.
-python tools/integrity_checkpoint.py \
+python -m tools.integrity_checkpoint \
   --ledger data/integrity/ledger.json \
   history data/vaults/main_vault.json
 
 # Check internal ledger consistency.
-python tools/integrity_checkpoint.py \
+python -m tools.integrity_checkpoint \
   --ledger data/integrity/ledger.json verify
 
 # List tracked paths.
-python tools/integrity_checkpoint.py \
+python -m tools.integrity_checkpoint \
   --ledger data/integrity/ledger.json list-tracked
 ```
 

@@ -48,9 +48,9 @@ Fingerprint extraction resizes input to the dimensions defined in
 - Three values per grid cell.
 - Feature-vector length: 192.
 
-The `TEMPLATE_WIDTH` and `TEMPLATE_HEIGHT` values in
-`biometrics/config/settings.py` are not the dimensions used by this extractor.
-Changing those settings alone does not change fingerprint extraction geometry.
+`biometrics/config/settings.py` also defines `TEMPLATE_WIDTH`,
+`TEMPLATE_HEIGHT`, `GRID_SIZE`, and `DEFAULT_THRESHOLD` (64x64, 8, 0.94).
+Nothing reads them, so changing them has no effect on extraction or matching.
 
 ## Video features and motion checks
 

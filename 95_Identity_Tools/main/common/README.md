@@ -21,8 +21,8 @@ or operating-system condition.
 It does not provide multi-file transactions, concurrent-writer locking,
 lost-update prevention, or secure temporary-file erasure.
 
-Not every persistence path uses these helpers. The package CLI writes package
-JSON directly.
+Vault files, biometrics keyrings and identity records, package files, reports,
+and audit files are written through these helpers.
 
 ## File modes
 

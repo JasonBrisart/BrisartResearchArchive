@@ -8,8 +8,8 @@ KI-002's remaining gap ("gui/tabs/*.py ... still has no direct coverage").
 
 Verifies: gui/tabs/tab_biometrics.py, biometrics/identity/identity_store.py,
 biometrics/identity/identity_record.py, biometrics/engine/attachments.py,
-biometrics/engine/bulk_attachments.py.
-Contains 11 test case(s) across 1 TestCase class(es).
+biometrics/engine/bulk_attachments.py, common/atomic_io.py.
+Contains 13 test case(s) across 2 TestCase class(es).
 
 Design notes:
 
@@ -37,8 +37,12 @@ sponge-based -- no KDF), the same convention already used in
 biometrics/tests/test_attachments.py and
 biometrics/tests/test_bulk_attachments.py.
 
-Requires a real Tk root and skips cleanly on a headless runner with no display,
-matching the convention used throughout gui/tests/.
+BiometricsTabTests requires a real Tk root and skips cleanly on a headless
+runner with no display, matching the convention used throughout gui/tests/.
+
+KeyringPersistenceTests covers _save_new_keyring(), the write used when the tab
+creates a new keyring. It calls the helper directly with a stand-in keyring
+object, so it needs tkinter to import the module but no display and no KDF.
 
 Communication / relationships
 -----------------------------
@@ -48,13 +52,16 @@ Depends on (project modules):
 - biometrics.identity.identity_record (biometrics/identity/identity_record.py)
 - biometrics.engine.attachments (biometrics/engine/attachments.py)
 - biometrics.engine.bulk_attachments (biometrics/engine/bulk_attachments.py)
-Standard library: pathlib, secrets, tempfile, tkinter, unittest.
+- common.atomic_io (common/atomic_io.py)
+Standard library: json, os, pathlib, secrets, stat, tempfile, tkinter,
+unittest.
 Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
 nothing imports it.
 
 Settings / parameters
 ---------------------
 - _HAS_DISPLAY = _tk_display_available()
+- _HAS_TKINTER = _tkinter_importable()
 
 Edge cases
 ----------
@@ -69,12 +76,14 @@ Edge cases
 - Refresh attachment list strips manifest suffix and hides chunks.
 - Refresh attachment list is empty with no target identity.
 - Selected attachment name returns correct value when selected.
+- A new keyring is saved as the keyring's JSON state.
+- A new keyring is saved owner-only (0o600) on POSIX.
 - Skips (rather than fails) when a prerequisite is missing: "requires a
-  Tk-capable display"
+  Tk-capable display", "tkinter not installed", "POSIX permission bits only"
 
 Known limitations
 -----------------
-- Passing proves only the 11 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 13 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -85,10 +94,24 @@ Examples
     python tests/run_tests.py
 """
 
+import json
+import os
 import secrets
+import stat
 import tempfile
 import unittest
 from pathlib import Path
+
+
+def _tkinter_importable():
+    try:
+        import tkinter  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+_HAS_TKINTER = _tkinter_importable()
 
 
 def _tk_display_available():
@@ -227,6 +250,45 @@ class BiometricsTabTests(unittest.TestCase):
         children = self.tab.attachment_tree.get_children()
         self.tab.attachment_tree.selection_set(children[0])
         self.assertEqual(self.tab._selected_attachment_name(), "report.pdf")
+
+
+class _StubKeyring:
+    """Stands in for crypto.keyring.Keyring: only to_state() is used."""
+
+    def __init__(self, state):
+        self._state = state
+
+    def to_state(self):
+        return dict(self._state)
+
+
+@unittest.skipUnless(_HAS_TKINTER, "tkinter not installed")
+class KeyringPersistenceTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp_dir = tempfile.TemporaryDirectory()
+        self.path = Path(self._tmp_dir.name) / "keyring.json"
+        self.state = {"format": "test-keyring", "iterations": 10000}
+
+    def tearDown(self):
+        self._tmp_dir.cleanup()
+
+    def test_new_keyring_is_saved_as_its_json_state(self):
+        from gui.tabs.tab_biometrics import _save_new_keyring
+
+        _save_new_keyring(self.path, _StubKeyring(self.state))
+        with open(self.path, "r", encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle), self.state)
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits only")
+    def test_new_keyring_is_saved_owner_only_on_posix(self):
+        from gui.tabs.tab_biometrics import _save_new_keyring
+
+        previous_umask = os.umask(0o022)  # would leave 0o644 without file_mode
+        try:
+            _save_new_keyring(self.path, _StubKeyring(self.state))
+        finally:
+            os.umask(previous_umask)
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
 
 
 if __name__ == "__main__":

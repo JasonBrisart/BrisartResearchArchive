@@ -38,6 +38,7 @@ Depends on (project modules):
 - packages.package (packages/package.py)
 - packages.custody (packages/custody.py)
 - packages.identity (packages/identity.py)
+- common.atomic_io (common/atomic_io.py)
 Standard library: argparse, getpass, hashlib, json, pathlib, sys.
 Imported by:
 - cli.py
@@ -122,9 +123,10 @@ Known limitations
   source; it is not a password KDF, so the same text always gives the same key
   and a guessable text gives a guessable key. The GUI Packages tab does the
   same.
-- _save_state() writes the package file with open() and json.dump() directly,
-  not through common.atomic_io, so an interrupted write can leave a truncated
-  package file.
+- _save_state() writes through common.atomic_io.atomic_write_json, so an
+  interrupted save leaves the previous package file intact rather than a
+  truncated one. It does not lock the file: two processes saving the same
+  package at once can still lose one update.
 - No test module imports this file directly; as an entry point it is verified
   only by running it, so check changes manually.
 
@@ -144,6 +146,7 @@ import json
 import sys
 from pathlib import Path
 
+from common.atomic_io import atomic_write_json
 from packages import demo, package
 from packages.custody import CustodyError
 from packages.identity import RecipientIdentityError
@@ -171,9 +174,7 @@ def _load_state(path: Path) -> dict:
 
 
 def _save_state(path: Path, state: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(state, handle, indent=2, sort_keys=True)
+    atomic_write_json(path, state)
 
 
 def _prompt_master_key(identity_id: str) -> bytes:

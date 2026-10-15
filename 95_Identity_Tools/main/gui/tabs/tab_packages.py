@@ -38,6 +38,7 @@ Depends on (project modules):
 - packages.package (packages/package.py)
 - packages.custody (packages/custody.py)
 - packages.demo (packages/demo.py)
+- common.atomic_io (common/atomic_io.py)
 Standard library: hashlib, json, os, pathlib, subprocess, sys, tkinter.
 Imported by:
 - app.py
@@ -70,9 +71,9 @@ Known limitations
   calls it a key stretch. The same text always gives the same key, and a
   guessable text gives a guessable key. packages/main.py does the same for the
   CLI.
-- _save_state() writes the package file with open() and json.dump() directly,
-  not through common.atomic_io, so an interrupted write can leave a truncated
-  package file.
+- _save_state() writes through common.atomic_io.atomic_write_json, so an
+  interrupted save leaves the previous package file intact rather than a
+  truncated one. It does not lock the file against a concurrent CLI save.
 - Audit entries go to data/packages/audit, a path relative to the folder the
   GUI was started from, so launching from another folder writes the audit trail
   somewhere else.
@@ -103,6 +104,7 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 from gui.core.constants import APP_TITLE, _Cancelled
 from gui.core.busy import run_in_background
 from gui.widgets.dialogs import TextPromptDialog, TextViewDialog
+from common.atomic_io import atomic_write_json
 from packages import package as ibp_package
 from packages.custody import CustodyError
 from packages.demo import run_demo
@@ -172,8 +174,7 @@ class PackagesTab(ttk.Frame):
     def _save_state(self):
         if self.package_path is None or self.state is None:
             return
-        with open(self.package_path, "w", encoding="utf-8") as handle:
-            json.dump(self.state, handle, indent=2, sort_keys=True)
+        atomic_write_json(self.package_path, self.state)
 
     def _refresh_recipients(self):
         for item in self.tree.get_children():

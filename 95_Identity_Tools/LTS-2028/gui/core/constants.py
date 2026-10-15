@@ -8,10 +8,9 @@ Shared constants and the repo-root bootstrap for the GUI package.
 Design notes:
 
 This module is imported first by every other ``gui`` module, so putting the
-``sys.path`` bootstrap here guarantees the repository root is importable no
-matter which GUI file is used as the entry point (``python -m gui.app``,
-``python cli.py gui``, or opening a single tab/widget module directly in an
-editor).
+``sys.path`` bootstrap here makes the repository root importable from each
+supported entry point (``python app.py``, ``python cli.py gui``) and when a
+single tab/widget module is opened directly in an editor.
 
 The root is located by walking UP to the directory that contains ``version.py``
 (the single source of truth for the ecosystem version), rather than assuming a
@@ -50,8 +49,9 @@ unchanged.
 
 Known limitations
 -----------------
-- The walk is the same robust pattern the test runner uses, so relocating GUI
-  files never re-breaks imports.
+- The walk is the same pattern the test runner uses, so moving a GUI file to a
+  different depth does not require editing a hardcoded parent count. It still
+  requires version.py to remain at the repository root.
 - Nothing in this module imports a tool package, so importing it can never
   trigger a ``vault``/``biometrics``/``packages`` import before the path is
   set.

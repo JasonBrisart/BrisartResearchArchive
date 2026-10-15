@@ -15,8 +15,9 @@ Design notes:
 Like biometrics/tests/test_attachments.py, these use an injected 32-byte master
 key (secrets.token_bytes) rather than a real Keyring unlock, so they exercise
 the full chunk/bundle/manifest logic and real BSR2 sealing of each chunk
-WITHOUT paying the slow KDF cost. A small chunk size forces the multi-chunk
-path.
+WITHOUT paying the slow KDF cost. A 256-byte chunk size forces the
+multi-chunk path while keeping each test to a few seconds, matching
+vault/tests/test_bulk_file_service.py.
 
 Communication / relationships
 -----------------------------
@@ -75,7 +76,10 @@ class BulkAttachmentTests(unittest.TestCase):
     def setUp(self):
         self.master_key = secrets.token_bytes(32)
         self.record = new_record("alice", "Alice Example", "device-binding-placeholder")
-        self.small_chunk = 32 * 1024  # force multi-chunk on modest inputs
+        # 256-byte chunks force the multi-chunk path with a few hundred bytes of
+        # data. BSR2 seals roughly 1.4 KB/s in pure Python, so the former 32 KiB
+        # chunks made single tests take minutes under --fast.
+        self.small_chunk = 256
 
     def test_small_content_uses_a_single_chunk(self):
         data = b"a short attachment"

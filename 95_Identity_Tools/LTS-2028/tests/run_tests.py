@@ -6,8 +6,9 @@ Purpose
 -------
 Single test runner for the whole BrisartIdentityTools tree. It discovers every
 test_*.py file on disk, loads each by dotted module name (required because the
-tree is a PEP 420 namespace package with no __init__.py files), and can include
-or isolate the deliberately slow real-KDF tests via --fast / --slow.
+application folders are PEP 420 namespace packages with no __init__.py files),
+and can include or isolate the deliberately slow real-KDF tests via --fast /
+--slow.
 
 Public interface:
 - build_suite(mode)
@@ -15,11 +16,15 @@ Public interface:
 
 Design notes:
 
-The repository is one flat PEP 420 namespace-package tree with no __init__.py
-files. unittest's discover(start_dir=...) cannot import a namespace sub-package
-as a start directory, so this runner instead finds every test_*.py file on
-disk, converts each path to its dotted module name, and loads it by name.
-Loading by dotted name works for namespace packages as long as the repository
+The application folders are PEP 420 namespace packages with no __init__.py
+files. The one exception is tests/, which has an empty __init__.py: a
+namespace folder loses to any regular package with the same name anywhere on
+sys.path, so without it a third-party ``tests`` package installed in
+site-packages would shadow this folder and break collection of
+tests/test_*.py. unittest's discover(start_dir=...) cannot import a
+namespace sub-package as a start directory, so this runner instead finds every
+test_*.py file on disk, converts each path to its dotted module name, and
+loads it by name. Loading by dotted name works for namespace packages as long as the repository
 root is on sys.path (added below).
 
 A handful of tests exercise BSR2's real, deliberately-slow password KDF (~1
@@ -44,6 +49,7 @@ Settings / parameters
 - SLOW_TEST_CLASSES -- TestCase classes that run BSR2's real password KDF and
   are slow by design, filtered at class level so --fast still runs the fast
   classes in the same module: vault.tests.test_sealed_vault.SealedVaultTests,
+  vault.tests.test_sealed_vault.VaultFilePermissionTests,
   vault.tests.test_file_records.FileRecordTests,
   vault.tests.test_batch_upsert.BatchUpsertTests,
   vault.tests.test_label_normalization.VaultLookupNormalizationTests,
@@ -108,6 +114,7 @@ if str(REPOSITORY_ROOT) not in sys.path:
 # classes under --fast.
 SLOW_TEST_CLASSES = {
     "vault.tests.test_sealed_vault.SealedVaultTests",
+    "vault.tests.test_sealed_vault.VaultFilePermissionTests",
     "vault.tests.test_file_records.FileRecordTests",
     "vault.tests.test_batch_upsert.BatchUpsertTests",
     "vault.tests.test_label_normalization.VaultLookupNormalizationTests",

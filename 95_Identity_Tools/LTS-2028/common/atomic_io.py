@@ -34,7 +34,10 @@ Imported by:
 - biometrics/identity/identity_store.py
 - biometrics/identity/keyring_access.py
 - biometrics/reports/report_writer.py
+- gui/tabs/tab_biometrics.py
+- gui/tabs/tab_packages.py
 - packages/audit.py
+- packages/main.py
 - vault/reports/audit_log.py
 - vault/store/vault_file.py
 Covered by tests: common/tests/test_common_utils.py.

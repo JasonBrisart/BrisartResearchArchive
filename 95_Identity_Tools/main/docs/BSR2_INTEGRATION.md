@@ -178,8 +178,9 @@ content keys, or previously recovered plaintext.
 The CLI and GUI demonstration prompts hash typed text once with unsalted
 SHA-256. This is not a slow password KDF.
 
-Package CLI saves are direct JSON writes, so interrupted writes can truncate
-package state.
+Package saves from the CLI and GUI use atomic replacement, so an interrupted
+save does not truncate package state. Concurrent saves can still lose an
+update.
 
 ## Custody chains and audit files
 
