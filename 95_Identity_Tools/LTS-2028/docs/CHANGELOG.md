@@ -119,7 +119,7 @@ Per LTS-2028 policy, this release makes no changes to cryptographic primitives, 
 
 | Field | Details |
 |---|---|
-| **ID** | `LTS-2028-COR-8` |
+| **ID** | `LTS-2028-COR-7` |
 | **Severity** | Low |
 | **Component** | `tests/run_tests.py`, `biometrics/tests/` |
 | **Affected versions** | 1.3.9 and earlier |
@@ -138,7 +138,7 @@ Per LTS-2028 policy, this release makes no changes to cryptographic primitives, 
 
 | Field | Details |
 |---|---|
-| **ID** | `LTS-2028-COR-9` |
+| **ID** | `LTS-2028-COR-8` |
 | **Severity** | Low |
 | **Component** | `biometrics/config/settings.py` |
 | **Affected versions** | 1.3.9 and earlier |
@@ -152,7 +152,7 @@ Per LTS-2028 policy, this release makes no changes to cryptographic primitives, 
 
 | Field | Details |
 |---|---|
-| **ID** | `LTS-2028-COR-10` |
+| **ID** | `LTS-2028-COR-9` |
 | **Severity** | Low |
 | **Component** | `version.py` |
 | **Affected versions** | 1.3.9 and earlier |
