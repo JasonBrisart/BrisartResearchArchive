@@ -2,10 +2,12 @@
 
 ## A framework for baseline formation, destabilization, awareness, and deliberate change
 
-**Author:** Jason Brisart  
-**Version:** 1.3  
-**Status:** Active framework development  
-**Document class:** Framework reference paper, Brisart Research Archive
+- **Author:** Jason Brisart
+- **Affiliation:** Brisart Research Archive
+- **Contact:** [jason@brisartresearcharchive.com](mailto:jason@brisartresearcharchive.com)
+- **ORCID / Website:** [Brisart Research Archive](http://www.brisartresearcharchive.com/)
+- **Version:** v1.3
+- **Date:** October 2026
 
 ---
 
