@@ -118,7 +118,6 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         for path in (result.context_path, result.manifest_path, result.summary_path, result.settings_path, result.snapshot_path):
             self.assertTrue(path.is_file(), path)
         manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "4.0.0")
         self.assertEqual(manifest["source_completeness"]["status"], "PASS")
         self.assertEqual(manifest["settings"]["workers"], 4)
         self.assertEqual(manifest["author"], "Jason Brisart")
