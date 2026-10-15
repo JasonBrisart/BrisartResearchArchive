@@ -3,8 +3,8 @@
 ## A framework for baseline formation, destabilization, awareness, and deliberate change
 
 **Author:** Jason Brisart  
-**Version:** 1.1  
-**Status:** Foundational theory draft with critical crystallization principle  
+**Version:** 1.2  
+**Status:** Active framework development  
 **Document class:** Framework reference paper, Brisart Research Archive
 
 ---
@@ -51,6 +51,23 @@ A fluid system may contain many possible configurations. As some configurations 
 
 Crystallization does not mean that the resulting state is correct, desirable, or permanent. It means only that a pattern has become stable enough to function as part of the system's organization.
 
+$$
+\forall S,\;\exists p,\;\exists t_c < \infty:
+\quad C_{S,p}(t_c) \geq C_S^{*}
+$$
+
+Where:
+
+- \(S\): a system.
+- \(p\): a recurring pattern within that system.
+- \(C_{S,p}(t)\): how stable and organizationally influential that pattern is at time \(t\).
+- \(C_S^{*}\): the threshold at which a pattern is stable enough to organize the system.
+- \(t_c\): the time when crystallization occurs.
+
+**In plain language:** Every system eventually develops at least one pattern stable enough to organize it.
+
+This does **not** require the pattern to be correct, desirable, or permanent. It expresses the proposed principle; it does not prove that every system satisfies it.
+
 ---
 
 ## Principle 2: Baseline Formation
@@ -64,6 +81,26 @@ Once formed, the baseline becomes the system's reference state. New events, acti
 The baseline can consist of a fixed pattern, a recurring behavior, an operating procedure, a structural arrangement, or even a repeated tendency toward change.
 
 A baseline is therefore not necessarily static. It is the configuration that the system repeatedly restores, maintains, or reproduces.
+
+### Mathematical statement for Principle 2
+
+$$
+\operatorname{Crystallized}_S(p)
+\;\Rightarrow\;
+\operatorname{Baseline}_S(p)
+$$
+
+Where:
+
+- $S$ is a system.
+- $p$ is a pattern within that system.
+- $\operatorname{Crystallized}_S(p)$ means that the pattern has crystallized.
+- $\operatorname{Baseline}_S(p)$ means that the pattern functions as a baseline.
+- $\Rightarrow$ means “implies.”
+
+**Interpretation:** A crystallized pattern functions as a baseline around which the system organizes itself.
+
+This does not require the baseline to be static. A recurring process or capacity for adaptation can also serve as a baseline.
 
 ---
 
@@ -91,9 +128,28 @@ A newly formed baseline may be interrupted by a relatively small disturbance. A 
 
 This principle does not claim that age alone mechanically creates resistance. Persistence represents continued reinforcement across time. A baseline that persists without reinforcement may weaken, while a frequently reinforced baseline may strengthen quickly.
 
+### Mathematical statement for Principle 3
+
+$$
+r_2 > r_1
+\;\Rightarrow\;
+D_{\mathrm{req}}(r_2) > D_{\mathrm{req}}(r_1)
+$$
+
+Where:
+
+- $r$ represents the accumulated reinforcement maintaining a particular baseline.
+- $r_1$ and $r_2$ are two levels of accumulated reinforcement.
+- $D_{\mathrm{req}}(r)$ is the destabilization required to break the baseline at reinforcement level $r$.
+- Other relevant conditions are held comparable.
+
+**Interpretation:** A more strongly reinforced baseline requires greater destabilization to break.
+
+Time is not treated as reinforcement by itself. The proposed increase in resistance depends on reinforcement accumulated during persistence, consistent with the qualification in this principle.
+
 ---
 
-## Principle 3A: Critical Crystallization
+## Principle 4: Critical Crystallization
 
 **A crystallization that is not destabilized early may eventually require more force to reverse than the system can practically generate.**
 
@@ -139,7 +195,7 @@ Early interruption
 Lower destabilization requirement
 ```
 
-compared with:
+Compared with:
 
 ```text
 Delayed awareness
@@ -157,9 +213,30 @@ The strong form of the principle is:
 
 This principle does not define a deeply crystallized baseline as a system's “true self” or essential nature. It identifies the baseline as functionally dominant under the system's present constraints.
 
+### Mathematical statement for Principle 4
+
+$$
+D_{\mathrm{req}}(B) > D_{\mathrm{avail}}(S)
+\;\Longleftrightarrow\;
+\operatorname{Critical}_S(B)
+$$
+
+Where:
+
+- $S$ is a system.
+- $B$ is a baseline within that system.
+- $D_{\mathrm{req}}(B)$ is the destabilization required to break the baseline.
+- $D_{\mathrm{avail}}(S)$ is the destabilization practically available to the system under its present constraints.
+- $\operatorname{Critical}_S(B)$ means that the baseline has reached critical crystallization.
+- $\Longleftrightarrow$ means “if and only if.”
+
+**Interpretation:** A baseline is critically crystallized when breaking it requires more destabilization than the system can practically access.
+
+The comparison applies under the system's present constraints. It does not establish that change is theoretically impossible or that the baseline can never become practically reversible again.
+
 ---
 
-## Principle 4: Decrystallization
+## Principle 5: Decrystallization
 
 **Destabilization returns a crystallized system to a fluid state.**
 
@@ -183,9 +260,29 @@ Fluidity
 
 Decrystallization is not automatically improvement. Fluidity permits reorganization, but it does not determine what the system will become next.
 
+### Mathematical statement for Principle 5
+
+$$
+D_{\mathrm{applied}} > D_{\mathrm{req}}(B)
+\;\Rightarrow\;
+B \longrightarrow F
+$$
+
+Where:
+
+- $B$ is a crystallized baseline.
+- $D_{\mathrm{applied}}$ is the destabilization applied to that baseline.
+- $D_{\mathrm{req}}(B)$ is the destabilization required to break it.
+- $F$ is a fluid state.
+- $B \longrightarrow F$ represents decrystallization from the baseline into fluidity.
+
+**Interpretation:** Destabilization that exceeds the requirement for breaking a baseline returns the system to fluidity.
+
+The transition does not specify whether the resulting fluidity is beneficial or what organization will follow.
+
 ---
 
-## Principle 5: Recrystallization
+## Principle 6: Recrystallization
 
 **Fluidity can become a baseline of its own.**
 
@@ -207,9 +304,26 @@ In a fluid baseline, continuous adaptation becomes the stable operating conditio
 
 This means stability and rigidity are not identical. A system can be stable in its capacity to change.
 
+### Mathematical statement for Principle 6
+
+$$
+\Diamond\,\operatorname{Baseline}_S(F)
+$$
+
+Where:
+
+- $S$ is a system.
+- $F$ is an operating pattern characterized by continuing adaptation and reorganization.
+- $\operatorname{Baseline}_S(F)$ means that this adaptive pattern functions as the system's baseline.
+- $\Diamond$ means “is possible,” not “is inevitable.”
+
+**Interpretation:** Continuing adaptation can itself become the stable pattern around which a system organizes.
+
+The baseline is the recurring capacity to adapt, not a requirement that every individual configuration remain unchanged.
+
 ---
 
-## Principle 6: Awareness
+## Principle 7: Awareness
 
 **Awareness determines what crystallizes.**
 
@@ -235,9 +349,28 @@ In short:
 
 > A system crystallizes around what it repeatedly becomes aware of and reinforces.
 
+### Mathematical statement for Principle 7
+
+$$
+A_S(p)
+\;\Rightarrow\;
+\operatorname{Candidate}_S(p)
+$$
+
+Where:
+
+- $S$ is a system capable of awareness.
+- $p$ is a pattern available to that system.
+- $A_S(p)$ means that the pattern enters the system's awareness.
+- $\operatorname{Candidate}_S(p)$ means that the pattern becomes available for attention, selection, and reinforcement.
+
+**Interpretation:** A pattern entering awareness becomes a candidate for crystallization.
+
+Candidate status does not guarantee crystallization. This statement also does not establish that patterns outside awareness cannot crystallize; that stronger exclusion is not supplied by the principle's explanation.
+
 ---
 
-## Principle 7: Dual Awareness
+## Principle 8: Dual Awareness
 
 **Awareness cuts both ways.**
 
@@ -279,9 +412,32 @@ Therefore:
 
 > What enters awareness becomes capable of crystallization. What becomes aware of its own crystallization becomes capable of change.
 
+### Mathematical statement for Principle 8
+
+$$
+\Diamond\!\left(A_S(p) \land \Delta C_{S,p} > 0\right)
+\;\land\;
+\Diamond\!\left(A_S(B) \land \Delta C_{S,B} < 0\right)
+$$
+
+Where:
+
+- $S$ is a system capable of awareness.
+- $p$ is a pattern that may become reinforced.
+- $B$ is an existing baseline.
+- $A_S(p)$ means awareness of the pattern.
+- $A_S(B)$ means awareness of the baseline itself.
+- $\Delta C$ is the change in stability and organizational influence over a specified interval.
+- $\land$ means “and.”
+- $\Diamond$ means “is possible.”
+
+**Interpretation:** Awareness can accompany the strengthening of a pattern or enable the weakening of an existing baseline.
+
+These are two possible directions, not a requirement that both occur together. Awareness alone is not represented as sufficient to produce either change.
+
 ---
 
-## Principle 8: Deliberate Decrystallization
+## Principle 9: Deliberate Decrystallization
 
 **Awareness allows a system to interrupt its own crystallization.**
 
@@ -311,9 +467,32 @@ A single interruption may not break an established baseline. According to Princi
 
 Awareness makes interruption possible. Deliberate non-reinforcement supplies the destabilizing direction.
 
+### Mathematical statement for Principle 9
+
+$$
+\Diamond\!\left(
+A_S(B)
+\land I_S(B)
+\land \Delta C_{S,B} < 0
+\right)
+$$
+
+Where:
+
+- $S$ is a system capable of awareness and deliberate interruption.
+- $B$ is an emerging or existing baseline.
+- $A_S(B)$ means awareness of that baseline.
+- $I_S(B)$ means deliberate interruption of the reinforcement maintaining it.
+- $\Delta C_{S,B} < 0$ means that the baseline weakens over the interval considered.
+- $\Diamond$ means “is possible.”
+
+**Interpretation:** Awareness can enable deliberate interruption that weakens an emerging or existing baseline.
+
+Weakening is not identical to complete decrystallization. An established baseline may require repeated interruption before it loses enough stability to break.
+
 ---
 
-## Principle 9: Conscious Reinforcement
+## Principle 10: Conscious Reinforcement
 
 **Conscious repetition accelerates crystallization and decrystallization.**
 
@@ -353,9 +532,34 @@ The direction depends on what is repeated. Repeated enactment strengthens a patt
 
 Conscious repetition is therefore not inherently crystallizing or decrystallizing. It accelerates the direction consistently selected by the system.
 
+### Mathematical statement for Principle 10
+
+$$
+v_{\mathrm{conscious}}(d)
+>
+v_{\mathrm{comparison}}(d),
+\qquad
+d \in
+\left\{
+\text{crystallization},
+\text{decrystallization}
+\right\}
+$$
+
+Where:
+
+- $d$ is the selected direction of change.
+- $v_{\mathrm{conscious}}(d)$ is the rate of progress in that direction under conscious repetition.
+- $v_{\mathrm{comparison}}(d)$ is the rate under a specified comparison condition without conscious repetition.
+- The comparison concerns the same selected direction under otherwise comparable conditions.
+
+**Interpretation:** Conscious repetition increases the rate of change in the direction being consistently selected.
+
+This inequality expresses the principle's proposed acceleration claim. It does not establish the size of the effect, define a measurement scale, or demonstrate that the comparison holds empirically.
+
 ---
 
-## Principle 10: Conscious Baseline Engineering
+## Principle 11: Conscious Baseline Engineering
 
 **Awareness allows a system to choose both what to do and what not to do.**
 
@@ -424,6 +628,30 @@ The core claim is:
 
 This does not mean awareness provides unlimited control. Existing baselines may be strongly resistant, available alternatives may be constrained, and deliberate action may be inconsistent. Awareness provides a mechanism for intentional influence, not a guarantee of immediate transformation.
 
+### Mathematical statement for Principle 11
+
+$$
+\Diamond\!\left[
+B_{\mathrm{next}}(s,i,r)
+\neq
+B_{\mathrm{next}}(s',i',r')
+\right]
+$$
+
+Where:
+
+- $B_{\mathrm{next}}$ is the baseline that forms next.
+- $s$ represents deliberate selection of a pattern to reinforce.
+- $i$ represents deliberate interruption of a pattern no longer to reinforce.
+- $r$ represents deliberate redirection toward a replacement pattern.
+- $(s,i,r)$ and $(s',i',r')$ are different feasible choices available to the same system.
+- Other starting conditions are held comparable.
+- $\Diamond$ means “is possible.”
+
+**Interpretation:** Different feasible choices about selection, interruption, and redirection can lead to different future baselines.
+
+The statement represents intentional influence, not unlimited control. It does not require every choice to succeed, every alternative to be available, or the next baseline to be determined by deliberate choice alone.
+
 ---
 
 ## The Complete Crystallization Cycle
@@ -481,6 +709,8 @@ New baseline
 ## Current Status and Limits
 
 Crystallization Theory is currently a conceptual framework. The principles define proposed relationships among fluidity, repetition, awareness, stability, resistance, destabilization, and baseline formation.
+
+The mathematical statements accompanying the principles are proposed formalizations, not validated laws. Logical notation is used where a numerical equation would require assumptions that the framework has not established.
 
 The framework does not yet establish:
 
