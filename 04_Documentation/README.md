@@ -1,4 +1,4 @@
-# 05_Documentation
+# 04_Documentation
 
 ## Document Types
 
@@ -14,9 +14,3 @@ Each framework subfolder uses a consistent set of document types, versioned inde
 | **Reference_Implementation** | Pseudocode representation of a single processing cycle, structural only. |
 | **Integration_Notes** | How the framework interfaces with other frameworks in the archive (directional relationships and constraints). |
 | **Notes** | Clarifications, interpretive guidance, and implementation caveats. |
-
----
-
-## Versioning Convention
-
-Files are suffixed `_v1`, `_v2`, etc., reflecting successive drafts of the same document type as a framework's theory is refined. Higher version numbers represent more recent, more structurally constrained iterations (e.g., TFL's `Guarantees_v4` tightens affective-intensity semantics relative to `_v1`–`_v3`). Earlier versions are retained rather than overwritten, preserving the reasoning trail behind each revision.
