@@ -18,9 +18,11 @@ Implemented responsibilities:
 - safe_read: Read UTF-8 text, retry decoding failures with replacement, return diagnostic text
   for read failures, and optionally replace whole assignment-like secret lines.
 - count_lines: Count splitlines in a UTF-8 replacement-decoded read; return None on any
-  exception.
+  exception. (v4.0.0: the scanner computes line counts from its single captured read; this
+  helper is kept for callers and tests.)
 - sha256_file: Stream a binary file in 1 MiB chunks and return its SHA256 hex digest; return
-  None on any exception.
+  None on any exception. (v4.0.0: the scanner hashes its captured bytes directly; this helper is
+  kept for callers and tests.)
 - language_hint: Map a lowercased suffix to a Markdown fence language; treat
   .gitignore/.dockerignore and unknown types as text.
 
@@ -33,7 +35,6 @@ Consumers in the supplied source:
 - cli/cli.py imports normalize_extension.
 - core/builder.py imports timestamp_now, timestamp_slug, validate_root.
 - core/exporters.py imports language_hint, safe_read.
-- core/scanner.py imports count_lines, sha256_file.
 - tests/test_export_safety_utilities.py imports normalize_extension, safe_read, sha256_file,
   validate_root.
 

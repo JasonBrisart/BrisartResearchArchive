@@ -7,14 +7,18 @@ Centralize preferences, last-used export settings, custom profiles, and export h
   persistence for Project Context Helper in Brisart Research Archive.
 
 Implemented responsibilities:
-- application_dir: Resolve persisted state beside sys.executable for frozen mode or two
-  directories above storage.py for source mode.
-- _atomic_write: Create the parent, write a PID-named sibling temp file, flush/fsync, replace
-  the destination, and attempt temp cleanup before reraising caught failures.
+- application_dir: Return the PCH_STATE_DIR environment folder when set; otherwise resolve
+  persisted state beside sys.executable for frozen mode or two directories above storage.py for
+  source mode.
+- state_lock: Context manager serializing state changes: an in-process reentrant lock plus a
+  .pch-state.lock file created with O_EXCL; waits up to 5 seconds and removes a lock file older
+  than 30 seconds as stale.
+- _atomic_write: Create the parent, write a uniquely named .pch-*.tmp sibling (tempfile.mkstemp),
+  flush/fsync, replace the destination, and remove the temp file before reraising failures.
 - app_settings_path: Return app_settings.json beneath an explicit app_dir or the resolved
   application directory.
-- load_preferences: Return defaults for missing/unreadable/invalid-JSON preferences; otherwise
-  read three keys with bool coercion into AppPreferences.
+- load_preferences: Return defaults for missing/unreadable/invalid-JSON/non-object preferences;
+  otherwise accept only real JSON booleans for the three keys, using defaults for anything else.
 - save_preferences: Serialize AppPreferences to JSON via _atomic_write and suppress write
   exceptions.
 - last_settings_path: Return last_export_settings.json beneath an explicit app_dir or the
@@ -28,33 +32,38 @@ Implemented responsibilities:
 - profiles_path: Return custom_profiles.json beneath the chosen application directory.
 - is_reserved_name: Trim/lowercase the requested name and check it against the two built-in
   profile names.
-- _load_all_profiles: Read the custom-profile JSON object and its profiles dictionary; return an
-  empty dictionary for missing/unreadable/invalid shapes.
+- _load_all_profiles: Read the custom-profile JSON object and its profiles dictionary. Readers get
+  an empty dictionary for missing/unreadable/invalid data; writers (strict=True) get ValueError
+  for an existing unreadable/invalid file so it is never overwritten.
 - _save_all_profiles: Wrap the profile mapping under a profiles key and atomically serialize it;
   errors propagate.
 - list_profiles: Return sorted keys from the saved profile mapping.
 - profile_exists: Trim the name and test exact case-sensitive membership in saved profiles.
-- save_profile: Trim the name, reject empty/reserved names, merge serialized settings into the
-  existing mapping, and atomically write it; an existing exact name is overwritten.
+- save_profile: Trim the name, reject empty/reserved names, then under state_lock merge serialized
+  settings into the existing mapping and atomically write it; an existing exact name is
+  overwritten.
 - load_profile: Trim and look up the name, then reconstruct ScanSettings; return None for
   absent/unconvertible entries.
-- delete_profile: Trim and remove an exact saved name, write the remaining mapping, and return
-  True; return False if absent.
+- delete_profile: Under state_lock, trim and remove an exact saved name, write the remaining
+  mapping, and return True; return False if absent.
 - history_path: Return build_history.json beneath the chosen application directory.
-- load_history: Read JSON history; instantiate HistoryEntry for each item, skipping constructor
-  TypeError records; missing/unreadable/invalid JSON returns an empty list.
+- load_history: Read JSON history; instantiate HistoryEntry for each object item, skipping
+  non-object and constructor-TypeError records; missing/unreadable/invalid JSON or a non-list
+  container returns an empty list.
 - save_history: Serialize HistoryEntry objects as a JSON list through _atomic_write; errors
   propagate.
-- append_history_entry: Load history, prepend the new entry, retain at most MAX_HISTORY_ENTRIES,
-  persist, and return the retained list.
+- append_history_entry: Under state_lock, load history, prepend the new entry, retain at most
+  MAX_HISTORY_ENTRIES, persist, and return the retained list.
 - recent_entries: Return the first limit entries of loaded history using list slicing.
-- clear_history: Persist an empty history list without deleting any export outputs.
+- clear_history: Under state_lock, persist an empty history list without deleting any export
+  outputs.
 
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
 - core.constants: APP_SETTINGS_FILENAME, BUILD_HISTORY_FILENAME, CUSTOM_PROFILES_FILENAME,
-  LAST_SETTINGS_FILENAME, MAX_HISTORY_ENTRIES, PROFILE_ARCHIVE, PROFILE_STANDARD.
+  INTERNAL_NAME_PREFIX, LAST_SETTINGS_FILENAME, MAX_HISTORY_ENTRIES, PROFILE_ARCHIVE,
+  PROFILE_STANDARD.
 - core.models: ScanSettings.
 
 Consumers in the supplied source:
@@ -68,11 +77,15 @@ Consumers in the supplied source:
 
 Settings / parameters
 ---------------------
-Source data lives beside run.py; frozen data lives beside the executable. Stores four JSON
-  files. History is capped at 50 entries; recent_entries defaults to 10.
+Source data lives beside run.py; frozen data lives beside the executable; the PCH_STATE_DIR
+  environment variable overrides both (used by the test suite; also usable for a portable or
+  shared state folder). Stores four JSON files. History is capped at 50 entries;
+  recent_entries defaults to 10. state_lock waits up to LOCK_TIMEOUT_SECONDS (5) and treats a
+  lock file older than STALE_LOCK_SECONDS (30) as abandoned.
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - application_dir() -> Path
+- state_lock(app_dir: Path | None=None) -> Iterator[None]
 - _atomic_write(path: Path, text: str) -> None
 - app_settings_path(app_dir: Path | None=None) -> Path
 - load_preferences(app_dir: Path | None=None) -> AppPreferences
@@ -83,7 +96,7 @@ Function signatures (nested callbacks are scoped to their enclosing function):
 - clear_last_settings(app_dir: Path | None=None) -> None
 - profiles_path(app_dir: Path | None=None) -> Path
 - is_reserved_name(name: str) -> bool
-- _load_all_profiles(app_dir: Path | None=None) -> dict[str, dict]
+- _load_all_profiles(app_dir: Path | None=None, strict: bool=False) -> dict[str, dict]
 - _save_all_profiles(profiles: dict[str, dict], app_dir: Path | None=None) -> None
 - list_profiles(app_dir: Path | None=None) -> list[str]
 - profile_exists(name: str, app_dir: Path | None=None) -> bool
@@ -98,6 +111,10 @@ Function signatures (nested callbacks are scoped to their enclosing function):
 - clear_history(app_dir: Path | None=None) -> None
 
 Module constants and expressions:
+- STATE_ENV_VAR = 'PCH_STATE_DIR'
+- LOCK_FILENAME = INTERNAL_NAME_PREFIX + 'state.lock'
+- LOCK_TIMEOUT_SECONDS = 5.0
+- STALE_LOCK_SECONDS = 30.0
 - RESERVED_PROFILE_NAMES = {PROFILE_STANDARD, PROFILE_ARCHIVE}
 
 AppPreferences record fields:
@@ -118,23 +135,22 @@ HistoryEntry record fields:
 
 Edge cases
 ----------
-Atomic-write helper flushes/fsyncs a sibling temporary file before os.replace and attempts
-  cleanup on caught failures. Many convenience loaders/writers fall back or suppress errors;
-  custom-profile writes can propagate errors.
+Atomic-write helper flushes/fsyncs a uniquely named temporary file before os.replace and
+  removes it on caught failures. Temp and lock files start with .pch-, which the scanner skips.
+  Convenience loaders/writers (preferences, last-used settings) still fall back or suppress
+  errors; custom-profile and history writes propagate errors.
 
-load_preferences catches file/JSON errors but assumes the decoded value has .get; a valid JSON
-  list/null can still raise. bool("false") is True. load_history skips constructor TypeError
-  items but does not validate the entire decoded container or field types.
+v4.0.0 fixes: a JSON list/null in app_settings.json returns defaults instead of raising, and a
+  string such as "false" no longer counts as True. A corrupted custom_profiles.json is reported
+  (ValueError) instead of being silently overwritten with only the newly saved profile.
 
 Known limitations
 -----------------
-No cross-process locking or transactional multi-file persistence. Hard termination can leave
-  temporary files. Preference loading assumes a JSON object and truth-coerces values. Silent
-  fallbacks can hide corrupted state or failed saves.
-
-The PID-only temporary filename can collide between concurrent writes in the same process. Read-
-  modify-write profile/history operations can lose concurrent updates. No automatic recovery of
-  a malformed state file is implemented.
+Persistence is per file, not a multi-file transaction. Hard termination can leave a .pch-*.tmp
+  file or a lock file; a lock file is treated as stale after 30 seconds. File locking is
+  advisory (it only coordinates processes running this module) and is untested on network
+  filesystems. No automatic recovery of a malformed state file is implemented; convenience
+  loaders still fall back silently.
 
 Examples
 --------
@@ -154,16 +170,22 @@ Usage from the directory containing run.py:
 """
 
 from __future__ import annotations
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Iterator
 import json
 import os
 import sys
+import tempfile
+import threading
+import time
 
 from core.constants import (
     APP_SETTINGS_FILENAME,
     BUILD_HISTORY_FILENAME,
     CUSTOM_PROFILES_FILENAME,
+    INTERNAL_NAME_PREFIX,
     LAST_SETTINGS_FILENAME,
     MAX_HISTORY_ENTRIES,
     PROFILE_ARCHIVE,
@@ -173,16 +195,76 @@ from core.models import ScanSettings
 
 
 # ============================================================
-# 1. Shared application_dir() / _atomic_write() helpers
+# 1. Shared application_dir() / state_lock() / _atomic_write() helpers
 # ============================================================
+STATE_ENV_VAR = "PCH_STATE_DIR"
+LOCK_FILENAME = f"{INTERNAL_NAME_PREFIX}state.lock"
+LOCK_TIMEOUT_SECONDS = 5.0
+STALE_LOCK_SECONDS = 30.0
+_THREAD_LOCK = threading.RLock()
+
+
 def application_dir() -> Path:
     """
     Return the application's root folder (the one containing run.py),
     not the services/ folder this module itself lives in.
+
+    v4.0.0: a PCH_STATE_DIR environment variable, when set, takes
+    precedence, so tests (and portable setups) never touch the real
+    state files beside run.py.
     """
+    override = os.environ.get(STATE_ENV_VAR)
+    if override:
+        return Path(override).expanduser().resolve()
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent
+
+
+@contextmanager
+def state_lock(app_dir: Path | None = None) -> Iterator[None]:
+    """
+    v4.0.0: serialize read-modify-write updates (profiles, history).
+    v3.1.4 had no locking, so two saves at the same moment (two GUI
+    windows, a GUI build plus a CLI build, or the new background build
+    worker plus a profile save) could each load the old file and the
+    second write silently discarded the first one's change.
+
+    The in-process RLock covers threads; the O_EXCL lock file covers
+    separate processes. A lock file left by a killed process is removed
+    once it is older than STALE_LOCK_SECONDS.
+    """
+    directory = app_dir or application_dir()
+    with _THREAD_LOCK:
+        directory.mkdir(parents=True, exist_ok=True)
+        lock_path = directory / LOCK_FILENAME
+        deadline = time.monotonic() + LOCK_TIMEOUT_SECONDS
+        while True:
+            try:
+                fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                break
+            except FileExistsError:
+                try:
+                    if time.time() - lock_path.stat().st_mtime > STALE_LOCK_SECONDS:
+                        lock_path.unlink(missing_ok=True)
+                        continue
+                except OSError:
+                    pass
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(
+                        f"Settings folder is busy ({lock_path} is held by another Project "
+                        "Context Helper process). Try again in a moment."
+                    )
+                time.sleep(0.02)
+        try:
+            os.write(fd, str(os.getpid()).encode("ascii"))
+            yield
+        finally:
+            os.close(fd)
+            try:
+                lock_path.unlink()
+            except OSError:
+                pass
 
 
 def _atomic_write(path: Path, text: str) -> None:
@@ -211,12 +293,20 @@ def _atomic_write(path: Path, text: str) -> None:
     before the original exception is re-raised, leaving no debris
     behind on a failed write the way a fully successful or a
     hard-killed (unrecoverable) write both already effectively do.
+
+    v4.0.0: the temp name was ".<name>.tmp<PID>", so two threads in the
+    same process (now possible with background builds) could write the
+    same temp file at once. Temp files are now created with
+    tempfile.mkstemp (unique per call) and use the .pch- prefix, which
+    the scanner always skips, so a leftover can no longer end up in an
+    export.
     """
     directory = path.parent
     directory.mkdir(parents=True, exist_ok=True)
-    temp_path = directory / f".{path.name}.tmp{os.getpid()}"
+    fd, temp_name = tempfile.mkstemp(prefix=f"{INTERNAL_NAME_PREFIX}{path.name}.", suffix=".tmp", dir=directory)
+    temp_path = Path(temp_name)
     try:
-        with open(temp_path, "w", encoding="utf-8") as handle:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
@@ -253,10 +343,19 @@ def load_preferences(app_dir: Path | None = None) -> AppPreferences:
     except Exception:
         return AppPreferences()
     defaults = AppPreferences()
+    if not isinstance(raw, dict):
+        return defaults
+
+    def flag(key: str, default: bool) -> bool:
+        # v4.0.0: only real JSON booleans count. v3.1.4 used bool(), so a
+        # hand-edited "false" string switched the preference ON.
+        value = raw.get(key, default)
+        return value if isinstance(value, bool) else default
+
     return AppPreferences(
-        open_after_build=bool(raw.get("open_after_build", defaults.open_after_build)),
-        check_updates_startup=bool(raw.get("check_updates_startup", defaults.check_updates_startup)),
-        auto_install_updates=bool(raw.get("auto_install_updates", defaults.auto_install_updates)),
+        open_after_build=flag("open_after_build", defaults.open_after_build),
+        check_updates_startup=flag("check_updates_startup", defaults.check_updates_startup),
+        auto_install_updates=flag("auto_install_updates", defaults.auto_install_updates),
     )
 
 
@@ -330,18 +429,29 @@ def is_reserved_name(name: str) -> bool:
     return name.strip().lower() in RESERVED_PROFILE_NAMES
 
 
-def _load_all_profiles(app_dir: Path | None = None) -> dict[str, dict]:
+def _load_all_profiles(app_dir: Path | None = None, strict: bool = False) -> dict[str, dict]:
+    """
+    v4.0.0: strict=True is used by save/delete. In v3.1.4 an unreadable or
+    malformed custom_profiles.json loaded as {}, and the next save then
+    overwrote the file with only the new profile -- every other saved
+    profile was lost permanently with no warning. Writers now refuse to
+    touch a file they cannot read.
+    """
     path = profiles_path(app_dir)
     if not path.exists():
         return {}
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as exc:
+        if strict:
+            raise ValueError(f"{path.name} could not be read ({exc}); it was not modified. Repair or move it, then try again.") from exc
         return {}
-    if not isinstance(raw, dict):
+    profiles = raw.get("profiles") if isinstance(raw, dict) else None
+    if not isinstance(profiles, dict):
+        if strict:
+            raise ValueError(f"{path.name} does not contain a profiles object; it was not modified. Repair or move it, then try again.")
         return {}
-    profiles = raw.get("profiles")
-    return profiles if isinstance(profiles, dict) else {}
+    return profiles
 
 
 def _save_all_profiles(profiles: dict[str, dict], app_dir: Path | None = None) -> None:
@@ -363,9 +473,10 @@ def save_profile(name: str, settings: ScanSettings, app_dir: Path | None = None)
         raise ValueError("Profile name cannot be empty.")
     if is_reserved_name(name):
         raise ValueError(f"'{name}' is a built-in profile name and cannot be used for a custom profile.")
-    profiles = _load_all_profiles(app_dir)
-    profiles[name] = settings.to_jsonable()
-    _save_all_profiles(profiles, app_dir)
+    with state_lock(app_dir):
+        profiles = _load_all_profiles(app_dir, strict=True)
+        profiles[name] = settings.to_jsonable()
+        _save_all_profiles(profiles, app_dir)
 
 
 def load_profile(name: str, app_dir: Path | None = None) -> ScanSettings | None:
@@ -380,11 +491,12 @@ def load_profile(name: str, app_dir: Path | None = None) -> ScanSettings | None:
 
 def delete_profile(name: str, app_dir: Path | None = None) -> bool:
     name = name.strip()
-    profiles = _load_all_profiles(app_dir)
-    if name not in profiles:
-        return False
-    del profiles[name]
-    _save_all_profiles(profiles, app_dir)
+    with state_lock(app_dir):
+        profiles = _load_all_profiles(app_dir, strict=True)
+        if name not in profiles:
+            return False
+        del profiles[name]
+        _save_all_profiles(profiles, app_dir)
     return True
 
 
@@ -416,8 +528,12 @@ def load_history(app_dir: Path | None = None) -> list[HistoryEntry]:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return []
+    if not isinstance(raw, list):
+        return []
     entries: list[HistoryEntry] = []
     for item in raw:
+        if not isinstance(item, dict):
+            continue
         try:
             entries.append(HistoryEntry(**item))
         except TypeError:
@@ -431,10 +547,11 @@ def save_history(entries: list[HistoryEntry], app_dir: Path | None = None) -> No
 
 
 def append_history_entry(entry: HistoryEntry, app_dir: Path | None = None) -> list[HistoryEntry]:
-    entries = load_history(app_dir)
-    entries.insert(0, entry)
-    entries = entries[:MAX_HISTORY_ENTRIES]
-    save_history(entries, app_dir)
+    with state_lock(app_dir):
+        entries = load_history(app_dir)
+        entries.insert(0, entry)
+        entries = entries[:MAX_HISTORY_ENTRIES]
+        save_history(entries, app_dir)
     return entries
 
 
@@ -443,5 +560,6 @@ def recent_entries(limit: int = 10, app_dir: Path | None = None) -> list[History
 
 
 def clear_history(app_dir: Path | None = None) -> None:
-    save_history([], app_dir)
+    with state_lock(app_dir):
+        save_history([], app_dir)
 

@@ -39,7 +39,7 @@ Module constants and expressions:
 - _SETTINGS_SET_FIELDS = ('include_extensions', 'exclude_dirs', 'exclude_files',
   'exclude_suffixes')
 - _SETTINGS_INT_FIELDS = ('max_file_bytes', 'max_total_bytes', 'skipped_details_limit',
-  'git_state_commit_limit')
+  'git_state_commit_limit', 'workers')
 - _SETTINGS_BOOL_FIELDS = ('include_snapshot_zip', 'redact_sensitive_lines', 'include_hashes',
   'include_line_counts', 'include_folder_tree', 'include_file_index', 'include_file_contents',
   'include_skipped_details', 'timestamped_export_folder', 'require_complete_source',
@@ -67,6 +67,7 @@ ScanSettings record fields:
 - require_complete_source: bool = False
 - include_git_state: bool = False
 - git_state_commit_limit: int = 5
+- workers: int = 4
 
 FileRecord record fields:
 - relative_path: str (required constructor field)
@@ -85,6 +86,7 @@ ScanResult record fields:
 - included_records: tuple[FileRecord, ...] (required constructor field)
 - skipped_records: tuple[SkipRecord, ...] (required constructor field)
 - total_included_bytes: int (required constructor field)
+- captured_paths: tuple[Path, ...] = ()
 
 BuildResult record fields:
 - export_dir: Path (required constructor field)
@@ -106,8 +108,12 @@ from_jsonable filters invalid field types and converts compatible integer string
   floats. Invalid booleans are discarded rather than truth-coerced.
 
 Boolean values are explicitly rejected for integer fields. Set fields keep only strings. Unknown
-  keys are discarded. Strings resembling negative integers are converted; malformed repeated-
-  minus strings can still raise during int conversion.
+  keys are discarded. Strings resembling negative integers are converted; malformed strings such
+  as '--5' are discarded (v4.0.0 fix; v3.1.4 raised ValueError during int conversion). Settings
+  saved before v4.0.0 have no workers key and load with the default of 4.
+
+ScanResult.captured_paths is empty when a scan was run without a capture spool; otherwise it is
+  index-aligned with included_paths and points at the single captured copy of each file.
 
 Known limitations
 -----------------
@@ -162,6 +168,7 @@ _SETTINGS_INT_FIELDS = (
     "max_total_bytes",
     "skipped_details_limit",
     "git_state_commit_limit",
+    "workers",
 )
 _SETTINGS_BOOL_FIELDS = (
     "include_snapshot_zip",
@@ -176,6 +183,19 @@ _SETTINGS_BOOL_FIELDS = (
     "require_complete_source",
     "include_git_state",
 )
+
+
+def _is_int_text(value: str) -> bool:
+    """
+    Bugfix (v4.0.0): v3.1.4 used value.strip().lstrip("-").isdigit(), which
+    accepted repeated minus signs such as "--5"; int("--5") then raised
+    ValueError and crashed settings loading. Only one optional leading minus
+    is accepted now; anything else is discarded like other malformed values.
+    """
+    text = value.strip()
+    if text.startswith("-"):
+        text = text[1:]
+    return text.isdigit()
 
 
 @dataclass(slots=True)
@@ -204,6 +224,7 @@ class ScanSettings:
     require_complete_source: bool = False
     include_git_state: bool = False
     git_state_commit_limit: int = 5
+    workers: int = 4
 
     def to_jsonable(self) -> dict[str, Any]:
         data = asdict(self)
@@ -237,7 +258,7 @@ class ScanSettings:
                     pass
                 elif isinstance(raw_value, float) and raw_value.is_integer():
                     data[field_name] = int(raw_value)
-                elif isinstance(raw_value, str) and raw_value.strip().lstrip("-").isdigit():
+                elif isinstance(raw_value, str) and _is_int_text(raw_value):
                     data[field_name] = int(raw_value.strip())
                 else:
                     del data[field_name]
@@ -277,6 +298,7 @@ class ScanResult:
     included_records: tuple[FileRecord, ...]
     skipped_records: tuple[SkipRecord, ...]
     total_included_bytes: int
+    captured_paths: tuple[Path, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

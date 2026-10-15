@@ -13,11 +13,12 @@ Implemented responsibilities:
 - format_git_cell: Format persisted history branch/short-commit as branch@commit, using a
   detached marker when necessary; return an empty cell when both fields are absent.
 - refresh_history: Clear the displayed tree and entry lookup, request the newest 20 persisted
-  exports, and insert rows or a no-exports placeholder.
+  exports, and insert rows or a no-exports placeholder. Registered as state.history_refresh so
+  the Build tab refreshes the list after each successful build.
 - open_selected_export: Resolve the selected history row to its export directory; report a
   missing selection/folder or delegate opening to dialogs.open_folder.
 - clear_export_history: Ask for confirmation, clear persisted history without deleting export
-  folders, and refresh the tree.
+  folders, report a persistence error in a dialog, and refresh the tree.
 - perform_exe_update: Stage the executable, report download errors, stop when auto-install is
   disabled, ask before installation, launch the replacement script, then destroy the GUI and
   exit.
@@ -185,6 +186,7 @@ def create_about_tab(parent: tk.Frame, window: tk.Tk, state: GuiState):
             item_id = history_tree.insert("", "end", values=(entry.created, entry.profile, entry.included_count, entry.skipped_count, format_git_cell(entry), entry.root))
             entry_lookup[item_id] = entry
     refresh_history()
+    state.history_refresh = refresh_history
 
     def open_selected_export() -> None:
         selection = history_tree.selection()
@@ -203,7 +205,11 @@ def create_about_tab(parent: tk.Frame, window: tk.Tk, state: GuiState):
     def clear_export_history() -> None:
         if not ask_yes_no("Clear History", "Remove all recorded export history?\n\nThis only clears this list. It does not delete any actual export files or folders."):
             return
-        clear_history(app_dir=application_dir())
+        try:
+            clear_history(app_dir=application_dir())
+        except Exception as exc:
+            show_error("Clear History Failed", str(exc))
+            return
         refresh_history()
     history_buttons = tk.Frame(history_frame)
     history_buttons.pack(fill="x", pady=(8, 0))

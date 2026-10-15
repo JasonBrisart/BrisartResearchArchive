@@ -1,8 +1,59 @@
 # Changelog
 
 All notable changes to Project Context Helper are documented here.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [4.0.0] - 2026-10-15
+
+A rebuild of the export engine underneath an unchanged desktop interface. The v3.1.4 folder layout, file names, four tabs, controls, dialogs, presets, output file names, and state file names are all kept. What changed is how an export runs: in the background, with each file read exactly once by a configurable number of threads, assembled in a hidden staging folder, and published only when complete. This release also fixes a set of persistence and output-safety problems found while reworking those paths.
+
+Major version because existing setups can behave differently: symlinked files are no longer followed, output folder names that are absolute or contain `..` are now rejected, excluded folders produce one skip record instead of one per file, and `create_context(root)` without settings now uses the archive preset instead of empty raw settings.
+
+### Added
+- **Background builds in the GUI.** New `gui/jobs.py` runs each export on a worker thread. The window stays responsive, the status bar shows the current phase and file count, and **Build Project Context** is disabled until the build finishes. The worker never touches tkinter; it reports through a queue that the Build tab polls every 80 ms. Layout, labels, and dialogs are unchanged.
+- **Safe close during a build.** Closing the window while a build runs asks for confirmation, cancels the build, and closes once the staging folder has been cleaned up.
+- **Parallel single-read capture.** `core/scanner.py` reads every included file exactly once with a thread pool (`workers`, default 4, 1–32) in bounded batches. The SHA256, line count, embedded Markdown text, and ZIP member all come from those same bytes. In v3.1.4 a file was read up to four separate times, so a file edited mid-export could have a hash that matched neither the Markdown nor the ZIP.
+- **Staged publication.** `core/builder.py` writes everything into a hidden `.pch-build-*` folder inside the output folder and renames it into place only when finished. A completeness stop, cancellation, or error leaves no partial export behind.
+- **Cancellation and progress.** New `core/events.py` (`Progress`, `BuildCancelled`, `checkpoint`). `create_context()` accepts an optional cancellation `Event` and progress callback.
+- **`workers` setting.** New `ScanSettings.workers` field, saved in profiles and last-used settings. Files saved by v3.x load with the default of 4. Not shown in the GUI.
+- **CLI `--workers N` and `--progress`.** `--progress` prints phases to stderr so stdout output is unchanged.
+- **`PCH_STATE_DIR` environment variable** to keep the four state files in another folder.
+- **New skip reasons.** `source_changed` and `directory_unavailable` (both completeness failures); `symlink_not_followed`, `not_a_regular_file`, `export_output_directory`, and `internal_tool_file` (intentional exclusions).
+- **Tests.** `tests/test_v4_engine.py` (34 tests: engine, persistence, CLI, worker) and `tests/test_gui_wiring.py` (6 tests driving the real GUI modules through the recording tkinter stand-in `tests/fake_tk.py`).
+
+### Changed
+- **Excluded folders are pruned instead of walked.** v3.1.4's `root.rglob("*")` visited every file under `node_modules`, `.venv`, `PROJECT_CONTEXT_EXPORTS`, and so on, then rejected each one. The new walk records the folder once and never enters it. On this project's own 2026-10-15 snapshot, the 59 per-file skip records for `__pycache__` and `PROJECT_CONTEXT_EXPORTS` become 5 folder-level records (confirmed by the first v4.0.0 export on Windows: 62 total skips down to 8).
+- **The GUI keeps settings it does not display.** v3.1.4 rebuilt settings from the built-in preset on every build and every profile save, silently dropping custom extension/exclusion sets, the Git history limit, and anything else loaded from a CLI-saved profile. `gui/builders.py` now starts from the last fully loaded settings when the profile matches the dropdown. Picking a different built-in profile still resets everything, as before.
+- **Recent Exports refreshes after each successful build.**
+- **Export folder names are unique.** A second export in the same second gets `_2`, `_3`, … instead of writing into the first one's folder.
+- **The CLI no longer imports tkinter for exports.** The GUI is imported only when no project folder is given.
+- **CLI errors.** Any `OSError` during a build now prints `Build failed: …` and exits 1 instead of a traceback. Ctrl+C exits 130 with no partial export. A failed `--save-profile` is reported without failing the finished export.
+- **`create_context(root)` without settings uses the archive preset.** v3.1.4 used raw `ScanSettings()`, whose empty extension list produced an empty export.
+- **State temp files use a `.pch-` prefix,** which the scanner always skips.
+- `APP_VERSION` is now `4.0.0`.
+
+### Fixed
+- **Output folder names could point outside the project.** `output_dir_name` was joined onto the root without checks, so an absolute path or `..\elsewhere` (from the Options tab, `--output-dir`, or a hand-edited profile) wrote exports anywhere on disk. Names must now be relative paths that resolve inside the project.
+- **Custom output folders were swept into later exports.** Only the default `PROJECT_CONTEXT_EXPORTS` name was excluded, so with a custom name every later archive export re-included all earlier exports. The configured output folder is now always excluded from the scan, the folder tree, and Git State, whatever it is called.
+- **Embedded Markdown fences broke `PROJECT_CONTEXT.md`.** Contents used a fixed ```` ``` ```` fence, so any embedded file containing ```` ``` ```` (this project's own README and ARCHITECTURE both do) closed the block early and corrupted rendering for the rest of the document. Fences are now longer than the longest backtick run in the file. File headings in that section are also escaped like table cells.
+- **Concurrent profile/history saves lost updates.** Two saves at the same time (two windows, GUI plus CLI, or the new worker plus a profile save) could each read the old file, and the second write discarded the first one's change. Profile and history read-modify-write operations now run under `state_lock()` (in-process lock plus an `O_EXCL` lock file; 5 s wait; a lock older than 30 s is treated as abandoned).
+- **Temp file names could collide.** `_atomic_write()` used `.<name>.tmp<PID>`, identical for two threads in one process. It now uses `tempfile.mkstemp`.
+- **A corrupted `custom_profiles.json` was overwritten.** It loaded as empty, so the next save replaced the file with only the new profile, losing every other profile. Saves and deletes now refuse to touch an unreadable file and report the problem.
+- **`app_settings.json` parsing.** A JSON list or `null` raised instead of falling back to defaults, and a string such as `"false"` was treated as `True`. Only real JSON booleans are accepted now.
+- **`build_history.json` with the wrong shape** (an object, or non-object items) could raise; it now loads as empty or skips bad items.
+- **`"--5"` in a saved integer field crashed settings loading** with `ValueError` from `int()`. Malformed values are now discarded like other invalid fields.
+- **Clearing history, saving a profile, or deleting a profile could raise an unhandled error in the GUI** on a filesystem or lock failure. Each now shows an error dialog.
+
+### Notes
+- **GUI unchanged.** Same four tabs, controls, wording, decimal-MB fields, profile-reset behavior, and dialogs. There is no Cancel button, to keep the layout; closing the window cancels a running build.
+- **Output and state formats are compatible.** Same output and state file names. The manifest keeps the v3.1.4 shape; it gains a `workers` setting and two more entries in `failure_reasons`. Folder-level skip records replace per-file ones for excluded folders.
+- **Symlinks are no longer followed.** v3.1.4 included symlinked files; they are now skipped as an intentional exclusion. Copy the real files into the project if they need to be exported.
+- **Flat output** still overwrites the generated files in the output folder, as in v3.1.4. With ZIP disabled, an older `PROJECT_SNAPSHOT.zip` there is left untouched.
+- **Not changed:** `core/git_state.py`, `services/updater.py` (still pointed at BrisartDevTools GitHub releases), redaction behavior, and presets. Update checks and downloads still run on the interface thread.
+- **Not an atomic snapshot.** Each file is read once, but different files are read at slightly different moments. A hard kill or power loss can leave a `.pch-build-*` folder; later scans skip it and it can be deleted.
+- **Validation.** 48 tests pass on Python 3.12 Linux (8 original, 34 engine/persistence/CLI/worker, 6 GUI wiring). The GUI tests use a tkinter stand-in, not a real display. The first v4.0.0 archive export of this project on Windows completed with source completeness PASS (29 files included, 4 workers, no leftover staging).
+- No new external dependencies were introduced.
 
 ---
 

@@ -45,13 +45,14 @@ Empty names and invalid settings show warnings. Existing profiles require overwr
   confirmation. Missing profiles show errors; deletion requires confirmation.
 
 Reserved-name checking is case-insensitive, but stored custom names are case-sensitive.
-  Save/load trim whitespace. GUI save/delete callbacks catch selected validation errors, not
-  every filesystem exception.
+  Save/load trim whitespace. Save/delete show an error dialog for validation errors, a busy
+  settings folder (lock timeout), an unreadable custom_profiles.json (which is left untouched),
+  and other OSErrors.
 
 Known limitations
 -----------------
-Custom profile names remain case-sensitive after trimming. GUI serialization does not retain
-  every hidden ScanSettings field. Some storage I/O errors are not caught by these callbacks.
+Custom profile names remain case-sensitive after trimming. Hidden ScanSettings fields are saved
+  from the last loaded settings when the base profile matches (see gui/builders.py).
 
 Profile deletion changes only the named profile record, not last-used settings or export
   history. Loading changes the current GUI settings but does not immediately persist last-used
@@ -147,7 +148,7 @@ def create_custom_profiles_section(
                 return
         try:
             storage.save_profile(name, settings)
-        except ValueError as exc:
+        except (ValueError, OSError) as exc:
             show_error("Could Not Save Profile", str(exc))
             return
         refresh_names()
@@ -173,7 +174,11 @@ def create_custom_profiles_section(
             return
         if not ask_yes_no("Delete Profile", f"Delete custom profile '{name}'? This cannot be undone."):
             return
-        deleted = storage.delete_profile(name)
+        try:
+            deleted = storage.delete_profile(name)
+        except (ValueError, OSError) as exc:
+            show_error("Could Not Delete Profile", str(exc))
+            return
         refresh_names()
         if deleted:
             state.custom_profile_var.set("")

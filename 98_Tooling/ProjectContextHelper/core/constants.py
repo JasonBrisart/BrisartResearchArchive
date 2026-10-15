@@ -8,7 +8,7 @@ Centralize application metadata, output filenames, exclusion rules, and the stan
 
 Implemented responsibilities:
 - apply_common_defaults: Replace exclusion sets with fresh copies of shared defaults and set the
-  Git history limit; mutate and return the supplied settings object.
+  Git history limit and capture worker count; mutate and return the supplied settings object.
 - apply_standard_preset: Mutate the settings to standard extension/size limits and a compact
   output selection, with ZIP/redaction enabled and completeness/Git disabled.
 - apply_archive_preset: Mutate the settings to expanded extensions and larger limits, enable
@@ -25,26 +25,29 @@ Internal imports and exchanged symbols:
 Consumers in the supplied source:
 - cli/cli.py imports APP_NAME, APP_VERSION, DEFAULT_PROFILE, VALID_PROFILES,
   settings_for_profile.
-- core/builder.py imports CONTEXT_FILENAME, MANIFEST_FILENAME, SETTINGS_FILENAME,
-  SNAPSHOT_FILENAME, SUMMARY_FILENAME.
+- core/builder.py imports CONTEXT_FILENAME, DEFAULT_PROFILE, INTERNAL_NAME_PREFIX,
+  MANIFEST_FILENAME, MAX_WORKERS, SETTINGS_FILENAME, SNAPSHOT_FILENAME, SUMMARY_FILENAME,
+  VALID_PROFILES, settings_for_profile.
 - core/exporters.py imports APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_NAME, REPOSITORY_URL.
 - gui/about_tab.py imports APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
+- core/scanner.py imports INTERNAL_NAME_PREFIX.
 - gui/build_tab.py imports VALID_PROFILES.
 - gui/builders.py imports DEFAULT_PROFILE, EXPORTS_DIRNAME, PROFILE_ARCHIVE, PROFILE_STANDARD,
   settings_for_profile.
 - gui/main_gui.py imports APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
 - gui/profiles_section.py imports PROFILE_ARCHIVE, PROFILE_STANDARD.
 - services/storage.py imports APP_SETTINGS_FILENAME, BUILD_HISTORY_FILENAME,
-  CUSTOM_PROFILES_FILENAME, LAST_SETTINGS_FILENAME, MAX_HISTORY_ENTRIES, PROFILE_ARCHIVE,
-  PROFILE_STANDARD.
+  CUSTOM_PROFILES_FILENAME, INTERNAL_NAME_PREFIX, LAST_SETTINGS_FILENAME, MAX_HISTORY_ENTRIES,
+  PROFILE_ARCHIVE, PROFILE_STANDARD.
 - services/updater.py imports APP_NAME, APP_VERSION, EXPORTS_DIRNAME, RELEASE_TAG_PREFIX,
   RELEASES_LIST_URL, RELEASES_URL, STAGED_EXE_FILENAME.
 
 Settings / parameters
 ---------------------
-APP_VERSION remains 3.1.4. The interface default is archive. Standard limits are 350000/5000000
+APP_VERSION is 4.0.0. The interface default is archive. Standard limits are 350000/5000000
   bytes; archive limits are 2000000/100000000 bytes. Both presets enable redaction and ZIP
-  creation and disable Git State.
+  creation and disable Git State. Both presets capture with DEFAULT_WORKERS (4) threads;
+  validated worker counts range from 1 to MAX_WORKERS (32).
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - apply_common_defaults(settings: ScanSettings) -> ScanSettings
@@ -54,7 +57,7 @@ Function signatures (nested callbacks are scoped to their enclosing function):
 
 Module constants and expressions:
 - APP_NAME = 'Project Context Helper'
-- APP_VERSION = '3.1.4'
+- APP_VERSION = '4.0.0'
 - AUTHOR = 'Jason Brisart'
 - REPOSITORY_NAME = 'BrisartDevTools'
 - REPOSITORY_URL = 'https://github.com/JasonBrisart/BrisartDevTools'
@@ -74,6 +77,9 @@ Module constants and expressions:
 - CUSTOM_PROFILES_FILENAME = 'custom_profiles.json'
 - STAGED_EXE_FILENAME = 'staged_update.exe'
 - DEFAULT_GIT_STATE_COMMIT_LIMIT = 5
+- DEFAULT_WORKERS = 4
+- MAX_WORKERS = 32
+- INTERNAL_NAME_PREFIX = '.pch-'
 - PROFILE_STANDARD = 'standard'
 - PROFILE_ARCHIVE = 'archive'
 - DEFAULT_PROFILE = PROFILE_ARCHIVE
@@ -112,11 +118,12 @@ Every preset receives fresh set copies rather than sharing the constant sets.
 
 Known limitations
 -----------------
-Repository and release constants still point to the legacy BrisartDevTools GitHub location. This
-  documentation pass does not migrate those endpoints.
+Repository and release constants still point to the legacy BrisartDevTools GitHub location;
+  v4.0.0 does not migrate those endpoints.
 
 Changing repository metadata also changes generated export metadata; changing release constants
-  changes updater behavior. Neither is changed by this documentation pass.
+  changes updater behavior. INTERNAL_NAME_PREFIX is a naming convention, not a security
+  boundary: any project file whose name starts with it is skipped by the scanner.
 
 Examples
 --------
@@ -128,12 +135,13 @@ Usage from the directory containing run.py:
     assert settings.max_file_bytes == 2000000
     assert settings.require_complete_source is True
     assert settings.include_git_state is False
+    assert settings.workers == 4
 """
 
 from core.models import ScanSettings
 
 APP_NAME = "Project Context Helper"
-APP_VERSION = "3.1.4"
+APP_VERSION = "4.0.0"
 AUTHOR = "Jason Brisart"
 REPOSITORY_NAME = "BrisartDevTools"
 REPOSITORY_URL = "https://github.com/JasonBrisart/BrisartDevTools"
@@ -158,6 +166,11 @@ CUSTOM_PROFILES_FILENAME = "custom_profiles.json"
 STAGED_EXE_FILENAME = "staged_update.exe"
 
 DEFAULT_GIT_STATE_COMMIT_LIMIT = 5
+DEFAULT_WORKERS = 4
+MAX_WORKERS = 32
+
+# Prefix for this tool's own hidden staging folders and state temp/lock files.
+INTERNAL_NAME_PREFIX = ".pch-"
 
 PROFILE_STANDARD = "standard"
 PROFILE_ARCHIVE = "archive"
@@ -207,6 +220,7 @@ def apply_common_defaults(settings: ScanSettings) -> ScanSettings:
     settings.exclude_files = set(DEFAULT_EXCLUDE_FILES)
     settings.exclude_suffixes = set(DEFAULT_EXCLUDE_SUFFIXES)
     settings.git_state_commit_limit = DEFAULT_GIT_STATE_COMMIT_LIMIT
+    settings.workers = DEFAULT_WORKERS
     return settings
 
 

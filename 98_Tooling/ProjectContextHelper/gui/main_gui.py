@@ -3,18 +3,22 @@ File: gui/main_gui.py
 
 Purpose
 -------
-Create the desktop window, shared GUI state, four-tab notebook, status bar, and startup update
-  callback.
+Create the desktop window, shared GUI state, four-tab notebook, status bar, startup update
+  callback, and safe window-close handling while a background build runs.
 
 Implemented responsibilities:
 - run_gui: Create the Tk window, shared state, four notebook tabs, status bar, and delayed
-  startup-check callback, then enter mainloop.
+  startup-check callback, register the close handler, then enter mainloop.
+- close: Window-close handler: close immediately when idle; otherwise ask, request cancellation,
+  and wait for the worker to clean up before destroying the window.
+- wait_for_worker: Re-check every 100 ms and destroy the window once the worker has exited.
 
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
 - core.constants: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
 - gui.builders: make_gui_state.
+- gui.dialogs: ask_yes_no.
 - gui.build_tab: create_build_tab.
 - gui.options_tab: create_options_tab.
 - gui.extras_tab: create_extras_tab.
@@ -30,6 +34,8 @@ Window starts at 860x760 with a 780x680 minimum. Tabs are Build, Options, Extras
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - run_gui() -> None
+- close() -> None
+- wait_for_worker() -> None
 
 Edge cases
 ----------
@@ -41,10 +47,12 @@ The delayed callback is registered after tab construction and runs inside the sa
 
 Known limitations
 -----------------
-Requires tkinter and a graphical display. Startup/build/update work is not moved to a worker
-  thread. Use run.py as the supported source entry point.
+Requires tkinter and a graphical display. Builds run on the gui.jobs worker; the legacy startup
+  update check and update downloads still run on the Tk thread. Use run.py as the supported
+  source entry point.
 
-No background worker, cancellation flow, or GUI startup exception wrapper is implemented here.
+Cancellation on close is cooperative: a file read or ZIP write in progress finishes first. No GUI
+  startup exception wrapper is implemented here.
 
 Examples
 --------
@@ -66,6 +74,7 @@ from core.constants import (
     REPOSITORY_URL,
 )
 from gui.builders import make_gui_state
+from gui.dialogs import ask_yes_no
 from gui.build_tab import create_build_tab
 from gui.options_tab import create_options_tab
 from gui.extras_tab import create_extras_tab
@@ -101,6 +110,25 @@ def run_gui() -> None:
     status_bar = tk.Label(window, textvariable=state.status_text, anchor="w", relief="sunken", padx=8)
     status_bar.pack(side="bottom", fill="x")
     window.after(500, startup_update_check)
+
+    def close() -> None:
+        if not state.jobs.busy:
+            window.destroy()
+            return
+        if not ask_yes_no("Build In Progress", "A build is still running. Cancel it and close once cleanup finishes?"):
+            return
+        state.closing = True
+        state.jobs.cancel.set()
+        state.status_text.set("Cancelling build before closing...")
+        wait_for_worker()
+
+    def wait_for_worker() -> None:
+        if state.jobs.busy:
+            window.after(100, wait_for_worker)
+        else:
+            window.destroy()
+
+    window.protocol("WM_DELETE_WINDOW", close)
     window.mainloop()
 
 

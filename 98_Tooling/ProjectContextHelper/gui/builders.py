@@ -4,7 +4,8 @@ File: gui/builders.py
 Purpose
 -------
 Bridge tkinter state to ScanSettings, restore preferences/last successful build settings,
-  validate GUI inputs, and execute exports.
+  validate GUI inputs, keep settings the GUI does not display, and execute exports (on the
+  background worker in v4.0.0).
 
 Implemented responsibilities:
 - bytes_to_mb_text: Convert integer bytes to decimal MB text, omitting an unnecessary fractional
@@ -13,12 +14,12 @@ Implemented responsibilities:
 - wire_preference_autosave: Register write traces on folder-opening, startup-check, and auto-
   install variables; each change writes a complete AppPreferences record.
 - make_gui_state: Load archive defaults, app preferences, and last saved export settings;
-  initialize tkinter variables and wire preference autosave; leave folder/session-export state
-  empty.
+  initialize tkinter variables, remember the full loaded settings as base_settings, create the
+  JobRunner, and wire preference autosave; leave folder/session-export state empty.
 - profile_description: Return the standard/archive explanatory label or Unknown profile for an
   unsupported string.
-- apply_settings_to_state: Copy the GUI-exposed output settings into tkinter variables; this
-  does not itself change profile_var or expose every ScanSettings field.
+- apply_settings_to_state: Remember a copy of the full settings as base_settings and copy the
+  GUI-exposed output settings into tkinter variables; this does not itself change profile_var.
 - apply_profile_defaults: Resolve the current profile variable to its built-in preset and copy
   the exposed settings into state.
 - apply_custom_profile_to_state: Set profile_var first, allowing the preset trace to fire, then
@@ -27,11 +28,15 @@ Implemented responsibilities:
   convert by multiplying by 1000000 and truncating to int.
 - parse_nonnegative_int: Parse a whole-number string and clamp negatives to zero; invalid
   integer syntax raises a labeled ValueError.
-- build_settings_from_state: Start with the selected built-in preset, overlay exposed GUI
-  controls, validate size/detail inputs, and return ScanSettings.
-- run_project_build: Require a selected folder, build validated settings, call create_context,
-  remember the returned export directory in session state, and save last-used settings after
-  success.
+- build_settings_from_state: Start from a copy of base_settings when its profile matches the
+  selected profile (otherwise the built-in preset), overlay exposed GUI controls, validate
+  size/detail inputs, and return ScanSettings.
+- prepare_build: Tk-thread step: require a selected folder and return (folder Path, settings)
+  without exporting.
+- execute_build: Worker-safe step (no tkinter access): call create_context with the cancel
+  Event and progress callback, then save last-used settings after success.
+- run_project_build: Synchronous convenience wrapper (prepare_build + execute_build) kept for
+  callers outside the Build tab; also remembers the export directory in session state.
 - persist: Nested preference trace callback: read the three current BooleanVars and pass a new
   AppPreferences record to save_preferences.
 
@@ -44,11 +49,12 @@ Internal imports and exchanged symbols:
   settings_for_profile.
 - core.builder: create_context.
 - core.models: BuildResult, ScanSettings.
+- gui.jobs: JobRunner.
 
 Consumers in the supplied source:
 - gui/about_tab.py imports GuiState.
-- gui/build_tab.py imports GuiState, apply_profile_defaults, profile_description,
-  run_project_build.
+- gui/build_tab.py imports GuiState, apply_profile_defaults, execute_build, prepare_build,
+  profile_description.
 - gui/extras_tab.py imports GuiState.
 - gui/main_gui.py imports make_gui_state.
 - gui/options_tab.py imports GuiState.
@@ -73,6 +79,9 @@ Function signatures (nested callbacks are scoped to their enclosing function):
 - parse_mb_to_bytes(value: str, label: str) -> int
 - parse_nonnegative_int(value: str, label: str) -> int
 - build_settings_from_state(state: GuiState) -> ScanSettings
+- prepare_build(state: GuiState) -> tuple[Path, ScanSettings]
+- execute_build(folder: Path, settings: ScanSettings, cancel: Event | None=None, progress:
+  Callable | None=None) -> BuildResult
 - run_project_build(state: GuiState) -> BuildResult
 - persist(*_args) -> None
 
@@ -99,6 +108,10 @@ GuiState record fields:
 - custom_profile_var: tk.StringVar (required constructor field)
 - status_text: tk.StringVar (required constructor field)
 - last_export_dir: Path | None = None
+- base_settings: ScanSettings | None = None
+- jobs: JobRunner | None = None
+- history_refresh: Callable[[], None] | None = None
+- closing: bool = False
 
 Edge cases
 ----------
@@ -111,13 +124,13 @@ The selected project folder is not restored from saved export settings. Setting 
 
 Known limitations
 -----------------
-The GUI does not expose every ScanSettings field. Rebuilding settings from the selected preset
-  can discard hidden custom fields. Unsaved edits are not automatically persisted as last-used
-  export settings.
+The GUI does not expose every ScanSettings field. Hidden fields (extension/exclusion sets,
+  workers, Git history limit, require_complete_source) are kept from base_settings, but choosing
+  a different built-in profile resets them to that preset, as in v3.1.4. Unsaved edits are not
+  automatically persisted as last-used export settings.
 
-GUI conversion rebuilds settings from a preset; custom extension/exclusion sets and a custom Git
-  history limit are not retained by that conversion. Persistence failures may be suppressed by
-  storage.
+execute_build must stay free of tkinter calls because it runs on the worker thread.
+  Persistence failures may be suppressed by storage.
 
 Examples
 --------
@@ -134,8 +147,11 @@ Usage from the directory containing run.py:
 """
 
 from __future__ import annotations
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Event
+from typing import Callable
 import tkinter as tk
 
 from services.storage import (
@@ -157,6 +173,7 @@ from core.models import (
     BuildResult,
     ScanSettings,
 )
+from gui.jobs import JobRunner
 
 
 @dataclass(slots=True)
@@ -183,6 +200,10 @@ class GuiState:
     custom_profile_var: tk.StringVar
     status_text: tk.StringVar
     last_export_dir: Path | None = None
+    base_settings: ScanSettings | None = None
+    jobs: JobRunner | None = None
+    history_refresh: Callable[[], None] | None = None
+    closing: bool = False
 
 
 def bytes_to_mb_text(value: int) -> str:
@@ -238,6 +259,8 @@ def make_gui_state() -> GuiState:
         custom_profile_var=tk.StringVar(value=""),
         status_text=tk.StringVar(value="Select a project folder."),
     )
+    state.base_settings = deepcopy(active_settings)
+    state.jobs = JobRunner()
     wire_preference_autosave(state)
     return state
 
@@ -261,6 +284,7 @@ def profile_description(profile: str) -> str:
 
 
 def apply_settings_to_state(state: GuiState, settings: ScanSettings) -> None:
+    state.base_settings = deepcopy(settings)
     state.output_dir_var.set(settings.output_dir_name or EXPORTS_DIRNAME)
     state.max_file_mb_var.set(bytes_to_mb_text(settings.max_file_bytes))
     state.max_total_mb_var.set(bytes_to_mb_text(settings.max_total_bytes))
@@ -311,7 +335,20 @@ def parse_nonnegative_int(value: str, label: str) -> int:
 
 
 def build_settings_from_state(state: GuiState) -> ScanSettings:
-    settings = settings_for_profile(state.profile_var.get())
+    """
+    v4.0.0: v3.1.4 always started from settings_for_profile(), so every
+    GUI build and every GUI profile save silently dropped settings the
+    GUI does not display (custom extensions/exclusions, Git history
+    limit, ...) -- including ones that had just been loaded from a CLI-
+    saved custom profile. The last fully loaded settings are now the
+    starting point whenever their profile matches the dropdown.
+    """
+    profile = state.profile_var.get()
+    base = state.base_settings
+    if base is not None and base.profile == profile:
+        settings = deepcopy(base)
+    else:
+        settings = settings_for_profile(profile)
     settings.output_dir_name = state.output_dir_var.get().strip() or EXPORTS_DIRNAME
     settings.include_snapshot_zip = state.include_zip_var.get()
     settings.redact_sensitive_lines = state.redact_var.get()
@@ -329,13 +366,27 @@ def build_settings_from_state(state: GuiState) -> ScanSettings:
     return settings
 
 
-def run_project_build(state: GuiState) -> BuildResult:
+def prepare_build(state: GuiState) -> tuple[Path, ScanSettings]:
     folder = state.selected_folder.get().strip()
     if not folder:
         raise ValueError("Please select a project folder first.")
-    settings = build_settings_from_state(state)
-    result = create_context(Path(folder), settings=settings)
-    state.last_export_dir = result.export_dir
+    return Path(folder), build_settings_from_state(state)
+
+
+def execute_build(
+    folder: Path,
+    settings: ScanSettings,
+    cancel: Event | None = None,
+    progress: Callable | None = None,
+) -> BuildResult:
+    result = create_context(folder, settings=settings, cancel=cancel, progress=progress)
     save_last_settings(settings)
+    return result
+
+
+def run_project_build(state: GuiState) -> BuildResult:
+    folder, settings = prepare_build(state)
+    result = execute_build(folder, settings)
+    state.last_export_dir = result.export_dir
     return result
 

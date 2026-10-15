@@ -31,8 +31,8 @@ Importing run.py changes sys.path but does not call main unless __name__ is __ma
 
 Known limitations
 -----------------
-Source launch imports tkinter through the CLI even for command-line operations; a Python
-  installation with tkinter is needed.
+Command-line exports no longer import tkinter (v4.0.0); a Python installation with tkinter is
+  needed only to open the desktop GUI.
 
 The entry point does not package dependencies or detect an absent graphical display; those
   failures arise during imports/GUI creation.
@@ -44,6 +44,7 @@ Usage from the directory containing run.py:
     python run.py
     python run.py "/path/to/project" --profile archive --no-zip
     python run.py "/path/to/project" --profile standard --remember-settings
+    python run.py "/path/to/project" --workers 8 --progress
     python run.py --list-profiles
     python run.py --help
 """

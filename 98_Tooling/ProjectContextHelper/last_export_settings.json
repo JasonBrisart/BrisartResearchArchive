@@ -119,5 +119,6 @@
   "skipped_details_limit": 1000,
   "require_complete_source": true,
   "include_git_state": true,
-  "git_state_commit_limit": 5
+  "git_state_commit_limit": 5,
+  "workers": 4
 }

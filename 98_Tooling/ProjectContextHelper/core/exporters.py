@@ -10,7 +10,7 @@ Implemented responsibilities:
 - escape_table_cell: Replace backticks with apostrophes, escape pipe characters, flatten
   newlines, and remove carriage returns before inserting display values into Markdown
   tables/code spans.
-- source_completeness_report: Filter scan skips to the four configured failure reasons and
+- source_completeness_report: Filter scan skips to the six configured failure reasons and
   return required/status/counts/failure records; PASS depends on those skips, not all repository
   files.
 - git_state_report: Return None for absent Git metadata or dataclasses.asdict for an existing
@@ -22,13 +22,16 @@ Implemented responsibilities:
   serialized settings, scan summary, completeness, Git metadata, and all inclusion/skip records.
 - append_source_completeness_markdown: Append the completeness summary and, for FAIL, an escaped
   table of every blocking eligible-file record.
+- source_fence: Return a backtick fence one longer than the longest backtick run in the text
+  (minimum three), so embedded fences cannot close the code block early.
 - build_context_markdown: Assemble the Markdown export from enabled sections; compute skip
-  counts, render tree/index, and reread included files through safe_read when contents are
-  enabled.
+  counts, render tree/index, and read each file's single captured copy through safe_read when
+  contents are enabled.
 - build_summary_text: Return a plaintext overview of settings, optional Git state, counts,
   completeness, extension totals, and skip-reason totals.
 - create_snapshot_zip: Open a ZIP in overwrite mode with deflate compression, add four generated
-  outputs at its root, and add each original included file under project_files/<relative path>.
+  outputs at its root, and add each included file's captured bytes under
+  project_files/<relative path>.
 
 Communication / relationships
 -----------------------------
@@ -46,7 +49,9 @@ Consumers in the supplied source:
 Settings / parameters
 ---------------------
 Receives the root, ScanResult, ScanSettings, creation timestamp, and optional GitState. Output
-  sections follow the supplied toggles.
+  sections follow the supplied toggles. When ScanResult.captured_paths is populated, contents
+  and ZIP members come from those captured copies; otherwise original paths are read (the
+  v3.1.4 behavior). output_dir lets the folder tree omit a custom export folder.
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - escape_table_cell(value: str) -> str
@@ -57,8 +62,9 @@ Function signatures (nested callbacks are scoped to their enclosing function):
   GitState | None=None) -> dict
 - append_source_completeness_markdown(chunks: list[str], scan: ScanResult, settings:
   ScanSettings) -> None
+- source_fence(text: str) -> str
 - build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings, created: str,
-  git_state: GitState | None=None) -> str
+  git_state: GitState | None=None, output_dir: Path | None=None) -> str
 - build_summary_text(root: Path, scan: ScanResult, settings: ScanSettings, created: str,
   git_state: GitState | None=None) -> str
 - create_snapshot_zip(zip_path: Path, context_path: Path, manifest_path: Path, summary_path:
@@ -76,12 +82,13 @@ An empty scan renders a no-files message instead of an index table. Negative ski
 
 Known limitations
 -----------------
-Markdown redaction does not redact original files in the ZIP. Files are read again during
-  rendering/ZIP creation; hashes and captured content can diverge if sources change. Markdown
-  escaping is not a general sanitization boundary.
+Markdown redaction does not redact files in the ZIP; ZIP members are the captured original
+  bytes. Hashes describe those bytes, not redacted Markdown. Markdown escaping is not a general
+  sanitization boundary.
 
-Embedded file contents use fixed triple-backtick fences; source text containing the same fence
-  can disrupt rendered Markdown. Hashes describe original source bytes, not redacted Markdown.
+When called with a ScanResult that has no captured_paths (e.g. collect_included_files without a
+  spool), files are read again here and hashes can diverge from rendered content if sources
+  change in between. core.builder always supplies captured paths.
 
 Examples
 --------
@@ -278,7 +285,23 @@ def append_source_completeness_markdown(chunks: list[str], scan: ScanResult, set
     chunks.append("")
 
 
-def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings, created: str, git_state: GitState | None = None) -> str:
+def source_fence(text: str) -> str:
+    """
+    v4.0.0: v3.1.4 always used a fixed triple-backtick fence, so any
+    embedded file that itself contained ``` (Markdown docs, this tool's
+    own README, docstrings with examples) closed the code block early
+    and broke rendering for the rest of the document. The fence is now
+    always longer than the longest backtick run inside the text.
+    """
+    longest = 0
+    run = 0
+    for char in text:
+        run = run + 1 if char == "`" else 0
+        longest = max(longest, run)
+    return "`" * max(3, longest + 1)
+
+
+def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings, created: str, git_state: GitState | None = None, output_dir: Path | None = None) -> str:
     chunks: list[str] = []
     skip_counts = Counter(r.reason for r in scan.skipped_records)
     chunks.append("# Project Context")
@@ -302,6 +325,7 @@ def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings,
     chunks.append(f"- Hashes enabled: **{settings.include_hashes}**")
     chunks.append(f"- Line counts enabled: **{settings.include_line_counts}**")
     chunks.append(f"- Complete source required: **{settings.require_complete_source}**")
+    chunks.append(f"- Capture workers: **{settings.workers}**")
     chunks.append("")
     if settings.include_git_state:
         append_git_state_markdown(chunks, git_state)
@@ -333,7 +357,7 @@ def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings,
         chunks.append("## Folder Tree")
         chunks.append("")
         chunks.append("```text")
-        chunks.append(build_tree(root, settings))
+        chunks.append(build_tree(root, settings, output_dir))
         chunks.append("```")
         chunks.append("")
     if settings.include_file_index:
@@ -363,13 +387,16 @@ def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings,
     if settings.include_file_contents:
         chunks.append("## Included File Contents")
         chunks.append("")
-        for path in scan.included_paths:
+        sources = scan.captured_paths or scan.included_paths
+        for path, source in zip(scan.included_paths, sources):
             rel = path.relative_to(root)
-            chunks.append(f"### `{rel}`")
+            text = safe_read(source, redact_sensitive_lines=settings.redact_sensitive_lines)
+            fence = source_fence(text)
+            chunks.append(f"### `{escape_table_cell(str(rel))}`")
             chunks.append("")
-            chunks.append(f"```{language_hint(path)}")
-            chunks.append(safe_read(path, redact_sensitive_lines=settings.redact_sensitive_lines))
-            chunks.append("```")
+            chunks.append(f"{fence}{language_hint(path)}")
+            chunks.append(text)
+            chunks.append(fence)
             chunks.append("")
     return "\n".join(chunks)
 
@@ -439,7 +466,8 @@ def create_snapshot_zip(zip_path: Path, context_path: Path, manifest_path: Path,
         archive.write(manifest_path, manifest_path.name)
         archive.write(summary_path, summary_path.name)
         archive.write(settings_path, settings_path.name)
-        for path in scan.included_paths:
+        sources = scan.captured_paths or scan.included_paths
+        for path, source in zip(scan.included_paths, sources):
             rel = path.relative_to(root)
-            archive.write(path, f"project_files/{rel.as_posix()}")
+            archive.write(source, f"project_files/{rel.as_posix()}")
 

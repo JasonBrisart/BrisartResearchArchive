@@ -21,8 +21,9 @@ Implemented responsibilities:
 - run_profile_delete: Delete a trimmed profile name through storage and print whether a record
   was removed.
 - run_cli: Parse process arguments; handle listing, deletion, and update actions in that order;
-  launch the GUI when no export root remains; otherwise build, optionally save settings/profile,
-  and print output paths/counts.
+  launch the GUI (imported only at that point) when no export root remains; otherwise build with
+  optional --progress output, optionally save settings/profile, and print output paths/counts.
+- print_progress: Nested --progress callback: write one phase/count line per event to stderr.
 - main: Delegate directly to run_cli; this is the dispatcher imported by run.py.
 
 Communication / relationships
@@ -31,7 +32,8 @@ Internal imports and exchanged symbols:
 - core.constants: APP_NAME, APP_VERSION, DEFAULT_PROFILE, VALID_PROFILES, settings_for_profile.
 - core.builder: create_context.
 - core.utils: normalize_extension.
-- gui.main_gui: run_gui.
+- core.events: Progress.
+- gui.main_gui: run_gui (imported inside run_cli, only when the GUI is launched).
 - services: storage.
 - services.updater: apply_exe_update, apply_staged_update, check_for_updates, download_update,
   open_releases_page, stage_exe_update.
@@ -43,7 +45,8 @@ Settings / parameters
 ---------------------
 Built-in profile defaults are followed by optional last-used settings, a named custom profile,
   and explicit CLI overrides. Size limits must be positive; negative detail/history limits are
-  clamped to zero.
+  clamped to zero. --workers sets the capture thread count (1-32, validated by the builder).
+  --progress prints pipeline phases to stderr so stdout stays unchanged.
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - build_parser() -> argparse.ArgumentParser
@@ -52,12 +55,14 @@ Function signatures (nested callbacks are scoped to their enclosing function):
 - run_profile_list() -> None
 - run_profile_delete(name: str) -> None
 - run_cli() -> None
+- print_progress(event: Progress) -> None
 - main() -> None
 
 Edge cases
 ----------
-A missing custom profile prints a warning. Expected build errors exit with status 1. Update
-  application errors are caught separately. With no root, standalone management commands return
+A missing custom profile prints a warning. Expected build errors (ValueError, missing/invalid
+  root, OSError) exit with status 1; Ctrl+C exits with status 130 after the builder removes its
+  staging folder. Update application errors are caught separately. With no root, standalone management commands return
   instead of opening the GUI.
 
 When both --git-state and --no-git-state are present, the latter wins because it is applied
@@ -66,12 +71,13 @@ When both --git-state and --no-git-state are present, the latter wins because it
 
 Known limitations
 -----------------
-There is no CLI flag for every ScanSettings field. The CLI imports the GUI at module load.
-  Unexpected filesystem failures outside the handled exception classes can propagate.
+There is no CLI flag for every ScanSettings field. (v4.0.0: the GUI, and therefore tkinter, is no
+  longer imported for command-line exports.)
 
 No positive enabling flags are provided for hashes/contents/etc. after a standard preset
   disables them. --save-profile without a root does not save a profile; it falls through to GUI
-  launch. Profile persistence filesystem failures can propagate beyond the ValueError handler.
+  launch. --save-profile failures (including a busy or unreadable profiles file) are reported
+  and do not fail the already-completed export.
 
 Examples
 --------
@@ -79,6 +85,7 @@ Usage from the directory containing run.py:
 
     python run.py "/path/to/project" --profile archive --no-zip
     python run.py "/path/to/project" --max-file-bytes 4000000 --max-total-bytes 150000000
+    python run.py "/path/to/project" --workers 8 --progress
     python run.py "/path/to/project" --save-profile "Review"
     python run.py "/path/to/project" --load-profile "Review" --no-redact
     python run.py --list-profiles
@@ -102,7 +109,7 @@ from core.constants import (
 )
 from core.builder import create_context
 from core.utils import normalize_extension
-from gui.main_gui import run_gui
+from core.events import Progress
 from services import storage
 from services.updater import (
     apply_exe_update,
@@ -143,6 +150,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--delete-profile", metavar="NAME", default=None)
     parser.add_argument("--list-profiles", action="store_true")
     parser.add_argument("--flat-output", action="store_true")
+    parser.add_argument("--workers", type=int, default=None, help="Capture threads (1-32, default 4).")
+    parser.add_argument("--progress", action="store_true", help="Print build phases to stderr.")
     parser.add_argument("--check-updates", action="store_true")
     parser.add_argument("--install-updates", action="store_true")
     parser.add_argument("--open-releases", action="store_true")
@@ -203,6 +212,8 @@ def settings_from_args(args):
         settings.git_state_commit_limit = max(0, args.git_state_commit_limit)
     if args.flat_output:
         settings.timestamped_export_folder = False
+    if args.workers is not None:
+        settings.workers = args.workers
     return settings
 
 
@@ -302,17 +313,29 @@ def run_cli() -> None:
             return
 
     if not args.root:
+        from gui.main_gui import run_gui
         run_gui()
         return
 
+    def print_progress(event: Progress) -> None:
+        count = f" {event.completed}/{event.total}" if event.total else ""
+        print(f"[{event.phase}]{count} {event.message}".rstrip(), file=sys.stderr)
+
     try:
         settings = settings_from_args(args)
-        result = create_context(Path(args.root), settings=settings)
-    except (ValueError, FileNotFoundError, NotADirectoryError) as exc:
+        result = create_context(
+            Path(args.root), settings=settings, progress=print_progress if args.progress else None,
+        )
+    except (ValueError, OSError) as exc:
         print(f"{APP_NAME} v{APP_VERSION}")
         print()
         print(f"Build failed: {exc}")
         sys.exit(1)
+    except KeyboardInterrupt:
+        print(f"{APP_NAME} v{APP_VERSION}")
+        print()
+        print("Build interrupted; no export was published.")
+        sys.exit(130)
 
     if args.remember_settings:
         storage.save_last_settings(settings)
@@ -321,7 +344,7 @@ def run_cli() -> None:
         try:
             storage.save_profile(args.save_profile, settings)
             print(f"Saved custom profile '{args.save_profile}'.")
-        except ValueError as exc:
+        except (ValueError, OSError) as exc:
             print(f"Could not save custom profile: {exc}")
 
     print(f"{APP_NAME} v{APP_VERSION}")

@@ -3,46 +3,45 @@ File: core/scanner.py
 
 Purpose
 -------
-Select eligible source/text files, record inclusion and skip metadata, enforce configured
-  completeness, and render a folder tree.
+Select eligible source/text files with a pruned directory walk, apply byte budgets in a
+  deterministic order, capture every included file exactly once with a bounded thread pool,
+  enforce configured completeness, and render a folder tree.
 
 Implemented responsibilities:
 - relative_string: Return the path relative to root as a string; if it is not lexically
   relative, return the full path string instead.
-- safe_size: Read stat().st_size; return None on OSError so the scanner can record
+- safe_size: Read lstat().st_size; return None on OSError so the scanner can record
   size_unavailable.
 - build_file_meta: Capture a candidate's path, relative display path, size, lowercased suffix,
   and lowercased filename in FileMeta.
-- can_read_text_file: Attempt a UTF-8 read with replacement decoding; return False on any read
-  exception. This tests accessibility, not strict UTF-8 validity.
 - exclusion_reason: Check lexical root membership, excluded directory components, excluded
   filenames, and excluded suffixes in that order; return the first reason or None.
 - is_configured_source_file: Match lowercased suffix or exact filename against
   include_extensions, then test filename endings for configured compound extensions.
 - skip_record: Convert FileMeta plus a reason string into an immutable SkipRecord, preserving an
   unavailable size as None.
-- should_include_file: Build metadata; reject nonfiles, intentional exclusions, unsupported
-  extensions, unavailable sizes, oversized files, and unreadable embedded text; return inclusion
-  flag, optional skip, and metadata.
 - source_completeness_failures: Return only skip records whose reason belongs to
   SOURCE_COMPLETENESS_FAILURE_REASONS.
 - build_source_failure_message: Format the blocking file list with reason/byte size and
   remediation text for a required-completeness ValueError.
-- build_file_record: Construct immutable file metadata; compute SHA256 and line count only when
-  enabled; failed utility reads may leave those optional values None.
-- collect_included_files: Traverse sorted root.rglob candidates; collect skips and eligible
-  files within total-byte budget; raise on required completeness failures; otherwise return
-  immutable tuples in ScanResult.
-- build_tree: Render a separate directory-first, case-insensitive-name-sorted folder tree using
-  exclusion rules; mark ancestor symlink loops and avoid descending into them.
+- discover_candidates: Walk the root depth-first without entering excluded directories, the
+  export output directory, internal .pch-* entries, or symlinks; classify every visited entry as
+  a candidate or a SkipRecord.
+- capture_file: Worker-thread function: open one candidate, read at most max_file_bytes + 1
+  bytes, reject a size change since discovery, and compute SHA256/line count from those bytes.
+- collect_included_files: Discover, apply the total-byte budget in sorted path order, capture in
+  parallel batches, optionally spool captured bytes, enforce completeness, and return ScanResult.
+- build_tree: Render a directory-first, case-insensitive-name-sorted folder tree using exclusion
+  rules, skipping the export output directory and internal entries; mark ancestor symlink loops.
 - walk: Nested tree-rendering callback: track resolved ancestor directories, filter entries,
   append connectors/loop labels, and recursively expand nonloop directories.
 
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
+- core.constants: INTERNAL_NAME_PREFIX.
+- core.events: Progress, checkpoint.
 - core.models: FileRecord, ScanResult, ScanSettings, SkipRecord.
-- core.utils: count_lines, sha256_file.
 
 Consumers in the supplied source:
 - core/builder.py imports collect_included_files.
@@ -50,25 +49,32 @@ Consumers in the supplied source:
 
 Settings / parameters
 ---------------------
-Uses ScanSettings extension/name matching, exclusions, byte limits, hash/line toggles, and
-  require_complete_source. Four failure reasons count toward completeness: file_too_large,
-  total_size_limit, size_unavailable, read_unavailable.
+Uses ScanSettings extension/name matching, exclusions, byte limits, hash/line toggles,
+  require_complete_source, and workers (thread count, 1-32). Six reasons count toward
+  completeness: file_too_large, total_size_limit, size_unavailable, read_unavailable,
+  source_changed, directory_unavailable.
+
+Captured bytes are written to spool_dir/<relative path> when spool_dir is supplied; otherwise
+  hashes and line counts are still computed from one read, but the bytes are discarded and
+  captured_paths is empty.
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - relative_string(path: Path, root: Path) -> str
 - safe_size(path: Path) -> int | None
 - build_file_meta(path: Path, root: Path) -> FileMeta
-- can_read_text_file(path: Path) -> bool
 - exclusion_reason(path: Path, root: Path, settings: ScanSettings) -> str | None
 - is_configured_source_file(meta: FileMeta, settings: ScanSettings) -> bool
 - skip_record(meta: FileMeta, reason: str) -> SkipRecord
-- should_include_file(path: Path, root: Path, settings: ScanSettings) -> tuple[bool, SkipRecord
-  | None, FileMeta]
 - source_completeness_failures(skipped_records: list[SkipRecord]) -> list[SkipRecord]
 - build_source_failure_message(failures: list[SkipRecord]) -> str
-- build_file_record(meta: FileMeta, settings: ScanSettings) -> FileRecord
-- collect_included_files(root: Path, settings: ScanSettings) -> ScanResult
-- build_tree(root: Path, settings: ScanSettings) -> str
+- discover_candidates(root: Path, settings: ScanSettings, output_dir: Path | None=None,
+  cancel: Event | None=None) -> tuple[list[FileMeta], list[SkipRecord]]
+- capture_file(meta: FileMeta, settings: ScanSettings) -> tuple[FileRecord | None, bytes |
+  None, str | None]
+- collect_included_files(root: Path, settings: ScanSettings, output_dir: Path | None=None,
+  spool_dir: Path | None=None, cancel: Event | None=None, progress:
+  Callable[[Progress], None] | None=None) -> ScanResult
+- build_tree(root: Path, settings: ScanSettings, output_dir: Path | None=None) -> str
 - walk(directory: Path, prefix: str='', visited: frozenset[Path]=frozenset()) -> None
 
 Module constants and expressions:
@@ -78,8 +84,14 @@ Module constants and expressions:
 - SKIP_TOTAL_SIZE_LIMIT = 'total_size_limit'
 - SKIP_SIZE_UNAVAILABLE = 'size_unavailable'
 - SKIP_READ_UNAVAILABLE = 'read_unavailable'
+- SKIP_SOURCE_CHANGED = 'source_changed'
+- SKIP_DIRECTORY_UNAVAILABLE = 'directory_unavailable'
+- SKIP_SYMLINK = 'symlink_not_followed'
+- SKIP_SPECIAL_FILE = 'not_a_regular_file'
+- SKIP_EXPORT_OUTPUT = 'export_output_directory'
+- SKIP_INTERNAL = 'internal_tool_file'
 - SOURCE_COMPLETENESS_FAILURE_REASONS = {SKIP_FILE_TOO_LARGE, SKIP_TOTAL_SIZE_LIMIT,
-  SKIP_SIZE_UNAVAILABLE, SKIP_READ_UNAVAILABLE}
+  SKIP_SIZE_UNAVAILABLE, SKIP_READ_UNAVAILABLE, SKIP_SOURCE_CHANGED, SKIP_DIRECTORY_UNAVAILABLE}
 
 FileMeta record fields:
 - path: Path (required constructor field)
@@ -91,23 +103,26 @@ FileMeta record fields:
 Edge cases
 ----------
 Directory and filename exclusions are case-insensitive. Compound extensions match filename
-  endings. Tree rendering detects ancestor symlink loops and tolerates directory-read failures.
+  endings. An excluded directory produces one excluded_directory skip record for the directory
+  itself; its contents are not walked or listed. Exactly-at-limit files fit because size checks
+  use >. A total-budget skip does not stop selection; later smaller files can still fit.
 
-Exactly-at-limit files fit because size checks use >. A total-budget skip does not stop
-  traversal; later smaller files can still fit. With include_file_contents=False the
-  accessibility probe is not run. Failed hash/line utilities return None without adding a
-  completeness failure.
+Candidates are budgeted and captured in sorted Path order, matching v3.1.4's sorted rglob order,
+  so worker count never changes which files are included. A file whose size changed between
+  discovery and capture is skipped as source_changed. Symlinked files and directories are skipped
+  as symlink_not_followed (an intentional exclusion, not a completeness failure).
 
 Known limitations
 -----------------
 Completeness is scoped to configured eligible files, not the entire repository. Intentional
-  exclusions and unsupported extensions do not fail it. The tree can include files absent from
-  the file index. No immutable filesystem snapshot or general resolved-path containment
-  guarantee is provided.
+  exclusions, unsupported extensions, and symlinks do not fail it. Each file is read once, but
+  files are captured at slightly different moments; this is not an atomic project-wide
+  snapshot. The tree is rendered from a separate walk using exclusions only, so it can show
+  files absent from the index.
 
-The root.rglob traversal visits excluded-directory descendants before rejecting their files; it
-  does not prune those directories at traversal entry. The tree uses exclusions but not
-  eligibility/byte limits, so it is not an inclusion inventory.
+Without spool_dir, captured bytes are not retained, so later rendering must reread originals.
+  Capture holds at most 2 x workers file buffers in memory at once; each buffer is bounded by
+  max_file_bytes + 1.
 
 Examples
 --------
@@ -125,18 +140,23 @@ Usage from the directory containing run.py:
 """
 
 from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Event
+from typing import Callable
+import hashlib
+import os
+import stat
 
+from core.constants import INTERNAL_NAME_PREFIX
+from core.events import Progress, checkpoint
 from core.models import (
     FileRecord,
     ScanResult,
     ScanSettings,
     SkipRecord,
-)
-from core.utils import (
-    count_lines,
-    sha256_file,
 )
 
 SKIP_OUTSIDE_ROOT = "outside_root"
@@ -145,9 +165,16 @@ SKIP_FILE_TOO_LARGE = "file_too_large"
 SKIP_TOTAL_SIZE_LIMIT = "total_size_limit"
 SKIP_SIZE_UNAVAILABLE = "size_unavailable"
 SKIP_READ_UNAVAILABLE = "read_unavailable"
+SKIP_SOURCE_CHANGED = "source_changed"
+SKIP_DIRECTORY_UNAVAILABLE = "directory_unavailable"
+SKIP_SYMLINK = "symlink_not_followed"
+SKIP_SPECIAL_FILE = "not_a_regular_file"
+SKIP_EXPORT_OUTPUT = "export_output_directory"
+SKIP_INTERNAL = "internal_tool_file"
 
 SOURCE_COMPLETENESS_FAILURE_REASONS = {
     SKIP_FILE_TOO_LARGE, SKIP_TOTAL_SIZE_LIMIT, SKIP_SIZE_UNAVAILABLE, SKIP_READ_UNAVAILABLE,
+    SKIP_SOURCE_CHANGED, SKIP_DIRECTORY_UNAVAILABLE,
 }
 
 
@@ -169,7 +196,7 @@ def relative_string(path: Path, root: Path) -> str:
 
 def safe_size(path: Path) -> int | None:
     try:
-        return path.stat().st_size
+        return path.lstat().st_size
     except OSError:
         return None
 
@@ -179,14 +206,6 @@ def build_file_meta(path: Path, root: Path) -> FileMeta:
         path=path, relative_path=relative_string(path, root),
         size_bytes=safe_size(path), suffix=path.suffix.lower(), name_lower=path.name.lower(),
     )
-
-
-def can_read_text_file(path: Path) -> bool:
-    try:
-        path.read_text(encoding="utf-8", errors="replace")
-        return True
-    except Exception:
-        return False
 
 
 def exclusion_reason(path: Path, root: Path, settings: ScanSettings) -> str | None:
@@ -207,6 +226,9 @@ def exclusion_reason(path: Path, root: Path, settings: ScanSettings) -> str | No
     names as the same folder. Directory-name and file-name exclusion
     now compare case-insensitively too, matching how suffix and
     extension matching already behave.
+
+    v4.0.0: unchanged. The pruned walk in discover_candidates() calls
+    this once per directory instead of once per descendant file.
     """
     try:
         relative_parts = path.relative_to(root).parts
@@ -242,24 +264,6 @@ def skip_record(meta: FileMeta, reason: str) -> SkipRecord:
     return SkipRecord(relative_path=meta.relative_path, reason=reason, size_bytes=meta.size_bytes)
 
 
-def should_include_file(path: Path, root: Path, settings: ScanSettings) -> tuple[bool, SkipRecord | None, FileMeta]:
-    meta = build_file_meta(path, root)
-    if not path.is_file():
-        return False, None, meta
-    reason = exclusion_reason(path, root, settings)
-    if reason:
-        return False, skip_record(meta, reason), meta
-    if not is_configured_source_file(meta, settings):
-        return False, skip_record(meta, SKIP_EXTENSION_NOT_INCLUDED), meta
-    if meta.size_bytes is None:
-        return False, skip_record(meta, SKIP_SIZE_UNAVAILABLE), meta
-    if meta.size_bytes > settings.max_file_bytes:
-        return False, skip_record(meta, SKIP_FILE_TOO_LARGE), meta
-    if settings.include_file_contents and not can_read_text_file(path):
-        return False, skip_record(meta, SKIP_READ_UNAVAILABLE), meta
-    return True, None, meta
-
-
 def source_completeness_failures(skipped_records: list[SkipRecord]) -> list[SkipRecord]:
     return [r for r in skipped_records if r.reason in SOURCE_COMPLETENESS_FAILURE_REASONS]
 
@@ -279,55 +283,182 @@ def build_source_failure_message(failures: list[SkipRecord]) -> str:
     return "\n".join(lines)
 
 
-def build_file_record(meta: FileMeta, settings: ScanSettings) -> FileRecord:
-    return FileRecord(
-        relative_path=meta.relative_path, size_bytes=meta.size_bytes or 0,
+def discover_candidates(
+    root: Path,
+    settings: ScanSettings,
+    output_dir: Path | None = None,
+    cancel: Event | None = None,
+) -> tuple[list[FileMeta], list[SkipRecord]]:
+    """
+    v4.0.0: replaces v3.1.4's root.rglob("*") traversal. Excluded
+    directories (and the export output directory, wherever it is
+    configured) are pruned at entry instead of having every descendant
+    visited and individually rejected. This also stops custom output
+    folder names from being swept into later exports, which v3.1.4 did
+    not prevent.
+    """
+    output_resolved = output_dir.resolve() if output_dir is not None else None
+    candidates: list[FileMeta] = []
+    skipped: list[SkipRecord] = []
+
+    def visit(directory: Path) -> None:
+        checkpoint(cancel)
+        try:
+            entries = sorted(directory.iterdir(), key=lambda p: p.name)
+        except OSError:
+            skipped.append(skip_record(build_file_meta(directory, root), SKIP_DIRECTORY_UNAVAILABLE))
+            return
+        for path in entries:
+            if path.name.startswith(INTERNAL_NAME_PREFIX):
+                skipped.append(skip_record(build_file_meta(path, root), SKIP_INTERNAL))
+                continue
+            try:
+                info = path.lstat()
+            except OSError:
+                skipped.append(skip_record(build_file_meta(path, root), SKIP_SIZE_UNAVAILABLE))
+                continue
+            meta = build_file_meta(path, root)
+            if stat.S_ISLNK(info.st_mode):
+                skipped.append(skip_record(meta, SKIP_SYMLINK))
+                continue
+            if stat.S_ISDIR(info.st_mode):
+                if output_resolved is not None and path.resolve() == output_resolved:
+                    skipped.append(SkipRecord(relative_path=meta.relative_path, reason=SKIP_EXPORT_OUTPUT))
+                    continue
+                reason = exclusion_reason(path, root, settings)
+                if reason:
+                    skipped.append(SkipRecord(relative_path=meta.relative_path, reason=reason))
+                    continue
+                visit(path)
+                continue
+            if not stat.S_ISREG(info.st_mode):
+                skipped.append(skip_record(meta, SKIP_SPECIAL_FILE))
+                continue
+            reason = exclusion_reason(path, root, settings)
+            if reason:
+                skipped.append(skip_record(meta, reason))
+            elif not is_configured_source_file(meta, settings):
+                skipped.append(skip_record(meta, SKIP_EXTENSION_NOT_INCLUDED))
+            elif meta.size_bytes is None:
+                skipped.append(skip_record(meta, SKIP_SIZE_UNAVAILABLE))
+            elif meta.size_bytes > settings.max_file_bytes:
+                skipped.append(skip_record(meta, SKIP_FILE_TOO_LARGE))
+            else:
+                candidates.append(meta)
+
+    visit(root)
+    return candidates, skipped
+
+
+def capture_file(meta: FileMeta, settings: ScanSettings) -> tuple[FileRecord | None, bytes | None, str | None]:
+    """
+    Read one file exactly once. Hash and line count come from these same
+    bytes, and the caller spools the same bytes for Markdown and ZIP
+    rendering, so all three always describe identical content
+    (v3.1.4 read each file up to four separate times).
+    """
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(meta.path, flags)
+        with os.fdopen(fd, "rb") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                return None, None, SKIP_SOURCE_CHANGED
+            data = handle.read(settings.max_file_bytes + 1)
+    except OSError:
+        return None, None, SKIP_READ_UNAVAILABLE
+    if len(data) != meta.size_bytes:
+        return None, None, SKIP_SOURCE_CHANGED
+    record = FileRecord(
+        relative_path=meta.relative_path, size_bytes=len(data),
         extension=meta.suffix or meta.name_lower,
-        sha256=(sha256_file(meta.path) if settings.include_hashes else None),
-        line_count=(count_lines(meta.path) if settings.include_line_counts else None),
+        sha256=(hashlib.sha256(data).hexdigest() if settings.include_hashes else None),
+        line_count=(len(data.decode("utf-8", errors="replace").splitlines()) if settings.include_line_counts else None),
     )
+    return record, data, None
 
 
-def collect_included_files(root: Path, settings: ScanSettings) -> ScanResult:
-    included_paths: list[Path] = []
-    included_records: list[FileRecord] = []
-    skipped_records: list[SkipRecord] = []
+def collect_included_files(
+    root: Path,
+    settings: ScanSettings,
+    output_dir: Path | None = None,
+    spool_dir: Path | None = None,
+    cancel: Event | None = None,
+    progress: Callable[[Progress], None] | None = None,
+) -> ScanResult:
+    emit = progress or (lambda _event: None)
+    emit(Progress("discovering", message="Scanning project folders"))
+    candidates, skipped_records = discover_candidates(root, settings, output_dir, cancel)
+
+    selected: list[FileMeta] = []
     total_bytes = 0
-    for path in sorted(root.rglob("*")):
-        include, skip, meta = should_include_file(path, root, settings)
-        if skip is not None:
-            skipped_records.append(skip)
-            continue
-        if not include:
-            continue
-        if meta.size_bytes is None:
-            skipped_records.append(skip_record(meta, SKIP_SIZE_UNAVAILABLE))
-            continue
-        if total_bytes + meta.size_bytes > settings.max_total_bytes:
+    for meta in sorted(candidates, key=lambda m: m.path):
+        if total_bytes + (meta.size_bytes or 0) > settings.max_total_bytes:
             skipped_records.append(skip_record(meta, SKIP_TOTAL_SIZE_LIMIT))
             continue
-        included_paths.append(path)
-        included_records.append(build_file_record(meta, settings))
-        total_bytes += meta.size_bytes
+        selected.append(meta)
+        total_bytes += meta.size_bytes or 0
+
     failures = source_completeness_failures(skipped_records)
     if settings.require_complete_source and failures:
         raise ValueError(build_source_failure_message(failures))
+
+    included_paths: list[Path] = []
+    included_records: list[FileRecord] = []
+    captured_paths: list[Path] = []
+    workers = max(1, settings.workers)
+    batch_size = workers * 2
+    done = 0
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="pch-capture") as pool:
+        for start in range(0, len(selected), batch_size):
+            checkpoint(cancel)
+            batch = selected[start:start + batch_size]
+            for meta, (record, data, reason) in zip(batch, pool.map(lambda m: capture_file(m, settings), batch)):
+                done += 1
+                if reason is not None:
+                    skipped_records.append(skip_record(meta, reason))
+                    continue
+                included_paths.append(meta.path)
+                included_records.append(record)
+                if spool_dir is not None:
+                    captured = spool_dir / meta.path.relative_to(root)
+                    captured.parent.mkdir(parents=True, exist_ok=True)
+                    captured.write_bytes(data)
+                    captured_paths.append(captured)
+            emit(Progress("capturing", done, len(selected)))
+    checkpoint(cancel)
+
+    skipped_records.sort(key=lambda r: r.relative_path)
+    failures = source_completeness_failures(skipped_records)
+    if settings.require_complete_source and failures:
+        raise ValueError(build_source_failure_message(failures))
+
     return ScanResult(
         included_paths=tuple(included_paths), included_records=tuple(included_records),
-        skipped_records=tuple(skipped_records), total_included_bytes=total_bytes,
+        skipped_records=tuple(skipped_records),
+        total_included_bytes=sum(r.size_bytes for r in included_records),
+        captured_paths=tuple(captured_paths),
     )
 
 
-def build_tree(root: Path, settings: ScanSettings) -> str:
+def build_tree(root: Path, settings: ScanSettings, output_dir: Path | None = None) -> str:
     """
     Build a readable folder tree for the selected project. Protected
-    against symlink loops (a directory that, directly or via a
-    longer chain, points back at one of its own ancestors): each
-    directory's resolved real path is tracked while walking, and
-    revisiting one already on the current path is reported directly
-    in the tree as a loop instead of being descended into again.
+    against symlink loops: each directory's resolved real path is tracked
+    while walking, and revisiting one already on the current path is
+    reported directly in the tree as a loop instead of being descended
+    into again. v4.0.0: the configured export output directory and this
+    tool's internal .pch-* entries are left out, whatever they are named.
     """
     lines: list[str] = [root.name + "/"]
+    output_resolved = output_dir.resolve() if output_dir is not None else None
+
+    def keep(entry: Path) -> bool:
+        if entry.name.startswith(INTERNAL_NAME_PREFIX) or exclusion_reason(entry, root, settings):
+            return False
+        try:
+            return output_resolved is None or entry.resolve() != output_resolved
+        except OSError:
+            return True
 
     def walk(directory: Path, prefix: str = "", visited: frozenset[Path] = frozenset()) -> None:
         try:
@@ -339,7 +470,7 @@ def build_tree(root: Path, settings: ScanSettings) -> str:
         visited = visited | {resolved}
         try:
             entries = sorted(
-                [e for e in directory.iterdir() if not exclusion_reason(e, root, settings)],
+                [e for e in directory.iterdir() if keep(e)],
                 key=lambda item: (not item.is_dir(), item.name.lower()),
             )
         except OSError:
@@ -358,6 +489,6 @@ def build_tree(root: Path, settings: ScanSettings) -> str:
             if is_dir and not is_loop:
                 extension = "    " if is_last else "│   "
                 walk(entry, prefix + extension, visited)
+
     walk(root)
     return "\n".join(lines)
-
