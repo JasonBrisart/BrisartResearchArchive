@@ -100,9 +100,13 @@ class GuiWiringTests(unittest.TestCase):
     def test_v3_controls_build_on_worker_and_refresh_history(self):
         self.run_scenario('''
             labels = {w.options.get('text') for w in fake_tk.REGISTRY}
-            for text in ('Browse', 'Open Last Export Folder', 'Open Releases Page', 'Open Selected Export Folder',
+            for text in ('Browse', 'Open Last Export Folder', 'Open Selected Export Folder',
                          'Refresh', 'Clear History', 'Save Current As', 'Load Selected', 'Delete Selected', 'Refresh List'):
                 assert text in labels, text
+            assert 'Open Releases Page' not in labels
+            about = [w.options.get('text') or '' for w in fake_tk.REGISTRY if w.kind == 'Label']
+            assert any('Author: Jason Brisart' + chr(10) + 'Brisart Research Archive' in t for t in about), about
+            assert not any('github' in t.lower() for t in about)
             state.selected_folder.set(str(project))
             build_button.invoke()
             assert build_button.options.get('state') == 'disabled'

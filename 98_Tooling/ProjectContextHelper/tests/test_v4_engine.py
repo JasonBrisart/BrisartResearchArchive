@@ -121,6 +121,12 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         self.assertEqual(manifest["version"], "4.0.0")
         self.assertEqual(manifest["source_completeness"]["status"], "PASS")
         self.assertEqual(manifest["settings"]["workers"], 4)
+        self.assertEqual(manifest["author"], "Jason Brisart")
+        self.assertEqual(manifest["affiliation"], "Brisart Research Archive")
+        self.assertNotIn("repository_url", manifest)
+        for path in (result.context_path, result.manifest_path, result.summary_path):
+            self.assertNotIn("github", path.read_text(encoding="utf-8").lower(), path)
+        self.assertIn("Affiliation: **Brisart Research Archive**", result.context_path.read_text(encoding="utf-8"))
         self.assertEqual(len(storage.load_history()), 1)
         self.assert_no_staging()
 

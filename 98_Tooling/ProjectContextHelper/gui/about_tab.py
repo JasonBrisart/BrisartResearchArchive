@@ -7,8 +7,9 @@ Build application information, recent-export history controls, and legacy update
   preferences/actions for the desktop About tab.
 
 Implemented responsibilities:
-- create_about_tab: Construct app information, a history tree and buttons, update
-  preferences/status, and nested update handlers; return startup_update_check for scheduling by
+- create_about_tab: Construct app information (author and Brisart Research Archive
+  affiliation), a history tree and buttons, update preferences/status, and nested update
+  handlers; return startup_update_check for scheduling by
   main_gui.
 - format_git_cell: Format persisted history branch/short-commit as branch@commit, using a
   detached marker when necessary; return an empty cell when both fields are absent.
@@ -32,12 +33,12 @@ Implemented responsibilities:
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
-- core.constants: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
+- core.constants: AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
 - gui.builders: GuiState.
 - gui.dialogs: ask_yes_no, open_folder, show_error, show_info.
 - services.storage: HistoryEntry, application_dir, clear_history, recent_entries.
 - services.updater: apply_exe_update, apply_staged_update, check_for_updates, download_update,
-  is_frozen, open_releases_page, stage_exe_update.
+  is_frozen, stage_exe_update.
 
 Consumers in the supplied source:
 - gui/main_gui.py imports create_about_tab.
@@ -70,8 +71,9 @@ The no-history placeholder has no HistoryEntry lookup and cannot open an export.
 Known limitations
 -----------------
 Network/update work runs synchronously on the GUI thread. Digest verification is conditional in
-  the updater, despite stronger wording in some UI messages. Legacy GitHub endpoints remain
-  unchanged.
+  the updater, despite stronger wording in some UI messages. The updater still queries legacy
+  GitHub release endpoints, but v4.0.0 removed the GitHub repository link and the Open Releases
+  Page button from this tab.
 
 The source staging dialog mentions restarting, but startup_update_check only checks the
   configured release path; restart alone does not apply an already-staged ZIP. UI checksum
@@ -102,10 +104,10 @@ import tkinter as tk
 from tkinter import ttk
 
 from core.constants import (
+    AFFILIATION,
     APP_NAME,
     APP_VERSION,
     AUTHOR,
-    REPOSITORY_URL,
 )
 from gui.builders import GuiState
 from gui.dialogs import (
@@ -126,7 +128,6 @@ from services.updater import (
     check_for_updates,
     download_update,
     is_frozen,
-    open_releases_page,
     stage_exe_update,
 )
 
@@ -139,11 +140,10 @@ def create_about_tab(parent: tk.Frame, window: tk.Tk, state: GuiState):
             "A no-dependency utility that packages a project folder into a "
             "readable Markdown context file, JSON manifest, summary file, "
             "settings record, and optional ZIP snapshot.\n\n"
-            f"Author: {AUTHOR}\nRepository: {REPOSITORY_URL}"
+            f"Author: {AUTHOR}\n{AFFILIATION}"
         ),
     )
     about_text.pack(fill="x", padx=18, pady=(18, 8))
-    tk.Button(parent, text="Open Releases Page", command=lambda: open_releases_page()).pack(anchor="w", padx=18, pady=(0, 8))
     history_frame = tk.LabelFrame(parent, text="Recent Exports", padx=8, pady=8)
     history_frame.pack(fill="both", expand=True, padx=16, pady=(8, 8))
     tree_container = tk.Frame(history_frame)

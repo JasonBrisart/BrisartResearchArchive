@@ -28,13 +28,13 @@ Consumers in the supplied source:
 - core/builder.py imports CONTEXT_FILENAME, DEFAULT_PROFILE, INTERNAL_NAME_PREFIX,
   MANIFEST_FILENAME, MAX_WORKERS, SETTINGS_FILENAME, SNAPSHOT_FILENAME, SUMMARY_FILENAME,
   VALID_PROFILES, settings_for_profile.
-- core/exporters.py imports APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_NAME, REPOSITORY_URL.
-- gui/about_tab.py imports APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
+- core/exporters.py imports AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
+- gui/about_tab.py imports AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
 - core/scanner.py imports INTERNAL_NAME_PREFIX.
 - gui/build_tab.py imports VALID_PROFILES.
 - gui/builders.py imports DEFAULT_PROFILE, EXPORTS_DIRNAME, PROFILE_ARCHIVE, PROFILE_STANDARD,
   settings_for_profile.
-- gui/main_gui.py imports APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
+- gui/main_gui.py imports AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
 - gui/profiles_section.py imports PROFILE_ARCHIVE, PROFILE_STANDARD.
 - services/storage.py imports APP_SETTINGS_FILENAME, BUILD_HISTORY_FILENAME,
   CUSTOM_PROFILES_FILENAME, INTERNAL_NAME_PREFIX, LAST_SETTINGS_FILENAME, MAX_HISTORY_ENTRIES,
@@ -59,8 +59,7 @@ Module constants and expressions:
 - APP_NAME = 'Project Context Helper'
 - APP_VERSION = '4.0.0'
 - AUTHOR = 'Jason Brisart'
-- REPOSITORY_NAME = 'BrisartDevTools'
-- REPOSITORY_URL = 'https://github.com/JasonBrisart/BrisartDevTools'
+- AFFILIATION = 'Brisart Research Archive'
 - RELEASES_URL = 'https://github.com/JasonBrisart/BrisartDevTools/releases'
 - RELEASES_LIST_URL = 'https://api.github.com/repos/JasonBrisart/BrisartDevTools/releases'
 - RELEASE_TAG_PREFIX = 'project-context-helper-v'
@@ -118,10 +117,12 @@ Every preset receives fresh set copies rather than sharing the constant sets.
 
 Known limitations
 -----------------
-Repository and release constants still point to the legacy BrisartDevTools GitHub location;
-  v4.0.0 does not migrate those endpoints.
+AUTHOR and AFFILIATION are the attribution shown in the GUI and written into every export;
+  v4.0.0 removed the GitHub repository link from that attribution. The RELEASES_* constants are
+  used only by the legacy updater (services/updater.py) and still point to the BrisartDevTools
+  GitHub releases; they are not shown as attribution.
 
-Changing repository metadata also changes generated export metadata; changing release constants
+Changing AUTHOR or AFFILIATION changes generated export metadata; changing release constants
   changes updater behavior. INTERNAL_NAME_PREFIX is a naming convention, not a security
   boundary: any project file whose name starts with it is skipped by the scanner.
 
@@ -141,10 +142,11 @@ Usage from the directory containing run.py:
 from core.models import ScanSettings
 
 APP_NAME = "Project Context Helper"
-APP_VERSION = "4.0.0"
+APP_VERSION = "4.0.1"
 AUTHOR = "Jason Brisart"
-REPOSITORY_NAME = "BrisartDevTools"
-REPOSITORY_URL = "https://github.com/JasonBrisart/BrisartDevTools"
+AFFILIATION = "Brisart Research Archive"
+
+# Legacy updater endpoints only (services/updater.py); never shown as attribution.
 RELEASES_URL = "https://github.com/JasonBrisart/BrisartDevTools/releases"
 RELEASES_LIST_URL = (
     "https://api.github.com/repos/"

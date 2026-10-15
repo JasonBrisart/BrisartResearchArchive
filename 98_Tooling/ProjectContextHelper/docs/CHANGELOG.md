@@ -4,6 +4,26 @@ All notable changes to Project Context Helper are documented here.
 
 ---
 
+## [4.0.1] - 2026-10-15
+
+Attribution update. Everything the application shows or exports now credits Jason Brisart and Brisart Research Archive, and the GitHub repository link has been removed. No export, scanning, or GUI behavior changed otherwise.
+
+### Changed
+- **The GitHub link is replaced with Brisart Research Archive.** The window subheader now reads `v4.0.1 • Jason Brisart • Brisart Research Archive`. The About tab shows `Author: Jason Brisart` followed by `Brisart Research Archive`. `PROJECT_CONTEXT.md` writes `Affiliation: **Brisart Research Archive**` and `PROJECT_SUMMARY.txt` writes `Affiliation: Brisart Research Archive`, where both previously wrote the GitHub repository location.
+- **Manifest attribution field.** `PROJECT_MANIFEST.json` writes `"affiliation": "Brisart Research Archive"` instead of `repository_name` and `repository_url`. `author` is unchanged.
+- **Constants.** `core/constants.py` replaces `REPOSITORY_NAME` and `REPOSITORY_URL` with `AFFILIATION`. `core/exporters.py`, `gui/about_tab.py`, and `gui/main_gui.py` use `AUTHOR` and `AFFILIATION` for attribution.
+- `APP_VERSION` is now `4.0.1`.
+
+### Removed
+- **Open Releases Page button** on the About tab. It only opened the GitHub releases page.
+
+### Notes
+- **Manifest consumers:** anything that reads `repository_name` or `repository_url` from `PROJECT_MANIFEST.json` should read `affiliation` instead. No other output or state format changed.
+- **Updater unchanged:** `services/updater.py` still checks the BrisartDevTools GitHub releases, and `--open-releases` still opens that page during an update check. The link is no longer shown in the interface or written into exports.
+- **Docs and tests:** `docs/README.md` and `docs/ARCHITECTURE.md` describe the new attribution. Tests verify the new author/affiliation metadata, absence of the GitHub link from exports, and removal of the About-tab releases button.
+
+---
+
 ## [4.0.0] - 2026-10-15
 
 A rebuild of the export engine underneath an unchanged desktop interface. The v3.1.4 folder layout, file names, four tabs, controls, dialogs, presets, output file names, and state file names are all kept. What changed is how an export runs: in the background, with each file read exactly once by a configurable number of threads, assembled in a hidden staging folder, and published only when complete. This release also fixes a set of persistence and output-safety problems found while reworking those paths.

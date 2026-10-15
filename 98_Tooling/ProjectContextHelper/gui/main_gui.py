@@ -16,7 +16,7 @@ Implemented responsibilities:
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
-- core.constants: APP_NAME, APP_VERSION, AUTHOR, REPOSITORY_URL.
+- core.constants: AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
 - gui.builders: make_gui_state.
 - gui.dialogs: ask_yes_no.
 - gui.build_tab: create_build_tab.
@@ -68,10 +68,10 @@ import tkinter as tk
 from tkinter import ttk
 
 from core.constants import (
+    AFFILIATION,
     APP_NAME,
     APP_VERSION,
     AUTHOR,
-    REPOSITORY_URL,
 )
 from gui.builders import make_gui_state
 from gui.dialogs import ask_yes_no
@@ -90,7 +90,7 @@ def run_gui() -> None:
     header = tk.Label(window, text=APP_NAME, font=("Segoe UI", 20, "bold"))
     header.pack(pady=(18, 4))
     subheader = tk.Label(
-        window, text=(f"v{APP_VERSION} \u2022 {AUTHOR} \u2022 {REPOSITORY_URL}"), font=("Segoe UI", 9), fg="#555555",
+        window, text=(f"v{APP_VERSION} \u2022 {AUTHOR} \u2022 {AFFILIATION}"), font=("Segoe UI", 9), fg="#555555",
     )
     subheader.pack(pady=(0, 12))
     notebook = ttk.Notebook(window)
