@@ -9,10 +9,11 @@ This page explains connections across directories. Each directory README owns th
 | Directory | Layer | Responsibility at the boundary |
 | --- | --- | --- |
 | `common/` | 0 | Identifier validation shared by callers |
+| `storage/` | 0 | Path policy, text-file API and in-memory backend |
 | `host/` | 1 | Host-backed values, disk backend and entry-file execution |
 | `language/` | 1 | Source text to parsed nodes and execution results |
 | `services/` | 1 | Registry and stateful service objects |
-| `modules/` | 2 | Module metadata, permissions, discovery and invocation |
+| `extensions/` | 2 | Module metadata, permissions, discovery and invocation |
 | `kernel/` | 3 | Component construction and lifecycle coordination |
 | `shell/` | 4 | Commands, dispatch and interactive console |
 
@@ -20,17 +21,21 @@ These paths are relative to `brisartos/`. Runtime imports may stay within a dire
 
 Objects can be supplied without importing their implementation. The module registry and API receive a kernel object. The archive service receives a storage object. This keeps their static imports below the composition layer without making the supplied objects inaccessible at runtime.
 
-The audit checks source-level import direction and selected host-only operations. It does not prove that every host interaction passes through an adapter: the console uses built-in input/output, and trusted module files execute as ordinary code.
+Storage sits at layer 0 because it imports nothing and every layer above uses it. Its disk backend is the one exception kept in `host/`, since only that directory may touch the real filesystem; the kernel joins the two by passing the disk backend into `Storage`.
+
+The runtime directory is named `extensions/` and the project-root folder of drop-in modules is named `modules/`, so the code that loads modules and the modules it loads are never confused. Module files still declare `MODULE_*` names and the `brisartos.module.v1` ABI.
+
+The audit checks source-level import direction and selected host-only operations. It does not prove that every host interaction passes through an adapter: the console reads and prints with built-in input/output, and trusted module files execute as ordinary code.
 
 ## From router to prompt
 
 The root `run.py` launches the console in a child interpreter whose working directory is the project root. The console chooses a data root or memory mode and supplies the module-source directory to Kernel.
 
-Kernel construction creates storage, object memory, scheduler, device registry, text console, service registry, module registry, interpreter and platform declarations. Startup registers the three built-in services, changes lifecycle state, logs startup and optionally discovers modules.
+Kernel construction creates storage, scheduler, device registry, text console, service registry, module registry, interpreter and platform declarations. Startup registers the three built-in services, changes lifecycle state, logs startup and optionally discovers modules.
 
-The console prints the banner and discovery failures before entering its input loop. Each input line passes to Shell, which selects a registered command handler. The handler calls the supplied kernel or one of its components and returns display text.
+The console prints the banner and discovery failures before entering its input loop. Each terminal line is fed to the kernel's TextConsole device. The console's `serve` function reads queued lines back from the device and passes each to Shell, which selects a registered command handler. The handler calls the supplied kernel or one of its components and returns display text, which `serve` writes to the device; the loop prints what it drains.
 
-The input loop catches ordinary command exceptions and prints their type and message. Prompt EOF or interrupt ends the loop. A finally clause stops a still-running kernel after that loop block has been entered. Construction, startup and banner failures occur before the cleanup block and are not covered by it.
+`serve` catches ordinary command exceptions and writes their type and message to the device. Prompt EOF or interrupt ends the loop. A finally clause stops a still-running kernel after that loop block has been entered. Construction, startup and banner failures occur before the cleanup block and are not covered by it.
 
 ## Source modules and stored module data
 
@@ -59,7 +64,6 @@ Disk replacement writes use a temporary sibling followed by replace. Appends wri
 | Update candidates | Updates instance | None |
 | Module-level variables | Loaded module object | Retained between runs; discovery reload creates new objects |
 | Task records and iterators | Scheduler instance | None |
-| Object handles and values | ObjectMemory instance | None |
 
 The kernel bounds recent events but not disk log size. Log insertion updates memory before appending the file line, so an append error can leave the two representations inconsistent.
 
@@ -69,7 +73,7 @@ Archive snapshots exclude `/logs`, and restoration keeps that prefix. This prote
 
 The restricted language parses and evaluates its own tuple nodes. Its execution budget counts statements, expressions and loop iterations. Selected addition/multiplication guards do not constitute comprehensive resource isolation. The source-ROM model wraps that interpreter in lifecycle states and explicitly reports no hardware boot.
 
-The scheduler advances supplied iterators cooperatively. The shell exposes task inspection and stepping but has no task-spawn command. Object memory stores references under handles, not physical addresses. The registered TextConsole is separate from the interactive terminal loop. These distinctions matter when interpreting component status: implemented objects are not automatically integrated into every entry point.
+The scheduler advances supplied iterators cooperatively. The shell exposes task inspection and stepping but has no task-spawn command. The TextConsole device carries the interactive session, but terminal reading and printing still happen in the console loop. These distinctions matter when interpreting component status: implemented objects are not automatically integrated into every entry point.
 
 Platform capabilities are fixed declarations. Boot-media and firmware-handoff methods always raise. No path in this architecture produces an independently bootable system.
 

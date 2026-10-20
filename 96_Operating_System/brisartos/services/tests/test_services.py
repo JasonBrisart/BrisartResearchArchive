@@ -6,20 +6,20 @@ Purpose
 Exercise service-name registration, metadata, settings snapshots, protected-log
 archive restoration and unapplied update staging.
 
-Verifies: brisartos/kernel/storage.py, brisartos/services/archive.py,
-brisartos/services/registry.py, brisartos/services/settings.py,
-brisartos/services/updates.py, version.py.
+Verifies: brisartos/services/archive.py, brisartos/services/registry.py,
+brisartos/services/settings.py, brisartos/services/updates.py,
+brisartos/storage/storage.py, version.py.
 
 Contains 9 test case(s) across 4 TestCase class(es).
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
-- brisartos.kernel.storage (brisartos/kernel/storage.py)
 - brisartos.services.archive (brisartos/services/archive.py)
 - brisartos.services.registry (brisartos/services/registry.py)
 - brisartos.services.settings (brisartos/services/settings.py)
 - brisartos.services.updates (brisartos/services/updates.py)
+- brisartos.storage.storage (brisartos/storage/storage.py)
 - version (version.py)
 Standard library: unittest.
 Discovered and run by run.py test (and by python -m unittest discover -s
@@ -69,7 +69,7 @@ Run from the repository root.
 
 import unittest
 
-from brisartos.kernel.storage import Storage
+from brisartos.storage.storage import Storage
 from brisartos.services.archive import PROTECTED, Archive
 from brisartos.services.registry import ServiceRegistry
 from brisartos.services.settings import Settings

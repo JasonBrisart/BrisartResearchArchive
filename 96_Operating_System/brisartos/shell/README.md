@@ -13,7 +13,7 @@ The following table describes the handlers implemented in this file. References 
 | --- | --- | --- |
 | `help` | Show every command | `commands:` and one line per command |
 | `version` | Show the release version | The product name and the version |
-| `system` | Describe the kernel | Eight `key: value` lines; see [the kernel](../kernel/README.md) |
+| `system` | Describe the kernel | Seven `key: value` lines; see [the kernel](../kernel/README.md) |
 | `files [FOLDER]` | List files, optionally under one folder | Sorted paths; nothing for an empty or unknown folder |
 | `read PATH` | Show a file | The text without its final newline; `FileNotFoundError` if missing |
 | `write PATH TEXT` | Create or replace a file with one line | The normalized path; the file becomes `TEXT` plus a newline |
@@ -68,14 +68,14 @@ The extra spaces after the path become program indentation. The final handler re
 
 ## `console.py`: input loop and cleanup
 
-`main(argv=None)` accepts no options or `--memory`; other options print usage and return 2. It constructs a kernel using relative `data` and `modules` paths, starts it, prints the banner and discovery failures, then reads lines at the prompt.
+`main(argv=None)` accepts no options or `--memory`; other options print usage and return 2. It constructs a kernel using relative `data` and `modules` paths, starts it, prints the banner and discovery failures, then reads lines at the prompt. Each line is fed to the kernel's console device and handed to `serve(kernel, shell)`, which reads queued lines back from the device, runs them through `Shell` and writes each result or error line to the device; the loop prints what `serve` drained.
 
-An `Exception` raised by a command prints `error: TYPE: message` and leaves the loop running. EOF or an interrupt at the prompt ends the loop. A base exception from command execution is not swallowed. Once the loop's try/finally has been entered, a still-running kernel is stopped on exit.
+An `Exception` raised by a command becomes the line `error: TYPE: message` and leaves the session running. EOF or an interrupt at the prompt ends the loop. A base exception from command execution is not swallowed. Once the loop's try/finally has been entered, a still-running kernel is stopped on exit.
 
 Kernel construction, startup and banner printing precede that cleanup block. Failures there are not covered by its finally clause. Cleanup itself can also raise, for example if shutdown logging fails. The console does not guarantee a final log line after every possible failure.
 
-The console uses built-in terminal input/output rather than the registered TextConsole device. Its relative paths depend on the working directory; the root router supplies the project root when launching it.
+The terminal is still read with `input()` and written with `print()`; the device carries the session between them. Relative paths depend on the working directory; the root router supplies the project root when launching it.
 
 ## Local tests
 
-`tests/test_shell.py` exercises dispatch, handlers, usage, help and this command table. `tests/test_console.py` launches real child consoles to check errors, EOF, options, persistence, memory mode and module-exit cleanup. Terminal editing and interactive interrupt delivery are not exercised.
+`tests/test_shell.py` exercises dispatch, handlers, usage, help and this command table. `tests/test_console.py` calls `serve` directly to check that lines, results and errors pass through the device, and launches real child consoles to check errors, EOF, options, persistence, memory mode and module-exit cleanup. Terminal editing and interactive interrupt delivery are not exercised.

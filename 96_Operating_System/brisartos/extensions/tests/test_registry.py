@@ -1,26 +1,26 @@
 r"""
-File: brisartos/modules/tests/test_registry.py
+File: brisartos/extensions/tests/test_registry.py
 
 Purpose
 -------
 Exercise code registration, discovered modules, reload, logged entry failures,
 module metadata and documentation of the module contract.
 
-Verifies: brisartos/kernel/kernel.py, brisartos/modules/api.py,
-brisartos/modules/registry.py, version.py.
+Verifies: brisartos/extensions/api.py, brisartos/extensions/registry.py,
+brisartos/kernel/kernel.py, version.py.
 
 Contains 18 test case(s) across 3 TestCase class(es).
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- brisartos.extensions.api (brisartos/extensions/api.py)
+- brisartos.extensions.registry (brisartos/extensions/registry.py)
 - brisartos.kernel.kernel (brisartos/kernel/kernel.py)
-- brisartos.modules.api (brisartos/modules/api.py)
-- brisartos.modules.registry (brisartos/modules/registry.py)
 - version (version.py)
 Standard library: pathlib, tempfile, unittest.
 Discovered and run by run.py test (and by python -m unittest discover -s
-brisartos/modules/tests); nothing imports it.
+brisartos/extensions/tests); nothing imports it.
 
 Settings / parameters
 ---------------------
@@ -69,7 +69,7 @@ Run from the repository root.
 
 ::
 
-    python -B -m unittest discover -s brisartos/modules/tests -p test_registry.py
+    python -B -m unittest discover -s brisartos/extensions/tests -p test_registry.py
 """
 
 import tempfile
@@ -77,8 +77,8 @@ import unittest
 from pathlib import Path
 
 from brisartos.kernel.kernel import Kernel
-from brisartos.modules.api import MODULE_ABI, AccessDenied
-from brisartos.modules.registry import REQUIRED_NAMES
+from brisartos.extensions.api import MODULE_ABI, AccessDenied
+from brisartos.extensions.registry import REQUIRED_NAMES
 from version import __version__
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -180,7 +180,7 @@ class DocumentationTests(unittest.TestCase):
     PERMISSIONS = ('log', 'storage', 'object_id', 'platform_info', 'service:NAME')
 
     def pages(self):
-        return [(ROOT / 'brisartos' / 'modules' / 'README.md').read_text(encoding='utf-8'),
+        return [(ROOT / 'brisartos' / 'extensions' / 'README.md').read_text(encoding='utf-8'),
                 (ROOT / 'modules' / 'README.md').read_text(encoding='utf-8')]
 
     def test_every_required_name_is_documented(self):

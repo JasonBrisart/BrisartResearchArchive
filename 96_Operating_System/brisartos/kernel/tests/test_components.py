@@ -3,19 +3,18 @@ File: brisartos/kernel/tests/test_components.py
 
 Purpose
 -------
-Exercise object-handle allocation, cooperative scheduling, text queues, device
+Exercise cooperative scheduling, text-console queues and draining, device
 registration and fixed platform capability refusals.
 
-Verifies: brisartos/kernel/devices.py, brisartos/kernel/memory.py,
-brisartos/kernel/platform.py, brisartos/kernel/scheduler.py.
+Verifies: brisartos/kernel/devices.py, brisartos/kernel/platform.py,
+brisartos/kernel/scheduler.py.
 
-Contains 13 test case(s) across 3 TestCase class(es).
+Contains 11 test case(s) across 2 TestCase class(es).
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.kernel.devices (brisartos/kernel/devices.py)
-- brisartos.kernel.memory (brisartos/kernel/memory.py)
 - brisartos.kernel.platform (brisartos/kernel/platform.py)
 - brisartos.kernel.scheduler (brisartos/kernel/scheduler.py)
 Standard library: unittest.
@@ -35,9 +34,11 @@ A generator that raises ValueError on purpose proves that a failing task is
 recorded and does not stop others. The scheduler is also run with 300 tasks.
 
 MemoryTests:
+
 - Handles and capacity.
 - Handles are never reused.
 - Status reports use.
+
 SchedulerTests:
 - Round robin to completion.
 - Tasks take turns in order.
@@ -48,6 +49,7 @@ SchedulerTests:
 - Rejects bad input.
 DeviceAndPlatformTests:
 - Console queue.
+- Console drain hands over and clears output.
 - Registry.
 - Platform refuses boot.
 
@@ -55,7 +57,7 @@ Known limitations
 -----------------
 - A task that never yields cannot be tested without hanging the test run, so
   that case is not covered.
-- Passing proves only the 13 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 11 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -70,7 +72,6 @@ Run from the repository root.
 import unittest
 
 from brisartos.kernel.devices import DeviceRegistry, TextConsole
-from brisartos.kernel.memory import ObjectMemory
 from brisartos.kernel.platform import CapabilityUnavailable, Platform
 from brisartos.kernel.scheduler import Scheduler
 
@@ -79,32 +80,6 @@ def counter(limit):
     for value in range(limit):
         yield value
     return limit
-
-
-class MemoryTests(unittest.TestCase):
-    def test_handles_and_capacity(self):
-        memory = ObjectMemory(capacity=1)
-        handle = memory.allocate('a')
-        memory.write(handle, 'b')
-        self.assertEqual(memory.read(handle), 'b')
-        with self.assertRaises(MemoryError):
-            memory.allocate('c')
-        self.assertEqual(memory.release(handle), 'b')
-        with self.assertRaises(KeyError):
-            memory.read(handle)
-        with self.assertRaises(ValueError):
-            ObjectMemory(0)
-
-    def test_handles_are_never_reused(self):
-        memory = ObjectMemory()
-        first = memory.allocate('a')
-        memory.release(first)
-        self.assertNotEqual(memory.allocate('b'), first)
-
-    def test_status_reports_use(self):
-        memory = ObjectMemory(capacity=4)
-        memory.allocate('a')
-        self.assertEqual(memory.status(), {'used': 1, 'capacity': 4})
 
 
 class SchedulerTests(unittest.TestCase):
@@ -187,6 +162,14 @@ class DeviceAndPlatformTests(unittest.TestCase):
         self.assertEqual(console.output(), ['out'])
         with self.assertRaises(EOFError):
             console.read()
+
+    def test_console_drain_hands_over_and_clears_output(self):
+        console = TextConsole()
+        console.write('one')
+        console.write('two')
+        self.assertEqual(console.drain(), ['one', 'two'])
+        self.assertEqual(console.drain(), [])
+        self.assertEqual(console.output(), [])
 
     def test_registry(self):
         devices = DeviceRegistry()

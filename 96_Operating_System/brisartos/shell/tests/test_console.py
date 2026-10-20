@@ -4,16 +4,21 @@ File: brisartos/shell/tests/test_console.py
 Purpose
 -------
 Drive child console processes to check error recovery, option handling, EOF
-cleanup, storage modes and module failure reporting.
+cleanup, storage modes and module failure reporting, and drive serve directly
+to check that a session flows through the console device.
 
-Verifies: brisartos/shell/commands.py.
+Verifies: brisartos/kernel/kernel.py, brisartos/shell/commands.py,
+brisartos/shell/console.py, brisartos/shell/shell.py.
 
-Contains 8 test case(s) across 2 TestCase class(es).
+Contains 10 test case(s) across 3 TestCase class(es).
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- brisartos.kernel.kernel (brisartos/kernel/kernel.py)
 - brisartos.shell.commands (brisartos/shell/commands.py)
+- brisartos.shell.console (brisartos/shell/console.py)
+- brisartos.shell.shell (brisartos/shell/shell.py)
 Standard library: os, pathlib, subprocess, sys, tempfile, unittest.
 Discovered and run by run.py test (and by python -m unittest discover -s
 brisartos/shell/tests); nothing imports it.
@@ -40,11 +45,14 @@ ConsoleStorageTests:
 - Memory mode leaves nothing behind.
 - A module that exits still leaves a clean log.
 - Modules that fail to load are reported at start.
+ConsoleDeviceTests:
+- Lines and errors flow through the console device.
+- Exit stops serving the queue.
 
 Known limitations
 -----------------
 - Terminal features such as Ctrl+C at the prompt are not exercised.
-- Passing proves only the 8 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -63,7 +71,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from brisartos.kernel.kernel import Kernel
 from brisartos.shell.commands import version_text
+from brisartos.shell.console import serve
+from brisartos.shell.shell import Shell
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -137,6 +148,27 @@ class ConsoleStorageTests(unittest.TestCase):
             (broken / 'module.py').write_text('raise RuntimeError("boom")\n')
             result = self.session(folder, 'exit\n', '--memory')
             self.assertIn('module broken not loaded: RuntimeError: boom', result.stdout)
+
+
+class ConsoleDeviceTests(unittest.TestCase):
+    def test_lines_and_errors_flow_through_the_console_device(self):
+        kernel = Kernel()
+        kernel.start()
+        shell = Shell(kernel)
+        for line in ('write /a.txt hi', 'read /a.txt', 'read /missing', ''):
+            kernel.console.feed(line)
+        self.assertEqual(serve(kernel, shell),
+                         ['/a.txt', 'hi', 'error: FileNotFoundError: no such file: /missing'])
+        self.assertEqual(kernel.console.output(), [])
+        kernel.stop()
+
+    def test_exit_stops_serving_the_queue(self):
+        kernel = Kernel()
+        kernel.start()
+        kernel.console.feed('exit')
+        kernel.console.feed('version')
+        self.assertEqual(serve(kernel, Shell(kernel)), ['stopped'])
+        self.assertEqual(kernel.state, 'stopped')
 
 
 if __name__ == '__main__':

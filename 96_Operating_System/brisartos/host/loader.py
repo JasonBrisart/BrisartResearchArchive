@@ -25,7 +25,7 @@ Communication / relationships
 -----------------------------
 Standard library: importlib, pathlib.
 Imported by:
-- brisartos/modules/registry.py
+- brisartos/extensions/registry.py
 Covered by tests: brisartos/host/tests/test_loader.py.
 
 Settings / parameters

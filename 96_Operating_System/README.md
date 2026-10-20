@@ -47,4 +47,4 @@ Only `start` forwards extra options to its child program. Test filters that matc
 
 This documentation pass was checked with Python 3.12.15. Compatibility across other interpreter versions was not established by that run. A host Python interpreter remains necessary for every entry point.
 
-The [architecture page](docs/ARCHITECTURE.md) explains how components connect. The [changelog](docs/CHANGELOG.md) records this documentation pass without claiming new runtime features.
+The [architecture page](docs/ARCHITECTURE.md) explains how components connect. The [changelog](docs/CHANGELOG.md) records what changed in each release.

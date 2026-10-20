@@ -38,7 +38,7 @@ Standard library: pathlib.
 Imported by:
 - brisartos/kernel/kernel.py
 Covered by tests: brisartos/host/tests/test_disk.py,
-brisartos/kernel/tests/test_storage.py.
+brisartos/storage/tests/test_storage.py.
 
 Settings / parameters
 ---------------------

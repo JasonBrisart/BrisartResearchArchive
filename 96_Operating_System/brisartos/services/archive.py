@@ -58,7 +58,7 @@ Run from the repository root.
 
 ::
 
-    from brisartos.kernel.storage import Storage
+    from brisartos.storage.storage import Storage
     from brisartos.services.archive import Archive
 
     store = Storage()

@@ -1,6 +1,8 @@
-# Module API and Registry
+# Extension System: Module API and Registry
 
 `api.py` and `registry.py` implement module declaration validation, registration, discovery and permission-checked invocation.
+
+This directory is the runtime side of modules. The drop-in modules themselves live in the project-root [`modules/`](../../modules/README.md) folder; the names `MODULE_*` and the ABI string keep the word module because they describe those files.
 
 ## `api.py`: declaration checks and the API object
 

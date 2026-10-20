@@ -25,9 +25,9 @@ Communication / relationships
 -----------------------------
 Standard library: none.
 Imported by:
+- brisartos/extensions/api.py
+- brisartos/extensions/registry.py
 - brisartos/kernel/kernel.py
-- brisartos/modules/api.py
-- brisartos/modules/registry.py
 - brisartos/services/registry.py
 Covered by tests: brisartos/common/tests/test_names.py.
 

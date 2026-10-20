@@ -6,15 +6,15 @@ Purpose
 Exercise kernel lifecycle, service registration, event retention, log-source
 validation, stored-program execution and disk-backed file persistence.
 
-Verifies: brisartos/kernel/kernel.py, brisartos/modules/api.py.
+Verifies: brisartos/extensions/api.py, brisartos/kernel/kernel.py.
 
 Contains 11 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- brisartos.extensions.api (brisartos/extensions/api.py)
 - brisartos.kernel.kernel (brisartos/kernel/kernel.py)
-- brisartos.modules.api (brisartos/modules/api.py)
 Standard library: tempfile, unittest.
 Discovered and run by run.py test (and by python -m unittest discover -s
 brisartos/kernel/tests); nothing imports it.
@@ -46,7 +46,7 @@ KernelTests:
 Known limitations
 -----------------
 - One process and one thread; module behavior is tested in
-  brisartos/modules/tests/.
+  brisartos/extensions/tests/.
 - Passing proves only the 11 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
@@ -63,7 +63,7 @@ import tempfile
 import unittest
 
 from brisartos.kernel.kernel import Kernel
-from brisartos.modules.api import MODULE_ABI
+from brisartos.extensions.api import MODULE_ABI
 
 
 def counter(limit):

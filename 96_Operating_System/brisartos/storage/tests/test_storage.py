@@ -1,12 +1,12 @@
 r"""
-File: brisartos/kernel/tests/test_storage.py
+File: brisartos/storage/tests/test_storage.py
 
 Purpose
 -------
 Apply a shared file-storage contract to memory and disk backends, including
 restore validation, protected prefixes and file-versus-directory replacement.
 
-Verifies: brisartos/host/disk.py, brisartos/kernel/storage.py.
+Verifies: brisartos/host/disk.py, brisartos/storage/storage.py.
 
 Contains 30 test case(s) across 2 TestCase class(es).
 
@@ -14,10 +14,10 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.host.disk (brisartos/host/disk.py)
-- brisartos.kernel.storage (brisartos/kernel/storage.py)
+- brisartos.storage.storage (brisartos/storage/storage.py)
 Standard library: pathlib, tempfile, unittest.
 Discovered and run by run.py test (and by python -m unittest discover -s
-brisartos/kernel/tests); nothing imports it.
+brisartos/storage/tests); nothing imports it.
 
 Settings / parameters
 ---------------------
@@ -64,7 +64,7 @@ Run from the repository root.
 
 ::
 
-    python -B -m unittest discover -s brisartos/kernel/tests -p test_storage.py
+    python -B -m unittest discover -s brisartos/storage/tests -p test_storage.py
 """
 
 import tempfile
@@ -72,7 +72,7 @@ import unittest
 from pathlib import Path
 
 from brisartos.host.disk import DiskBackend
-from brisartos.kernel.storage import MemoryBackend, Storage
+from brisartos.storage.storage import MemoryBackend, Storage
 
 
 class StorageContract:

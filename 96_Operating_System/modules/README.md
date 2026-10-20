@@ -6,7 +6,7 @@ This directory contains the `hello_lab/` module folder supplied with BrisartOS.
 
 [hello_lab/README.md](hello_lab/README.md) describes the actual example and its effects. Its `module.py` is the entry file. There are no other shipped module directories in this snapshot.
 
-The directory itself contains no loader implementation. The [module-system README](../brisartos/modules/README.md) owns discovery, validation, API behavior and failure handling. This page records the entry contract used by the module stored here rather than inventing additional module examples.
+The directory itself contains no loader implementation. The [extension-system README](../brisartos/extensions/README.md) owns discovery, validation, API behavior and failure handling. This page records the entry contract used by the module stored here rather than inventing additional module examples.
 
 ## Declarations used by the shipped entry
 

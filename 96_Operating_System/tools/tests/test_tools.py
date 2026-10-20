@@ -122,17 +122,17 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(self.project.audit(), (0, []))
 
     def test_standard_library_imports_are_only_allowed_in_host(self):
-        self.project.edit('brisartos/kernel/memory.py', 'class ObjectMemory:', 'import os\n\n\nclass ObjectMemory:')
+        self.project.edit('brisartos/kernel/scheduler.py', 'class Scheduler:', 'import os\n\n\nclass Scheduler:')
         self.assertAuditFails('only brisartos/host/ may import os')
 
     def test_forbidden_calls_are_only_allowed_in_host(self):
-        self.project.edit('brisartos/kernel/memory.py', 'class ObjectMemory:', 'HANDLE = open("x")\n\n\nclass ObjectMemory:')
+        self.project.edit('brisartos/kernel/scheduler.py', 'class Scheduler:', 'HANDLE = open("x")\n\n\nclass Scheduler:')
         self.assertAuditFails('only brisartos/host/ may call open')
 
     def test_upward_imports_break_the_layer_rule(self):
-        self.project.edit('brisartos/modules/api.py', 'from ..host import system',
+        self.project.edit('brisartos/extensions/api.py', 'from ..host import system',
                           'from ..host import system\nfrom ..kernel.platform import Platform')
-        self.assertAuditFails('layer violation: modules (layer 2) may not import kernel (layer 3)')
+        self.assertAuditFails('layer violation: extensions (layer 2) may not import kernel (layer 3)')
 
     def test_sideways_imports_between_equal_layers_break_the_layer_rule(self):
         self.project.edit('brisartos/services/archive.py', 'from version import __version__',
@@ -169,11 +169,11 @@ class AuditTests(unittest.TestCase):
         self.assertAuditFails('brisartos/kernel: README.md is required')
 
     def test_a_stale_header_is_reported_and_the_tool_repairs_it(self):
-        self.project.edit('brisartos/kernel/memory.py', 'def status(self):', 'def status(self, verbose=False):')
+        self.project.edit('brisartos/kernel/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
         self.assertAuditFails('generated header parts are out of date')
         self.assertEqual(self.project.tool('headers.py').returncode, 0)
         self.assertEqual(self.project.audit(), (0, []))
-        self.assertIn('ObjectMemory.status(verbose=False) --', self.project.read('brisartos/kernel/memory.py'))
+        self.assertIn('Scheduler.status(verbose=False) --', self.project.read('brisartos/kernel/scheduler.py'))
 
     def test_a_new_public_function_needs_a_description(self):
         self.project.edit('brisartos/common/names.py', 'def require_name(',
@@ -210,32 +210,32 @@ class AuditTests(unittest.TestCase):
 class HeaderToolTests(unittest.TestCase):
     def test_check_mode_reports_without_changing_anything(self):
         project = ProjectCopy(self)
-        project.edit('brisartos/kernel/memory.py', 'def status(self):', 'def status(self, verbose=False):')
-        before = project.read('brisartos/kernel/memory.py')
+        project.edit('brisartos/kernel/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
+        before = project.read('brisartos/kernel/scheduler.py')
         result = project.tool('headers.py', '--check')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('out of date: brisartos/kernel/memory.py', result.stdout)
-        self.assertEqual(project.read('brisartos/kernel/memory.py'), before)
+        self.assertIn('out of date: brisartos/kernel/scheduler.py', result.stdout)
+        self.assertEqual(project.read('brisartos/kernel/scheduler.py'), before)
 
     def test_refresh_keeps_the_written_prose_and_descriptions(self):
         project = ProjectCopy(self)
-        before = project.read('brisartos/kernel/memory.py')
+        before = project.read('brisartos/kernel/scheduler.py')
         summary = before.split('Purpose\n-------\n')[1].split('\n\n')[0]
         design = before.split('Design notes:\n\n')[1].split('\n\nCommunication')[0]
-        project.edit('brisartos/kernel/memory.py', 'def status(self):', 'def status(self, verbose=False):')
+        project.edit('brisartos/kernel/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
         project.tool('headers.py')
-        after = project.read('brisartos/kernel/memory.py')
+        after = project.read('brisartos/kernel/scheduler.py')
         self.assertIn(summary, after)
         self.assertIn(design, after)
-        self.assertIn('ObjectMemory.allocate(value) --', after)
+        self.assertIn('Scheduler.spawn(name, iterator) --', after)
 
     def test_relationships_are_regenerated_from_the_imports(self):
         project = ProjectCopy(self)
-        project.edit('brisartos/kernel/memory.py', 'class ObjectMemory:',
-                     'from ..common.names import require_name\n\n\nclass ObjectMemory:')
+        project.edit('brisartos/kernel/scheduler.py', 'class Scheduler:',
+                     'from ..common.names import require_name\n\n\nclass Scheduler:')
         project.tool('headers.py')
-        self.assertIn('brisartos.common.names (brisartos/common/names.py)', project.read('brisartos/kernel/memory.py'))
-        self.assertIn('brisartos/kernel/memory.py', project.read('brisartos/common/names.py'))
+        self.assertIn('brisartos.common.names (brisartos/common/names.py)', project.read('brisartos/kernel/scheduler.py'))
+        self.assertIn('brisartos/kernel/scheduler.py', project.read('brisartos/common/names.py'))
 
     def test_clean_tree_reports_current(self):
         project = ProjectCopy(self)

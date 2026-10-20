@@ -7,11 +7,11 @@ Compose the BrisartOS runtime and coordinate its one-way lifecycle, module
 discovery, event recording and stored-program execution.
 
 Public interface:
-- class Kernel -- The composition root: storage, object memory, scheduler,
-  devices, services, modules, language and platform facts.
-- Kernel(data_root=None, modules_path=None, object_capacity=1024,
-  max_steps=10000, event_limit=1000) -- Build every component; data_root
-  selects disk storage, modules_path a folder of modules to discover.
+- class Kernel -- The composition root: storage, scheduler, devices, services,
+  modules, language and platform facts.
+- Kernel(data_root=None, modules_path=None, max_steps=10000, event_limit=1000)
+  -- Build every component; data_root selects disk storage, modules_path a
+  folder of modules to discover.
 - Kernel.start() -- Register the settings, archive and updates services, log
   the start and discover modules.
 - Kernel.reload_modules() -- Rediscover modules, log each failure and return
@@ -21,7 +21,7 @@ Public interface:
   /logs/SOURCE.log.
 - Kernel.run_file(path) -- Run a stored file with the restricted language and
   return its result.
-- Kernel.describe() -- Return the state, platform facts, ABI, storage, memory,
+- Kernel.describe() -- Return the state, platform facts, ABI, storage,
   services, modules and event count.
 
 Design notes:
@@ -36,33 +36,32 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.common.names (brisartos/common/names.py)
+- brisartos.extensions.api (brisartos/extensions/api.py)
+- brisartos.extensions.registry (brisartos/extensions/registry.py)
 - brisartos.host.disk (brisartos/host/disk.py)
 - brisartos.host.system (brisartos/host/system.py)
 - brisartos.kernel.devices (brisartos/kernel/devices.py)
-- brisartos.kernel.memory (brisartos/kernel/memory.py)
 - brisartos.kernel.platform (brisartos/kernel/platform.py)
 - brisartos.kernel.scheduler (brisartos/kernel/scheduler.py)
-- brisartos.kernel.storage (brisartos/kernel/storage.py)
 - brisartos.language.interpreter (brisartos/language/interpreter.py)
-- brisartos.modules.api (brisartos/modules/api.py)
-- brisartos.modules.registry (brisartos/modules/registry.py)
 - brisartos.services.archive (brisartos/services/archive.py)
 - brisartos.services.registry (brisartos/services/registry.py)
 - brisartos.services.settings (brisartos/services/settings.py)
 - brisartos.services.updates (brisartos/services/updates.py)
+- brisartos.storage.storage (brisartos/storage/storage.py)
 Standard library: none.
 Imported by:
 - brisartos/shell/console.py
-Covered by tests: brisartos/kernel/tests/test_kernel.py,
-brisartos/modules/tests/test_api.py, brisartos/modules/tests/test_registry.py,
+Covered by tests: brisartos/extensions/tests/test_api.py,
+brisartos/extensions/tests/test_registry.py,
+brisartos/kernel/tests/test_kernel.py, brisartos/shell/tests/test_console.py,
 brisartos/shell/tests/test_shell.py.
 
 Settings / parameters
 ---------------------
-Kernel(data_root=None, modules_path=None, object_capacity=1024,
-max_steps=10000, event_limit=1000). With data_root=None files live in memory;
-with a folder they live on disk there. With modules_path=None no modules are
-discovered.
+Kernel(data_root=None, modules_path=None, max_steps=10000, event_limit=1000).
+With data_root=None files live in memory; with a folder they live on disk
+there. With modules_path=None no modules are discovered.
 
 Edge cases
 ----------
@@ -102,27 +101,24 @@ Run from the repository root.
 from ..common.names import require_name
 from ..host import disk, system
 from ..language.interpreter import Interpreter
-from ..modules.api import MODULE_ABI
-from ..modules.registry import ModuleRegistry
+from ..extensions.api import MODULE_ABI
+from ..extensions.registry import ModuleRegistry
 from ..services.archive import Archive
 from ..services.registry import ServiceRegistry
 from ..services.settings import Settings
 from ..services.updates import Updates
 from .devices import DeviceRegistry, TextConsole
-from .memory import ObjectMemory
 from .platform import Platform
 from .scheduler import Scheduler
-from .storage import Storage
+from ..storage.storage import Storage
 
 
 class Kernel:
-    def __init__(self, data_root=None, modules_path=None, object_capacity=1024,
-                 max_steps=10000, event_limit=1000):
+    def __init__(self, data_root=None, modules_path=None, max_steps=10000, event_limit=1000):
         if type(event_limit) is not int or event_limit < 1:
             raise ValueError('event_limit must be a positive integer')
         self.platform = Platform()
         self.storage = Storage(None if data_root is None else disk.DiskBackend(data_root))
-        self.memory = ObjectMemory(object_capacity)
         self.scheduler = Scheduler()
         self.devices = DeviceRegistry()
         self.console = TextConsole()
@@ -176,5 +172,5 @@ class Kernel:
     def describe(self):
         return {'state': self.state, 'platform': self.platform.describe(),
                 'module_abi': MODULE_ABI, 'storage': self.storage.describe(),
-                'memory': self.memory.status(), 'services': self.services.names(),
+                'services': self.services.names(),
                 'modules': self.modules.names(), 'events': self._event_count}

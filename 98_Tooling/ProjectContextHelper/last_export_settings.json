@@ -108,7 +108,7 @@
   "max_file_bytes": 2000000,
   "max_total_bytes": 100000000,
   "include_snapshot_zip": true,
-  "redact_sensitive_lines": false,
+  "redact_sensitive_lines": true,
   "include_hashes": true,
   "include_line_counts": true,
   "include_folder_tree": true,
@@ -118,7 +118,7 @@
   "timestamped_export_folder": true,
   "skipped_details_limit": 1000,
   "require_complete_source": true,
-  "include_git_state": true,
+  "include_git_state": false,
   "git_state_commit_limit": 5,
   "workers": 4
 }

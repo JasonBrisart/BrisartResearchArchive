@@ -27,7 +27,7 @@ Fixture helpers in this file: LoaderTests: setUp, make.
 Edge cases
 ----------
 Modules are written into temporary folders; the shipped hello_lab is exercised
-in brisartos/modules/tests/.
+in brisartos/extensions/tests/.
 
 LoaderTests:
 - Missing folder has no modules.

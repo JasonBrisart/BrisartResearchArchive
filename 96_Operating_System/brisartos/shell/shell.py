@@ -28,7 +28,8 @@ Depends on (project modules):
 Standard library: none.
 Imported by:
 - brisartos/shell/console.py
-Covered by tests: brisartos/shell/tests/test_shell.py.
+Covered by tests: brisartos/shell/tests/test_console.py,
+brisartos/shell/tests/test_shell.py.
 
 Settings / parameters
 ---------------------

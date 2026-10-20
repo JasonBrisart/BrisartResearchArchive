@@ -18,8 +18,8 @@ entry does not call every ModuleAPI method; it demonstrates only the four
 operations present in its body.
 
 The shipped entry is loaded by path in
-brisartos/modules/tests/test_registry.py. Its generated static-import coverage
-line does not represent that integration test.
+brisartos/extensions/tests/test_registry.py. Its generated static-import
+coverage line does not represent that integration test.
 
 Communication / relationships
 -----------------------------

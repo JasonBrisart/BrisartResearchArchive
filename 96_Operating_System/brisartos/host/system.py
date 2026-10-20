@@ -25,8 +25,8 @@ Communication / relationships
 -----------------------------
 Standard library: datetime, secrets, sys.
 Imported by:
+- brisartos/extensions/api.py
 - brisartos/kernel/kernel.py
-- brisartos/modules/api.py
 - brisartos/shell/commands.py
 - brisartos/shell/console.py
 Covered by tests: brisartos/host/tests/test_system.py.

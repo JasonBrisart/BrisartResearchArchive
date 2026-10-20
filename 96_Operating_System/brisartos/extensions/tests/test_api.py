@@ -1,23 +1,23 @@
 r"""
-File: brisartos/modules/tests/test_api.py
+File: brisartos/extensions/tests/test_api.py
 
 Purpose
 -------
 Exercise module API permission gates, module-local paths, service-specific
 access and declaration validation.
 
-Verifies: brisartos/kernel/kernel.py, brisartos/modules/api.py.
+Verifies: brisartos/extensions/api.py, brisartos/kernel/kernel.py.
 
 Contains 10 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- brisartos.extensions.api (brisartos/extensions/api.py)
 - brisartos.kernel.kernel (brisartos/kernel/kernel.py)
-- brisartos.modules.api (brisartos/modules/api.py)
 Standard library: unittest.
 Discovered and run by run.py test (and by python -m unittest discover -s
-brisartos/modules/tests); nothing imports it.
+brisartos/extensions/tests); nothing imports it.
 
 Settings / parameters
 ---------------------
@@ -54,13 +54,13 @@ Run from the repository root.
 
 ::
 
-    python -B -m unittest discover -s brisartos/modules/tests -p test_api.py
+    python -B -m unittest discover -s brisartos/extensions/tests -p test_api.py
 """
 
 import unittest
 
 from brisartos.kernel.kernel import Kernel
-from brisartos.modules.api import AccessDenied, ModuleAPI, check_permissions
+from brisartos.extensions.api import AccessDenied, ModuleAPI, check_permissions
 
 
 class ModuleAPITests(unittest.TestCase):

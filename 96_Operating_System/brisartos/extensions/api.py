@@ -1,5 +1,5 @@
 r"""
-File: brisartos/modules/api.py
+File: brisartos/extensions/api.py
 
 Purpose
 -------
@@ -49,10 +49,11 @@ Depends on (project modules):
 - brisartos.host.system (brisartos/host/system.py)
 Standard library: none.
 Imported by:
+- brisartos/extensions/registry.py
 - brisartos/kernel/kernel.py
-- brisartos/modules/registry.py
-Covered by tests: brisartos/kernel/tests/test_kernel.py,
-brisartos/modules/tests/test_api.py, brisartos/modules/tests/test_registry.py.
+Covered by tests: brisartos/extensions/tests/test_api.py,
+brisartos/extensions/tests/test_registry.py,
+brisartos/kernel/tests/test_kernel.py.
 
 Settings / parameters
 ---------------------
@@ -89,7 +90,7 @@ Run from the repository root.
 ::
 
     from brisartos.kernel.kernel import Kernel
-    from brisartos.modules.api import AccessDenied, ModuleAPI
+    from brisartos.extensions.api import AccessDenied, ModuleAPI
 
     kernel = Kernel()
     kernel.start()

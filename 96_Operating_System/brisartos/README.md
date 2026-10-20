@@ -1,17 +1,18 @@
 # BrisartOS Runtime Package
 
-The runtime source is divided into seven responsibility-based directories; no executable Python file sits directly in this directory.
+The runtime source is divided into eight responsibility-based directories; no executable Python file sits directly in this directory.
 
 ## Directory boundaries
 
 | Directory | Local responsibility | Import layer |
 | --- | --- | --- |
 | [common/](common/README.md) | Shared identifier validation | 0 |
+| [storage/](storage/README.md) | Path policy, file API and in-memory backend | 0 |
 | [host/](host/README.md) | Clock, entropy, arguments, disk files and dynamic loading | 1 |
 | [language/](language/README.md) | Tokenization, parsing, evaluation and source-ROM lifecycle | 1 |
 | [services/](services/README.md) | Shared service objects and their registry | 1 |
-| [modules/](modules/README.md) | Module registration, discovery and permission-checked API | 2 |
-| [kernel/](kernel/README.md) | Runtime composition and kernel-owned components | 3 |
+| [extensions/](extensions/README.md) | Module registration, discovery and permission-checked API | 2 |
+| [kernel/](kernel/README.md) | Runtime composition, scheduling, devices and platform facts | 3 |
 | [shell/](shell/README.md) | Command registration, dispatch and interactive input | 4 |
 
 A runtime file may import within its own directory or from a strictly lower layer. Equal-layer directories may not import one another. The root-level version module is a separate permitted dependency.

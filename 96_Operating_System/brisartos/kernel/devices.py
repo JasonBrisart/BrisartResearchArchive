@@ -18,13 +18,16 @@ Public interface:
 - TextConsole.read() -- Remove and return the oldest queued input line.
 - TextConsole.write(text) -- Append a line to the output list.
 - TextConsole.output() -- Return a copy of the output list.
+- TextConsole.drain() -- Remove and return every output line written so far.
 
 Design notes:
 
 Registration rejects empty or duplicate names and a None device, but does not
 impose a device protocol. TextConsole consumes input in arrival order and
-returns a copy of its output list. These objects model registration and queued
-text; they do not implement terminal access or hardware drivers.
+returns a copy of its output list; drain hands the pending lines to the reader
+and empties the list, so a long session does not accumulate output. These
+objects model registration and queued text; they do not implement terminal
+access or hardware drivers.
 
 Communication / relationships
 -----------------------------
@@ -58,7 +61,8 @@ Known limitations
 -----------------
 - No hardware drivers exist: registering a device does not give access to
   hardware.
-- The queues are unbounded and not thread-safe.
+- The input queue, and output that is never drained, are unbounded; neither
+  queue is thread-safe.
 
 Examples
 --------
@@ -122,3 +126,7 @@ class TextConsole:
 
     def output(self):
         return list(self._output)
+
+    def drain(self):
+        lines, self._output = self._output, []
+        return lines

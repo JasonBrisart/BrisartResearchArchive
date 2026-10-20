@@ -7,6 +7,31 @@ system research project.
 
 # BrisartOS Changelog
 
+## [0.0.12] - 2026-10-20
+
+### Added
+
+- Added the `brisartos/storage/` directory at layer 0 so the path policy and file API sit below every component that uses them.
+- Added `TextConsole.drain()` so the console can collect pending output lines and empty the device's output list in one call.
+- Added `serve(kernel, shell)` to the console so each command line passes through the kernel's console device on its way to the shell and back.
+- Added tests for console draining and for commands, results and errors flowing through the console device.
+- Added a README for `brisartos/storage/` describing the storage API, the memory backend and the contract tests.
+
+### Changed
+
+- Moved `storage.py` and its contract tests from `brisartos/kernel/` to `brisartos/storage/`. Storage imports nothing, so keeping it in the kernel made layer-1 code depend on a layer-3 directory in practice.
+- Renamed the runtime module system from `brisartos/modules/` to `brisartos/extensions/` so it is no longer confused with the project-root `modules/` folder of drop-in modules. The `MODULE_*` declarations and the `brisartos.module.v1` ABI are unchanged, and existing module files load without edits.
+- Changed import paths to `brisartos.storage.storage` and `brisartos.extensions.api` / `brisartos.extensions.registry`. Code importing the old `brisartos.kernel.storage` or `brisartos.modules.*` paths must be updated.
+- Updated the audit layer map to place `storage` at layer 0 and `extensions` at layer 2.
+- Changed the interactive console to feed each line into the kernel's `TextConsole` device and print what the device returns, so the registered console device now carries the session instead of sitting unused. Displayed output and error lines are unchanged.
+- Removed the `object_capacity` parameter from `Kernel` and the `memory` entry from `Kernel.describe()`; the `system` command now shows seven lines instead of eight.
+- Retargeted the maintenance-tool tests that edited the removed object-memory file to `brisartos/kernel/scheduler.py`.
+- Rewrote the kernel, runtime-package, shell, extension-system and architecture documentation to match the new layout.
+
+### Removed
+
+- Removed `ObjectMemory` (`brisartos/kernel/memory.py`) and its tests. Nothing outside the tests used it; it can return when a component needs object handles.
+
 ## [0.0.11] - 2026-10-20
 
 ### Added

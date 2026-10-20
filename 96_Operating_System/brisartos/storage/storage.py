@@ -1,5 +1,5 @@
 r"""
-File: brisartos/kernel/storage.py
+File: brisartos/storage/storage.py
 
 Purpose
 -------
@@ -53,8 +53,8 @@ Communication / relationships
 Standard library: none.
 Imported by:
 - brisartos/kernel/kernel.py
-Covered by tests: brisartos/kernel/tests/test_storage.py,
-brisartos/services/tests/test_services.py.
+Covered by tests: brisartos/services/tests/test_services.py,
+brisartos/storage/tests/test_storage.py.
 
 Settings / parameters
 ---------------------
@@ -93,7 +93,7 @@ Run from the repository root.
 
 ::
 
-    from brisartos.kernel.storage import Storage
+    from brisartos.storage.storage import Storage
 
     store = Storage()
     assert store.write('notes/a.txt', 'one') == '/notes/a.txt'

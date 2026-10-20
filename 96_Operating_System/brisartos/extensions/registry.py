@@ -1,5 +1,5 @@
 r"""
-File: brisartos/modules/registry.py
+File: brisartos/extensions/registry.py
 
 Purpose
 -------
@@ -33,13 +33,13 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.common.names (brisartos/common/names.py)
+- brisartos.extensions.api (brisartos/extensions/api.py)
 - brisartos.host.loader (brisartos/host/loader.py)
-- brisartos.modules.api (brisartos/modules/api.py)
 - version (version.py)
 Standard library: none.
 Imported by:
 - brisartos/kernel/kernel.py
-Covered by tests: brisartos/modules/tests/test_registry.py.
+Covered by tests: brisartos/extensions/tests/test_registry.py.
 
 Settings / parameters
 ---------------------
