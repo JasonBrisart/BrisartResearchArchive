@@ -10,6 +10,7 @@ This page explains connections across directories. Each directory README owns th
 | --- | --- | --- |
 | `common/` | 0 | Identifier validation shared by callers |
 | `storage/` | 0 | Path policy, text-file API and in-memory backend |
+| `events/` | 1 | Event numbering, recent events and per-source log files |
 | `host/` | 1 | Host-backed values, disk backend and entry-file execution |
 | `language/` | 1 | Source text to parsed nodes and execution results |
 | `services/` | 1 | Registry and stateful service objects |
@@ -19,7 +20,7 @@ This page explains connections across directories. Each directory README owns th
 
 These paths are relative to `brisartos/`. Runtime imports may stay within a directory or point to a strictly lower layer, not sideways to an equal layer. The root-level version module is permitted separately.
 
-Objects can be supplied without importing their implementation. The module registry and API receive a kernel object. The archive service receives a storage object. This keeps their static imports below the composition layer without making the supplied objects inaccessible at runtime.
+Objects are supplied rather than imported. The archive service receives a storage object; the event log receives storage and a clock; the module registry and API receive a `ModuleContext` holding storage, the service registry, the event log and the platform facts. Only the kernel and the shell ever hold the kernel object, so every layer below them depends on named objects rather than on how the kernel is assembled.
 
 Storage sits at layer 0 because it imports nothing and every layer above uses it. Its disk backend is the one exception kept in `host/`, since only that directory may touch the real filesystem; the kernel joins the two by passing the disk backend into `Storage`.
 
@@ -31,7 +32,7 @@ The audit checks source-level import direction and selected host-only operations
 
 The root `run.py` launches the console in a child interpreter whose working directory is the project root. The console chooses a data root or memory mode and supplies the module-source directory to Kernel.
 
-Kernel construction creates storage, scheduler, device registry, text console, service registry, module registry, interpreter and platform declarations. Startup registers the three built-in services, changes lifecycle state, logs startup and optionally discovers modules.
+Kernel construction creates storage, scheduler, device registry, text console, event log, service registry, interpreter and platform declarations, then builds the module context and the module registry from them. Startup registers the three built-in services, changes lifecycle state, logs startup and optionally discovers modules.
 
 The console prints the banner and discovery failures before entering its input loop. Each terminal line is fed to the kernel's TextConsole device. The console's `serve` function reads queued lines back from the device and passes each to Shell, which selects a registered command handler. The handler calls the supplied kernel or one of its components and returns display text, which `serve` writes to the device; the loop prints what it drains.
 
@@ -41,7 +42,7 @@ The console prints the banner and discovery failures before entering its input l
 
 Module source files are discovered as immediate child `NAME/module.py` entries under the configured module-source directory. Discovery executes a file before checking its declarations, ABI and permissions. Ordinary load failures are recorded per folder; base exceptions are not caught by discovery.
 
-Registered entries run through ModuleRegistry with a ModuleAPI carrying their declared permissions. The API prefixes file operations with `/modules/NAME/`. This namespace is stored data, distinct from the source directory containing module.py.
+Registered entries run through ModuleRegistry with a ModuleAPI built from the module context and carrying their declared permissions. The API prefixes file operations with `/modules/NAME/`. This namespace is stored data, distinct from the source directory containing module.py.
 
 Permissions constrain API calls, not the process. A loaded module can bypass the API using capabilities available to the running interpreter. There is no process isolation or hostile-code sandbox.
 
@@ -58,14 +59,14 @@ Disk replacement writes use a temporary sibling followed by replace. Appends wri
 | State | Owner | Persistence provided by this implementation |
 | --- | --- | --- |
 | Text files and log files | Storage backend | Disk mode retains them; memory mode does not |
-| Recent events and cumulative event counter | Kernel instance | None across new instances |
+| Recent events and the event total | EventLog instance | None across new instances; log files keep their lines |
 | Settings values | Settings instance | None |
 | Named snapshots | Archive instance | None |
 | Update candidates | Updates instance | None |
 | Module-level variables | Loaded module object | Retained between runs; discovery reload creates new objects |
 | Task records and iterators | Scheduler instance | None |
 
-The kernel bounds recent events but not disk log size. Log insertion updates memory before appending the file line, so an append error can leave the two representations inconsistent.
+Every event, from the kernel or from a module, goes through one EventLog. It bounds recent events but not log file size, and it updates memory before appending the file line, so an append error can leave the two inconsistent.
 
 Archive snapshots exclude `/logs`, and restoration keeps that prefix. This protects logs from that restore operation, not from all callers: the general storage interface still permits writes and deletions. Restore validates input before mutation but applies backend changes individually, so application failures can leave partial state.
 

@@ -7,6 +7,30 @@ system research project.
 
 # BrisartOS Changelog
 
+## [0.0.13] - 2026-10-20
+
+### Added
+
+- Added the `brisartos/events/` directory with `EventLog`, which numbers events, keeps a bounded list of recent ones and appends each to `/logs/SOURCE.log`. Event recording now has its own home instead of living inside the kernel.
+- Added `ModuleContext` to the module API. It holds exactly what the module system may reach: storage, the service registry, the event log and the platform facts.
+- Added tests for the event log that use memory storage and a fixed clock, with no kernel involved.
+- Added tests showing that a module API works from a context built without a kernel, and that the kernel hands the module system a context rather than itself.
+- Added a README for `brisartos/events/`.
+
+### Changed
+
+- Changed `ModuleRegistry` and `ModuleAPI` to take a `ModuleContext` instead of the kernel, so the layer-2 module system no longer depends on the shape of the layer-3 kernel object. `ModuleRegistry(kernel)` is now `ModuleRegistry(context)`, and `ModuleAPI(kernel, name, permissions)` is now `ModuleAPI(context, name, permissions)`.
+- Changed `kernel.events` from a plain list to the kernel's `EventLog`. Read recent events with `kernel.events.recent(count)` and the running total with `kernel.events.total`.
+- Changed the kernel, the module registry and the module API to record every event through the same `EventLog`. Log lines and file locations are unchanged.
+- Changed the `logs` shell command to read from `EventLog.recent`. Its output is unchanged.
+- Updated the audit layer map to place `events` at layer 1.
+- Moved event-numbering and log-source tests from the kernel tests to `brisartos/events/tests/`; the kernel tests now check only that the kernel wires the event log in.
+- Updated the kernel, extension-system, runtime-package, tools and architecture documentation for the event log and the module context.
+
+### Removed
+
+- Removed `Kernel.log`. Record events with `kernel.events.record(source, message)`.
+
 ## [0.0.12] - 2026-10-20
 
 ### Added

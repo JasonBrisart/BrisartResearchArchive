@@ -301,7 +301,7 @@ def show_logs(kernel, text):
         raise ShellError('usage: logs [COUNT]')
     count = int(parts[0]) if parts else DEFAULT_LOG_LINES
     return '\n'.join(event['time'] + ' ' + event['source'] + ': ' + event['message']
-                     for event in kernel.events[-count:])
+                     for event in kernel.events.recent(count))
 
 
 @command('new-id', 'new-id', 'print a random 32-character identifier')

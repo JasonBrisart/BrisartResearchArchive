@@ -30,7 +30,8 @@ Standard library: none.
 Imported by:
 - brisartos/kernel/devices.py
 - brisartos/kernel/kernel.py
-Covered by tests: brisartos/kernel/tests/test_components.py.
+Covered by tests: brisartos/extensions/tests/test_api.py,
+brisartos/kernel/tests/test_components.py.
 
 Settings / parameters
 ---------------------

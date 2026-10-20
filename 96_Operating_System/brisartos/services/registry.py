@@ -29,7 +29,8 @@ Depends on (project modules):
 Standard library: none.
 Imported by:
 - brisartos/kernel/kernel.py
-Covered by tests: brisartos/services/tests/test_services.py.
+Covered by tests: brisartos/extensions/tests/test_api.py,
+brisartos/services/tests/test_services.py.
 
 Settings / parameters
 ---------------------

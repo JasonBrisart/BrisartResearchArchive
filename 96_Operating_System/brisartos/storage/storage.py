@@ -53,7 +53,9 @@ Communication / relationships
 Standard library: none.
 Imported by:
 - brisartos/kernel/kernel.py
-Covered by tests: brisartos/services/tests/test_services.py,
+Covered by tests: brisartos/events/tests/test_events.py,
+brisartos/extensions/tests/test_api.py,
+brisartos/services/tests/test_services.py,
 brisartos/storage/tests/test_storage.py.
 
 Settings / parameters

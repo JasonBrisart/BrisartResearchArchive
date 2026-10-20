@@ -9,7 +9,8 @@ ModuleAPI while recording load failures and execution logs.
 Public interface:
 - class ModuleRegistry -- The table of modules and the reasons any failed to
   load.
-- ModuleRegistry(kernel) -- Bind the kernel that modules will receive.
+- ModuleRegistry(context) -- Bind the ModuleContext every module's API will be
+  built from.
 - ModuleRegistry.register(name, entry, permissions=(), description='',
   author='', version=__version__, origin='code', display_name=None) -- Add a
   module from code after validating its name, entry point and permissions.
@@ -23,6 +24,8 @@ Public interface:
 
 Design notes:
 
+The registry keeps the ModuleContext it was given as context, records start,
+finish and failure through its event log and passes it to every ModuleAPI.
 Discovery retains records whose origin is code and replaces the other records,
 executing each file before checking required declarations and ABI
 compatibility. Exception failures are collected per folder. run logs before
@@ -100,8 +103,8 @@ REQUIRED_NAMES = ('MODULE_NAME', 'MODULE_DISPLAY_NAME', 'MODULE_VERSION', 'MODUL
 
 
 class ModuleRegistry:
-    def __init__(self, kernel):
-        self._kernel = kernel
+    def __init__(self, context):
+        self.context = context
         self._modules = {}
         self.failures = {}
 
@@ -140,14 +143,14 @@ class ModuleRegistry:
 
     def run(self, name):
         info = self.describe(name)
-        api = ModuleAPI(self._kernel, name, info['permissions'])
-        self._kernel.log(name, 'module started')
+        api = ModuleAPI(self.context, name, info['permissions'])
+        self.context.events.record(name, 'module started')
         try:
             result = self._modules[name]['entry'](api)
         except BaseException as error:
-            self._kernel.log(name, 'module failed: ' + type(error).__name__ + ': ' + str(error))
+            self.context.events.record(name, 'module failed: ' + type(error).__name__ + ': ' + str(error))
             raise
-        self._kernel.log(name, 'module finished')
+        self.context.events.record(name, 'module finished')
         return result
 
     def describe(self, name):

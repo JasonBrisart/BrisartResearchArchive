@@ -1,6 +1,6 @@
 # BrisartOS Runtime Package
 
-The runtime source is divided into eight responsibility-based directories; no executable Python file sits directly in this directory.
+The runtime source is divided into nine responsibility-based directories; no executable Python file sits directly in this directory.
 
 ## Directory boundaries
 
@@ -8,6 +8,7 @@ The runtime source is divided into eight responsibility-based directories; no ex
 | --- | --- | --- |
 | [common/](common/README.md) | Shared identifier validation | 0 |
 | [storage/](storage/README.md) | Path policy, file API and in-memory backend | 0 |
+| [events/](events/README.md) | Numbered events and per-source log files | 1 |
 | [host/](host/README.md) | Clock, entropy, arguments, disk files and dynamic loading | 1 |
 | [language/](language/README.md) | Tokenization, parsing, evaluation and source-ROM lifecycle | 1 |
 | [services/](services/README.md) | Shared service objects and their registry | 1 |

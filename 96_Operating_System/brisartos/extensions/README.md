@@ -2,6 +2,8 @@
 
 `api.py` and `registry.py` implement module declaration validation, registration, discovery and permission-checked invocation.
 
+Neither file imports or receives the kernel. Both work through a `ModuleContext`: the storage, the service registry, the event log and the platform facts, built by the kernel and handed to the registry.
+
 This directory is the runtime side of modules. The drop-in modules themselves live in the project-root [`modules/`](../../modules/README.md) folder; the names `MODULE_*` and the ABI string keep the word module because they describe those files.
 
 ## `api.py`: declaration checks and the API object
@@ -16,19 +18,21 @@ This directory is the runtime side of modules. The drop-in modules themselves li
 | `platform_info` | `platform_info()` |
 | `service:NAME` | `get_service(NAME)` for the named service |
 
+`ModuleContext(storage, services, events, platform)` only holds those four objects. Because nothing here needs a kernel, a test can build a context from memory storage, an empty service registry, an event log with a fixed clock and a platform object.
+
 `now_utc()` and `available_services()` need no permission. Missing permission raises `AccessDenied`, a `PermissionError` subclass.
 
-`ModuleAPI(kernel, name, permissions)` validates its module name and stores permissions as a frozenset. Direct construction does not call `check_permissions()`; registry registration does. File operations normalize the filename and prepend `/modules/NAME/`. Missing `read_text()` returns `None`; `list_files()` strips the namespace prefix from results.
+`ModuleAPI(context, name, permissions)` validates its module name and stores permissions as a frozenset. Direct construction does not call `check_permissions()`; registry registration does. File operations normalize the filename and prepend `/modules/NAME/`. Missing `read_text()` returns `None`; `list_files()` strips the namespace prefix from results.
 
 These checks govern API calls only. Module code runs in the same process and is not restricted to this API.
 
 ## `registry.py`: records and invocation
 
-`ModuleRegistry(kernel)` stores module records and a discovery-failure mapping. `register()` requires a safe unused name, callable entry and valid permission declaration. It stores description, author, version, origin and display name; an absent or false display name falls back to the module name.
+`ModuleRegistry(context)` keeps the context as `context` and stores module records and a discovery-failure mapping. `register()` requires a safe unused name, callable entry and valid permission declaration. It stores description, author, version, origin and display name; an absent or false display name falls back to the module name.
 
 `describe(name)` returns a copy of metadata without the entry function. `names()` returns sorted names. Unknown records raise `KeyError`.
 
-`run(name)` creates a ModuleAPI, logs `module started`, calls the entry and logs `module finished`. An entry exception, including `SystemExit` or `KeyboardInterrupt`, is logged as failed and re-raised. A logging failure is not separately recovered and can prevent or mask the entry outcome.
+`run(name)` creates a ModuleAPI from the context, records `module started`, calls the entry and records `module finished`. An entry exception, including `SystemExit` or `KeyboardInterrupt`, is recorded as failed and re-raised. A recording failure is not separately recovered and can prevent or mask the entry outcome.
 
 ## Discovery contract
 
@@ -51,4 +55,4 @@ A duplicate declaration loses to the earlier registered name. Reload executes en
 
 ## Checks in `tests/`
 
-`tests/test_api.py` checks permission gates, service scoping, normalized module-local paths and permission declarations. `tests/test_registry.py` checks registration, metadata, discovery failures, reload, logged exceptions and the shipped module. Its documentation tests require this page to name the declarations, permissions and ABI above.
+`tests/test_api.py` checks permission gates, service scoping, normalized module-local paths, permission declarations, an API built from a context with no kernel, and that the kernel hands the registry a context rather than itself. `tests/test_registry.py` checks registration, metadata, discovery failures, reload, logged exceptions and the shipped module. Its documentation tests require this page to name the declarations, permissions and ABI above.

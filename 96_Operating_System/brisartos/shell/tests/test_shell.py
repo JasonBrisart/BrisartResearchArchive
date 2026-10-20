@@ -173,7 +173,7 @@ class ShellTests(unittest.TestCase):
 
     def test_logs_count(self):
         for _ in range(5):
-            self.kernel.log('probe', 'x')
+            self.kernel.events.record('probe', 'x')
         self.assertEqual(len(self.shell.execute('logs 2').splitlines()), 2)
         for bad in ('logs 0', 'logs -1', 'logs x', 'logs 1 2'):
             with self.assertRaises(ShellError):

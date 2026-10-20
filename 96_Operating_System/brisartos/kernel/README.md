@@ -8,9 +8,11 @@ This directory contains runtime composition, cooperative scheduling, device queu
 
 The lifecycle is `created` → `running` → `stopped`. `start()` registers settings, archive and updates, changes state, logs startup and optionally discovers modules. `stop()` cancels waiting tasks, logs shutdown and changes state. A second start or a stop outside the running state raises `RuntimeError`; restarting a stopped instance is unsupported.
 
-`reload_modules()` returns discovery failures and logs each reason. `run_file(path)` reads stored text and passes it to the language interpreter. `describe()` reports state, platform, module ABI, storage, services, modules and cumulative event count.
+`reload_modules()` returns discovery failures and records each reason. `run_file(path)` reads stored text and passes it to the language interpreter. `describe()` reports state, platform, module ABI, storage, services, modules and cumulative event count.
 
-`log(source, message)` validates the source name, assigns a sequence number, retains the newest `event_limit` events and appends a timestamped line to `/logs/SOURCE.log`. File logs are not rotated. The in-memory event is added before the file append, so an append failure can leave an event without its matching file line. Startup and shutdown are not rollback transactions.
+`kernel.events` is an [`EventLog`](../events/README.md) built from the kernel's storage, the host clock and `event_limit`. The kernel records its own start, stop and module-load failures there, and `describe()` reports its `total`. Startup and shutdown are not rollback transactions.
+
+The module system is not given the kernel. Construction builds a `ModuleContext` holding the storage, the service registry, the event log and the platform facts, and passes that to the [module registry](../extensions/README.md). Modules can reach those four objects and nothing else the kernel owns.
 
 ## `scheduler.py`: one iterator advance per turn
 

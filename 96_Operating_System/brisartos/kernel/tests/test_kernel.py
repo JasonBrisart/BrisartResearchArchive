@@ -3,12 +3,12 @@ File: brisartos/kernel/tests/test_kernel.py
 
 Purpose
 -------
-Exercise kernel lifecycle, service registration, event retention, log-source
-validation, stored-program execution and disk-backed file persistence.
+Exercise kernel lifecycle, service registration, wiring of the event log,
+stored-program execution and disk-backed file persistence.
 
 Verifies: brisartos/extensions/api.py, brisartos/kernel/kernel.py.
 
-Contains 11 test case(s) across 1 TestCase class(es).
+Contains 10 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
@@ -27,15 +27,15 @@ Fixture helpers in this file: KernelTests: setUp, tearDown.
 
 Edge cases
 ----------
-An invalid event limit, an unsafe log source and a second start or stop must
-each raise. Disk tests use temporary folders.
+An invalid event limit and a second start or stop must each raise; event
+numbering itself is tested in brisartos/events/tests/. Disk tests use temporary
+folders.
 
 KernelTests:
 - Lifecycle.
 - Builtin services.
-- Log records event and file.
-- Log source must be a safe name.
-- Events are capped but numbering continues.
+- Kernel events go through the event log.
+- Event limit reaches the event log.
 - Event limit must be positive.
 - Run file.
 - Stop cancels ready tasks.
@@ -47,7 +47,7 @@ Known limitations
 -----------------
 - One process and one thread; module behavior is tested in
   brisartos/extensions/tests/.
-- Passing proves only the 11 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 10 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -93,26 +93,19 @@ class KernelTests(unittest.TestCase):
     def test_builtin_services(self):
         self.assertEqual(self.kernel.services.names(), ['archive', 'settings', 'updates'])
 
-    def test_log_records_event_and_file(self):
-        self.kernel.log('probe', 'hello')
-        self.assertEqual(self.kernel.events[-1]['message'], 'hello')
+    def test_kernel_events_go_through_the_event_log(self):
+        self.assertEqual(self.kernel.events.recent(1)[0]['message'], 'started on host Python; no firmware boot occurred')
+        self.kernel.events.record('probe', 'hello')
         self.assertIn('probe: hello', self.kernel.storage.read('/logs/probe.log'))
+        self.assertEqual(self.kernel.describe()['events'], self.kernel.events.total)
 
-    def test_log_source_must_be_a_safe_name(self):
-        for bad in ('../x', 'a/b', '', 'a b'):
-            with self.assertRaises(ValueError):
-                self.kernel.log(bad, 'x')
-
-    def test_events_are_capped_but_numbering_continues(self):
+    def test_event_limit_reaches_the_event_log(self):
         small = Kernel(event_limit=3)
         small.start()
         for index in range(10):
-            small.log('probe', 'event ' + str(index))
-        self.assertEqual(len(small.events), 3)
-        sequences = [event['sequence'] for event in small.events]
-        self.assertEqual(sequences, [9, 10, 11])
+            small.events.record('probe', 'event ' + str(index))
+        self.assertEqual(len(small.events.recent()), 3)
         self.assertEqual(small.describe()['events'], 11)
-        self.assertEqual(len(small.storage.read('/logs/probe.log').splitlines()), 10)
 
     def test_event_limit_must_be_positive(self):
         for bad in (0, -1, 1.5, None, True):

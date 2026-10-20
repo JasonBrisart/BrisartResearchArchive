@@ -28,7 +28,7 @@ brisartos/services/tests/test_services.py, tests/test_project.py.
 
 Settings / parameters
 ---------------------
-- __version__ = '0.0.12' -- The release version of this tree, kept as opaque
+- __version__ = '0.0.13' -- The release version of this tree, kept as opaque
   text.
 
 Edge cases
@@ -56,4 +56,4 @@ Run from the repository root.
     assert isinstance(__version__, str) and __version__
 """
 
-__version__ = "0.0.12"
+__version__ = "0.0.13"

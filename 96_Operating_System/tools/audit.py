@@ -77,7 +77,7 @@ import headers
 ROOT = headers.ROOT
 ALLOWED_SUFFIXES = {'.py', '.md'}
 HOST_FOLDER = 'host'
-LAYERS = {'common': 0, 'storage': 0, 'host': 1, 'language': 1, 'services': 1, 'extensions': 2,
+LAYERS = {'common': 0, 'storage': 0, 'events': 1, 'host': 1, 'language': 1, 'services': 1, 'extensions': 2,
           'kernel': 3, 'shell': 4}
 FORBIDDEN_CALLS = {'open', 'eval', 'exec', 'compile', '__import__'}
 
