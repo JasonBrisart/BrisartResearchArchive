@@ -1,154 +1,84 @@
-"""
+r"""
 File: brisartos/shell/shell.py
 
 Purpose
 -------
-BrisartOS Shell
-Pure Python.
-No dependencies.
+Dispatch one command line to a registered handler after checking that the bound
+kernel is running.
+
+Public interface:
+- class Shell -- A command interpreter bound to one kernel.
+- Shell(kernel) -- Bind a kernel and build the dispatch dictionary from the
+  command table once.
+- Shell.execute(line) -- Run one line and return the text to show; a blank line
+  returns an empty string.
+
+Design notes:
+
+Construction copies COMMANDS into a name-to-handler dictionary. execute ignores
+blank input, lowercases the command word and passes the untouched remainder
+from the first separator to the handler. It neither prints results nor catches
+handler failures, and later additions to COMMANDS do not update an existing
+Shell.
 
 Communication / relationships
 -----------------------------
-Direct module imports: runtime.
+Depends on (project modules):
+- brisartos.shell.commands (brisartos/shell/commands.py)
+Standard library: none.
+Imported by:
+- brisartos/shell/console.py
+Covered by tests: brisartos/shell/tests/test_shell.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: PROMPT. See their definitions below for values.
+No module-level settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+A stopped kernel raises RuntimeError. An unknown command raises ShellError
+pointing at help.
+
+- Shell.execute() raises RuntimeError: "kernel is not running"
+- Shell.execute() raises ShellError: "unknown command: {...} (type 'help')"
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- There is no history, completion or scripting; one command per call.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Run from the repository root.
+
+::
+
+    from brisartos.kernel.kernel import Kernel
+    from brisartos.shell.shell import Shell
+
+    kernel = Kernel()
+    kernel.start()
+    shell = Shell(kernel)
+    shell.execute('write /n.txt hello world')
+    assert shell.execute('read /n.txt') == 'hello world'
 """
 
-from runtime import BrisartRuntime
+from .commands import COMMANDS, ShellError
 
 
-PROMPT = "BrisartOS> "
+class Shell:
+    def __init__(self, kernel):
+        self.kernel = kernel
+        self._handlers = {name: handler for name, _, _, handler in COMMANDS}
 
-
-def print_help():
-    print()
-    print("help")
-    print("version")
-    print("system")
-    print("modules")
-    print("describe <module>")
-    print("run <module>")
-    print("reload")
-    print("services")
-    print("service <name>")
-    print("new-id")
-    print("exit")
-    print()
-
-
-def shell_loop():
-    runtime = BrisartRuntime()
-    runtime.boot()
-
-    print(
-        "BrisartOS Modular Shell"
-    )
-    print(
-        "Type help "
-        "for commands."
-    )
-    print()
-
-    running = True
-
-    while running:
-        try:
-            command = input(
-                PROMPT
-            )
-        except EOFError:
-            break
-
-        parts = (
-            command
-            .strip()
-            .split()
-        )
-
+    def execute(self, line):
+        if self.kernel.state != 'running':
+            raise RuntimeError('kernel is not running')
+        parts = line.strip().split(None, 1)
         if not parts:
-            continue
-
-        name = parts[0].lower()
-        args = parts[1:]
-
-        if name in (
-            "exit",
-            "quit",
-            "shutdown",
-        ):
-            running = False
-
-        elif name == "help":
-            print_help()
-
-        elif name == "version":
-            print(
-                runtime
-                .version_text()
-            )
-
-        elif name == "system":
-            runtime.print_system_info()
-
-        elif name == "modules":
-            runtime.print_modules()
-
-        elif name == "describe":
-            if args:
-                runtime.describe_module(
-                    args[0]
-                )
-            else:
-                print("usage: describe <module>")
-
-        elif name == "run":
-            if args:
-                runtime.run_module(
-                    args[0]
-                )
-            else:
-                print("usage: run <module>")
-
-        elif name == "reload":
-            runtime.reload_modules()
-
-        elif name == "services":
-            runtime.print_services()
-
-        elif name == "service":
-            if args:
-                runtime.describe_service(
-                    args[0]
-                )
-            else:
-                print("usage: service <name>")
-
-        elif name == "new-id":
-            print(
-                runtime.api
-                .new_object_id()
-            )
-
-        else:
-            print(
-                f"unknown command: "
-                f"{name}"
-            )
-
-
-if __name__ == "__main__":
-    shell_loop()
+            return ''
+        name = parts[0]
+        text = line.lstrip()[len(name):]
+        handler = self._handlers.get(name.lower())
+        if handler is None:
+            raise ShellError('unknown command: ' + name + " (type 'help')")
+        return handler(self.kernel, text)

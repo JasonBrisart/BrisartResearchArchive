@@ -1,343 +1,50 @@
 # BrisartOS
 
-**A pure-Python, dependency-free, fully custom operating system research project.**
+A Python research operating environment with a composed kernel, text storage, cooperative tasks, services, modules, a command shell and a restricted source language.
 
-BrisartOS is an experimental operating system research project focused on building a fully custom computing environment using Python as the primary development language.
+BrisartOS currently runs inside a host Python interpreter. It does not boot hardware, generate boot media or provide an independent runtime. The source uses the standard library and local modules, with no third-party package requirement.
 
-The project emphasizes local-first operation, offline capability, auditability, modular architecture, long-term maintainability, and complete ownership of the software stack.
+## Start here
 
-BrisartOS is not a Linux distribution, Windows derivative, macOS clone, desktop environment, or wrapper around an existing operating system.
-
-The long-term goal is to develop a fully custom operating environment designed for research, preservation, archive management, identity infrastructure, air-gapped deployments, and long-term digital stewardship.
-
----
-
-# Philosophy
-
-BrisartOS follows several core principles:
-
-- Pure Python development
-- No external dependencies
-- Local-first architecture
-- Offline-first operation
-- Air-gapped environment compatibility
-- Long-term maintainability
-- Source transparency
-- Full stack ownership
-- Modular design
-- Future-oriented architecture
-
-The project prioritizes understanding and control over complexity and abstraction.
-
----
-
-# Current Status
-
-BrisartOS does not hardcode a version number in this README, so this file never
-goes stale as releases ship. The canonical version is defined once in
-`version.py` and imported by the runtime and build tooling. All other
-references should follow that source.
-
-To check the current version, either open `version.py` directly or run:
+Run these commands from the directory containing `run.py`:
 
 ```bash
-python -c "from brisartos.version import version_text; print(version_text())"
+python -B run.py start
+python -B run.py start --memory
 ```
 
-Or from the running shell:
+The first command keeps text files and logs in `data/`. The second keeps them in memory for that session. Settings, saved snapshots and staged update candidates are memory-only in either mode. Deleting `data/` deletes the files and logs stored there; it is not a harmless cache cleanup.
 
-```text
-BrisartOS> version
-```
+The console accepts one command per line. Enter `help` to see its registered commands and `exit` to stop the session. The [shell README](brisartos/shell/README.md) owns command syntax and console behavior.
 
-BrisartOS currently includes:
+## Files at this level
 
-- Boot image generation research
-- Binary image tooling
-- Experimental boot infrastructure
-- Runtime architecture
-- Modular shell environment
-- Service framework
-- System API framework
-- Built-in application structure
-- Pure-Python module loading
-- 128-bit internal object identifiers
-- Single-source-of-truth versioning
-- Dependency-free development model
+`run.py` is the command router. It launches the console, the source-ROM demonstration and maintenance tools in child interpreters. Its test command discovers test folders, applies optional path-substring filters and aggregates results. Child programs run from the project root, even if the router was invoked elsewhere.
 
-The project remains in an active research and experimentation stage.
+`version.py` contains the release string `__version__`. It is imported by version-reporting components; it does not compare versions or migrate stored data.
 
----
+| Directory | What belongs there |
+| --- | --- |
+| [brisartos/](brisartos/README.md) | Runtime implementation, divided by responsibility |
+| [modules/](modules/README.md) | Shipped drop-in module folders |
+| [tests/](tests/README.md) | Repository-wide layout, version and documentation checks |
+| [tools/](tools/README.md) | Static audit and Python-header maintenance |
+| [docs/](docs/ARCHITECTURE.md) | Cross-directory architecture and the change record |
 
-# Architecture
+## Maintenance entry points
 
-BrisartOS is organized into multiple layers.
+| Invocation | Router behavior |
+| --- | --- |
+| `python -B run.py test` | Run all discovered test folders |
+| `python -B run.py test kernel shell` | Run folders matching either substring |
+| `python -B run.py audit` | Print the static audit report |
+| `python -B run.py headers` | Refresh syntax-derived header content |
+| `python -B run.py rom` | Execute the source-ROM lifecycle demonstration |
 
-## Boot Layer
+Only `start` forwards extra options to its child program. Test filters that match nothing return status 2. A failing test folder makes the router return status 1. The `-B` flag suppresses bytecode-cache creation; it does not change storage mode.
 
-Responsible for:
+## Runtime requirement
 
-- Boot image generation
-- Image inspection
-- Startup experimentation
-- Bare-metal research
+This documentation pass was checked with Python 3.12.15. Compatibility across other interpreter versions was not established by that run. A host Python interpreter remains necessary for every entry point.
 
----
-
-## Runtime Layer
-
-Responsible for:
-
-- Runtime initialization
-- Module loading
-- Internal coordination
-- System API management
-
----
-
-## Service Layer
-
-Responsible for:
-
-- Archive services
-- Filesystem services
-- Settings services
-- Update services
-
-Services provide stable interfaces for applications and modules without requiring modifications to operating system internals.
-
----
-
-## Application Layer
-
-Built-in BrisartOS applications live here.
-
-Examples include:
-
-- Browser
-- Archive tools
-- Settings tools
-- Future research utilities
-
-Applications are considered part of the operating environment itself.
-
----
-
-## Module Layer
-
-Modules allow laboratories, archivists, researchers, and users to extend BrisartOS without modifying the operating system core.
-
-Example:
-
-```text
-modules/
-└── hello_lab/
-    └── module.py
-```
-
-Modules are pure Python and communicate through the BrisartOS system APIs.
-
----
-
-## Object Model
-
-BrisartOS uses 128-bit internal identifiers.
-
-These identifiers can be used for:
-
-- Archive records
-- Research datasets
-- Services
-- Modules
-- Identity records
-- Long-term digital references
-
-Example: `2dff55f9dad6a6fa8c88a67f57db8ae8`
-
-This object model is intended to provide durable identifiers for future operating system and research platform development.
-
----
-
-## Repository Structure
-
-```text
-BrisartOS/
-├── brisartos/
-│   ├── apps/
-│   │   ├── __init__.py
-│   │   └── browser.py
-│   ├── boot/
-│   │   ├── inspect_image.py
-│   │   ├── make_boot_image.py
-│   │   └── make_floppy_image.py
-│   ├── runtime/
-│   │   ├── brisart_platform.py
-│   │   ├── module_api.py
-│   │   ├── module_loader.py
-│   │   ├── runtime.py
-│   │   └── system_api.py
-│   ├── services/
-│   │   ├── archive_service.py
-│   │   ├── filesystem_service.py
-│   │   ├── service_registry.py
-│   │   ├── settings_service.py
-│   │   └── update_service.py
-│   ├── shell/
-│   │   └── shell.py
-│   ├── build.py
-│   ├── emitter.py
-│   ├── labels.py
-│   └── platform.py
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── CHANGELOG.md
-│   ├── DEPENDENCY_POLICY.md
-│   └── SAFETY.md
-├── modules/
-│   └── hello_lab/
-│       └── module.py
-├── .gitignore
-├── LICENSE.txt
-├── README.md
-└── version.py
-```
-
----
-
-## Development Principles
-
-### Pure Python
-
-BrisartOS is authored using Python.
-
-Python is used for:
-
-- Runtime development
-- Module development
-- Operating system tooling
-- Binary image generation
-- Services
-- Applications
-
-Python standard library components are preferred whenever practical.
-
-### No Dependencies
-
-BrisartOS follows a strict dependency-free policy.
-
-The project should not require:
-
-- Third-party Python packages
-- External frameworks
-- Cloud infrastructure
-- Online services
-- Package managers
-
-The Python standard library is preferred whenever possible.
-
-### Fully Custom
-
-BrisartOS is intended to be custom-built rather than layered on top of existing software ecosystems.
-
-The project favors understanding how systems work internally rather than relying on hidden abstractions.
-
----
-
-## Intended Environments
-
-BrisartOS is being researched for environments such as:
-
-- Research laboratories
-- Digital preservation projects
-- Archive environments
-- Offline workstations
-- Air-gapped systems
-- Identity infrastructure
-- Long-term knowledge repositories
-- Preservation-focused computing environments
-
----
-
-## Roadmap
-
-_Status current as of v0.9.1-alpha (2026-08-25). Update this line whenever
-status markers below are revised, so this table can never silently go stale.
-Completed items are moved to the section below as they land; see
-`docs/CHANGELOG.md` for full details on each release._
-
-### Completed
-
-- Filesystem experimentation (sandboxed FilesystemService) — ✅ v0.8.0-alpha
-- Wire ServiceRegistry through to modules via `get_service()` — ✅ v0.7.0-alpha
-- Improve module APIs (permission-aware ModuleAPI wrapper) — ✅ v0.6.0-alpha
-- Wire the service framework into the runtime — ✅ v0.5.0-alpha
-- Single-source-of-truth versioning — ✅ v0.4.1-alpha
-
-### Currently In Development
-
-- Hardware-installable operating system — ⚙️ In development
-- Add an automated test suite covering runtime boot, module loading, and permission enforcement — ⚙️ In development
-
-### Short-Term Goals
-
-- Expand service architecture — 🟡 Partial
-- Improve shell capabilities — 🟡 Partial
-- Expand runtime functionality — 🟡 Partial / open-ended
-- Build archive service infrastructure — ❌ Not started
-- Implement persistent logic for SettingsService (key/value config storage) — ❌ Not started
-
-### Mid-Term Goals
-
-- Runtime initialization research — 🟡 Partial
-- Modular workflow development — 🟡 Partial
-- Settings management — ❌ Not started
-- Update infrastructure — ❌ Not started
-- Research application framework — ❌ Not started
-- Implement real logic for ArchiveService (versioned snapshots, object-ID linked records) — ❌ Not started
-- Implement real logic for UpdateService (auto-download, manual-install update flow) — ❌ Not started
-- Add CI pipeline (lint + automated tests) via GitHub Actions — ❌ Not started
-- Stress-test the module loader and permission model with multiple concurrent modules — ❌ Not started
-
-### Long-Term Goals
-
-- Research-focused runtime environment — ❌ Not started
-- Preservation tooling integration — ❌ Not started
-- Identity management integration — ❌ Not started
-- Offline documentation infrastructure — ❌ Not started
-- Archive management capabilities — ❌ Not started
-- Air-gapped workstation profile — ❌ Not started
-- Long-term software stewardship platform — ❌ Not started
-- Module signing / trust verification for shared or third-party modules — ❌ Not started
-- Integration hooks with BrisartIdentityTools and BrisartPreservationTools — ❌ Not started
-
----
-
-## Experimental Notice
-
-BrisartOS is an experimental research project.
-
-Boot artifacts, runtimes, modules, services, applications, and operating system components should not be considered production-ready.
-
-All development should be treated as research and experimentation.
-
----
-
-## Vision
-
-The long-term vision of BrisartOS is to create a fully custom, local-first, dependency-free operating environment designed for research, digital preservation, identity infrastructure, archive management, and long-term ownership of information.
-
-BrisartOS aims to provide:
-
-- A fully custom runtime environment
-- Modular research tooling
-- Offline-first operation
-- Air-gapped deployment capability
-- Long-term maintainability
-- Full source transparency
-- Complete control over the software stack
-
----
-
-## BrisartOS
-
-_Pure Python. No Dependencies. Fully Custom. Modular by Design._
+The [architecture page](docs/ARCHITECTURE.md) explains how components connect. The [changelog](docs/CHANGELOG.md) records this documentation pass without claiming new runtime features.

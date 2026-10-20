@@ -1,41 +1,59 @@
-"""
+r"""
 File: version.py
 
 Purpose
 -------
-BrisartOS Version
-Single source of truth for the BrisartOS version string.
-Pure Python. No dependencies.
+Define the single release-version string imported by BrisartOS components,
+without computing metadata or performing initialization.
+
+Design notes:
+
+The only executable statement assigns __version__. Consumers import the string
+from this root-level module. The value is opaque text: this file neither
+validates version syntax nor compares releases, and changing it performs no
+data migration.
 
 Communication / relationships
 -----------------------------
-No direct module-level imports are declared.
+Standard library: none.
+Imported by:
+- brisartos/modules/registry.py
+- brisartos/services/archive.py
+- brisartos/services/settings.py
+- brisartos/services/updates.py
+- brisartos/shell/commands.py
+- modules/hello_lab/module.py
+Covered by tests: brisartos/modules/tests/test_registry.py,
+brisartos/services/tests/test_services.py, tests/test_project.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: NAME, VERSION. See their definitions below for values.
+- __version__ = '0.0.11' -- The release version of this tree, kept as opaque
+  text.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Defines no error paths of its own: it raises nothing and catches nothing, so
+any exception from the interpreter reaches the importer unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- The version is a plain string edited by hand. A test checks that no other
+  file copies the value and that the newest heading in docs/CHANGELOG.md
+  contains it, but nothing checks it against what actually shipped.
+- The value is treated as opaque text: nothing parses or compares versions, so
+  ordering between releases is not enforced.
+- It versions the program, not stored data. Files written under data/ carry no
+  format version, so changing this value never migrates or invalidates them.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Run from the repository root.
+
+::
+
+    from version import __version__
+    assert isinstance(__version__, str) and __version__
 """
 
-NAME = "BrisartOS"
-VERSION = "0.10.0-alpha"
-
-
-def version_text():
-    return f"{NAME} {VERSION}"
-
-
-if __name__ == "__main__":
-    print(version_text())
-
+__version__ = "0.0.11"

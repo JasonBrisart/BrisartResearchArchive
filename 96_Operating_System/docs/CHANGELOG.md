@@ -5,6 +5,80 @@ system research project.
 
 ---
 
+# BrisartOS Changelog
+
+## [0.0.11] - 2026-10-20
+
+### Added
+
+- Added a composed kernel with explicit lifecycle states to coordinate runtime startup, operation and shutdown.
+- Added cooperative iterator scheduling with completion, failure and cancellation records to track task execution.
+- Added capacity-limited object-handle storage to manage references through validated integer handles.
+- Added device registration and queued text-console objects to represent named devices and buffered text input/output.
+- Added a shared text-storage interface with memory and disk backends so callers can use the same file operations in either mode.
+- Added normalized paths, file appending, snapshots and restoration to support consistent storage operations.
+- Added a restricted source language with variables, expressions, assignment, branching, loops and captured output.
+- Added execution-step limits and selected arithmetic-growth checks to constrain supported language operations.
+- Added a source-ROM lifecycle model with reset, running, halted and faulted states to track execution attempts and preserve partial results after failures.
+- Added named archive snapshots and restoration that preserves the log prefix, replacing the archive service's status-only implementation.
+- Added settings lookup, assignment, deletion and shallow snapshots, replacing the settings service's status-only implementation.
+- Added update-candidate staging, inspection and removal, replacing the update service's status-only implementation. Candidates are stored without authentication, installation or execution.
+- Added shell commands for file operations, restricted-language execution, snapshots, settings and update candidates.
+- Added shell inspection of devices, tasks, scheduler progress and recent events.
+- Added a memory-only console option alongside disk-backed default operation.
+- Added a root command router to provide one entry point for runtime and maintenance commands.
+- Added a static architecture audit to check source layout, import boundaries and documentation requirements.
+- Added a header-refresh tool to update syntax-derived documentation while retaining authored explanations.
+
+### Changed
+
+- Reorganized runtime code into `common`, `host`, `kernel`, `language`, `modules`, `services` and `shell` directories to separate responsibilities.
+- Separated host-backed operations from runtime composition, module management and command handling to make dependency boundaries explicit.
+- Split the interactive shell into command definitions, dispatch and console-loop implementations so each file has a narrower responsibility.
+- Moved component tests beside their implementations while retaining repository-wide checks in the root test directory.
+- Centralized release identification in the root-level `__version__` assignment, replacing `NAME`, `VERSION` and the version-formatting helper.
+- Changed the release identifier from `0.10.0-alpha` to `0.0.11` and updated consumers to use the centralized value.
+- Replaced the module permission `module_data` with `storage`.
+- Bound module file operations and logging to the calling module's namespace instead of accepting a separate module or source name.
+- Made module discovery alphabetical so entry processing follows a predictable order.
+- Retained discovery failures by folder so individual load problems remain inspectable.
+- Preserved code-registered modules during rediscovery while replacing discovered entries.
+- Updated the shipped example module to write its file, store its identifier in settings and return a result summary.
+- Retained `brisartos.module.v1` as the ABI identifier despite the module API changes; the unchanged identifier does not establish compatibility with the previous API.
+- Rewrote Python headers around each file's actual purpose, interfaces, relationships, parameters, edge cases, limitations and examples.
+- Retained the six ordered Python-header sections while replacing generic descriptions with implementation-specific explanations.
+- Rewrote directory READMEs to describe their actual files and immediate child directories rather than repeat a shared template.
+- Rewrote the architecture guide around dependency layers, execution flows, state ownership and persistence boundaries.
+- Replaced hardware-oriented descriptions with explicit host-interpreter execution and unsupported boot-capability declarations.
+
+### Fixed
+
+- Preserved indentation in shell file-writing commands so stored programs can contain correctly indented blocks.
+- Added ordinary command-error recovery so a failed command does not automatically end the interactive session.
+- Added shutdown cleanup around the active console loop so a running kernel is stopped when that protected block exits.
+- Added module permission-declaration validation to reject unsupported declarations before registration.
+- Added safe-name validation and duplicate-registration rejection to prevent invalid or conflicting registry entries.
+- Added failed module-execution logging before exceptions are re-raised.
+- Corrected documentation that described API permissions as code isolation.
+- Corrected documentation that implied disk replacement writes guarantee power-loss durability.
+- Corrected documentation that implied console cleanup covers failures before the protected input loop.
+- Corrected documentation that implied settings, archive snapshots or update candidates persist across runtime instances.
+- Corrected documentation that described selected language-growth checks as comprehensive resource limits.
+- Corrected documentation that claimed the shipped example exercises every module API method.
+- Distinguished static import relationships from dynamic execution and measured test coverage.
+
+### Removed
+
+- Removed the browser implementation and its associated tests.
+- Removed boot-sector generation, floppy-image generation and image inspection.
+- Removed instruction-emitter and label-fixup implementations and their associated tests.
+- Removed the previous runtime/SystemAPI implementation in favor of the composed kernel and module API.
+- Removed duplicate platform descriptions to keep capability declarations in one implementation.
+- Removed the separate filesystem service in favor of the shared storage interface.
+- Removed the old centralized test runner and shared path-setup helper in favor of directory-local tests and the root command router.
+- Removed unrelated project comparisons, speculative feature descriptions and examples that did not describe the delivered implementation.
+
+---
 
 ## [0.10.0-alpha] - 2026-08-29
 ### Added
