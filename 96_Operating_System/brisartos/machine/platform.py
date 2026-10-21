@@ -1,5 +1,5 @@
 r"""
-File: brisartos/kernel/platform.py
+File: brisartos/machine/platform.py
 
 Purpose
 -------
@@ -29,9 +29,9 @@ Communication / relationships
 Standard library: none.
 Imported by:
 - brisartos/kernel/composition.py
-- brisartos/kernel/devices.py
+- brisartos/machine/devices.py
 Covered by tests: brisartos/extensions/tests/test_api.py,
-brisartos/kernel/tests/test_components.py.
+brisartos/machine/tests/test_components.py.
 
 Settings / parameters
 ---------------------
@@ -60,7 +60,7 @@ Run from the repository root.
 
 ::
 
-    from brisartos.kernel.platform import Platform, CapabilityUnavailable
+    from brisartos.machine.platform import Platform, CapabilityUnavailable
 
     assert Platform().describe()['bootable'] is False
     try:

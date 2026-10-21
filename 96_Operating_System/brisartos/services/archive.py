@@ -29,6 +29,7 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.storage.schema (brisartos/storage/schema.py)
+- brisartos.storage.state (brisartos/storage/state.py)
 - version (version.py)
 Standard library: none.
 Imported by:
@@ -37,8 +38,8 @@ Covered by tests: brisartos/services/tests/test_services.py.
 
 Settings / parameters
 ---------------------
-- PROTECTED = ('/logs', SYSTEM_PREFIX) -- Fixed local policy used by the
-  operations documented above.
+- PROTECTED = PROTECTED_PREFIXES -- The prefixes archive snapshots exclude and
+  restore preserves, defined in brisartos/storage/schema.py.
 
 Edge cases
 ----------
@@ -75,43 +76,53 @@ Run from the repository root.
     assert s.read('/a') == 'one'
 """
 from version import __version__
-from ..storage.schema import ARCHIVE_PATH, SYSTEM_PREFIX, envelope, payload
-PROTECTED = ('/logs', SYSTEM_PREFIX)
+from ..storage.schema import ARCHIVE_PATH, PROTECTED_PREFIXES
+from ..storage.state import StateFile
+PROTECTED = PROTECTED_PREFIXES
+
 
 class Archive:
     def __init__(self, storage, encode=None, decode=None):
         self.version = __version__
-        self._storage, self._encode, self._decode = storage, encode, decode
-        self._snapshots = {}
-        self._online = False
+        self._storage = storage
         if (encode is None) != (decode is None):
             raise ValueError('both serialization callbacks are required')
+        self._state = None if encode is None else StateFile(storage, ARCHIVE_PATH, 'archive', encode, decode)
+        self._snapshots = {}
+        self._online = False
+
     def start(self):
-        if self._decode is not None and self._storage.exists(ARCHIVE_PATH):
-            snapshots = payload(self._decode(self._storage.read(ARCHIVE_PATH)), 'archive')
-            for name, files in snapshots.items():
-                if not isinstance(name, str) or not name or not isinstance(files, dict):
-                    raise ValueError('invalid persisted snapshot')
-                for path, text in files.items():
-                    if self._storage.normalize(path) != path or not isinstance(text, str):
-                        raise ValueError('invalid persisted snapshot file')
-            self._snapshots = snapshots
+        if self._state is not None:
+            snapshots = self._state.load()
+            if snapshots is not None:
+                for name, files in snapshots.items():
+                    if not isinstance(name, str) or not name or not isinstance(files, dict):
+                        raise ValueError('invalid persisted snapshot')
+                    for path, text in files.items():
+                        if self._storage.normalize(path) != path or not isinstance(text, str):
+                            raise ValueError('invalid persisted snapshot file')
+                self._snapshots = snapshots
         self._online = True
+
     def stop(self):
         self._online = False
+
     def status(self):
         return 'online' if self._online else 'offline'
+
     def save(self, name):
         if not isinstance(name, str) or not name:
             raise ValueError('snapshot name required')
         snapshots = dict(self._snapshots)
         snapshots[name] = self._storage.snapshot(exclude=PROTECTED)
-        if self._encode is not None:
-            self._storage.write(ARCHIVE_PATH, self._encode(envelope('archive', snapshots)))
+        if self._state is not None:
+            snapshots = self._state.save(snapshots)
         self._snapshots = snapshots
+
     def restore(self, name):
         if name not in self._snapshots:
             raise KeyError('unknown snapshot: ' + str(name))
         self._storage.restore(self._snapshots[name], keep=PROTECTED)
+
     def names(self):
         return sorted(self._snapshots)

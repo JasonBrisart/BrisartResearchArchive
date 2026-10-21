@@ -18,7 +18,7 @@ Keys must be non-empty strings. Persistent values must be plain JSON-compatible 
 
 `Archive(storage, encode=None, decode=None)` stores named full user-file snapshots. Supplying both serialization callbacks enables the persistent index at `/system/archive/index.txt`; omitting both retains standalone memory behavior.
 
-`save()` replaces an existing name. Snapshots exclude `/logs` and `/system`; restore preserves both prefixes. This prevents recursive archiving of the index and prevents restoring user files from rolling back service state. Restore is not transactional across files. A large index consumes memory and disk; there is no incremental snapshot format.
+`save()` replaces an existing name. Snapshots exclude `/logs` and `/system`; restore preserves both prefixes. They are `PROTECTED_PREFIXES` in `storage/schema.py`. This prevents recursive archiving of the index and prevents restoring user files from rolling back service state. Restore is not transactional across files. A large index consumes memory and disk; there is no incremental snapshot format.
 
 ## `updates.py`
 
@@ -26,7 +26,7 @@ Keys must be non-empty strings. Persistent values must be plain JSON-compatible 
 
 ## Persistence and adapters
 
-Services import only lower-layer schema definitions. They receive encode/decode callbacks from composition rather than importing JSON. The host serialization adapter owns standard-library use. All state documents carry the stored-data format and a document kind. Unknown formats and corrupt documents are refused, not silently reset.
+Services read and write their state documents through `StateFile` from `storage/state.py`, which owns the envelope handling, and import only lower-layer storage definitions. They receive encode/decode callbacks from composition rather than importing JSON. The host serialization adapter owns standard-library use. All state documents carry the stored-data format and a document kind. Unknown formats and corrupt documents are refused, not silently reset.
 
 Disk runtimes retain service state across new kernels. Memory runtimes use the same document semantics but lose their entire backend with the instance. Index writes are single-file replacements through storage, not fsync durability, multi-file transactions or concurrent-writer protection.
 

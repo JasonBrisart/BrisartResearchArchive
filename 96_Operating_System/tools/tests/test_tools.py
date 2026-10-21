@@ -6,7 +6,7 @@ Purpose
 Mutate temporary project copies to check audit failures and header refresh
 behavior without editing the source tree under test.
 
-Contains 23 test case(s) across 2 TestCase class(es).
+Contains 31 test case(s) across 3 TestCase class(es).
 
 Communication / relationships
 -----------------------------
@@ -32,6 +32,10 @@ AuditTests:
 - Upward imports break the layer rule.
 - Sideways imports between equal layers break the layer rule.
 - Absolute brisartos imports are refused in product code.
+- Print and input are only allowed in host.
+- Input is only allowed in host.
+- Reserved path literals are refused outside the schema.
+- Reserved prefixes in docstrings are not flagged.
 - Loose files in the package root are refused.
 - Unknown folders need a place in the layer map.
 - Double underscore paths are refused.
@@ -45,6 +49,11 @@ AuditTests:
 - A header with the wrong file line is refused.
 - A header without design notes is refused.
 - Unexpected file types are refused.
+RunTestsTests:
+- A filter that matches nothing returns two.
+- A matching folder runs and passes.
+- A failing folder returns one and shows its output.
+- The router forwards filters to the runner.
 HeaderToolTests:
 - Check mode reports without changing anything.
 - Refresh keeps the written prose and descriptions.
@@ -54,7 +63,7 @@ HeaderToolTests:
 Known limitations
 -----------------
 - Each scenario starts a child interpreter, so this is the slowest test folder.
-- Passing proves only the 23 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 31 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -122,16 +131,16 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(self.project.audit(), (0, []))
 
     def test_standard_library_imports_are_only_allowed_in_host(self):
-        self.project.edit('brisartos/kernel/scheduler.py', 'class Scheduler:', 'import os\n\n\nclass Scheduler:')
+        self.project.edit('brisartos/machine/scheduler.py', 'class Scheduler:', 'import os\n\n\nclass Scheduler:')
         self.assertAuditFails('only brisartos/host/ may import os')
 
     def test_forbidden_calls_are_only_allowed_in_host(self):
-        self.project.edit('brisartos/kernel/scheduler.py', 'class Scheduler:', 'HANDLE = open("x")\n\n\nclass Scheduler:')
+        self.project.edit('brisartos/machine/scheduler.py', 'class Scheduler:', 'HANDLE = open("x")\n\n\nclass Scheduler:')
         self.assertAuditFails('only brisartos/host/ may call open')
 
     def test_upward_imports_break_the_layer_rule(self):
         self.project.edit('brisartos/extensions/api.py', 'from ..host import system',
-                          'from ..host import system\nfrom ..kernel.platform import Platform')
+                          'from ..host import system\nfrom ..kernel.kernel import Kernel')
         self.assertAuditFails('layer violation: extensions (layer 2) may not import kernel (layer 3)')
 
     def test_sideways_imports_between_equal_layers_break_the_layer_rule(self):
@@ -140,8 +149,24 @@ class AuditTests(unittest.TestCase):
         self.assertAuditFails('layer violation: services')
 
     def test_absolute_brisartos_imports_are_refused_in_product_code(self):
-        self.project.edit('brisartos/kernel/composition.py', 'from .devices import', 'from brisartos.kernel.devices import DeviceRegistry as Unused\nfrom .devices import')
+        self.project.edit('brisartos/kernel/composition.py', 'from ..machine.devices import', 'from brisartos.machine.devices import DeviceRegistry as Unused\nfrom ..machine.devices import')
         self.assertAuditFails('only brisartos/host/ may import brisartos')
+
+    def test_print_and_input_are_only_allowed_in_host(self):
+        self.project.edit('brisartos/machine/scheduler.py', 'class Scheduler:', 'print("x")\n\n\nclass Scheduler:')
+        self.assertAuditFails('only brisartos/host/ may call print')
+
+    def test_input_is_only_allowed_in_host(self):
+        self.project.edit('brisartos/machine/scheduler.py', 'class Scheduler:', 'LINE = input()\n\n\nclass Scheduler:')
+        self.assertAuditFails('only brisartos/host/ may call input')
+
+    def test_reserved_path_literals_are_refused_outside_the_schema(self):
+        self.project.edit('brisartos/events/events.py', 'class EventLog:', 'HARDCODED = "/logs/x.log"\n\n\nclass EventLog:')
+        self.assertAuditFails('reserved path literal')
+
+    def test_reserved_prefixes_in_docstrings_are_not_flagged(self):
+        self.assertEqual(self.project.audit(), (0, []))
+        self.assertIn('/modules/demo/a.txt', self.project.read('brisartos/extensions/api.py'))
 
     def test_loose_files_in_the_package_root_are_refused(self):
         (self.project.root / 'brisartos' / 'stray.py').write_text('x = 1\n')
@@ -157,11 +182,11 @@ class AuditTests(unittest.TestCase):
         self.assertAuditFails('double underscores are not allowed')
 
     def test_a_readme_must_mention_every_file_in_its_folder(self):
-        self.project.edit('brisartos/kernel/README.md', 'scheduler.py', 'the scheduler', which='all')
-        self.assertAuditFails('brisartos/kernel/README.md does not mention scheduler.py')
+        self.project.edit('brisartos/machine/README.md', 'scheduler.py', 'the scheduler', which='all')
+        self.assertAuditFails('brisartos/machine/README.md does not mention scheduler.py')
 
     def test_a_readme_must_mention_every_test_file(self):
-        self.project.edit('brisartos/kernel/README.md', 'test_components.py', 'the component tests', which='all')
+        self.project.edit('brisartos/machine/README.md', 'test_components.py', 'the component tests', which='all')
         self.assertAuditFails('does not mention test_components.py')
 
     def test_a_folder_without_a_readme_is_refused(self):
@@ -169,11 +194,11 @@ class AuditTests(unittest.TestCase):
         self.assertAuditFails('brisartos/kernel: README.md is required')
 
     def test_a_stale_header_is_reported_and_the_tool_repairs_it(self):
-        self.project.edit('brisartos/kernel/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
+        self.project.edit('brisartos/machine/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
         self.assertAuditFails('generated header parts are out of date')
         self.assertEqual(self.project.tool('headers.py').returncode, 0)
         self.assertEqual(self.project.audit(), (0, []))
-        self.assertIn('Scheduler.status(verbose=False) --', self.project.read('brisartos/kernel/scheduler.py'))
+        self.assertIn('Scheduler.status(verbose=False) --', self.project.read('brisartos/machine/scheduler.py'))
 
     def test_a_new_public_function_needs_a_description(self):
         self.project.edit('brisartos/common/names.py', 'def require_name(',
@@ -207,35 +232,69 @@ class AuditTests(unittest.TestCase):
         self.assertAuditFails('unexpected file type')
 
 
+class RunTestsTests(unittest.TestCase):
+    def test_a_filter_that_matches_nothing_returns_two(self):
+        project = ProjectCopy(self)
+        result = project.tool('runtests.py', 'no-such-folder')
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('no test folders match no-such-folder', result.stdout)
+
+    def test_a_matching_folder_runs_and_passes(self):
+        project = ProjectCopy(self)
+        result = project.tool('runtests.py', 'brisartos/common')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('ok    brisartos/common/tests', result.stdout)
+        self.assertIn('PASSED: 4 tests in 1 folders', result.stdout)
+
+    def test_a_failing_folder_returns_one_and_shows_its_output(self):
+        project = ProjectCopy(self)
+        project.edit('brisartos/common/tests/test_names.py', "self.assertEqual(require_name('field_notes'), 'field_notes')",
+                     "self.assertEqual(require_name('field_notes'), 'wrong')")
+        result = project.tool('runtests.py', 'brisartos/common')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('FAIL  brisartos/common/tests', result.stdout)
+        self.assertIn('FAILED: 1 of 1 test folders', result.stdout)
+
+    def test_the_router_forwards_filters_to_the_runner(self):
+        project = ProjectCopy(self)
+        result = subprocess.run([sys.executable, '-B', '-S', str(project.root / 'run.py'), 'test', 'brisartos/common'],
+                                capture_output=True, text=True, cwd=project.root, timeout=120)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('PASSED: 4 tests in 1 folders', result.stdout)
+        missing = subprocess.run([sys.executable, '-B', '-S', str(project.root / 'run.py'), 'test', 'nothing-matches'],
+                                 capture_output=True, text=True, cwd=project.root, timeout=120)
+        self.assertEqual(missing.returncode, 2)
+
+
 class HeaderToolTests(unittest.TestCase):
     def test_check_mode_reports_without_changing_anything(self):
         project = ProjectCopy(self)
-        project.edit('brisartos/kernel/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
-        before = project.read('brisartos/kernel/scheduler.py')
+        project.edit('brisartos/machine/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
+        before = project.read('brisartos/machine/scheduler.py')
         result = project.tool('headers.py', '--check')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('out of date: brisartos/kernel/scheduler.py', result.stdout)
-        self.assertEqual(project.read('brisartos/kernel/scheduler.py'), before)
+        self.assertIn('out of date: brisartos/machine/scheduler.py', result.stdout)
+        self.assertEqual(project.read('brisartos/machine/scheduler.py'), before)
 
     def test_refresh_keeps_the_written_prose_and_descriptions(self):
         project = ProjectCopy(self)
-        before = project.read('brisartos/kernel/scheduler.py')
+        before = project.read('brisartos/machine/scheduler.py')
         summary = before.split('Purpose\n-------\n')[1].split('\n\n')[0]
         design = before.split('Design notes:\n\n')[1].split('\n\nCommunication')[0]
-        project.edit('brisartos/kernel/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
+        project.edit('brisartos/machine/scheduler.py', 'def status(self):', 'def status(self, verbose=False):')
         project.tool('headers.py')
-        after = project.read('brisartos/kernel/scheduler.py')
+        after = project.read('brisartos/machine/scheduler.py')
         self.assertIn(summary, after)
         self.assertIn(design, after)
         self.assertIn('Scheduler.spawn(name, iterator) --', after)
 
     def test_relationships_are_regenerated_from_the_imports(self):
         project = ProjectCopy(self)
-        project.edit('brisartos/kernel/scheduler.py', 'class Scheduler:',
+        project.edit('brisartos/machine/scheduler.py', 'class Scheduler:',
                      'from ..common.names import require_name\n\n\nclass Scheduler:')
         project.tool('headers.py')
-        self.assertIn('brisartos.common.names (brisartos/common/names.py)', project.read('brisartos/kernel/scheduler.py'))
-        self.assertIn('brisartos/kernel/scheduler.py', project.read('brisartos/common/names.py'))
+        self.assertIn('brisartos.common.names (brisartos/common/names.py)', project.read('brisartos/machine/scheduler.py'))
+        self.assertIn('brisartos/machine/scheduler.py', project.read('brisartos/common/names.py'))
 
     def test_clean_tree_reports_current(self):
         project = ProjectCopy(self)

@@ -6,19 +6,22 @@ Purpose
 Exercise service-name registration, metadata, settings snapshots, protected-log
 archive restoration and unapplied update staging.
 
-Verifies: brisartos/services/archive.py, brisartos/services/registry.py,
-brisartos/services/settings.py, brisartos/services/updates.py,
+Verifies: brisartos/host/serialization.py, brisartos/services/archive.py,
+brisartos/services/registry.py, brisartos/services/settings.py,
+brisartos/services/updates.py, brisartos/storage/schema.py,
 brisartos/storage/storage.py, version.py.
 
-Contains 9 test case(s) across 4 TestCase class(es).
+Contains 13 test case(s) across 5 TestCase class(es).
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- brisartos.host.serialization (brisartos/host/serialization.py)
 - brisartos.services.archive (brisartos/services/archive.py)
 - brisartos.services.registry (brisartos/services/registry.py)
 - brisartos.services.settings (brisartos/services/settings.py)
 - brisartos.services.updates (brisartos/services/updates.py)
+- brisartos.storage.schema (brisartos/storage/schema.py)
 - brisartos.storage.storage (brisartos/storage/storage.py)
 - version (version.py)
 Standard library: unittest.
@@ -50,12 +53,17 @@ ArchiveTests:
 - Snapshots do not contain logs.
 UpdatesTests:
 - Stage never applies.
+StatePersistenceTests:
+- Each persistent service writes one state document.
+- Serialization callbacks are required when storage is given.
+- Archive callbacks are all or nothing.
+- A second instance loads what the first wrote.
 
 Known limitations
 -----------------
 - Services are tested in memory; nothing here checks persistence because the
   services keep no state on disk.
-- Passing proves only the 9 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 13 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -69,6 +77,8 @@ Run from the repository root.
 
 import unittest
 
+from brisartos.host.serialization import decode_mapping, encode_mapping
+from brisartos.storage.schema import ARCHIVE_PATH, PROTECTED_PREFIXES, SETTINGS_PATH, UPDATES_PATH
 from brisartos.storage.storage import Storage
 from brisartos.services.archive import PROTECTED, Archive
 from brisartos.services.registry import ServiceRegistry
@@ -178,6 +188,43 @@ class UpdatesTests(unittest.TestCase):
             updates.inspect('candidate')
         with self.assertRaises(ValueError):
             updates.stage('', 'x')
+
+
+class StatePersistenceTests(unittest.TestCase):
+    def test_each_persistent_service_writes_one_state_document(self):
+        storage = Storage()
+        settings = Settings(storage, encode_mapping, decode_mapping)
+        archive = Archive(storage, encode_mapping, decode_mapping)
+        updates = Updates(storage, encode_mapping, decode_mapping)
+        for service in (settings, archive, updates):
+            service.start()
+        settings.set('a', 1)
+        storage.write('/work.txt', 'x')
+        archive.save('s')
+        updates.stage('u', 'pass')
+        for path, kind in ((SETTINGS_PATH, 'settings'), (ARCHIVE_PATH, 'archive'), (UPDATES_PATH, 'updates')):
+            self.assertEqual(decode_mapping(storage.read(path))['kind'], kind)
+        self.assertEqual(sorted(storage.list_files(PROTECTED_PREFIXES[1])), sorted([SETTINGS_PATH, ARCHIVE_PATH, UPDATES_PATH]))
+
+    def test_serialization_callbacks_are_required_when_storage_is_given(self):
+        with self.assertRaises(ValueError):
+            Settings(Storage())
+        with self.assertRaises(ValueError):
+            Updates(Storage())
+
+    def test_archive_callbacks_are_all_or_nothing(self):
+        for pair in ((encode_mapping, None), (None, decode_mapping)):
+            with self.assertRaises(ValueError):
+                Archive(Storage(), *pair)
+
+    def test_a_second_instance_loads_what_the_first_wrote(self):
+        storage = Storage()
+        first = Settings(storage, encode_mapping, decode_mapping)
+        first.start()
+        first.set('theme', 'plain')
+        second = Settings(storage, encode_mapping, decode_mapping)
+        second.start()
+        self.assertEqual(second.get('theme'), 'plain')
 
 
 if __name__ == '__main__':

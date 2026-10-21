@@ -107,7 +107,7 @@ class Kernel:
             self.services.start_all()
             self.events.record('kernel', 'started on host Python; no firmware boot occurred', kind='kernel.started')
             self.state = 'running'
-            self.modules.context.accepting = True
+            self.modules.context.open()
             if self.modules_path is not None:
                 self.reload_modules()
         except BaseException:
@@ -126,7 +126,7 @@ class Kernel:
         return failures
     def _shutdown(self):
         self.state = 'stopping'
-        self.modules.context.accepting = False
+        self.modules.context.close()
         self.shutdown_errors = []
         for name, cleanup in (('tasks', self.scheduler.cancel_all), ('modules', self.modules.stop_all), ('services', self.services.stop_all)):
             try:

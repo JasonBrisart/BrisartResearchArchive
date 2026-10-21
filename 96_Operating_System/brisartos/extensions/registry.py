@@ -27,8 +27,10 @@ Public interface:
 Design notes:
 
 Manifest metadata is authoritative for new modules; legacy declarations remain
-a fallback. Compatibility checks precede import for manifest entries. Shutdown
-hooks take no arguments and must release their own resources.
+a fallback. host/loader.py reads the manifest text and manifest.py parses it,
+so manifest rules live in this layer. Compatibility checks precede import for
+manifest entries. Shutdown hooks take no arguments and must release their own
+resources.
 
 Communication / relationships
 -----------------------------
@@ -36,6 +38,7 @@ Depends on (project modules):
 - brisartos.common.names (brisartos/common/names.py)
 - brisartos.extensions.api (brisartos/extensions/api.py)
 - brisartos.extensions.contracts (brisartos/extensions/contracts.py)
+- brisartos.extensions.manifest (brisartos/extensions/manifest.py)
 - brisartos.host.loader (brisartos/host/loader.py)
 - version (version.py)
 Standard library: none.
@@ -45,7 +48,8 @@ Covered by tests: brisartos/extensions/tests/test_registry.py.
 
 Settings / parameters
 ---------------------
-- REQUIRED_NAMES -- Fixed local policy used by the operations documented above.
+- REQUIRED_NAMES -- The eight declarations a manifest-free legacy module must
+  define.
 
 Edge cases
 ----------
@@ -98,6 +102,7 @@ from ..common.names import require_name
 from ..host import loader
 from .api import MODULE_ABI, ModuleAPI, check_permissions
 from .contracts import check_compatibility
+from .manifest import parse_manifest
 
 REQUIRED_NAMES = ('MODULE_NAME', 'MODULE_DISPLAY_NAME', 'MODULE_VERSION', 'MODULE_AUTHOR',
                   'MODULE_DESCRIPTION', 'MODULE_ABI', 'MODULE_PERMISSIONS', 'run')
@@ -135,8 +140,9 @@ class ModuleRegistry:
         for path in loader.module_files(folder):
             label = path.parent.name
             try:
-                manifest = loader.read_manifest(path)
-                if manifest is not None:
+                text = loader.read_manifest_text(path)
+                if text is not None:
+                    manifest = parse_manifest(text)
                     require_name(manifest['name'], 'module name')
                     check_permissions(manifest['permissions'])
                     api = check_compatibility((manifest['api'], manifest['api_major'], manifest['api_minor']))

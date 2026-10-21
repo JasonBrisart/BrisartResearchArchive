@@ -1,5 +1,5 @@
 r"""
-File: brisartos/kernel/scheduler.py
+File: brisartos/machine/scheduler.py
 
 Purpose
 -------
@@ -34,7 +34,7 @@ Communication / relationships
 Standard library: none.
 Imported by:
 - brisartos/kernel/composition.py
-Covered by tests: brisartos/kernel/tests/test_components.py.
+Covered by tests: brisartos/machine/tests/test_components.py.
 
 Settings / parameters
 ---------------------
@@ -69,7 +69,7 @@ Run from the repository root.
 
 ::
 
-    from brisartos.kernel.scheduler import Scheduler
+    from brisartos.machine.scheduler import Scheduler
     s = Scheduler()
     t = s.spawn('demo', iter([1]))
     s.run()

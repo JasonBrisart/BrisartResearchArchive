@@ -45,12 +45,12 @@ Covered by tests: brisartos/kernel/tests/test_architecture.py.
 
 Settings / parameters
 ---------------------
-- MODULE_API_NAME = 'brisartos.module' -- Fixed local policy used by the
-  operations documented above.
-- MODULE_API_MAJOR = 1 -- Fixed local policy used by the operations documented
-  above.
-- MODULE_API_MINOR = 0 -- Fixed local policy used by the operations documented
-  above.
+- MODULE_API_NAME = 'brisartos.module' -- The API name every module requirement
+  must match.
+- MODULE_API_MAJOR = 1 -- Runtime API major version; a breaking change requires
+  a new major.
+- MODULE_API_MINOR = 0 -- Runtime API minor version; a module may require this
+  value or lower.
 
 Edge cases
 ----------

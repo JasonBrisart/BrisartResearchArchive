@@ -31,10 +31,10 @@ Depends on (project modules):
 - brisartos.host.disk (brisartos/host/disk.py)
 - brisartos.host.serialization (brisartos/host/serialization.py)
 - brisartos.host.system (brisartos/host/system.py)
-- brisartos.kernel.devices (brisartos/kernel/devices.py)
-- brisartos.kernel.platform (brisartos/kernel/platform.py)
-- brisartos.kernel.scheduler (brisartos/kernel/scheduler.py)
 - brisartos.language.interpreter (brisartos/language/interpreter.py)
+- brisartos.machine.devices (brisartos/machine/devices.py)
+- brisartos.machine.platform (brisartos/machine/platform.py)
+- brisartos.machine.scheduler (brisartos/machine/scheduler.py)
 - brisartos.services.archive (brisartos/services/archive.py)
 - brisartos.services.registry (brisartos/services/registry.py)
 - brisartos.services.settings (brisartos/services/settings.py)
@@ -83,9 +83,9 @@ from ..services.registry import ServiceRegistry
 from ..services.settings import Settings
 from ..services.archive import Archive
 from ..services.updates import Updates
-from .devices import DeviceRegistry, TextConsole
-from .platform import Platform
-from .scheduler import Scheduler
+from ..machine.devices import DeviceRegistry, TextConsole
+from ..machine.platform import Platform
+from ..machine.scheduler import Scheduler
 
 class RuntimeComponents:
     def __init__(self, storage, scheduler, devices, console, events, services, modules, language, platform):
@@ -105,6 +105,6 @@ def build_runtime(data_root=None, modules_path=None, max_steps=10000, event_limi
     devices, console = DeviceRegistry(), TextConsole()
     devices.register('console', console)
     context = ModuleContext(storage, services, events, platform)
-    context.accepting = False
+    context.close()
     return RuntimeComponents(storage, Scheduler(events), devices, console, events, services,
                              ModuleRegistry(context), Interpreter(max_steps), platform)

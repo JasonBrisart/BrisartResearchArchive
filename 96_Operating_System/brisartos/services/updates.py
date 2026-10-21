@@ -30,6 +30,7 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.storage.schema (brisartos/storage/schema.py)
+- brisartos.storage.state (brisartos/storage/state.py)
 - version (version.py)
 Standard library: none.
 Imported by:
@@ -72,31 +73,41 @@ Run from the repository root.
     assert u.inspect('candidate')['applied'] is False
 """
 from version import __version__
-from ..storage.schema import UPDATES_PATH, envelope, payload
+from ..storage.schema import UPDATES_PATH
+from ..storage.state import StateFile
+
 
 class Updates:
     def __init__(self, storage=None, encode=None, decode=None):
         self.version = __version__
-        self._storage, self._encode, self._decode = storage, encode, decode
+        self._state = None
+        if storage is not None:
+            if not callable(encode) or not callable(decode):
+                raise ValueError('persistent updates require serialization callbacks')
+            self._state = StateFile(storage, UPDATES_PATH, 'updates', encode, decode)
         self._candidates = {}
         self._online = False
-        if storage is not None and (not callable(encode) or not callable(decode)):
-            raise ValueError('persistent updates require serialization callbacks')
+
     def start(self):
-        if self._storage is not None and self._storage.exists(UPDATES_PATH):
-            candidates = payload(self._decode(self._storage.read(UPDATES_PATH)), 'updates')
-            if any(not isinstance(k, str) or not k or not isinstance(v, str) for k, v in candidates.items()):
-                raise ValueError('invalid persisted update candidates')
-            self._candidates = candidates
+        if self._state is not None:
+            candidates = self._state.load()
+            if candidates is not None:
+                if any(not isinstance(k, str) or not k or not isinstance(v, str) for k, v in candidates.items()):
+                    raise ValueError('invalid persisted update candidates')
+                self._candidates = candidates
         self._online = True
+
     def stop(self):
         self._online = False
+
     def status(self):
         return 'online' if self._online else 'offline'
+
     def _commit(self, candidates):
-        if self._storage is not None:
-            self._storage.write(UPDATES_PATH, self._encode(envelope('updates', candidates)))
+        if self._state is not None:
+            candidates = self._state.save(candidates)
         self._candidates = candidates
+
     def stage(self, name, source):
         if not isinstance(name, str) or not name or not isinstance(source, str):
             raise ValueError('update name and source text required')
@@ -105,15 +116,18 @@ class Updates:
         candidates = dict(self._candidates)
         candidates[name] = source
         self._commit(candidates)
+
     def inspect(self, name):
         if name not in self._candidates:
             raise KeyError('unknown update candidate: ' + str(name))
         return {'name': name, 'source': self._candidates[name], 'applied': False, 'authenticated': False}
+
     def discard(self, name):
         if name not in self._candidates:
             raise KeyError('unknown update candidate: ' + str(name))
         candidates = dict(self._candidates)
         del candidates[name]
         self._commit(candidates)
+
     def names(self):
         return sorted(self._candidates)

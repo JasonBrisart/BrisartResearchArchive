@@ -1,6 +1,6 @@
 # Host Adapters
 
-Four files provide host-backed values, disk storage, inert manifest parsing, dynamic entry-file execution and mapping serialization.
+Six files provide host-backed values, terminal input and output, disk storage, entry-file discovery and execution with raw manifest reading, and mapping serialization.
 
 ## `system.py`: values from the running process
 
@@ -44,11 +44,16 @@ Replacement is not a power-loss durability guarantee. There is no explicit flush
 
 `load_module(path)` builds a fresh module object and executes the file. It does not explicitly insert that object into `sys.modules`. Top-level exceptions propagate. It checks neither module declarations nor permissions, and it does not contain untrusted code.
 
+## `terminal.py`: the console boundary
+
+`read_line(prompt="")` returns the next line typed and `write_line(text="")` writes text and a newline; with no argument it writes an empty line. They are thin wrappers over the host `input()` and `print()`. Their purpose is to give product code one name for the terminal: the architecture audit forbids `print` and `input` everywhere else under `brisartos/`. End of input raises `EOFError` and an interrupt raises `KeyboardInterrupt`, both unchanged. There is no buffering, encoding policy or line editing.
+
 ## Tests beside the adapters
 
 - `tests/test_system.py`: timestamp format, identifier samples and argument types.
 - `tests/test_disk.py`: exact text, temporary-file filtering, append, listings, deletion, conflicts and root escape. Symlink checks skip when creation is unavailable.
-- `tests/test_loader.py`: discovery filtering, execution, fresh objects and propagated exceptions.
+- `tests/test_loader.py`: discovery filtering, execution, fresh objects, propagated exceptions and raw manifest text.
+- `tests/test_terminal.py`: prompts, lines, end of input and interrupts, with the host input and standard output patched.
 
 These tests do not simulate power failure, concurrent writers or exhausted storage.
 
@@ -56,4 +61,4 @@ These tests do not simulate power failure, concurrent writers or exhausted stora
 
 `encode_mapping()` produces deterministic JSON for plain mappings with text keys. Unsupported values and non-finite numbers are rejected. `decode_mapping()` rejects non-mapping roots and non-finite constants. Neither operation authenticates data or enforces a size/nesting budget. Composition injects these callbacks into services.
 
-`loader.py` additionally provides `read_manifest(path)`, reading sibling manifest.txt without execution. It rejects duplicate/unknown/missing fields, converts API versions to integers and parses comma-separated permissions. Registry performs compatibility/name/permission checks before load_module. A missing manifest selects the documented legacy path.
+`loader.py` additionally provides `read_manifest_text(path)`, which returns the text of the sibling manifest.txt exactly as stored, or None when there is none. It parses nothing and executes nothing. Manifest rules live in [the extension system](../extensions/README.md): `manifest.py` parses the text and the registry validates it before `load_module` runs. A missing manifest selects the documented legacy path.

@@ -17,7 +17,9 @@ The audit reads syntax trees rather than importing inspected modules. Product
 restrictions apply within brisartos except its test folders. README checks use
 filename substring presence, and generated-header checks delegate to
 headers.refresh(write=False). Markdown link and executable-example checks
-belong to the project tests, not this audit.
+belong to the project tests, not this audit. A product string starting with a
+reserved runtime path prefix is reported unless it is a docstring or sits in
+the schema file, so those prefixes keep one owner.
 
 tools/tests/test_tools.py runs this program on temporary project copies, and
 tests/test_project.py checks its exit result. Neither relationship is measured
@@ -39,7 +41,13 @@ Settings / parameters
 - HOST_FOLDER = 'host'
 - LAYERS -- Maps each folder under brisartos/ to its layer number; a folder may
   import its own folder and strictly lower layers only.
-- FORBIDDEN_CALLS = {'open', 'eval', 'exec', 'compile', '__import__'}
+- FORBIDDEN_CALLS -- Built-ins that only brisartos/host/ may call in product
+  code: file, evaluation and import calls plus the terminal functions print and
+  input.
+- SCHEMA_FILE = 'brisartos/storage/schema.py' -- The one product file allowed
+  to define reserved runtime path prefixes.
+- RESERVED_PREFIXES = ('/logs', '/system', '/modules') -- Runtime path prefixes
+  whose string literals product code may not repeat.
 
 Edge cases
 ----------
@@ -79,7 +87,9 @@ ALLOWED_SUFFIXES = {'.py', '.md'}
 HOST_FOLDER = 'host'
 LAYERS = {'common': 0, 'storage': 0, 'events': 1, 'host': 1, 'language': 1, 'services': 1, 'extensions': 2,
           'machine': 2, 'kernel': 3, 'shell': 4}
-FORBIDDEN_CALLS = {'open', 'eval', 'exec', 'compile', '__import__'}
+FORBIDDEN_CALLS = {'open', 'eval', 'exec', 'compile', '__import__', 'print', 'input'}
+SCHEMA_FILE = 'brisartos/storage/schema.py'
+RESERVED_PREFIXES = ('/logs', '/system', '/modules')
 
 
 def _delivered_files():
@@ -139,6 +149,16 @@ def _relative_folders(node, parts):
     return [target[1] if len(target) > 1 else '' for target in targets]
 
 
+def _docstring_ids(tree):
+    found = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
+            first = node.body[0]
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
+                found.add(id(first.value))
+    return found
+
+
 def _check_imports(path, tree, errors, local):
     parts = path.relative_to(ROOT).parts
     relative = '/'.join(parts)
@@ -150,6 +170,7 @@ def _check_imports(path, tree, errors, local):
     if product and folder and folder not in LAYERS:
         errors.append(relative + ': folder ' + folder + ' is not in the layer map (tools/audit.py LAYERS)')
     strict = product and folder != HOST_FOLDER
+    docstrings = _docstring_ids(tree) if product else set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             names = [alias.name.split('.')[0] for alias in node.names]
@@ -167,6 +188,9 @@ def _check_imports(path, tree, errors, local):
                 if target and target != folder and LAYERS.get(target, 99) >= LAYERS[folder]:
                     errors.append(relative + ': layer violation: ' + folder + ' (layer ' + str(LAYERS[folder])
                                   + ') may not import ' + target + ' (layer ' + str(LAYERS.get(target, '?')) + ')')
+        if (product and relative != SCHEMA_FILE and isinstance(node, ast.Constant) and isinstance(node.value, str)
+                and id(node) not in docstrings and node.value.startswith(RESERVED_PREFIXES)):
+            errors.append(relative + ': reserved path literal ' + repr(node.value) + ' belongs in ' + SCHEMA_FILE)
         if strict:
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_CALLS:
                 errors.append(relative + ': only brisartos/host/ may call ' + node.func.id)

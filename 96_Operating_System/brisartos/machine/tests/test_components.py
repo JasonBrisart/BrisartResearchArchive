@@ -1,25 +1,25 @@
 r"""
-File: brisartos/kernel/tests/test_components.py
+File: brisartos/machine/tests/test_components.py
 
 Purpose
 -------
 Exercise cooperative scheduling, text-console queues and draining, device
 registration and fixed platform capability refusals.
 
-Verifies: brisartos/kernel/devices.py, brisartos/kernel/platform.py,
-brisartos/kernel/scheduler.py.
+Verifies: brisartos/machine/devices.py, brisartos/machine/platform.py,
+brisartos/machine/scheduler.py.
 
 Contains 11 test case(s) across 2 TestCase class(es).
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
-- brisartos.kernel.devices (brisartos/kernel/devices.py)
-- brisartos.kernel.platform (brisartos/kernel/platform.py)
-- brisartos.kernel.scheduler (brisartos/kernel/scheduler.py)
+- brisartos.machine.devices (brisartos/machine/devices.py)
+- brisartos.machine.platform (brisartos/machine/platform.py)
+- brisartos.machine.scheduler (brisartos/machine/scheduler.py)
 Standard library: unittest.
 Discovered and run by run.py test (and by python -m unittest discover -s
-brisartos/kernel/tests); nothing imports it.
+brisartos/machine/tests); nothing imports it.
 
 Settings / parameters
 ---------------------
@@ -32,12 +32,6 @@ Edge cases
 ----------
 A generator that raises ValueError on purpose proves that a failing task is
 recorded and does not stop others. The scheduler is also run with 300 tasks.
-
-MemoryTests:
-
-- Handles and capacity.
-- Handles are never reused.
-- Status reports use.
 
 SchedulerTests:
 - Round robin to completion.
@@ -66,14 +60,14 @@ Run from the repository root.
 
 ::
 
-    python -B -m unittest discover -s brisartos/kernel/tests -p test_components.py
+    python -B -m unittest discover -s brisartos/machine/tests -p test_components.py
 """
 
 import unittest
 
-from brisartos.kernel.devices import DeviceRegistry, TextConsole
-from brisartos.kernel.platform import CapabilityUnavailable, Platform
-from brisartos.kernel.scheduler import Scheduler
+from brisartos.machine.devices import DeviceRegistry, TextConsole
+from brisartos.machine.platform import CapabilityUnavailable, Platform
+from brisartos.machine.scheduler import Scheduler
 
 
 def counter(limit):

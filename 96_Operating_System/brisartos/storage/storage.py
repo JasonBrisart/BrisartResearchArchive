@@ -57,7 +57,7 @@ Covered by tests: brisartos/events/tests/test_events.py,
 brisartos/extensions/tests/test_api.py,
 brisartos/kernel/tests/test_architecture.py,
 brisartos/services/tests/test_services.py,
-brisartos/storage/tests/test_storage.py.
+brisartos/storage/tests/test_state.py, brisartos/storage/tests/test_storage.py.
 
 Settings / parameters
 ---------------------

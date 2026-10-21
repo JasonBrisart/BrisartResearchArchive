@@ -5,6 +5,100 @@ system research project.
 
 ---
 
+## [0.0.15] - 2026-10-21
+
+An architecture-ownership release. Each shared rule and each machine-level object now lives in the directory that owns it, and the rule that only `host/` touches the outside world is now checked for terminal input and output as well as files and imports.
+
+The layer map is unchanged: no directory was added to or removed from it, and the dependency direction between the ten runtime directories is the same. What changed is placement. The scheduler, device registry and platform declarations left `kernel/` for `machine/`, manifest rules left `host/` for `extensions/`, the reserved runtime path prefixes and the repeated state-document logic were consolidated under `storage/`, and the terminal now has one named adapter in `host/`.
+
+No stored-data format changed: `brisartos.data.v1`, the `/system` documents and the text logs are byte-for-byte what the previous release wrote. The module API (`brisartos.module` 1.0) and the manifest format are unchanged. There is no data migration. Several import paths and one function name changed; they are listed under Compatibility and residual risk.
+
+BrisartOS remains a host-Python operating environment. No firmware boot, independent hardware execution or self-hosting capability is introduced.
+
+### Added
+
+- **`brisartos/storage/state.py`: `StateFile`, one implementation of a versioned state document.** `Settings`, `Archive` and `Updates` each carried their own copy of the same logic: read the file, decode it, check the envelope, then encode, write and round-trip a detached copy on every change. `StateFile(storage, path, kind, encode, decode)` now owns that. `load()` returns the validated payload, or `None` when no document exists; a document that fails validation still raises rather than being treated as empty. `save(values)` encodes before writing, writes once and returns a copy decoded from the written text. `detach(values)` copies plain data through the same callbacks without touching storage. It adds no locking, multi-file transaction or durability guarantee; `save` is one storage write.
+
+- **`brisartos/extensions/manifest.py`: `parse_manifest`, `FIELDS` and `ENTRY`.** The manifest schema previously sat in `host/loader.py`: the allowed-field set, the `entry == run` rule, integer conversion and permission splitting were module-system policy living in the adapter layer. `parse_manifest(text)` now returns the ten fields with `api_major` and `api_minor` as integers and `permissions` as a tuple, and checks structure only. It does not judge names, permissions or API compatibility, which the registry still decides before any module code is imported.
+
+- **`brisartos/host/terminal.py`: `read_line` and `write_line`.** Thin wrappers over the host `input()` and `print()`. `shell/console.py` and `machine/machine.py` previously called those built-ins directly, which the runtime README admitted was outside the host-only rule. They now give product code one name for the terminal. End of input and interrupts still reach the caller unchanged.
+
+- **`brisartos/storage/schema.py`: `LOG_PREFIX`, `MODULES_PREFIX` and `PROTECTED_PREFIXES`.** The `/logs` prefix was defined as `LOG_FOLDER` in `events/events.py` and written again inside `Archive`'s protected tuple. The module storage prefix `/modules` was written twice inside `ModuleAPI`. Each is now defined once beside `SYSTEM_PREFIX`. `MODULES_PREFIX` is the runtime folder for each module's own files, not the project-root `modules/` source folder.
+
+- **`ModuleContext.accepting`, `open()` and `close()` in `brisartos/extensions/api.py`.** The kernel and `build_runtime()` previously assigned `context.accepting = True` or `False` from outside the object. `accepting` is now a read-only property, and the kernel calls `close()` and `open()`.
+
+- **`tools/runtests.py`.** Test discovery, concurrent per-folder execution and result aggregation moved here from `run.py`. Behavior is unchanged (see Changed).
+
+- **Two audit rules in `tools/audit.py`.** `print` and `input` are added to the calls only `brisartos/host/` may make in product code. Separately, a product string that starts with `/logs`, `/system` or `/modules` is reported unless it is a docstring or sits in `brisartos/storage/schema.py`. The second rule is a literal check: it does not detect a prefix built by concatenation.
+
+- **44 net new tests, 315 in total.** New files: `host/tests/test_terminal.py` (5), `storage/tests/test_state.py` (11), `extensions/tests/test_manifest.py` (11). Additions to existing files: 3 raw-manifest-text tests in `host/tests/test_loader.py`, 2 context open/close tests in `extensions/tests/test_api.py`, 4 state-persistence tests in `services/tests/test_services.py`, and 8 in `tools/tests/test_tools.py` (terminal built-ins, reserved literals, docstring exemption and four `runtests.py` exit-status tests).
+
+### Changed
+
+- **`scheduler.py`, `devices.py` and `platform.py` moved from `brisartos/kernel/` to `brisartos/machine/`, together with their tests.** None of the three depended on `Kernel`: `scheduler.py` and `platform.py` import nothing and `devices.py` imports only `platform.py`. Keeping them in `kernel/` made the kernel directory look like the owner of objects it merely assembles. `kernel/` now holds `composition.py` and `kernel.py` only. `machine/` stays at layer 2, so the kernel at layer 3 importing it is a downward import and the audit accepts it. File contents are unchanged apart from header `File:` lines, examples and import paths. `kernel/tests/test_components.py` moved to `machine/tests/test_components.py`.
+
+- **`brisartos/host/loader.py`: `read_manifest(path)` replaced by `read_manifest_text(path)`.** The loader now returns the text of the sibling `manifest.txt` exactly as stored, or `None` when there is none. `ModuleRegistry.discover()` in `brisartos/extensions/registry.py` calls `parse_manifest` on that text and then runs the same name, permission, duplicate and API checks as before, all before `load_module`. A manifest with a non-integer `api_major` or `api_minor` is now refused with a message naming the field instead of the message from `int()`; a negative value was already refused, now at parse time.
+
+- **`Settings`, `Archive` and `Updates` persist through `StateFile`.** Observable behavior is unchanged: same documents, same paths, same validation of persisted contents, same error messages for existing failures. Two small differences: `Archive` now publishes the decoded copy that `save` returns rather than the dictionary it built, and an `Archive` given non-callable callbacks now fails at construction with `state files require serialization callbacks` instead of at first use.
+
+- **`events/events.py`, `services/archive.py` and `extensions/api.py` read their path prefixes from `storage/schema.py`.** `events.LOG_FOLDER` is removed. `services/archive.py` keeps its `PROTECTED` name as an alias of `PROTECTED_PREFIXES`, so existing imports of it still work. Recorded log paths, snapshot exclusions and module file paths are unchanged.
+
+- **`brisartos/kernel/kernel.py` and `brisartos/kernel/composition.py` call `open()` and `close()` on the module context** in place of assigning `accepting`. Startup order, shutdown order and the closed-while-stopping behavior are unchanged.
+
+- **`brisartos/shell/console.py` and `brisartos/machine/machine.py` write and read through `host/terminal.py`.** The console banner, prompt and output are identical. `machine.main()` now builds its three status lines with string concatenation instead of passing multiple arguments to `print`; the printed text is identical.
+
+- **`run.py` is now only a routing table.** `test` is routed to `tools/runtests.py` as a child process like every other command, and `test` now forwards its options along with `start`. Exit statuses are unchanged: 0 when every folder passes, 1 when any fails, 2 when a filter matches nothing. The per-folder result lines and summary format are unchanged.
+
+- **Documentation was updated against the new placement.** The runtime README, `docs/ARCHITECTURE.md` (including a new section on ownership of shared rules), the kernel, machine, host, extensions, storage, services, events, shell and tools READMEs, and the root README now describe the moved files, `terminal.py`, `manifest.py`, `state.py`, `runtests.py` and the two audit rules. Generic placeholder descriptions in the headers of files touched here were replaced: the six constants in `storage/schema.py`, `REQUIRED_NAMES` in `extensions/registry.py` and the three constants in `extensions/contracts.py`.
+
+- **`version.py`: the central release string is now `0.0.15`.**
+
+### Fixed
+
+- **`brisartos/machine/tests/test_components.py`: the header listed a `MemoryTests` class and three scenarios that no longer exist.** The previous release entry stated this stale text had been corrected, but the file as exported still contained it. It is removed now, and the header's scenario list is regenerated from the classes actually present.
+
+### Verification
+
+- The previous release was reconstructed from its project export: all 69 files matched the SHA-256 values in the export manifest (one only after removing the extra trailing newline the export adds to each file block), and `python -B run.py test` on a clean copy gave 271 passed.
+
+- After the changes, on Linux with Python 3.12.15 in a clean copy:
+
+```text
+PASSED: 315 tests in 12 folders
+```
+
+  Per folder: tests 15, common 4, events 7, extensions 43, host 28, kernel 34, language 38, machine 30, services 13, shell 31, storage 41, tools 31.
+
+- `python -B run.py audit` reported PASS with no errors, and `python -B tools/headers.py --check` reported `all headers current`.
+
+- A scripted 25-command console session in memory mode, covering files, a multi-line stored program, settings, snapshots, staging, services, modules, tasks and reload, produced output identical to the previous release apart from the release string. `python -B run.py rom` output was identical. In disk mode, a setting written in one console process was read back by a second process and was present in `data/system/settings.txt`.
+
+Not verified in that environment: Windows or macOS execution, other Python versions, hypervisor or hardware boot, power-loss durability and concurrent-writer behavior.
+
+### Compatibility and residual risk
+
+- Import paths changed with no compatibility shim: `brisartos.kernel.scheduler`, `brisartos.kernel.devices` and `brisartos.kernel.platform` are now `brisartos.machine.scheduler`, `brisartos.machine.devices` and `brisartos.machine.platform`. Code that imports the old paths, or the old `brisartos.kernel.tests.test_components` location, must be updated.
+
+- `brisartos.host.loader.read_manifest` and `brisartos.events.events.LOG_FOLDER` no longer exist. Use `read_manifest_text` with `parse_manifest`, and `LOG_PREFIX` from `brisartos.storage.schema`.
+
+- `ModuleContext.accepting` can no longer be assigned. Callers that set it must call `open()` or `close()`.
+
+- `run.py` no longer contains the test-runner functions. Code that imported them from `run.py` must use `tools/runtests.py` or call `python -B run.py test`.
+
+- No stored-data format changed and no migration is needed. Existing `data/` folders written by the previous release load unchanged.
+
+- The new audit rules can flag out-of-tree code that uses `print` or `input` inside `brisartos/` outside `host/`, or that hard-codes a reserved prefix. They apply to product code, not to loaded modules.
+
+- `host/terminal.py` gives the host boundary one name; it does not isolate anything. Loaded module code is outside the `brisartos/` audit and can still call `print` or `input` directly. The reserved-prefix rule is a literal check and does not detect a prefix assembled from parts.
+
+- `machine/` placement is organizational. The scheduler is still cooperative and in-process with no preemption or timeout, and the device and platform objects are still declarations and text queues, not hardware access.
+
+- `StateFile` writes one file per document. It provides no cross-process locking, multi-file transaction or power-loss durability, and snapshot restore can still apply partially after a backend failure.
+
+- No external dependencies were introduced. BrisartOS remains Python source using project modules and the Python standard library, and still requires a host Python interpreter.
+
+---
+
 ## [0.0.14] - 2026-10-21
 
 ### Added

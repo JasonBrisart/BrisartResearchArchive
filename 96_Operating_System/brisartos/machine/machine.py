@@ -32,6 +32,7 @@ hardware boot and is not a full or self-hosted runtime.
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- brisartos.host.terminal (brisartos/host/terminal.py)
 - brisartos.language.interpreter (brisartos/language/interpreter.py)
 - brisartos.language.parser (brisartos/language/parser.py)
 Standard library: none.
@@ -82,6 +83,7 @@ Run from the repository root.
     assert machine.boot()['boot_attempts'] == 2
 """
 
+from ..host import terminal
 from ..language.interpreter import Interpreter
 from ..language.parser import parse
 
@@ -150,10 +152,10 @@ class SourceROMMachine:
 def main():
     report = SourceROMMachine().boot()
     for line in report['output']:
-        print(line)
-    print('State:', report['state'])
-    print('Hardware boot:', report['hardware_boot'])
-    print('Full Python:', report['full_python'])
+        terminal.write_line(line)
+    terminal.write_line('State: ' + report['state'])
+    terminal.write_line('Hardware boot: ' + str(report['hardware_boot']))
+    terminal.write_line('Full Python: ' + str(report['full_python']))
     return 0
 
 

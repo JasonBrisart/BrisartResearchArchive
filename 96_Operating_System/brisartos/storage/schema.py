@@ -24,26 +24,36 @@ Communication / relationships
 -----------------------------
 Standard library: none.
 Imported by:
+- brisartos/events/events.py
+- brisartos/extensions/api.py
 - brisartos/kernel/kernel.py
 - brisartos/services/archive.py
 - brisartos/services/settings.py
 - brisartos/services/updates.py
-Covered by tests: brisartos/kernel/tests/test_architecture.py.
+- brisartos/storage/state.py
+Covered by tests: brisartos/kernel/tests/test_architecture.py,
+brisartos/services/tests/test_services.py,
+brisartos/storage/tests/test_state.py.
 
 Settings / parameters
 ---------------------
-- DATA_FORMAT = 'brisartos.data.v1' -- Fixed local policy used by the
-  operations documented above.
-- FORMAT_PATH = '/system/state/format.txt' -- Fixed local policy used by the
-  operations documented above.
-- SETTINGS_PATH = '/system/settings.txt' -- Fixed local policy used by the
-  operations documented above.
-- ARCHIVE_PATH = '/system/archive/index.txt' -- Fixed local policy used by the
-  operations documented above.
-- UPDATES_PATH = '/system/updates/index.txt' -- Fixed local policy used by the
-  operations documented above.
-- SYSTEM_PREFIX = '/system' -- Fixed local policy used by the operations
-  documented above.
+- DATA_FORMAT = 'brisartos.data.v1' -- Identifier of the stored-data contract,
+  independent of the release version.
+- FORMAT_PATH = '/system/state/format.txt' -- Marker file checked before any
+  service state is loaded.
+- SETTINGS_PATH = '/system/settings.txt' -- Write-through settings document.
+- ARCHIVE_PATH = '/system/archive/index.txt' -- Persistent index of named
+  user-file snapshots.
+- UPDATES_PATH = '/system/updates/index.txt' -- Persistent index of staged
+  source candidates; never an installer.
+- SYSTEM_PREFIX = '/system' -- Folder holding stored-data state; archive
+  snapshots exclude and preserve it.
+- LOG_PREFIX = '/logs' -- Folder of per-source text logs; the one definition
+  used by events and archive protection.
+- MODULES_PREFIX = '/modules' -- Runtime folder under which each module's own
+  files live; not the project-root modules/ source folder.
+- PROTECTED_PREFIXES = (LOG_PREFIX, SYSTEM_PREFIX) -- Prefixes that archive
+  snapshots exclude and archive restore preserves.
 
 Edge cases
 ----------
@@ -75,6 +85,9 @@ SETTINGS_PATH = '/system/settings.txt'
 ARCHIVE_PATH = '/system/archive/index.txt'
 UPDATES_PATH = '/system/updates/index.txt'
 SYSTEM_PREFIX = '/system'
+LOG_PREFIX = '/logs'
+MODULES_PREFIX = '/modules'
+PROTECTED_PREFIXES = (LOG_PREFIX, SYSTEM_PREFIX)
 
 def initialize(storage):
     if storage.exists(FORMAT_PATH):

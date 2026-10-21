@@ -30,6 +30,7 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.storage.schema (brisartos/storage/schema.py)
+- brisartos.storage.state (brisartos/storage/state.py)
 - version (version.py)
 Standard library: none.
 Imported by:
@@ -73,44 +74,54 @@ Run from the repository root.
     s.stop()
 """
 from version import __version__
-from ..storage.schema import SETTINGS_PATH, envelope, payload
+from ..storage.schema import SETTINGS_PATH
+from ..storage.state import StateFile
+
 
 class Settings:
     def __init__(self, storage=None, encode=None, decode=None):
         self.version = __version__
-        self._storage, self._encode, self._decode = storage, encode, decode
+        self._state = None
+        if storage is not None:
+            if not callable(encode) or not callable(decode):
+                raise ValueError('persistent settings require serialization callbacks')
+            self._state = StateFile(storage, SETTINGS_PATH, 'settings', encode, decode)
         self._values = {}
         self._online = False
-        if storage is not None and (not callable(encode) or not callable(decode)):
-            raise ValueError('persistent settings require serialization callbacks')
+
     def start(self):
-        if self._storage is not None and self._storage.exists(SETTINGS_PATH):
-            values = payload(self._decode(self._storage.read(SETTINGS_PATH)), 'settings')
-            if any(not isinstance(key, str) or not key for key in values):
-                raise ValueError('invalid persisted setting key')
-            self._values = values
+        if self._state is not None:
+            values = self._state.load()
+            if values is not None:
+                if any(not isinstance(key, str) or not key for key in values):
+                    raise ValueError('invalid persisted setting key')
+                self._values = values
         self._online = True
+
     def stop(self):
         self._online = False
+
     def status(self):
         return 'online' if self._online else 'offline'
+
     def _commit(self, values):
-        if self._storage is not None:
-            text = self._encode(envelope('settings', values))
-            self._storage.write(SETTINGS_PATH, text)
-            values = payload(self._decode(text), 'settings')
+        if self._state is not None:
+            values = self._state.save(values)
         self._values = values
+
     def set(self, key, value):
         if not isinstance(key, str) or not key:
             raise ValueError('setting key required')
         values = dict(self._values)
         values[key] = value
         self._commit(values)
+
     def get(self, key, default=None):
         value = self._values.get(key, default)
-        if self._storage is not None and key in self._values:
-            return self._decode(self._encode({'value': value}))['value']
+        if self._state is not None and key in self._values:
+            return self._state.detach({'value': value})['value']
         return value
+
     def delete(self, key):
         if key not in self._values:
             raise KeyError('unknown setting: ' + str(key))
@@ -118,7 +129,8 @@ class Settings:
         value = values.pop(key)
         self._commit(values)
         return value
+
     def snapshot(self):
-        if self._storage is not None:
-            return self._decode(self._encode(self._values))
+        if self._state is not None:
+            return self._state.detach(self._values)
         return dict(self._values)

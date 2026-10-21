@@ -3,20 +3,22 @@ File: brisartos/host/loader.py
 
 Purpose
 -------
-Discover module entries, parse inert manifests and execute approved entry files
-through importlib.
+Discover module entries, read the raw text of an optional manifest and execute
+approved entry files through importlib.
 
 Public interface:
 - module_files(folder) -- Return sorted immediate child module.py entries.
 - load_module(path) -- Execute a Python entry into a fresh module object.
-- read_manifest(path) -- Read and parse manifest.txt without executing module
-  code.
+- read_manifest_text(path) -- Return the text of the manifest.txt beside an
+  entry file, or None when there is none; nothing is parsed or executed.
 
 Design notes:
 
-read_manifest reads only text. The extension registry validates its contents
-before calling load_module. Missing manifests use the documented legacy
-declaration path; they cannot be prevalidated.
+This adapter touches the filesystem and the import system and applies no module
+policy. read_manifest_text returns text exactly as stored;
+brisartos/extensions/manifest.py parses it and the registry validates it before
+load_module is ever called. A missing manifest selects the documented legacy
+declaration path, which cannot be validated before execution.
 
 Communication / relationships
 -----------------------------
@@ -27,27 +29,24 @@ Covered by tests: brisartos/host/tests/test_loader.py.
 
 Settings / parameters
 ---------------------
-- ENTRY_FILE = 'module.py' -- Fixed local policy used by the operations
-  documented above.
-- MANIFEST_FILE = 'manifest.txt' -- Fixed local policy used by the operations
-  documented above.
+- ENTRY_FILE = 'module.py' -- The entry file name looked for in each module
+  folder.
+- MANIFEST_FILE = 'manifest.txt' -- The manifest file name looked for beside an
+  entry file.
 
 Edge cases
 ----------
-Invalid inputs are rejected before the documented operation; backend and
-callback failures propagate unless explicitly collected.
+A missing folder yields no entries. A manifest that is not valid UTF-8 raises
+UnicodeDecodeError to the caller.
 
 - load_module() raises ImportError: "cannot load module: {...}"
-- read_manifest() raises ValueError: "invalid or duplicate manifest field:
-  {...}"
-- read_manifest() raises ValueError: "missing manifest fields: {...}"
-- read_manifest() raises ValueError: "manifest entry must be run"
 
 Known limitations
 -----------------
-- Legacy modules still execute before declaration checks.
+- Legacy modules still execute before their declarations can be checked.
 - Even manifest-approved Python runs as trusted code without isolation or
   signature verification.
+- The manifest text is not size-limited.
 
 Examples
 --------
@@ -55,13 +54,15 @@ Run from the repository root.
 
 ::
 
-    from brisartos.host.loader import module_files
+    from brisartos.host.loader import module_files, read_manifest_text
     assert module_files('/nonexistent/brisartos') == []
+    assert read_manifest_text('/nonexistent/brisartos/module.py') is None
 """
 import importlib.util
 from pathlib import Path
 
 ENTRY_FILE = 'module.py'
+MANIFEST_FILE = 'manifest.txt'
 
 
 def module_files(folder):
@@ -81,28 +82,9 @@ def load_module(path):
     spec.loader.exec_module(module)
     return module
 
-MANIFEST_FILE = 'manifest.txt'
 
-def read_manifest(path):
+def read_manifest_text(path):
     manifest = Path(path).with_name(MANIFEST_FILE)
     if not manifest.is_file():
         return None
-    fields = {}
-    allowed = {'name', 'display_name', 'version', 'author', 'description', 'api', 'api_major', 'api_minor', 'permissions', 'entry'}
-    for raw in manifest.read_text(encoding='utf-8').splitlines():
-        line = raw.strip()
-        if not line or line.startswith('#'):
-            continue
-        key, separator, value = line.partition('=')
-        key, value = key.strip(), value.strip()
-        if not separator or key not in allowed or key in fields:
-            raise ValueError('invalid or duplicate manifest field: ' + key)
-        fields[key] = value
-    if set(fields) != allowed:
-        raise ValueError('missing manifest fields: ' + ', '.join(sorted(allowed - set(fields))))
-    if fields['entry'] != 'run':
-        raise ValueError('manifest entry must be run')
-    fields['api_major'] = int(fields['api_major'])
-    fields['api_minor'] = int(fields['api_minor'])
-    fields['permissions'] = tuple(item.strip() for item in fields['permissions'].split(',') if item.strip())
-    return fields
+    return manifest.read_text(encoding='utf-8')

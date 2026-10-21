@@ -74,7 +74,7 @@ An `Exception` raised by a command becomes the line `error: TYPE: message` and l
 
 Kernel startup and banner printing are now inside the cleanup scope. Kernel itself unwinds failed startup; a still-running kernel is stopped when the console exits. Shutdown errors are retained in kernel.shutdown_errors rather than skipping later cleanup. Non-returning hooks remain outside any timeout guarantee.
 
-The terminal is still read with `input()` and written with `print()`; the device carries the session between them. Relative paths depend on the working directory; the root router supplies the project root when launching it.
+The terminal is read and written through `host/terminal.py`, which wraps the host `input()` and `print()`; the device carries the session between them. Relative paths depend on the working directory; the root router supplies the project root when launching it.
 
 ## Local tests
 

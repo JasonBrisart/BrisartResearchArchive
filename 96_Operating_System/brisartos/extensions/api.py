@@ -13,6 +13,11 @@ Public interface:
   the service registry, the event log and the platform facts.
 - ModuleContext(storage, services, events, platform) -- Bundle those objects;
   the kernel builds one, and a test can build one without a kernel.
+- ModuleContext.accepting -- Property. True while module calls are accepted; it
+  cannot be assigned.
+- ModuleContext.open() -- Start accepting module calls.
+- ModuleContext.close() -- Refuse module calls; the kernel closes the context
+  before startup completes and again during shutdown.
 - class AccessDenied(PermissionError) -- Raised for anything a module did not
   declare; a subclass of the built-in PermissionError.
 - class ModuleAPI -- The view of the system that one module receives, limited
@@ -55,6 +60,7 @@ Depends on (project modules):
 - brisartos.common.names (brisartos/common/names.py)
 - brisartos.extensions.contracts (brisartos/extensions/contracts.py)
 - brisartos.host.system (brisartos/host/system.py)
+- brisartos.storage.schema (brisartos/storage/schema.py)
 Standard library: none.
 Imported by:
 - brisartos/extensions/registry.py
@@ -105,7 +111,7 @@ Run from the repository root.
 
     from brisartos.events.events import EventLog
     from brisartos.extensions.api import AccessDenied, ModuleAPI, ModuleContext
-    from brisartos.kernel.platform import Platform
+    from brisartos.machine.platform import Platform
     from brisartos.services.registry import ServiceRegistry
     from brisartos.storage.storage import Storage
 
@@ -123,6 +129,7 @@ Run from the repository root.
 
 from ..common.names import require_name
 from ..host import system
+from ..storage.schema import MODULES_PREFIX
 from .contracts import service_access
 
 MODULE_ABI = 'brisartos.module.v1'
@@ -151,7 +158,17 @@ class ModuleContext:
         self.services = services
         self.events = events
         self.platform = platform
-        self.accepting = True
+        self._accepting = True
+
+    @property
+    def accepting(self):
+        return self._accepting
+
+    def open(self):
+        self._accepting = True
+
+    def close(self):
+        self._accepting = False
 
 
 class AccessDenied(PermissionError):
@@ -181,7 +198,7 @@ class ModuleAPI:
         self._context.events.record(self.name, message)
 
     def _path(self, filename):
-        return '/modules/' + self.name + self._context.storage.normalize(filename)
+        return MODULES_PREFIX + '/' + self.name + self._context.storage.normalize(filename)
 
     def write_text(self, filename, text):
         self.require('storage')
@@ -196,7 +213,7 @@ class ModuleAPI:
 
     def list_files(self):
         self.require('storage')
-        prefix = '/modules/' + self.name + '/'
+        prefix = MODULES_PREFIX + '/' + self.name + '/'
         return [path[len(prefix):] for path in self._context.storage.list_files(prefix)]
 
     def new_object_id(self):

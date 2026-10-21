@@ -1,5 +1,5 @@
 r"""
-File: brisartos/kernel/devices.py
+File: brisartos/machine/devices.py
 
 Purpose
 -------
@@ -32,11 +32,11 @@ access or hardware drivers.
 Communication / relationships
 -----------------------------
 Depends on (project modules):
-- brisartos.kernel.platform (brisartos/kernel/platform.py)
+- brisartos.machine.platform (brisartos/machine/platform.py)
 Standard library: none.
 Imported by:
 - brisartos/kernel/composition.py
-Covered by tests: brisartos/kernel/tests/test_components.py.
+Covered by tests: brisartos/machine/tests/test_components.py.
 
 Settings / parameters
 ---------------------
@@ -70,7 +70,7 @@ Run from the repository root.
 
 ::
 
-    from brisartos.kernel.devices import DeviceRegistry, TextConsole
+    from brisartos.machine.devices import DeviceRegistry, TextConsole
 
     devices = DeviceRegistry()
     console = TextConsole()

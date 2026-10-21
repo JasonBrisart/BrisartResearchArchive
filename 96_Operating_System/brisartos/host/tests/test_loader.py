@@ -8,7 +8,7 @@ execution results, fresh module objects and propagated load errors.
 
 Verifies: brisartos/host/loader.py.
 
-Contains 5 test case(s) across 1 TestCase class(es).
+Contains 8 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
@@ -35,12 +35,15 @@ LoaderTests:
 - Load module runs the file and returns its namespace.
 - Load module does not share state between loads.
 - Errors in the module reach the caller.
+- Manifest text is none when there is no manifest.
+- Manifest text is returned unparsed and nothing executes.
+- Manifest policy lives in extensions not the loader.
 
 Known limitations
 -----------------
 - Loading executes real Python files; there is nothing to check about untrusted
   code because none is isolated.
-- Passing proves only the 5 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 8 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -96,6 +99,21 @@ class LoaderTests(unittest.TestCase):
         self.make('broken', 'raise RuntimeError("fails on import")\n')
         with self.assertRaises(RuntimeError):
             loader.load_module(self.root / 'broken' / 'module.py')
+
+
+    def test_manifest_text_is_none_when_there_is_no_manifest(self):
+        self.make('demo')
+        self.assertIsNone(loader.read_manifest_text(self.root / 'demo' / 'module.py'))
+
+    def test_manifest_text_is_returned_unparsed_and_nothing_executes(self):
+        marker = self.root / 'ran'
+        self.make('demo', 'from pathlib import Path\nPath(' + repr(str(marker)) + ').touch()\n')
+        (self.root / 'demo' / 'manifest.txt').write_text('name=demo\nnot a valid manifest\n')
+        self.assertEqual(loader.read_manifest_text(self.root / 'demo' / 'module.py'), 'name=demo\nnot a valid manifest\n')
+        self.assertFalse(marker.exists())
+
+    def test_manifest_policy_lives_in_extensions_not_the_loader(self):
+        self.assertFalse(hasattr(loader, 'read_manifest'))
 
 
 if __name__ == '__main__':

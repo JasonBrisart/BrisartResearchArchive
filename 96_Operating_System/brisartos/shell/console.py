@@ -22,6 +22,7 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.host.system (brisartos/host/system.py)
+- brisartos.host.terminal (brisartos/host/terminal.py)
 - brisartos.kernel.kernel (brisartos/kernel/kernel.py)
 - brisartos.shell.commands (brisartos/shell/commands.py)
 - brisartos.shell.shell (brisartos/shell/shell.py)
@@ -49,7 +50,8 @@ without starting a kernel.
 
 Known limitations
 -----------------
-- Host terminal input/output remains built-in input and print.
+- Terminal input and output go through brisartos/host/terminal.py, which still
+  wraps the host input and print.
 - Cleanup hooks have no timeout and final logging can fail; inspect
   kernel.shutdown_errors.
 
@@ -62,7 +64,7 @@ Run from the repository root.
     python -B run.py start --memory
 """
 
-from ..host import system
+from ..host import system, terminal
 from ..kernel.kernel import Kernel
 from .commands import version_text
 from .shell import Shell
@@ -89,26 +91,26 @@ def serve(kernel, shell):
 def main(argv=None):
     argv = system.command_line_arguments() if argv is None else list(argv)
     if argv not in ([], ['--memory']):
-        print(USAGE)
+        terminal.write_line(USAGE)
         return 2
     memory = argv == ['--memory']
     kernel = Kernel(data_root=None if memory else 'data', modules_path='modules')
     try:
         kernel.start()
         shell = Shell(kernel)
-        print(version_text() + ' - storage: ' + ('memory (discarded on exit)' if memory else 'data/'))
-        print('Runs on host Python; this is not a firmware or hypervisor boot. Type help.')
+        terminal.write_line(version_text() + ' - storage: ' + ('memory (discarded on exit)' if memory else 'data/'))
+        terminal.write_line('Runs on host Python; this is not a firmware or hypervisor boot. Type help.')
         for label, reason in sorted(kernel.modules.failures.items()):
-            print('module ' + label + ' not loaded: ' + reason)
+            terminal.write_line('module ' + label + ' not loaded: ' + reason)
         while kernel.state == 'running':
             try:
-                line = input('BrisartOS> ')
+                line = terminal.read_line('BrisartOS> ')
             except (EOFError, KeyboardInterrupt):
-                print()
+                terminal.write_line()
                 break
             kernel.console.feed(line)
             for text in serve(kernel, shell):
-                print(text)
+                terminal.write_line(text)
     finally:
         if kernel.state == 'running':
             kernel.stop()

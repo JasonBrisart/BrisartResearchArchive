@@ -12,7 +12,7 @@ Core kinds are `kernel.started`, `kernel.stopped`, `module.loaded`, `module.reje
 
 ## Persistence and failure semantics
 
-Text lines retain `TIME SOURCE: MESSAGE` in `/logs/SOURCE.log`. Kind/details remain in memory; they are not recoverable as structured records from these text logs. A new instance restarts sequence numbering. Files are unbounded and are not rotated.
+Text lines retain `TIME SOURCE: MESSAGE` in `/logs/SOURCE.log`. Kind/details remain in memory; they are not recoverable as structured records from these text logs. A new instance restarts sequence numbering. Files are unbounded and are not rotated. The `/logs` prefix is `LOG_PREFIX` in `storage/schema.py`, not a constant defined here.
 
 An append exception leaves the in-memory total and recent list unchanged, although the backend may have partially written the line before raising. This is not an atomic transaction between memory and disk, a power-loss guarantee or a thread-safe recorder. Messages are written as supplied, including newlines. Details have no cycle detection or total-size budget.
 

@@ -7,10 +7,10 @@ Exercise module API permission gates, module-local paths, service-specific
 access and declaration validation.
 
 Verifies: brisartos/events/events.py, brisartos/extensions/api.py,
-brisartos/kernel/kernel.py, brisartos/kernel/platform.py,
+brisartos/kernel/kernel.py, brisartos/machine/platform.py,
 brisartos/services/registry.py, brisartos/storage/storage.py.
 
-Contains 12 test case(s) across 1 TestCase class(es).
+Contains 14 test case(s) across 1 TestCase class(es).
 
 Communication / relationships
 -----------------------------
@@ -18,7 +18,7 @@ Depends on (project modules):
 - brisartos.events.events (brisartos/events/events.py)
 - brisartos.extensions.api (brisartos/extensions/api.py)
 - brisartos.kernel.kernel (brisartos/kernel/kernel.py)
-- brisartos.kernel.platform (brisartos/kernel/platform.py)
+- brisartos.machine.platform (brisartos/machine/platform.py)
 - brisartos.services.registry (brisartos/services/registry.py)
 - brisartos.storage.storage (brisartos/storage/storage.py)
 Standard library: unittest.
@@ -49,11 +49,13 @@ ModuleAPITests:
 - Permitted calls.
 - The api works from a context without a kernel.
 - The kernel hands modules a context not itself.
+- Closing the context refuses gated calls and open resumes them.
+- Accepting cannot be assigned directly.
 
 Known limitations
 -----------------
 - Hostile modules are not tested; modules are trusted code by design.
-- Passing proves only the 12 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 14 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -70,7 +72,7 @@ import unittest
 from brisartos.kernel.kernel import Kernel
 from brisartos.events.events import EventLog
 from brisartos.extensions.api import AccessDenied, ModuleAPI, ModuleContext, check_permissions
-from brisartos.kernel.platform import Platform
+from brisartos.machine.platform import Platform
 from brisartos.services.registry import ServiceRegistry
 from brisartos.storage.storage import Storage
 
@@ -162,6 +164,22 @@ class ModuleAPITests(unittest.TestCase):
         self.assertIs(context.services, self.kernel.services)
         self.assertIs(context.events, self.kernel.events)
         self.assertFalse(hasattr(context, 'stop'))
+
+
+    def test_closing_the_context_refuses_gated_calls_and_open_resumes_them(self):
+        context = self.kernel.modules.context
+        api = ModuleAPI(context, 'demo', ('log',))
+        context.close()
+        self.assertFalse(context.accepting)
+        with self.assertRaises(RuntimeError):
+            api.log('x')
+        context.open()
+        self.assertTrue(context.accepting)
+        api.log('x')
+
+    def test_accepting_cannot_be_assigned_directly(self):
+        with self.assertRaises(AttributeError):
+            self.kernel.modules.context.accepting = False
 
 
 if __name__ == '__main__':

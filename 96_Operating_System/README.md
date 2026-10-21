@@ -19,7 +19,7 @@ The console accepts one command per line. Enter `help` to see its registered com
 
 ## Files at this level
 
-`run.py` is the command router. It launches the console, the source-ROM demonstration and maintenance tools in child interpreters. Its test command discovers test folders, applies optional path-substring filters and aggregates results. Child programs run from the project root, even if the router was invoked elsewhere.
+`run.py` is the command router. It launches the console, the source-ROM demonstration and maintenance tools in child interpreters. It is a routing table; its test command launches `tools/runtests.py`, which discovers test folders, applies optional path-substring filters and aggregates results. Child programs run from the project root, even if the router was invoked elsewhere.
 
 `version.py` contains the release string `__version__`. It is imported by version-reporting components; it does not compare versions or migrate stored data.
 
@@ -41,17 +41,17 @@ The console accepts one command per line. Enter `help` to see its registered com
 | `python -B run.py headers` | Refresh syntax-derived header content |
 | `python -B run.py rom` | Execute the source-ROM lifecycle demonstration |
 
-Only `start` forwards extra options to its child program. Test filters that match nothing return status 2. A failing test folder makes the router return status 1. The `-B` flag suppresses bytecode-cache creation; it does not change storage mode.
+Only `start` and `test` forward extra options to their child programs. Test filters that match nothing return status 2. A failing test folder makes the router return status 1. The `-B` flag suppresses bytecode-cache creation; it does not change storage mode.
 
 ## Runtime requirement
 
-This release passed 271 tests across 12 test folders on Python 3.12.15 in a clean local source copy. Compatibility with other interpreter versions is not established by that run. A host Python interpreter remains necessary for every entry point.
+This release passed 315 tests across 12 test folders on Python 3.12.15 in a clean local source copy. Compatibility with other interpreter versions is not established by that run. A host Python interpreter remains necessary for every entry point.
 
 The [architecture page](docs/ARCHITECTURE.md) explains how components connect. The [changelog](docs/CHANGELOG.md) records what changed in each release.
 
 ## Maintainer entry point
 
-Component wiring lives in `brisartos/kernel/composition.py`; lifecycle lives in `kernel.py`. Stored-data schema is independent of release version. New modules should use manifest-first loading; legacy declaration-only entries remain trusted-code compatibility inputs. Module service access returns facades.
+Component wiring lives in `brisartos/kernel/composition.py`; lifecycle lives in `kernel.py`. The scheduler, device queues and platform declarations it assembles live in `brisartos/machine/`; reserved runtime path prefixes and state documents are owned by `brisartos/storage/`. Stored-data schema is independent of release version. New modules should use manifest-first loading; legacy declaration-only entries remain trusted-code compatibility inputs. Module service access returns facades.
 
 Before changing code, establish a baseline with `python -B run.py test`, `python -B run.py audit` and `python -B tools/headers.py --check`. After changes, run header refresh, inspect its diff, rerun tests/audit/check and review the affected README and architecture sections. Passing structural checks does not replace reviewing whether the prose is true.
 

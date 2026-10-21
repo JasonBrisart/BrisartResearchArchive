@@ -25,6 +25,7 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.common.names (brisartos/common/names.py)
+- brisartos.storage.schema (brisartos/storage/schema.py)
 Standard library: none.
 Imported by:
 - brisartos/kernel/composition.py
@@ -34,8 +35,8 @@ brisartos/kernel/tests/test_architecture.py.
 
 Settings / parameters
 ---------------------
-- LOG_FOLDER = '/logs' -- Fixed local policy used by the operations documented
-  above.
+This file defines no constants; the log folder prefix is read from
+brisartos/storage/schema.py.
 
 Edge cases
 ----------
@@ -71,7 +72,7 @@ Run from the repository root.
     assert e.recent()[0]['kind'] == 'kernel.started'
 """
 from ..common.names import require_name
-LOG_FOLDER = '/logs'
+from ..storage.schema import LOG_PREFIX
 
 def _copy(value):
     if isinstance(value, dict):
@@ -98,7 +99,7 @@ class EventLog:
         stamp = self._clock()
         entry = {'sequence': self.total + 1, 'time': stamp, 'source': source,
                  'kind': kind, 'message': message, 'details': details}
-        self._storage.append(LOG_FOLDER + '/' + source + '.log', stamp + ' ' + source + ': ' + message + '\n')
+        self._storage.append(LOG_PREFIX + '/' + source + '.log', stamp + ' ' + source + ': ' + message + '\n')
         self.total += 1
         self._recent.append(entry)
         if len(self._recent) > self.limit:

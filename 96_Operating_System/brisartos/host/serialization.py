@@ -21,7 +21,9 @@ Communication / relationships
 Standard library: json.
 Imported by:
 - brisartos/kernel/composition.py
-Covered by tests: brisartos/kernel/tests/test_architecture.py.
+Covered by tests: brisartos/kernel/tests/test_architecture.py,
+brisartos/services/tests/test_services.py,
+brisartos/storage/tests/test_state.py.
 
 Settings / parameters
 ---------------------
