@@ -1,146 +1,258 @@
 # Brisart APIs Changelog
 
+This changelog records substantial changes to the Brisart APIs, including new capabilities, behavioral changes, compatibility boundaries, security hardening, architectural revisions, and material fixes.
+
 ---
 
 ## v2.0.0
 
-### brisart_codec.py
-- Added `brisart_urlsafe_b64encode()` and `BrisartBase64Error`.
-- Added optional unpadded encoding.
-- Added decoder controls for padding, canonical trailing bits, whitespace handling, and maximum output size.
-- Replaced automatic padding repair and whitespace stripping with explicit Base64 validation.
-- Added bytes-like input validation.
-- Replaced character-by-character encoding and decoding with cached pair tables and byte-translation tables.
+### Release overview
 
-### brisart_hash.py
-- Replaced repeated buffer deletion with offset-based block processing.
-- Reworked SHA-256 compression with inline rotations and eight-round loop processing.
+Introduced the second-generation Brisart Native APIs under `v2/`, alongside the existing `v1/` implementations.
+
+This release replaces permissive or application-specific behavior with more explicit validation, configurable resource limits, expanded interfaces, and revised parsing semantics. Changes affect Base64 decoding, string fingerprinting, decompression, JSON handling, HTML tokenization, robots.txt evaluation, and URL processing.
+
+The separate major-version directory preserves the v1 implementations while allowing consumers to migrate deliberately. v2 is not a behaviorally interchangeable replacement for v1: existing callers must account for changed defaults, rejected inputs, different policy decisions, and changed output representations.
+
+### Changed: `v2/brisart_codec.py`
+
+Reworked Base64 encoding and decoding around explicit input policies rather than v1's automatic whitespace stripping and padding repair.
+
+- Added `brisart_urlsafe_b64encode()` to complement the existing URL-safe decoder.
+- Added the encoder's `padding` option so callers can emit padded or unpadded output.
+- Added decoder padding policies: `"optional"`, `"required"`, and `"forbidden"`.
+- Added `canonical=True` to reject non-zero unused trailing bits.
+- Added `allow_whitespace=False`; callers may explicitly permit removal of ASCII space, tab, carriage return, and line feed.
+- Added `max_output` to reject inputs whose calculated decoded size exceeds the configured limit.
+- Added `BrisartBase64Error`, derived from `ValueError`, for rejected Base64 content.
+- Added explicit handling for `bytes`, `bytearray`, and `memoryview`; textual decoding input must be ASCII.
+- Replaced per-character encoding assembly with cached two-character encoding tables.
+- Replaced dictionary-based character decoding with byte-translation tables.
+
+These changes make accepted input forms more deliberate and reduce reliance on silent normalization.
+
+#### Compatibility and residual limits
+
+Missing padding remains accepted under the default `"optional"` policy. Whitespace and non-zero trailing bits that v1 tolerated may now cause rejection.
+
+Unsupported input types raise `TypeError`; invalid configuration may raise ordinary `ValueError`. Callers must not assume every failure is a `BrisartBase64Error`.
+
+The decoder adds padding checks, but this release does not establish exhaustive rejection of every malformed padding combination. With optional padding, both padded and unpadded representations may remain accepted; `canonical=True` does not establish one unique textual representation.
+
+The implementation remains whole-buffer and is not constant-time. `max_output` is optional and does not bound all input-validation allocations.
+
+### Changed: `v2/brisart_hash.py`
+
+Reworked SHA-256 block processing while retaining the streaming hash-object interface.
+
+- Replaced repeated deletion from the front of the working buffer with offset-based processing of complete input blocks.
+- Retained only the incomplete trailing block between updates.
+- Replaced the previous round loop with inline rotation expressions and eight-round loop groups.
 - Added an empty-input default to `brisart_sha256()`.
-- Changed invalid input handling so values such as `None` raise `TypeError`.
-- Changed final message-length handling to wrap modulo 2^64.
-- Changed `brisart_stable_hash()` from UTF-8 replacement encoding to `surrogatepass`.
+- Made construction validate input even when the supplied value is false-like, preventing values such as `None`, `0`, or an empty string from silently producing an empty-message hash.
+- Added explicit bytes-like input handling.
+- Changed final padding to mask the encoded bit length to 64 bits.
 - Added explicit string validation to `brisart_stable_hash()`.
+- Changed stable-string encoding from UTF-8 `"replace"` to `"surrogatepass"`.
 
-### brisart_inflate.py
-- Added `BrisartInflateError` and `BrisartInflateUnsupported`.
-- Added a configurable decompressed-output limit with a 32 MiB default.
-- Added trailing-data rejection with an `allow_trailing` override.
-- Added `brisart_inflate_prefix()`.
-- Replaced dictionary-based Huffman decoding with flat lookup tables and buffered multi-bit reads.
-- Replaced byte-by-byte back-reference copying with slice-based copying.
-- Added validation for stored-block length complements.
-- Added validation for truncated reads, malformed Huffman tables, invalid dynamic-table counts, repeat overruns, and missing end-of-block codes.
-- Added zlib window-size validation.
-- Changed checksum handling to locate the Adler-32 checksum from the decoded stream boundary.
-- Fixed Adler-32 normalization for empty input with a non-normalized seed.
-- Added Adler-32 seed validation.
+The stable-string change prevents distinct lone-surrogate strings from being collapsed into replacement characters before hashing.
+
+#### Compatibility and residual limits
+
+Ordinary strings without lone surrogates retain the same UTF-8 input bytes. Strings containing lone surrogates can produce different fingerprints from v1. Persisted identifiers, deduplication indexes, or caches derived from those values require migration consideration.
+
+`BrisartHash256` changes its constructor parameter name from `initial_data` to `data`. Callers using `initial_data=` must update their calls.
+
+`update()` continues returning the hash object; this release does not establish complete behavioral equivalence with every `hashlib` interface.
+
+Preserving distinct encoded input bytes does not make SHA-256 collision-free. The implementation is not constant-time or side-channel hardened. The processing changes do not establish a measured performance improvement without reproducible benchmark results.
+
+### Changed and fixed: `v2/brisart_inflate.py`
+
+Reworked raw DEFLATE and zlib decompression to expose stream boundaries, constrain output, and reject additional malformed structures.
+
+- Added `BrisartInflateError`, derived from `ValueError`.
+- Added `BrisartInflateUnsupported`, also derived from `NotImplementedError`, for unsupported preset-dictionary streams.
+- Added `DEFAULT_MAX_OUTPUT`, set to 32 MiB, and configurable `max_output` arguments.
+- Added default trailing-data rejection with an `allow_trailing` override.
+- Added `brisart_inflate_prefix()`, returning decompressed bytes and the ending byte offset of one raw DEFLATE stream.
 - Added an optional starting position to `BrisartBitReader`.
+- Replaced dictionary-based Huffman decoding with flat lookup tables and buffered multi-bit reads.
+- Replaced byte-by-byte LZ77 copying with slices for non-overlapping references and repeated-slice expansion for overlapping references.
+- Added stored-block `LEN`/`NLEN` complement validation.
+- Added checks for truncated reads, oversubscribed or unsupported incomplete Huffman tables, invalid dynamic-table counts, repeat overruns, and missing end-of-block codes.
+- Added zlib window-size-field validation.
+- Changed checksum extraction to use the decoded stream boundary rather than assuming the final four input bytes contain the checksum.
+- Added unsigned 32-bit Adler-32 seed validation.
+- Fixed Adler-32 normalization for empty input with a non-normalized seed.
 
-### brisart_json.py
-- Replaced recursive parsing and serialization with explicit work stacks.
-- Added configurable nesting-depth limits.
-- Added a document-length limit.
-- Added a numeric-literal length limit.
-- Added UTF-8 bytes-like input support.
-- Tightened number parsing to reject leading zeros, incomplete fractions, incomplete exponents, non-ASCII digits, and floating-point overflow.
-- Added exact four-digit hexadecimal validation for Unicode escapes.
-- Changed duplicate object keys to errors by default, with `first` and `last` handling available as options.
-- Changed NaN and Infinity to errors by default with optional support through `allow_nan`.
-- Changed lone Unicode surrogates to errors by default with an opt-in override.
+These changes distinguish a complete stream from surrounding data and constrain decompressed output rather than accepting unbounded expansion by default.
+
+#### Compatibility and residual limits
+
+Streams producing more than 32 MiB now require an explicitly increased limit or `max_output=None`. Inputs with trailing bytes require `allow_trailing=True` or deliberate prefix decoding.
+
+Previously tolerated malformed streams may now fail. Disabling checksum comparison still requires checksum bytes to be present.
+
+The output cap is not a complete process-memory or execution-time budget. Input copies, decoding tables, temporary allocations, and repeated calls remain outside that guarantee. Literal output is checked immediately after appending, rather than every output write being checked beforehand.
+
+The interface remains whole-buffer. gzip framing, preset dictionaries, and incremental output remain unsupported.
+
+### Changed: `v2/brisart_json.py`
+
+Replaced recursive parsing and serialization with explicit work stacks and introduced stricter defaults.
+
+- Added a default nesting-depth limit of 100.
+- Added a default parsing limit of 64 Mi characters.
+- Added a 4,300-character numeric-literal limit.
+- Added UTF-8 `bytes`, `bytearray`, and `memoryview` input.
+- Tightened numeric scanning to reject leading zeros, incomplete fractions or exponents, non-ASCII digits, and floating-point overflow.
+- Added exact four-ASCII-hex-digit validation for Unicode escapes.
+- Changed duplicate object keys to errors by default; `"first"` and `"last"` policies are available.
+- Changed NaN and Infinity parsing and serialization to require `allow_nan=True`.
+- Changed lone-surrogate handling to rejection by default, with an explicit override.
 - Added circular-reference detection during serialization.
-- Changed object serialization to reject non-string keys instead of stringifying them.
-- Added `ensure_ascii`.
-- Added configurable separators.
-- Added string-based indentation support.
+- Changed serialization to reject non-string object keys instead of converting them to strings.
+- Added `ensure_ascii`, configurable separators, and whitespace-string indentation.
 - Added indentation and separator validation.
 - Changed serialization to escape U+2028 and U+2029.
-- Expanded `BrisartJSONDecodeError` with `msg`, `pos`, `lineno`, and `colno`.
-- Added optimized string scanning and scalar-container serialization paths.
+- Expanded `BrisartJSONDecodeError` with `msg`, `pos`, `lineno`, and `colno`, retaining `position`.
+- Added string-scanning and scalar-container serialization fast paths.
 
-### brisart_markup.py
-- Replaced regular-expression parsing with an index-based, quote-aware tokenizer.
-- Reworked input buffering to avoid repeatedly slicing and rescanning incomplete input.
-- Changed tag and attribute name normalization to ASCII-only lowercasing.
-- Changed attribute whitespace handling to HTML-defined whitespace.
+These changes reduce ambiguous interpretation and replace interpreter-recursion dependence with explicit container tracking.
+
+#### Compatibility and residual limits
+
+v1 documents containing duplicate keys, non-finite numeric tokens, lone surrogates, or newly rejected numeric forms may no longer load with default settings.
+
+`duplicate_keys="last"`, `allow_nan=True`, and `allow_lone_surrogates=True` restore selected permissive behaviors, not complete v1 compatibility.
+
+Non-string dictionary keys must be converted deliberately before serialization. Serialized text may differ because of escaping and formatting changes even when its decoded value is equivalent.
+
+The document-length limit is checked after bytes input is decoded and therefore is not an input-allocation ceiling. Serialization has no overall output-size cap. Empty-container serialization also uses a fast path, so the depth setting should not be described as an independently proven universal resource boundary.
+
+Streaming, custom encoders, and object hooks remain unsupported.
+
+### Changed: `v2/brisart_markup.py`
+
+Removed regular-expression-based tag and attribute recognition and replaced the v1 scanner with an index-based, quote-aware tokenizer.
+
+- Changed tag scanning so `>` inside a quoted attribute value does not prematurely terminate the tag.
+- Reworked buffering to reduce repeated concatenation, slicing, and rescanning of incomplete constructs.
+- Changed tag and attribute normalization from Unicode case folding to ASCII-only lowercasing.
+- Changed attribute separators to HTML-defined whitespace.
 - Changed duplicate attributes so the first occurrence is retained.
-- Replaced the original limited named-entity table with expanded HTML character-reference data.
-- Added legacy semicolon-less character-reference handling.
-- Added attribute-specific character-reference decoding.
-- Added HTML numeric-character-reference replacement behavior.
-- Separated raw-text and RCDATA processing.
-- Expanded raw-text element handling.
-- Added `<plaintext>` handling.
-- Changed raw-text handling so character references are not decoded inside elements such as `<script>` and `<style>`.
-- Changed RCDATA handling so references are decoded inside `<textarea>` and `<title>`.
-- Added stricter matching for raw-text and RCDATA closing tags.
-- Added `handle_comment()`.
-- Added `handle_decl()`.
-- Added `reset()`.
-- Changed handling of incomplete tags and comments.
-- Changed self-closing-tag handling.
-- Added NUL replacement handling.
-- Changed incremental parsing so text is buffered across `feed()` boundaries before character-reference decoding.
+- Replaced the limited entity table with expanded embedded character-reference data.
+- Added legacy semicolon-less references and attribute-specific decoding through `brisart_unescape(..., attribute=True)`.
+- Added numeric-reference replacement and filtering tables.
+- Separated raw-text handling from RCDATA handling.
+- Expanded raw-text elements and added `plaintext` handling.
+- Stopped decoding character references inside raw-text elements while retaining configurable decoding in RCDATA.
+- Tightened matching of raw-text and RCDATA closing tags.
+- Added `handle_comment()`, `handle_decl()`, and `reset()`.
+- Revised incomplete-tag, comment, declaration, and self-closing-tag handling.
+- Added NUL replacement in tag names, attribute names, and attribute values.
+- Buffered ordinary text across `feed()` boundaries before character-reference decoding.
 
-### brisart_robots.py
-- Replaced first-matching-rule behavior with longest-matching-rule evaluation.
-- Added `*` wildcard matching.
-- Added terminal `$` matching.
+These changes address cases where naive scanning or normalization could make extracted attributes and text differ from the intended HTML interpretation.
+
+#### Compatibility and residual limits
+
+Callback contents, callback timing, duplicate attributes, entity expansion, malformed-input handling, and raw-text output can differ from v1. Consumers must not depend on one data callback per input chunk.
+
+The implementation remains a tokenizer, not a browser-equivalent tree builder. It does not implement complete script-data states, foreign-content handling, encoding sniffing, or implied-tag repair.
+
+The token stream is not a security sanitizer. Buffering improvements do not impose a document-size or retained-text limit.
+
+### Changed: `v2/brisart_robots.py`
+
+Replaced v1's first-matching-rule policy with longest-pattern matching and revised group selection.
+
+- Added `*` wildcard matching and terminal `$` anchoring.
 - Changed equal-length Allow/Disallow conflicts so Allow wins.
-- Replaced substring user-agent matching with product-token matching.
-- Changed matching groups so applicable groups can be combined.
-- Changed blank-line handling so blank lines no longer discard or split groups.
-- Added internal URL path and query normalization.
-- Removed the dependency on `brisart_url.py`.
-- Changed percent-encoding handling so encoded reserved characters remain distinct during rule matching.
-- Added robots.txt input-size limits.
-- Added rule-count limits.
-- Added line-length limits.
-- Added target path/query length limits.
-- Added `BrisartRobotsPolicy.for_status()`.
-- Added `mode`.
-- Added `truncated`.
-- Added `rule_count`.
-- Changed `parse()` to accept text, bytes-like values, or iterables of lines.
+- Replaced substring user-agent matching with normalized product-token matching.
+- Combined applicable named groups, falling back to wildcard groups when no named group applies.
+- Changed blank lines and comments so they do not discard or split groups.
+- Added internal path/query normalization and removed the runtime dependency on the URL module.
+- Preserved encoded reserved characters as distinct from literal reserved characters.
+- Expanded `parse()` to accept text, bytes-like input, or iterables of lines.
 - Added UTF-8 BOM handling.
-- Added bounded iterable parsing.
-- Expanded crawl-delay handling to accept non-negative decimal values.
-- Added a maximum crawl-delay value.
-- Added caching of applicable rules.
+- Added input-budget, rule-count, line-length, and target-length controls.
+- Added `mode`, `truncated`, and `rule_count` inspection.
+- Added `BrisartRobotsPolicy.for_status()`.
+- Expanded crawl-delay parsing to non-negative decimals, capped at 86,400 seconds.
+- Added bounded caching of applicable rules.
 
-### brisart_url.py
-- Added URL input validation.
-- Added stripping of leading and trailing C0 controls and spaces.
-- Added removal of tabs, carriage returns, and line feeds before parsing.
-- Restricted scheme parsing to ASCII syntax.
-- Changed scheme and hostname case normalization to ASCII-only lowercasing.
-- Added stricter authority validation.
-- Added the `port` property with decimal and range validation.
-- Added explicit authority, query, and fragment presence tracking.
-- Changed URL reconstruction to preserve empty `?` and `#` delimiters.
-- Added iteration to `BrisartSplitResult`.
-- Added equality and hashing to `BrisartSplitResult`.
-- Expanded `brisart_urlunsplit()` to support five-component sequences.
-- Added reconstruction protection for paths that could otherwise be reinterpreted as schemes or authorities.
-- Reworked RFC 3986 dot-segment removal.
-- Reworked relative-reference resolution.
-- Corrected trailing-slash preservation during dot-segment resolution.
-- Changed empty-reference handling so the base fragment is not incorrectly retained.
-- Added configurable UTF-8 error handling to `brisart_quote()`.
-- Added configurable UTF-8 error handling to `brisart_unquote()`.
+These changes make policy evaluation less dependent on rule order and provide explicit handling for unavailable or failed robots.txt responses.
+
+#### Compatibility and residual limits
+
+The same policy and URL can produce a different decision from v1. Migration requires reviewing expected crawl decisions, not merely checking method signatures.
+
+`for_status()` parses successful responses when content is supplied, denies HTTP 429 and server-error or unusable statuses, and allows unresolved redirects and other 4xx responses. This is the implemented policy, not a claim of exhaustive RFC conformance.
+
+The `max_bytes` budget counts bytes for bytes-like input but characters for text and decoded iterable input. It is not uniformly a UTF-8 byte limit.
+
+Truncation or ignored overlong lines can omit restrictive rules. Callers must inspect `truncated` and apply their own acceptance policy rather than treating every limited parse as fail-closed.
+
+Fetching, redirect resolution, caching, and origin association remain caller responsibilities. robots.txt evaluation is advisory, not access control.
+
+### Changed and fixed: `v2/brisart_url.py`
+
+Reworked URL decomposition, reconstruction, quoting, and reference resolution.
+
+- Added explicit input-type validation, retaining `None` as an empty URL.
+- Added trimming of leading/trailing C0 controls and spaces and removal of tabs, carriage returns, and line feeds.
+- Restricted scheme recognition and case normalization to ASCII rules.
+- Added stricter authority inspection through `hostname` and the new `port` property.
+- Added authority, query, and fragment presence flags.
+- Preserved empty `?` and `#` delimiters during split/reconstruction.
+- Added iteration, equality, and hashing to `BrisartSplitResult`.
+- Expanded `brisart_urlunsplit()` to accept five-component sequences.
+- Added reconstruction protection against paths being reinterpreted as schemes or authorities.
+- Reworked dot-segment removal and relative-reference resolution.
+- Corrected trailing-slash handling and changed empty-reference resolution so the base fragment is not retained.
+- Added configurable UTF-8 error handling to quoting and unquoting.
 - Added cached quoting tables.
-- Added mapping support to `brisart_urlencode()`.
-- Changed bytes handling in `brisart_urlencode()` so bytes are encoded directly instead of through their string representation.
-- Added a configurable query-field limit with a default of 1,000 fields.
+- Added mapping input to `brisart_urlencode()`.
+- Changed form encoding to encode bytes directly instead of encoding their string representation.
+- Added a default query-field limit of 1,000.
 
-### Shared
-- Removed `from __future__ import annotations`.
-- Removed `typing` imports.
-- Removed the `re` dependency from `brisart_markup.py`.
-- Removed the sibling-module dependency from `brisart_robots.py`.
-- Removed embedded `_self_test()` functions.
-- Removed direct-execution self-test blocks.
-- Changed module header paths from `brisart_ai/native/` to `brisart_native/`.
-- Rewrote the module documentation to describe each v2 implementation's actual interfaces, parameters, edge cases, limitations, and examples.
+These changes preserve more URL structure and make ambiguous authority handling visible to callers.
+
+#### Compatibility and residual limits
+
+Cleaning, joining, quoting, and reconstruction can produce different results from v1. Quoting now defaults to strict UTF-8 encoding rather than replacement encoding.
+
+Splitting does not itself reject every malformed authority. Callers must inspect `hostname` and handle `port` errors; a returned split object is not proof that a URL is safe to fetch.
+
+The implementation does not provide complete WHATWG parsing, IDNA processing, IP-address validation, or destination authorization.
+
+`BrisartSplitResult` remains mutable despite exposing hashing. Callers must not mutate instances while using them as dictionary keys or set members.
+
+Query-field limits do not bound total query length or all decoding allocations.
+
+### Changed: shared implementation and documentation
+
+- Removed `typing` imports and postponed-annotation imports from the v2 implementations.
+- Removed the markup module's `re` dependency.
+- Removed the robots module's sibling-module import.
+- Made all seven v2 modules import-free and independently reusable at the module level.
+- Removed embedded `_self_test()` functions and direct-execution self-test blocks.
+- Rewrote six-section module headers to describe interfaces, parameters, edge cases, limitations, and examples.
+- Changed header paths and examples from the earlier application-specific namespace to `brisart_native`.
+
+The supplied directory layout remains `v1/` and `v2/`; the `brisart_native` examples do not establish an installed package or consumer import mechanism.
+
+The headers reference external tests and measured benchmarks, but those artifacts and execution results are not included in the supplied comparison. Those statements are not promoted here into confirmed release results. Removing embedded tests does not establish replacement test coverage.
+
+### Compatibility boundary
+
+v2 introduces intentional behavioral and interface changes. Consumers must select the intended major-version implementation explicitly and regression-test their own inputs, persisted data, and error handling before migration.
+
+Keeping v1 and v2 in separate directories preserves source separation; it does not automatically provide dependency pinning, import isolation, rollback, or ecosystem-wide compatibility.
+
+This entry records source-visible changes and remaining limits. It does not establish exhaustive specification conformance, security certification, platform coverage, performance gains, or successful integration with every Brisart consumer.
 
 ---
 
