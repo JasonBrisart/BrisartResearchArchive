@@ -57,46 +57,6 @@ BrisartOS remains a host-Python operating environment. No firmware boot, indepen
 
 - **`brisartos/machine/tests/test_components.py`: the header listed a `MemoryTests` class and three scenarios that no longer exist.** The previous release entry stated this stale text had been corrected, but the file as exported still contained it. It is removed now, and the header's scenario list is regenerated from the classes actually present.
 
-### Verification
-
-- The previous release was reconstructed from its project export: all 69 files matched the SHA-256 values in the export manifest (one only after removing the extra trailing newline the export adds to each file block), and `python -B run.py test` on a clean copy gave 271 passed.
-
-- After the changes, on Linux with Python 3.12.15 in a clean copy:
-
-```text
-PASSED: 315 tests in 12 folders
-```
-
-  Per folder: tests 15, common 4, events 7, extensions 43, host 28, kernel 34, language 38, machine 30, services 13, shell 31, storage 41, tools 31.
-
-- `python -B run.py audit` reported PASS with no errors, and `python -B tools/headers.py --check` reported `all headers current`.
-
-- A scripted 25-command console session in memory mode, covering files, a multi-line stored program, settings, snapshots, staging, services, modules, tasks and reload, produced output identical to the previous release apart from the release string. `python -B run.py rom` output was identical. In disk mode, a setting written in one console process was read back by a second process and was present in `data/system/settings.txt`.
-
-Not verified in that environment: Windows or macOS execution, other Python versions, hypervisor or hardware boot, power-loss durability and concurrent-writer behavior.
-
-### Compatibility and residual risk
-
-- Import paths changed with no compatibility shim: `brisartos.kernel.scheduler`, `brisartos.kernel.devices` and `brisartos.kernel.platform` are now `brisartos.machine.scheduler`, `brisartos.machine.devices` and `brisartos.machine.platform`. Code that imports the old paths, or the old `brisartos.kernel.tests.test_components` location, must be updated.
-
-- `brisartos.host.loader.read_manifest` and `brisartos.events.events.LOG_FOLDER` no longer exist. Use `read_manifest_text` with `parse_manifest`, and `LOG_PREFIX` from `brisartos.storage.schema`.
-
-- `ModuleContext.accepting` can no longer be assigned. Callers that set it must call `open()` or `close()`.
-
-- `run.py` no longer contains the test-runner functions. Code that imported them from `run.py` must use `tools/runtests.py` or call `python -B run.py test`.
-
-- No stored-data format changed and no migration is needed. Existing `data/` folders written by the previous release load unchanged.
-
-- The new audit rules can flag out-of-tree code that uses `print` or `input` inside `brisartos/` outside `host/`, or that hard-codes a reserved prefix. They apply to product code, not to loaded modules.
-
-- `host/terminal.py` gives the host boundary one name; it does not isolate anything. Loaded module code is outside the `brisartos/` audit and can still call `print` or `input` directly. The reserved-prefix rule is a literal check and does not detect a prefix assembled from parts.
-
-- `machine/` placement is organizational. The scheduler is still cooperative and in-process with no preemption or timeout, and the device and platform objects are still declarations and text queues, not hardware access.
-
-- `StateFile` writes one file per document. It provides no cross-process locking, multi-file transaction or power-loss durability, and snapshot restore can still apply partially after a backend failure.
-
-- No external dependencies were introduced. BrisartOS remains Python source using project modules and the Python standard library, and still requires a host Python interpreter.
-
 ---
 
 ## [0.0.14] - 2026-10-21
