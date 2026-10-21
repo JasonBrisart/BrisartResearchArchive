@@ -4,6 +4,93 @@ This changelog records substantial changes to the Brisart APIs, including new ca
 
 ---
 
+## v3.0.0
+
+### Release overview
+
+Introduced the third-generation Brisart Native APIs under `v3/`, alongside the existing `v1/` and `v2/` implementations.
+
+This release does two things. It closes five residual limits recorded in the v2.0.0 entry, one of which turned out to be a policy bug: a robots.txt line cut by the size budget was parsed as a shorter, broader rule. It also adds the standard-library replacements v2 did not cover: Base32/Base32hex/Base16, SHA-224, HMAC and digest comparison, CRC-32 and gzip decoding, a DEFLATE/zlib/gzip compressor, and an RFC 4180 CSV reader and writer. The compressor completes the zero-import compression path in both directions, which v2 had only for decoding.
+
+All nine v3 modules import nothing, as in v2. The two new modules (`brisart_deflate.py`, `brisart_csv.py`) follow the same rules: one file each, no sibling imports, six-section headers.
+
+Everything v3 inherits from v2 behaves as v2 did except where this entry says otherwise. That is checked by a test that feeds the same random and hostile inputs to both versions and requires identical results.
+
+Every "v2 did X" statement below carries a probe ID. `v3/tests/v2_probe.py` loads `v2/` and `v3/` and reproduces each one, so the claims can be checked rather than taken on trust.
+
+No stored data format is involved. There is no migration.
+
+### Security
+
+- **`v3/brisart_robots.py`: a line cut by the size budget is dropped, not parsed (V3).** When `parse()` truncated input at `max_bytes`, v2 parsed the partial last line. A cut-off `Allow: /public/reports/only` became `Allow: /public/r`, a broader rule that opened paths the site had not allowed. The probe reproduces this: with the budget ending 15 characters before the end of that line, v2 allows `/public/x` under a `Disallow: /` policy. v3 drops a partial final line whole, for str and bytes input; iterable input was already cut at whole lines. A cut-off Disallow line is also dropped. That is not fail-closed, so callers must still inspect `truncated`, as the v2 entry recorded.
+
+- **`v3/brisart_robots.py`: the `max_bytes` budget counts UTF-8 bytes for every input form (V2).** v2 counted bytes for bytes input but characters for str and line-iterable input, so a str of multi-byte characters could exceed the stated budget by up to four times. The probe parses 100 lines of three euro signs (21 bytes per line) under a 224-byte budget: v2 keeps 14 rules (it counted 224 characters, about 300 bytes), v3 keeps the 10 that fit. ASCII input is unaffected.
+
+### Fixed
+
+- **`v3/brisart_json.py`: oversized bytes input is refused before it is decoded (V1).** v2 applied `max_length` only after decoding bytes to str, so a very large bytes argument was fully decoded, and any decoding error was reported, before the size check ran. v3 first rejects bytes input longer than `4 * max_length`. UTF-8 needs at most 4 bytes per character, so no input this check rejects could have passed the character limit. Input within that bound is decoded and checked exactly as before. The probe passes 1,202 bytes ending in an invalid byte with `max_length=100`: v2 reports the UTF-8 error, v3 reports the size limit.
+
+- **`v3/brisart_url.py`: `BrisartSplitResult` is immutable and type-checked (V4, V5).** v2's result object defined `__hash__` but allowed attribute assignment, so mutating a result already used as a dictionary key or set member silently broke the lookup. The v2 entry recorded this as a caller obligation. In v3, assignment and deletion raise `AttributeError`. A new `replace(**components)` method returns a modified copy; when it changes the query, fragment or netloc, the matching "present" flag follows the new value unless given explicitly. The constructor also now requires str components; v2 accepted any value, so a non-str path surfaced only later as an unrelated error.
+
+- **`v3/brisart_inflate.py`: the output cap is checked before a literal byte is written.** v2 appended a literal and then compared the length with `max_output`, contradicting its own header ("every write is checked ... before it happens"). Outputs and accept/reject decisions are identical, and the extra byte was never returned, so this has no probe; the header claim is now accurate.
+
+### Added
+
+- **`v3/brisart_codec.py`: Base32, Base32hex and Base16 (RFC 4648 sections 6-8) (A1).** New functions: `brisart_b32encode`, `brisart_b32decode`, `brisart_b16encode` and `brisart_b16decode`. A new exception, `BrisartBase32Error`, subclasses `BrisartBase64Error` and therefore `ValueError`. Decoding is strict in the same way as v2's Base64:
+  - Only the valid group remainders (2, 4, 5 or 7 characters) are accepted, with exactly the matching padding count.
+  - Trailing bits must be zero while `canonical=True`.
+  - Characters outside the alphabet are rejected.
+  - Base16 validates before calling `bytes.fromhex`, so the whitespace `fromhex` would skip is never accepted.
+
+  Padding defaults to `"required"` for Base32 and case-sensitive matching for both, as in `base64.b32decode` and `b16decode`. `casefold=True` and `padding="optional"` relax these.
+
+- **`v3/brisart_hash.py`: SHA-224, HMAC and digest comparison (A2).**
+  - `BrisartHash224` and `brisart_sha224` (FIPS 180-4 section 6.3) share the SHA-256 core with their own IV. `copy()` now preserves the hash class.
+  - `BrisartHMAC` and `brisart_hmac` implement RFC 2104 over SHA-256 or SHA-224, with `update()`, `digest()`, `hexdigest()` and `copy()`. A str key or an unsupported `digestmod` such as `"md5"` raises.
+  - `brisart_compare_digest(a, b)` returns the same results and enforces the same type rules as `hmac.compare_digest`, without returning early at the first difference.
+
+- **`v3/brisart_inflate.py`: CRC-32 and gzip decoding (A3).**
+  - `brisart_crc32(data, value=0)` matches `zlib.crc32`.
+  - `brisart_gzip_decompress` decodes RFC 1952 members. It validates the magic bytes, method, reserved flag bits, the bounds of the extra/name/comment fields, the optional header CRC16, the output CRC-32 and ISIZE. Concatenated members are joined, as `gzip.decompress` does, and `max_output` applies to their total.
+  - It is stricter than `gzip.decompress` (CPython 3.12) in three documented ways: it checks FHCRC, which `gzip` skips; it rejects reserved flag bits, which `gzip` ignores; and it rejects trailing NUL padding, which `gzip` accepts. `allow_trailing=True` and `verify_checksum=False` relax the trailing and checksum checks.
+
+- **`v3/brisart_deflate.py`: a DEFLATE compressor with zlib and gzip framing (A4).** The new module provides `brisart_deflate`, `brisart_zlib_compress` and `brisart_gzip_compress`, with levels 0-9 and `DEFAULT_LEVEL = 6`.
+  - Matches are found with a 32 KiB hash-chain window and lazy matching from level 4 upward, using zlib's per-level table plus its TOO_FAR rule for distant 3-byte matches.
+  - Each block is written as whichever of stored, fixed-Huffman or dynamic-Huffman is smallest. Dynamic codes use package-merge (optimal under the 15-bit and 7-bit limits) and run-length-encoded code lengths.
+  - Output is deterministic. The gzip header records mtime 0 by default, no file name, and OS 255 ("unknown"), so archives do not reveal the host or the time of compression.
+
+- **`v3/brisart_csv.py`: an RFC 4180 CSV reader and writer (A5).** The new module provides `brisart_csv_reader`, `brisart_csv_loads`, `brisart_csv_dumps`, `BrisartCSVError` (which carries `line` and `column`) and `DEFAULT_MAX_FIELD_SIZE`.
+  - Reading agrees with `csv.reader(strict=True)` except that a quote inside an unquoted field is rejected by default (`strict_quotes=False` accepts it).
+  - Fields are limited to 131,072 characters (as in `csv.field_size_limit`) and `max_rows` is optional. Scanning uses cached `str.find` positions, so reading stays linear even when a separator never occurs.
+  - Writing matches `csv.writer` with `QUOTE_MINIMAL` or `QUOTE_ALL`. It refuses values other than str, int, float, bool and None instead of calling `str()` on them, and can optionally prefix formula-like fields with `'` to mitigate CSV injection (`escape_formulas=True`; off by default because it changes the data).
+
+- **`v3/tests/`: 142 tests, a v2 probe and a v2-equivalence check.**
+  - Per-module tests: `test_codec.py` (17), `test_hash.py` (15), `test_inflate.py` (15), `test_deflate.py` (13), `test_json.py` (11), `test_url.py` (17), `test_robots.py` (13), `test_markup.py` (12) and `test_csv.py` (9).
+  - `test_v2_compat.py` (7) requires v2 and v3 to agree on random and hostile inputs for every behaviour this entry does not change.
+  - `test_standards.py` (13) enforces zero imports, six-section headers, runnable header examples, and that this entry names every module and probe.
+  - `v2_probe.py` reproduces probes V1-V5 and A1-A5.
+  - The test suite written for v2 was not in this repository. These files are new and run against `v3/` and `v2/` in place.
+
+### Changed
+
+- **`v3/brisart_markup.py` is unchanged from v2 except for its header.** Its code is byte-identical to `v2/brisart_markup.py`; only the header's file path, example imports and test references changed.
+- **Header paths and examples.** All module headers read `File: v3/...` and their examples import directly (`from brisart_json import ...`) with the `v3/` folder on `sys.path`, matching this repository's `v1/` / `v2/` / `v3/` layout instead of the earlier `brisart_native` package path.
+- **Headers updated for the new behaviour and measured costs.** These cover Base32/Base16, SHA-224/HMAC, CRC-32/gzip, the robots budget and partial-line rule, the JSON bytes bound, and URL immutability. Every speed figure in a v3 header comes from a measurement on CPython 3.12.
+
+### Compatibility and residual risk
+
+- **Inherited behaviour.** For the seven modules inherited from v2, behaviour is unchanged apart from the items under Security and Fixed. `test_v2_compat.py` checks this on sampled inputs; it is not a proof.
+- **`BrisartSplitResult` is now immutable.** Code that assigned to `.path`, `.query` or another attribute must use `replace()`. Code that passed non-str components to the constructor now gets `TypeError`.
+- **robots.txt under a budget.** A policy parsed under a size budget can contain fewer rules than in v2 when the input contains multi-byte characters or is cut mid-line. Truncation is still not fail-closed in either direction: inspect `truncated` and apply your own policy.
+- **JSON bytes errors.** Very large bytes input to `brisart_loads` now fails with the size-limit error instead of a UTF-8 error. Both are `BrisartJSONDecodeError`.
+- **Compressor output is not zlib's.** Compressed streams are valid and decode everywhere tested, but they are not byte-identical to zlib's output; never compare compressed bytes across implementations. The compressor is slow: avoid levels 6-9 on large or short-token text, and use levels 1-3 for bulk data.
+- **gzip strictness.** `brisart_gzip_decompress` rejects some files `gzip.decompress` accepts (bad header CRC, reserved flag bits, trailing NUL padding). Header fields (name, comment, mtime) are skipped, not returned.
+- **`brisart_compare_digest` is not constant-time.** It avoids an early exit, but CPython makes no constant-time guarantee; prefer `hmac.compare_digest` where a timing attacker is realistic. SHA-224, SHA-256 and HMAC remain reference implementations, not hardened ones.
+- **CSV limits.** Formula escaping is a mitigation, not a guarantee, and it changes the data. The CSV module has no dialect sniffing, escapechar or streaming file input.
+- **Dependencies.** No external dependencies were introduced. Every module requires only a Python interpreter.
+
+---
+
 ## v2.0.0
 
 ### Release overview
