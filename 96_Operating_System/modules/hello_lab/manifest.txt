@@ -1,0 +1,10 @@
+name=hello_lab
+display_name=Hello Lab
+version=runtime
+author=Jason Brisart
+description=Demonstrates identifier generation, file writing, settings and logging.
+api=brisartos.module
+api_major=1
+api_minor=0
+permissions=log,storage,object_id,service:settings
+entry=run

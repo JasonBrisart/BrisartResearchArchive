@@ -1,6 +1,6 @@
 # Hello Lab Module
 
-`module.py` demonstrates identifier generation, a module-local file write, a settings update and a log message.
+`manifest.txt` declares compatibility and permissions before import. `module.py` demonstrates identifier generation, a module-local file write, a settings update and a log message.
 
 ## What the entry actually does
 
@@ -16,13 +16,13 @@
 
 ## Metadata in `module.py`
 
-The registry name is `hello_lab`, the display name is `Hello Lab`, and the ABI is `brisartos.module.v1`. The module version is imported from the root-level version module. Author and description are stored as metadata alongside those declarations.
+The registry name is `hello_lab`, the display name is `Hello Lab`, and the legacy ABI is `brisartos.module.v1`. The manifest is authoritative and requires API `brisartos.module` major 1, minor 0. The module version is imported from the root-level version module. Author and description are stored as metadata alongside those declarations.
 
 ## Repeated runs and failures
 
 Each run replaces the same file and settings key with a newly generated identifier. The module's own log call appends a message; registry start/finish records are outside this entry body.
 
-The file path returned by the API is `/modules/hello_lab/hello.txt`. Its persistence depends on the supplied storage backend. The settings value belongs to the live settings object and is not saved by this module.
+The file path returned by the API is `/modules/hello_lab/hello.txt`. Its persistence depends on the supplied storage backend. The settings value belongs to the live settings object and is persisted by the composed settings service in disk mode.
 
 The entry catches no exceptions. If identifier generation, writing, service access or logging fails, the exception propagates. Earlier successful effects are not rolled back. Removing a declared permission can therefore leave partial effects before a later call is refused.
 

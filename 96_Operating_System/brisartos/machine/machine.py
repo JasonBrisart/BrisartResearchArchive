@@ -1,5 +1,5 @@
 r"""
-File: brisartos/language/rom.py
+File: brisartos/machine/machine.py
 
 Purpose
 -------
@@ -37,7 +37,7 @@ Depends on (project modules):
 Standard library: none.
 Imported by:
 - run.py
-Covered by tests: brisartos/language/tests/test_rom.py.
+Covered by tests: brisartos/machine/tests/test_machine.py.
 
 Settings / parameters
 ---------------------
@@ -73,7 +73,7 @@ Run from the repository root.
 
 ::
 
-    from brisartos.language.rom import SourceROMMachine
+    from brisartos.machine.machine import SourceROMMachine
 
     machine = SourceROMMachine('x = 4\nprint(x)')
     report = machine.boot()
@@ -82,8 +82,8 @@ Run from the repository root.
     assert machine.boot()['boot_attempts'] == 2
 """
 
-from .interpreter import Interpreter
-from .parser import parse
+from ..language.interpreter import Interpreter
+from ..language.parser import parse
 
 DEFAULT_ROM = 'print("BrisartOS source-ROM model")\nready = True\n'
 

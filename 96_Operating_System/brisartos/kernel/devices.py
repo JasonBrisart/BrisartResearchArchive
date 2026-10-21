@@ -35,7 +35,7 @@ Depends on (project modules):
 - brisartos.kernel.platform (brisartos/kernel/platform.py)
 Standard library: none.
 Imported by:
-- brisartos/kernel/kernel.py
+- brisartos/kernel/composition.py
 Covered by tests: brisartos/kernel/tests/test_components.py.
 
 Settings / parameters

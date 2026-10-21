@@ -36,7 +36,7 @@ Communication / relationships
 -----------------------------
 Standard library: pathlib.
 Imported by:
-- brisartos/kernel/kernel.py
+- brisartos/kernel/composition.py
 Covered by tests: brisartos/host/tests/test_disk.py,
 brisartos/storage/tests/test_storage.py.
 

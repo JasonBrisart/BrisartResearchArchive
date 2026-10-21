@@ -3,54 +3,60 @@ File: brisartos/services/archive.py
 
 Purpose
 -------
-Save named in-memory snapshots through a supplied storage object and restore
-them while excluding the protected log prefix.
+Save named user-file snapshots with optional persistent indexing while
+excluding logs and system state.
 
 Public interface:
-- class Archive -- Named snapshots of the files in a storage object.
-- Archive(storage) -- Bind the storage object that snapshots are taken from and
-  restored to.
-- Archive.status() -- Return online.
-- Archive.save(name) -- Copy every file outside the protected folders under a
-  name.
-- Archive.restore(name) -- Make storage match a saved snapshot, deleting files
-  that did not exist then.
-- Archive.names() -- Return the sorted snapshot names.
+- class Archive -- Named snapshots of user files with optional persistence.
+- Archive(storage, encode=None, decode=None) -- Bind storage and optional
+  paired serialization callbacks.
+- Archive.start() -- Load the snapshot index and mark online.
+- Archive.stop() -- Mark offline after write-through operations.
+- Archive.status() -- Return online or offline lifecycle status.
+- Archive.save(name) -- Copy user files under a name and persist the index if
+  configured.
+- Archive.restore(name) -- Restore a known snapshot while preserving protected
+  prefixes.
+- Archive.names() -- Return sorted snapshot names.
 
 Design notes:
 
-The constructor receives storage instead of importing an implementation. save
-replaces an existing snapshot with the same name; restore delegates to storage
-with PROTECTED as the keep list. Snapshot names are non-empty strings, not
-filesystem paths. The snapshots belong to this Archive instance and are never
-serialized by this file.
+Snapshots exclude /logs and /system so their own persistent index is never
+recursively archived. Restore preserves both prefixes and delegates
+validation/application to Storage.
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- brisartos.storage.schema (brisartos/storage/schema.py)
 - version (version.py)
 Standard library: none.
 Imported by:
-- brisartos/kernel/kernel.py
+- brisartos/kernel/composition.py
 Covered by tests: brisartos/services/tests/test_services.py.
 
 Settings / parameters
 ---------------------
-- PROTECTED = ('/logs',) -- Folders the archive neither saves nor restores.
+- PROTECTED = ('/logs', SYSTEM_PREFIX) -- Fixed local policy used by the
+  operations documented above.
 
 Edge cases
 ----------
-An empty or non-text snapshot name raises ValueError; restoring an unknown name
-raises KeyError; errors from storage during a restore pass through.
+Invalid inputs are rejected before the documented operation; backend and
+callback failures propagate unless explicitly collected.
 
+- Archive.__init__() raises ValueError: "both serialization callbacks are
+  required"
+- Archive.start() raises ValueError: "invalid persisted snapshot"
+- Archive.start() raises ValueError: "invalid persisted snapshot file"
 - Archive.save() raises ValueError: "snapshot name required"
 - Archive.restore() raises KeyError: "unknown snapshot: {...}"
 
 Known limitations
 -----------------
-- Snapshots live in memory only and are lost when the program ends.
-- Each snapshot is a full copy of every file it covers, so many snapshots of a
-  large data folder multiply memory use.
+- Snapshots are full copies; a large index consumes memory and disk.
+- Restore is not transactional across files and does not roll back settings or
+  update candidates.
 
 Examples
 --------
@@ -58,43 +64,54 @@ Run from the repository root.
 
 ::
 
-    from brisartos.storage.storage import Storage
     from brisartos.services.archive import Archive
-
-    store = Storage()
-    archive = Archive(store)
-    store.write('/a', 'one')
-    store.append('/logs/k.log', 'kept\n')
-    archive.save('first')
-    store.write('/a', 'two')
-    archive.restore('first')
-    assert store.read('/a') == 'one'
-    assert store.read('/logs/k.log') == 'kept\n'
+    from brisartos.storage.storage import Storage
+    s = Storage()
+    a = Archive(s)
+    s.write('/a', 'one')
+    a.save('first')
+    s.write('/a', 'two')
+    a.restore('first')
+    assert s.read('/a') == 'one'
 """
-
 from version import __version__
-
-PROTECTED = ('/logs',)
-
+from ..storage.schema import ARCHIVE_PATH, SYSTEM_PREFIX, envelope, payload
+PROTECTED = ('/logs', SYSTEM_PREFIX)
 
 class Archive:
-    def __init__(self, storage):
+    def __init__(self, storage, encode=None, decode=None):
         self.version = __version__
-        self._storage = storage
+        self._storage, self._encode, self._decode = storage, encode, decode
         self._snapshots = {}
-
+        self._online = False
+        if (encode is None) != (decode is None):
+            raise ValueError('both serialization callbacks are required')
+    def start(self):
+        if self._decode is not None and self._storage.exists(ARCHIVE_PATH):
+            snapshots = payload(self._decode(self._storage.read(ARCHIVE_PATH)), 'archive')
+            for name, files in snapshots.items():
+                if not isinstance(name, str) or not name or not isinstance(files, dict):
+                    raise ValueError('invalid persisted snapshot')
+                for path, text in files.items():
+                    if self._storage.normalize(path) != path or not isinstance(text, str):
+                        raise ValueError('invalid persisted snapshot file')
+            self._snapshots = snapshots
+        self._online = True
+    def stop(self):
+        self._online = False
     def status(self):
-        return 'online'
-
+        return 'online' if self._online else 'offline'
     def save(self, name):
         if not isinstance(name, str) or not name:
             raise ValueError('snapshot name required')
-        self._snapshots[name] = self._storage.snapshot(exclude=PROTECTED)
-
+        snapshots = dict(self._snapshots)
+        snapshots[name] = self._storage.snapshot(exclude=PROTECTED)
+        if self._encode is not None:
+            self._storage.write(ARCHIVE_PATH, self._encode(envelope('archive', snapshots)))
+        self._snapshots = snapshots
     def restore(self, name):
         if name not in self._snapshots:
             raise KeyError('unknown snapshot: ' + str(name))
         self._storage.restore(self._snapshots[name], keep=PROTECTED)
-
     def names(self):
         return sorted(self._snapshots)

@@ -245,7 +245,7 @@ def get_setting(kernel, text):
     return str(settings.get(key))
 
 
-@command('set', 'set KEY VALUE', 'store a setting as text (memory only)')
+@command('set', 'set KEY VALUE', 'store a setting as text')
 def set_setting(kernel, text):
     key, value = path_and_text(text, 'set KEY VALUE')
     kernel.services.get('settings').set(key, value)

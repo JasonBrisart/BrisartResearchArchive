@@ -35,8 +35,8 @@ Public interface:
 - ModuleAPI.new_object_id() -- Return 32 random hexadecimal characters (needs
   object_id).
 - ModuleAPI.platform_info() -- Return the platform facts (needs platform_info).
-- ModuleAPI.get_service(name) -- Return one live service (needs service:NAME
-  for that name).
+- ModuleAPI.get_service(name) -- Return one narrow built-in service facade
+  (needs service:NAME for that name).
 
 Design notes:
 
@@ -53,19 +53,22 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.common.names (brisartos/common/names.py)
+- brisartos.extensions.contracts (brisartos/extensions/contracts.py)
 - brisartos.host.system (brisartos/host/system.py)
 Standard library: none.
 Imported by:
 - brisartos/extensions/registry.py
+- brisartos/kernel/composition.py
 - brisartos/kernel/kernel.py
 Covered by tests: brisartos/extensions/tests/test_api.py,
 brisartos/extensions/tests/test_registry.py,
+brisartos/kernel/tests/test_architecture.py,
 brisartos/kernel/tests/test_kernel.py.
 
 Settings / parameters
 ---------------------
-- MODULE_ABI = 'brisartos.module.v1' -- The compatibility string every module
-  must declare.
+- MODULE_ABI = 'brisartos.module.v1' -- The compatibility string required by
+  legacy declaration-only modules.
 - PERMISSIONS = ('log', 'storage', 'object_id', 'platform_info') -- The fixed
   permissions; service:NAME is accepted in addition.
 - SERVICE_PREFIX = 'service:' -- Prefix of the per-service permission.
@@ -80,15 +83,19 @@ component (..). An unknown service raises KeyError.
   for example ("log",), not {...}"
 - check_permissions() raises ValueError: "unknown permission: {...} (known:
   {...}, service:NAME)"
+- ModuleAPI.require() raises RuntimeError: "runtime is not accepting module
+  calls"
 - ModuleAPI.require() raises AccessDenied: "module {...} lacks permission
   {...}"
 
 Known limitations
 -----------------
-- Permissions catch mistakes, not hostile code: a module is ordinary Python and
-  can import anything and read any file the process can.
-- The ABI is a single string, so there is no version negotiation between the
-  system and a module.
+- Modules are trusted Python code; permissions and service facades are not a
+  sandbox.
+- MODULE_ABI is the legacy string; explicit compatibility is validated by
+  contracts.py.
+- now_utc and available_services remain ungated inspection calls after
+  acceptance closes.
 
 Examples
 --------
@@ -116,6 +123,7 @@ Run from the repository root.
 
 from ..common.names import require_name
 from ..host import system
+from .contracts import service_access
 
 MODULE_ABI = 'brisartos.module.v1'
 PERMISSIONS = ('log', 'storage', 'object_id', 'platform_info')
@@ -143,6 +151,7 @@ class ModuleContext:
         self.services = services
         self.events = events
         self.platform = platform
+        self.accepting = True
 
 
 class AccessDenied(PermissionError):
@@ -156,6 +165,8 @@ class ModuleAPI:
         self.permissions = frozenset(permissions)
 
     def require(self, permission):
+        if not self._context.accepting:
+            raise RuntimeError('runtime is not accepting module calls')
         if permission not in self.permissions:
             raise AccessDenied('module ' + repr(self.name) + ' lacks permission ' + repr(permission))
 
@@ -198,4 +209,4 @@ class ModuleAPI:
 
     def get_service(self, name):
         self.require('service:' + name)
-        return self._context.services.get(name)
+        return service_access(name, self._context.services.get(name))

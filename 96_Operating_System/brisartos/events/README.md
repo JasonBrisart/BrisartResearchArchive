@@ -1,41 +1,21 @@
-# Event Log
+# Structured Event Recording
 
-`events.py` defines `EventLog`, the one recorder every BrisartOS event goes through.
+`events.py` records numbered runtime outcomes through supplied storage and clock objects, with a bounded recent-event list.
 
-The kernel records its start, stop and module-load failures here, and the module system records each module's start, finish, failure and its own `log` calls here. Neither writes log files directly.
+## Record contract
 
-## `EventLog(storage, clock, limit=1000)`
+`EventLog(storage, clock, limit=1000)` requires a positive integer limit. `record(source, message, kind="message", details=None)` validates the source and plain-data details, obtains a timestamp and appends the text log line before publishing the sequence number and recent entry.
 
-The log is given its storage and its clock rather than importing them. The kernel passes its storage and the host UTC clock; a test can pass memory storage and a function that always returns the same text. `limit` must be a positive integer.
+Entries contain `sequence`, `time`, `source`, `kind`, `message` and `details`. `recent(count=None)` returns detached entries oldest first. Mutating supplied details or returned entries does not alter retained details. `total` counts successfully appended events for this instance.
 
-`record(source, message)` checks that `source` is a safe name, numbers the event, keeps it in the recent list and appends one line to `/logs/SOURCE.log`:
+Core kinds are `kernel.started`, `kernel.stopped`, `module.loaded`, `module.rejected`, `module.started`, `module.finished`, `module.failed`, `service.started`, `service.stopped`, `task.spawned`, `task.finished` and `task.failed`. Custom messages default to `message`.
 
-```text
-2026-10-20T19:00:00+00:00 kernel: stopped
-```
+## Persistence and failure semantics
 
-`recent(count=None)` returns copies of the newest events, oldest first, each with `sequence`, `time`, `source` and `message`. `total` counts every event ever recorded, including the ones the recent list has dropped.
+Text lines retain `TIME SOURCE: MESSAGE` in `/logs/SOURCE.log`. Kind/details remain in memory; they are not recoverable as structured records from these text logs. A new instance restarts sequence numbering. Files are unbounded and are not rotated.
 
-```python
-from brisartos.events.events import EventLog
-from brisartos.storage.storage import Storage
-
-store = Storage()
-events = EventLog(store, lambda: "T", limit=2)
-events.record("kernel", "started")
-events.record("demo", "hello")
-events.record("kernel", "stopped")
-assert [event["sequence"] for event in events.recent()] == [2, 3]
-assert events.total == 3
-assert store.read("/logs/kernel.log") == "T kernel: started\nT kernel: stopped\n"
-```
-
-## What it does not do
-
-Only the recent list is bounded. Log files grow until something deletes them, and nothing rotates them. The recent list and `total` are in memory, so a new log over the same storage starts numbering from 1 again while the files keep their old lines.
-
-The memory entry is added before the file line, so if the append fails the entry exists without its line. A message containing a newline is written as given and spans several lines.
+An append exception leaves the in-memory total and recent list unchanged, although the backend may have partially written the line before raising. This is not an atomic transaction between memory and disk, a power-loss guarantee or a thread-safe recorder. Messages are written as supplied, including newlines. Details have no cycle detection or total-size budget.
 
 ## Tests
 
-`tests/test_events.py` uses memory storage and a fixed clock to check numbering, the bounded list, per-source files, copies returned by `recent`, refused sources and refused limits.
+`tests/test_events.py` checks numbering, limits, copies and source validation. Append-failure ordering and nested detail copies are checked in `../kernel/tests/test_architecture.py`.

@@ -27,7 +27,7 @@ Imported by:
 - brisartos/language/interpreter.py
 - brisartos/language/parser.py
 Covered by tests: brisartos/language/tests/test_language.py,
-brisartos/language/tests/test_rom.py.
+brisartos/machine/tests/test_machine.py.
 
 Settings / parameters
 ---------------------

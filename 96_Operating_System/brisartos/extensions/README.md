@@ -1,58 +1,47 @@
-# Extension System: Module API and Registry
+# Module Contracts, Facades and Registry
 
-`api.py` and `registry.py` implement module declaration validation, registration, discovery and permission-checked invocation.
+`api.py`, `contracts.py` and `registry.py` separate permission-gated module calls, compatibility/service facades and discovery/lifecycle coordination.
 
-Neither file imports or receives the kernel. Both work through a `ModuleContext`: the storage, the service registry, the event log and the platform facts, built by the kernel and handed to the registry.
+## `api.py`: context and permission gates
 
-This directory is the runtime side of modules. The drop-in modules themselves live in the project-root [`modules/`](../../modules/README.md) folder; the names `MODULE_*` and the ABI string keep the word module because they describe those files.
+`ModuleContext(storage, services, events, platform)` holds the four shared runtime objects and an accepting flag. Kernel sets accepting false before startup and during shutdown. `ModuleAPI` validates its module name; registry registration validates permission declarations. Permission-gated methods refuse work after acceptance closes.
 
-## `api.py`: declaration checks and the API object
-
-`MODULE_ABI` is `brisartos.module.v1`. `check_permissions()` accepts a tuple, list, set or frozenset, validates its entries and returns a sorted de-duplicated tuple. A bare string raises `TypeError`; an unsupported permission raises `ValueError`. Service permission suffixes must pass the shared name validator.
-
-| Permission | Gated API calls |
+| Permission | API operations |
 | --- | --- |
 | `log` | `log(message)` |
-| `storage` | `write_text(filename, text)`, `read_text(filename)`, `list_files()` |
+| `storage` | `write_text`, `read_text`, `list_files` |
 | `object_id` | `new_object_id()` |
 | `platform_info` | `platform_info()` |
-| `service:NAME` | `get_service(NAME)` for the named service |
+| `service:NAME` | `get_service(NAME)` |
 
-`ModuleContext(storage, services, events, platform)` only holds those four objects. Because nothing here needs a kernel, a test can build a context from memory storage, an empty service registry, an event log with a fixed clock and a platform object.
+`now_utc()` and `available_services()` remain ungated inspection methods. Storage calls normalize paths under `/modules/NAME/`; a missing read returns None. Missing permissions raise AccessDenied, a PermissionError subclass. These checks govern API use, not arbitrary Python capabilities.
 
-`now_utc()` and `available_services()` need no permission. Missing permission raises `AccessDenied`, a `PermissionError` subclass.
+## `contracts.py`: compatibility and narrow service views
 
-`ModuleAPI(context, name, permissions)` validates its module name and stores permissions as a frozenset. Direct construction does not call `check_permissions()`; registry registration does. File operations normalize the filename and prepend `/modules/NAME/`. Missing `read_text()` returns `None`; `list_files()` strips the namespace prefix from results.
+The explicit API requirement is `(name, major, minor)`. The runtime name is `brisartos.module`, major is 1 and minor is 0. Name and major must match exactly; the runtime minor must meet or exceed the requested minor. Booleans, negative versions and malformed requirements are refused.
 
-These checks govern API calls only. Module code runs in the same process and is not restricted to this API.
+`SettingsAccess` exposes get/set/delete/snapshot. `ArchiveAccess` exposes save/restore/names. `UpdatesAccess` exposes stage/inspect/discard/names. `get_service()` returns these facades, not live service instances. Unknown services require an explicitly implemented facade. Lifecycle methods are not exposed. Private attributes remain reachable by trusted Python code, so this is not isolation.
 
-## `registry.py`: records and invocation
+## `registry.py`: discovery and execution
 
-`ModuleRegistry(context)` keeps the context as `context` and stores module records and a discovery-failure mapping. `register()` requires a safe unused name, callable entry and valid permission declaration. It stores description, author, version, origin and display name; an absent or false display name falls back to the module name.
+`register()` validates name, entry, permissions, compatibility and optional shutdown callable. Metadata includes the negotiated API requirement. `run()` requires acceptance, records start, invokes `run(api)` and records finish or failure. Entry base exceptions are logged and re-raised; a logging failure can still mask an entry failure.
 
-`describe(name)` returns a copy of metadata without the entry function. `names()` returns sorted names. Unknown records raise `KeyError`.
+New modules supply inert `manifest.txt` metadata beside `module.py`. The host loader parses fields without executing code. Registry checks names, permissions, duplicates and API compatibility before loading Python. A malformed or incompatible manifest never falls back to legacy execution. The entry must be callable after import.
 
-`run(name)` creates a ModuleAPI from the context, records `module started`, calls the entry and records `module finished`. An entry exception, including `SystemExit` or `KeyboardInterrupt`, is recorded as failed and re-raised. A recording failure is not separately recovered and can prevent or mask the entry outcome.
+Required manifest fields are `name`, `display_name`, `version`, `author`, `description`, `api`, `api_major`, `api_minor`, `permissions` and `entry`. `entry` must be run. `version=runtime` imports the release value rather than copying it. Permissions are comma-separated; an empty value means no permissions. Duplicate/unknown/missing fields are rejected.
 
-## Discovery contract
+## Legacy declarations
 
-`REQUIRED_NAMES` contains these eight declarations:
+Without a manifest, the existing `brisartos.module.v1` ABI remains accepted. The eight required declarations are `MODULE_NAME`, `MODULE_DISPLAY_NAME`, `MODULE_VERSION`, `MODULE_AUTHOR`, `MODULE_DESCRIPTION`, `MODULE_ABI`, `MODULE_PERMISSIONS` and `run`. Optional `MODULE_API` supplies an explicit requirement; otherwise the current baseline requirement is assumed. This does not retroactively establish compatibility with older APIs that reused the ABI string.
 
-| Name | Registry use |
-| --- | --- |
-| `MODULE_NAME` | Validated registry key |
-| `MODULE_DISPLAY_NAME` | Display metadata |
-| `MODULE_VERSION` | Version metadata |
-| `MODULE_AUTHOR` | Author metadata |
-| `MODULE_DESCRIPTION` | Description metadata |
-| `MODULE_ABI` | Must equal `brisartos.module.v1` |
-| `MODULE_PERMISSIONS` | Validated permission collection |
-| `run` | Callable entry invoked as `run(api)` |
+Legacy Python executes before declaration validation. New manifest metadata is authoritative when present; redundant Python metadata is ignored. Neither path authenticates or sandboxes code.
 
-`discover(folder)` first retains only records whose origin is `code` and clears previous failures. It then requests sorted entry files from the loader, executes each file, checks declarations and ABI, and registers the entry. An `Exception` is recorded under the folder label and discovery continues. Base exceptions are not caught by discovery.
+## Cleanup and reload
 
-A duplicate declaration loses to the earlier registered name. Reload executes entry files again, replacing their module-level state; code-origin registrations survive. Loading happens before validation, so validation cannot make loading untrusted code safe.
+An optional module-level `stop()` takes no arguments. `stop_all()` invokes hooks in reverse registration order, collects failures and clears hooks. During kernel shutdown, hooks cannot use permission-gated ModuleAPI calls because work acceptance is already closed; release resources directly owned by the module.
 
-## Checks in `tests/`
+Discovery retains code-origin registrations and replaces discovered entries in alphabetical order. Reload is not transactional and does not guarantee cleanup of replaced module objects; modules holding external resources should be stopped with the kernel rather than relying on reload.
 
-`tests/test_api.py` checks permission gates, service scoping, normalized module-local paths, permission declarations, an API built from a context with no kernel, and that the kernel hands the registry a context rather than itself. `tests/test_registry.py` checks registration, metadata, discovery failures, reload, logged exceptions and the shipped module. Its documentation tests require this page to name the declarations, permissions and ABI above.
+## Tests
+
+`tests/test_api.py` covers gates, namespaces and facade use. `tests/test_registry.py` covers legacy registration/discovery and the shipped manifest module. `../kernel/tests/test_architecture.py` checks manifest rejection before execution, explicit compatibility, facade boundaries and cleanup failures.

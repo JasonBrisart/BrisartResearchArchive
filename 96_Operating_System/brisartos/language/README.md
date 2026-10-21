@@ -1,6 +1,6 @@
 # Restricted Source Language
 
-A lexer, parser and interpreter execute a small source language; a fourth file wraps execution in a source-ROM lifecycle model.
+A lexer, parser and interpreter execute a deliberately restricted source language.
 
 ## Source becomes results
 
@@ -35,28 +35,10 @@ Addition and multiplication check selected string/integer growth against `MAX_ST
 
 Language rejection raises `LanguageError`, a `ValueError`. Operand failures such as division by zero or incompatible addition propagate as their ordinary exception types. The implementation is not a sandbox for arbitrary Python.
 
-## `rom.py`: a lifecycle around parsed source
+## Separate machine lifecycle
 
-`SourceROMMachine(source=DEFAULT_ROM, max_steps=10000, max_source_chars=65536)` validates source and limits, then parses once. Its source property is read-only.
-
-- `boot()` requires reset state, creates a fresh interpreter and increments the attempt count.
-- Successful execution leaves the machine halted.
-- A caught execution exception leaves it faulted, records the exception text and is re-raised.
-- Partial variables, output and step count are captured even after failure.
-- `reset()` clears results and faults, preserves source and attempt count, and refuses running state.
-- `snapshot()` copies result containers and reports fixed false flags for hardware boot, full-language execution and self-hosting.
-
-```python
-from brisartos.language.rom import SourceROMMachine
-
-machine = SourceROMMachine("print(4)")
-assert machine.boot()["output"] == ["4"]
-machine.reset()
-assert machine.boot()["boot_attempts"] == 2
-```
-
-The file's `main()` executes `DEFAULT_ROM` and prints a report. This is a lifecycle model, not firmware.
+The source-ROM lifecycle wrapper now lives in [../machine/](../machine/README.md), above the language layer. The lexer, parser and interpreter remain here.
 
 ## Tests in this directory
 
-`tests/test_language.py` checks tokens, nodes, evaluation, rejected syntax, reuse and selected growth limits. `tests/test_rom.py` checks lifecycle transitions, limits, faults, copied snapshots and independent instances. Inputs are selected examples rather than grammar fuzzing.
+`tests/test_language.py` checks tokens, nodes, evaluation, rejected syntax, reuse and selected growth limits. Machine lifecycle tests live in `../machine/tests/test_machine.py`. Inputs are selected examples rather than grammar fuzzing.

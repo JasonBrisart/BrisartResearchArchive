@@ -3,29 +3,20 @@ File: brisartos/shell/console.py
 
 Purpose
 -------
-Run the interactive BrisartOS console, choosing storage mode, reporting
-module-load failures and carrying each command and its result through the
-kernel's console device.
+Run the interactive console with startup and banner output inside the cleanup
+scope, carrying commands through the text-console device.
 
 Public interface:
-- serve(kernel, shell) -- Run every line queued on the kernel's console device
-  through the shell and return the output lines it produced.
-- main(argv=None) -- Run the console; return 0 normally, or 2 for an
-  unrecognised option.
+- serve(kernel, shell) -- Process queued console lines and return drained
+  output.
+- main(argv=None) -- Start disk or memory mode, serve input and clean up on
+  exit.
 
 Design notes:
 
-main accepts no options or --memory, creates and starts a kernel, then enters
-the input loop. Each terminal line is fed to the kernel's TextConsole device;
-serve reads it back from the device, executes it and writes the result or the
-error line to the device, and the loop prints what serve drained. An Exception
-from a command is displayed without ending the session; EOFError and
-KeyboardInterrupt at the prompt end it. The finally block stops a running
-kernel after the loop has been entered. Startup occurs before that block, so
-startup failures do not receive the same cleanup guarantee.
-
-brisartos/shell/tests/test_console.py calls serve directly and also drives main
-in child processes, which the static relationship lines cannot show.
+The kernel handles failed-start cleanup. The console finally block stops a
+running kernel after startup, banner or input-loop failure. Command exceptions
+become device error lines; base exceptions propagate after cleanup.
 
 Communication / relationships
 -----------------------------
@@ -58,12 +49,9 @@ without starting a kernel.
 
 Known limitations
 -----------------
-- One line at a time from standard input; line editing and history are whatever
-  the terminal provides.
-- The terminal itself is still read with input() and written with print(); the
-  device carries the session between them, not the terminal I/O.
-- Kernel startup and banner printing occur before the loop cleanup block; an
-  exception there is not covered by its finally clause.
+- Host terminal input/output remains built-in input and print.
+- Cleanup hooks have no timeout and final logging can fail; inspect
+  kernel.shutdown_errors.
 
 Examples
 --------
@@ -105,13 +93,13 @@ def main(argv=None):
         return 2
     memory = argv == ['--memory']
     kernel = Kernel(data_root=None if memory else 'data', modules_path='modules')
-    kernel.start()
-    shell = Shell(kernel)
-    print(version_text() + ' - storage: ' + ('memory (discarded on exit)' if memory else 'data/'))
-    print('Runs on host Python; this is not a firmware or hypervisor boot. Type help.')
-    for label, reason in sorted(kernel.modules.failures.items()):
-        print('module ' + label + ' not loaded: ' + reason)
     try:
+        kernel.start()
+        shell = Shell(kernel)
+        print(version_text() + ' - storage: ' + ('memory (discarded on exit)' if memory else 'data/'))
+        print('Runs on host Python; this is not a firmware or hypervisor boot. Type help.')
+        for label, reason in sorted(kernel.modules.failures.items()):
+            print('module ' + label + ' not loaded: ' + reason)
         while kernel.state == 'running':
             try:
                 line = input('BrisartOS> ')

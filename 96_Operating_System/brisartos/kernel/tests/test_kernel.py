@@ -105,7 +105,7 @@ class KernelTests(unittest.TestCase):
         for index in range(10):
             small.events.record('probe', 'event ' + str(index))
         self.assertEqual(len(small.events.recent()), 3)
-        self.assertEqual(small.describe()['events'], 11)
+        self.assertEqual(small.describe()['events'], 14)
 
     def test_event_limit_must_be_positive(self):
         for bad in (0, -1, 1.5, None, True):

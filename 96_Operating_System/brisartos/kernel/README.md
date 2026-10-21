@@ -1,46 +1,42 @@
-# Kernel and Owned Components
+# Kernel Composition and Lifecycle
 
-This directory contains runtime composition, cooperative scheduling, device queues and declared platform capabilities.
+This directory assembles runtime components, coordinates lifecycle, advances cooperative tasks and provides device queues and platform declarations.
 
-## `kernel.py`: construction and lifecycle
+## Files and ownership
 
-`Kernel(data_root=None, modules_path=None, max_steps=10000, event_limit=1000)` constructs its component objects. With no data root it builds `Storage` over its memory backend; with a root it supplies the host disk backend instead. Storage itself lives in [`../storage/`](../storage/README.md). Construction also registers a text-console device but does not start services.
+- `composition.py` owns `RuntimeComponents` and `build_runtime()`. It constructs storage, platform, events, services, devices, console, modules, interpreter and scheduler. It registers settings, archive and updates in that order, but starts none of them. `modules_path` is retained in the builder signature for call compatibility; discovery is controlled by Kernel.
+- `kernel.py` owns `Kernel`. Its constructor accepts the existing options plus `components=None` for explicit injection. It delegates default assembly to the builder rather than constructing subsystems itself.
+- `scheduler.py` owns iterator task records, round-robin stepping, cancellation and structured task events. A cancelled iterator is closed when it exposes `close()`; close and event failures are retained in `cleanup_errors`.
+- `devices.py` owns `DeviceRegistry` and `TextConsole`. These remain named Python objects and text queues, not hardware drivers.
+- `platform.py` owns fixed execution declarations and `CapabilityUnavailable`. Boot media and firmware handoff remain unavailable.
 
-The lifecycle is `created` → `running` → `stopped`. `start()` registers settings, archive and updates, changes state, logs startup and optionally discovers modules. `stop()` cancels waiting tasks, logs shutdown and changes state. A second start or a stop outside the running state raises `RuntimeError`; restarting a stopped instance is unsupported.
+## Lifecycle
 
-`reload_modules()` returns discovery failures and records each reason. `run_file(path)` reads stored text and passes it to the language interpreter. `describe()` reports state, platform, module ABI, storage, services, modules and cumulative event count.
+The normal path is `created -> starting -> running -> stopping -> stopped`. A failed start goes through stopping and ends stopped while re-raising the original exception. An instance starts only once.
 
-`kernel.events` is an [`EventLog`](../events/README.md) built from the kernel's storage, the host clock and `event_limit`. The kernel records its own start, stop and module-load failures there, and `describe()` reports its `total`. Startup and shutdown are not rollback transactions.
+Startup validates the stored-data marker, starts services in registration order, records `kernel.started`, accepts module calls and optionally discovers modules. Service startup events precede the kernel-start event.
 
-The module system is not given the kernel. Construction builds a `ModuleContext` holding the storage, the service registry, the event log and the platform facts, and passes that to the [module registry](../extensions/README.md). Modules can reach those four objects and nothing else the kernel owns.
-
-## `scheduler.py`: one iterator advance per turn
-
-`Scheduler.spawn(name, iterator)` creates a task record and queues its identifier. `step()` calls `next()` on the next waiting task and requeues it after a yield. `StopIteration` records a finished task and its return value; another `Exception` records a failed task and its error text.
-
-`run(steps=100)` limits advances, not time. `cancel()` and `cancel_all()` remove waiting tasks but retain records. They do not explicitly close iterators. `describe()` and `status()` omit iterator objects from returned records.
+Shutdown first sets stopping and refuses permission-gated module calls and new module runs. It then cancels/closes pending tasks, invokes module `stop()` hooks in reverse registration order, stops services in reverse startup order and attempts the final `kernel.stopped` event. Each cleanup phase continues after ordinary or base exceptions. `stop()` returns failure records, also retained in `shutdown_errors`; the state becomes stopped even when final logging fails. Hooks that never return cannot be interrupted.
 
 ```python
-from brisartos.kernel.scheduler import Scheduler
-
-scheduler = Scheduler()
-task = scheduler.spawn("sample", iter([1, 2]))
-assert scheduler.run() == 3
-assert scheduler.describe(task)["state"] == "finished"
+from brisartos.kernel.composition import build_runtime
+from brisartos.kernel.kernel import Kernel
+components = build_runtime()
+kernel = Kernel(components=components)
+kernel.start()
+assert kernel.storage is components.storage
+assert kernel.stop() == []
+assert kernel.state == "stopped"
 ```
 
-A non-yielding iterator blocks its call. There is no preemption, priority, timeout or record-pruning policy.
+`run_file()` and `reload_modules()` require running state. `describe()` retains its seven fields; service lifecycle metadata is available through the service registry. Runtime objects remain trusted and directly accessible to internal callers.
 
-## `devices.py`: registration and queued text
+## Cooperative tasks and devices
 
-`DeviceRegistry` accepts unique non-empty string names and non-None objects. `get()` raises `CapabilityUnavailable` for an unknown name; `names()` sorts registered names. No driver interface is enforced.
+`Scheduler.spawn(name, iterator)` queues a task; `step()` advances one iterator and `run(steps)` limits advances, not time. Completed, failed and cancelled records remain available. Task events use `task.spawned`, `task.finished` and `task.failed`. There is no preemption, timeout, priority or record-pruning policy.
 
-`TextConsole.feed()` queues text, `read()` consumes the oldest input and `write()` appends output. `output()` copies the output list; `drain()` returns the pending output lines and empties the list. The shell console feeds each terminal line into this device and prints what it drains, so the device carries the interactive session. Non-text input/output raises `TypeError`; an empty input queue raises `EOFError`. Queues are unbounded and have no synchronization.
+`TextConsole.feed()` queues input, `read()` consumes it, `write()` appends output and `drain()` hands over and clears output. Queues are unbounded and unsynchronized. The shell console still uses host terminal input/output around this device.
 
-## `platform.py`: explicit capability declarations
+## Tests
 
-`Platform.describe()` returns a new dictionary declaring host-interpreter execution, no hardware target, no native code generation, no third-party packages and `bootable: False`. It does not probe the machine. `boot_media()` and `firmware_handoff()` always raise `CapabilityUnavailable`.
-
-## Local regression coverage
-
-`tests/test_kernel.py` covers composition and lifecycle behavior. `tests/test_components.py` covers the scheduler, the console queues and draining, device registration and platform declarations. These checks do not establish concurrent operation or hardware boot.
+`tests/test_kernel.py` checks lifecycle, composition wiring, event limits, stored programs and disk files. `tests/test_components.py` checks scheduler/device/platform behavior. `tests/test_architecture.py` checks injected composition, persistent services, schema rejection, manifest prevalidation, API compatibility, facades, event ordering and cleanup failures. These are host-process tests, not hardware validation.

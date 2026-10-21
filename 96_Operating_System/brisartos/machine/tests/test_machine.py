@@ -1,12 +1,12 @@
 r"""
-File: brisartos/language/tests/test_rom.py
+File: brisartos/machine/tests/test_machine.py
 
 Purpose
 -------
 Exercise source-ROM lifecycle transitions, copied snapshots, source and step
 limits, fault capture and independence between instances.
 
-Verifies: brisartos/language/lexer.py, brisartos/language/rom.py.
+Verifies: brisartos/language/lexer.py, brisartos/machine/machine.py.
 
 Contains 19 test case(s) across 1 TestCase class(es).
 
@@ -14,10 +14,10 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - brisartos.language.lexer (brisartos/language/lexer.py)
-- brisartos.language.rom (brisartos/language/rom.py)
+- brisartos.machine.machine (brisartos/machine/machine.py)
 Standard library: unittest.
 Discovered and run by run.py test (and by python -m unittest discover -s
-brisartos/language/tests); nothing imports it.
+brisartos/machine/tests); nothing imports it.
 
 Settings / parameters
 ---------------------
@@ -64,12 +64,12 @@ Run from the repository root.
 
 ::
 
-    python -B -m unittest discover -s brisartos/language/tests -p test_rom.py
+    python -B -m unittest discover -s brisartos/machine/tests -p test_machine.py
 """
 
 import unittest
 
-from brisartos.language.rom import SourceROMMachine
+from brisartos.machine.machine import SourceROMMachine
 from brisartos.language.lexer import LanguageError
 
 

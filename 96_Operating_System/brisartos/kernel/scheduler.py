@@ -3,66 +3,65 @@ File: brisartos/kernel/scheduler.py
 
 Purpose
 -------
-Advance queued iterators in cooperative round-robin order while retaining task
-states, yielded values, completion results and failure messages.
+Advance cooperative iterator tasks, emit structured outcomes and close
+cancelled iterators while collecting cleanup failures.
 
 Public interface:
-- class Scheduler -- A queue of cooperative tasks and their records.
-- Scheduler.spawn(name, iterator) -- Queue an iterator as a named task and
-  return its integer id.
-- Scheduler.step() -- Advance the next waiting task by one next() and return
-  its id, or None when nothing is waiting.
-- Scheduler.run(steps=100) -- Perform up to steps steps and return how many
-  were performed.
-- Scheduler.cancel(task_id) -- Take one waiting task out of the queue; return
-  False if it is not waiting.
-- Scheduler.cancel_all() -- Cancel every waiting task and return how many there
-  were.
-- Scheduler.describe(task_id) -- Return one task's record without its iterator.
-- Scheduler.status() -- Return every task's record keyed by id.
+- class Scheduler -- Cooperative task records, queue and optional event
+  integration.
+- Scheduler(events=None) -- Create an empty scheduler with optional events.
+- Scheduler.spawn(name, iterator) -- Queue a named iterator and return its
+  identifier.
+- Scheduler.step() -- Advance one pending task and record completion or
+  failure.
+- Scheduler.run(steps=100) -- Perform at most the requested number of iterator
+  advances.
+- Scheduler.cancel(task_id) -- Cancel one ready task and attempt iterator
+  close.
+- Scheduler.cancel_all() -- Cancel and close all waiting tasks; return their
+  count.
+- Scheduler.describe(task_id) -- Return one task record without its iterator.
+- Scheduler.status() -- Return all public task records.
 
 Design notes:
 
-The queue uses a moving head and occasional prefix compaction. A successful
-next call requeues the task; StopIteration records completion and Exception
-records failure. Cancellation removes waiting identifiers but retains their
-records and does not explicitly close the iterator. A step budget counts calls,
-not elapsed time.
+Round-robin stepping remains bounded by advances, not elapsed time.
+Cancellation removes pending work before attempting close; logging and close
+failures are retained rather than stopping other cleanup.
 
 Communication / relationships
 -----------------------------
 Standard library: none.
 Imported by:
-- brisartos/kernel/kernel.py
+- brisartos/kernel/composition.py
 Covered by tests: brisartos/kernel/tests/test_components.py.
 
 Settings / parameters
 ---------------------
-No module-level settings. run(steps=100) is the only tunable.
+Constructor arguments select the supplied components and policies; no
+module-level configuration is defined.
 
 Edge cases
 ----------
-An empty task name raises ValueError, a non-iterator raises TypeError, a
-negative or non-integer step count raises ValueError, and an unknown task id
-raises KeyError.
+Invalid inputs are rejected before the documented operation; backend and
+callback failures propagate unless explicitly collected.
 
 - Scheduler.spawn() raises ValueError: "task name required"
 - Scheduler.spawn() raises TypeError: "task must be an iterator"
 - Scheduler.run() raises ValueError: "steps must be a nonnegative integer"
-- Scheduler.step() catches StopIteration -- A finished generator is recorded as
-  finished and its return value kept as the result.
-- Scheduler.step() catches Exception -- A task that raises is recorded as
-  failed with the error text so one broken task cannot stop the others.
+- Scheduler.step() catches StopIteration -- Collect the failure as documented
+  and continue cleanup or report it to the caller.
+- Scheduler.step() catches Exception -- Collect the failure as documented and
+  continue cleanup or report it to the caller.
+- Scheduler._record() catches BaseException -- Collect the failure as
+  documented and continue cleanup or report it to the caller.
+- Scheduler._close() catches BaseException -- Collect the failure as documented
+  and continue cleanup or report it to the caller.
 
 Known limitations
 -----------------
-- Cooperative only: a task that never yields blocks the whole process and
-  cannot be interrupted, because Python offers no safe way to stop a running
-  generator from the same thread.
-- There are no priorities, preemption or timeouts, and the step count limits
-  how often next() is called, not how long one call takes.
-- Finished, failed and cancelled task records are kept for the life of the
-  scheduler.
+- Non-yielding iterators block the process; there is no preemption or timeout.
+- Task records and cleanup errors remain instance-local and unbounded.
 
 Examples
 --------
@@ -71,17 +70,15 @@ Run from the repository root.
 ::
 
     from brisartos.kernel.scheduler import Scheduler
-
-    scheduler = Scheduler()
-    task = scheduler.spawn('demo', iter([1, 2]))
-    assert scheduler.run() == 3
-    assert scheduler.describe(task)['state'] == 'finished'
-    waiting = scheduler.spawn('later', iter([1]))
-    assert scheduler.cancel_all() == 1
+    s = Scheduler()
+    t = s.spawn('demo', iter([1]))
+    s.run()
+    assert s.describe(t)['state'] == 'finished'
 """
-
 class Scheduler:
-    def __init__(self):
+    def __init__(self, events=None):
+        self._events = events
+        self.cleanup_errors = []
         self._next = 1
         self._tasks = {}
         self._queue = []
@@ -108,6 +105,7 @@ class Scheduler:
         self._tasks[task_id] = {'name': name, 'state': 'ready', 'iterator': iterator,
                                 'result': None, 'error': None}
         self._queue.append(task_id)
+        self._record('task.spawned', task_id)
         return task_id
 
     def step(self):
@@ -120,9 +118,11 @@ class Scheduler:
         except StopIteration as stopped:
             task['state'] = 'finished'
             task['result'] = stopped.value
+            self._record('task.finished', task_id)
         except Exception as error:
             task['state'] = 'failed'
             task['error'] = str(error)
+            self._record('task.failed', task_id)
         else:
             self._queue.append(task_id)
         return task_id
@@ -142,6 +142,7 @@ class Scheduler:
             return False
         del self._queue[self._queue.index(task_id, self._head)]
         task['state'] = 'cancelled'
+        self._close(task_id)
         return True
 
     def cancel_all(self):
@@ -150,6 +151,7 @@ class Scheduler:
         self._head = 0
         for task_id in waiting:
             self._tasks[task_id]['state'] = 'cancelled'
+            self._close(task_id)
         return len(waiting)
 
     def describe(self, task_id):
@@ -157,3 +159,16 @@ class Scheduler:
 
     def status(self):
         return {task_id: self.describe(task_id) for task_id in self._tasks}
+    def _record(self, kind, task_id):
+        if self._events is not None:
+            try:
+                self._events.record('scheduler', kind, kind=kind, details={'task': task_id})
+            except BaseException as error:
+                self.cleanup_errors.append({'task': task_id, 'error': 'logging: ' + str(error)})
+    def _close(self, task_id):
+        try:
+            close = getattr(self._tasks[task_id]['iterator'], 'close', None)
+            if close is not None:
+                close()
+        except BaseException as error:
+            self.cleanup_errors.append({'task': task_id, 'error': type(error).__name__ + ': ' + str(error)})

@@ -1,89 +1,99 @@
 # BrisartOS Architecture
 
-The runtime is composed from local components with explicit import layers, shared storage and a single-process execution model.
-
-This page explains connections across directories. Each directory README owns the behavior of its local files; this page does not duplicate their method-by-method reference.
+BrisartOS is a host-Python research operating environment with explicit assembly, lifecycle, persistent service state and trusted module contracts.
 
 ## Dependency direction
 
-| Directory | Layer | Responsibility at the boundary |
+| Directory | Layer | Responsibility |
 | --- | --- | --- |
-| `common/` | 0 | Identifier validation shared by callers |
-| `storage/` | 0 | Path policy, text-file API and in-memory backend |
-| `events/` | 1 | Event numbering, recent events and per-source log files |
-| `host/` | 1 | Host-backed values, disk backend and entry-file execution |
-| `language/` | 1 | Source text to parsed nodes and execution results |
-| `services/` | 1 | Registry and stateful service objects |
-| `extensions/` | 2 | Module metadata, permissions, discovery and invocation |
-| `kernel/` | 3 | Component construction and lifecycle coordination |
+| `common/` | 0 | Identifier validation |
+| `storage/` | 0 | Path policy, text storage, memory backend and data schema |
+| `events/` | 1 | Structured recent events and per-source text logs |
+| `host/` | 1 | Clock, entropy, arguments, disk, loading and JSON serialization |
+| `language/` | 1 | Lexer, parser and restricted interpreter |
+| `services/` | 1 | Service records, lifecycle and stateful built-ins |
+| `extensions/` | 2 | API compatibility, facades, manifests and module lifecycle |
+| `machine/` | 2 | Source-machine lifecycle above the language |
+| `kernel/` | 3 | Explicit assembly, runtime lifecycle, tasks and device queues |
 | `shell/` | 4 | Commands, dispatch and interactive console |
 
-These paths are relative to `brisartos/`. Runtime imports may stay within a directory or point to a strictly lower layer, not sideways to an equal layer. The root-level version module is permitted separately.
+Paths are relative to brisartos/. Imports stay within a directory or point strictly downward, never sideways between equal layers. Root version.py is a separately permitted dependency. Standard-library runtime imports remain in host/. The audit checks syntax and selected operations, not a complete host-isolation boundary; console input/output and trusted modules remain host-capable.
 
-Objects are supplied rather than imported. The archive service receives a storage object; the event log receives storage and a clock; the module registry and API receive a `ModuleContext` holding storage, the service registry, the event log and the platform facts. Only the kernel and the shell ever hold the kernel object, so every layer below them depends on named objects rather than on how the kernel is assembled.
+## Assembly versus lifecycle
 
-Storage sits at layer 0 because it imports nothing and every layer above uses it. Its disk backend is the one exception kept in `host/`, since only that directory may touch the real filesystem; the kernel joins the two by passing the disk backend into `Storage`.
+`kernel/composition.py` constructs a concrete RuntimeComponents bundle. It joins Storage with a memory or disk backend, builds EventLog with a host clock, registers settings/archive/updates with injected serialization callbacks, creates the console/device registry, builds ModuleContext/ModuleRegistry and supplies the interpreter and scheduler. The builder does not start services.
 
-The runtime directory is named `extensions/` and the project-root folder of drop-in modules is named `modules/`, so the code that loads modules and the modules it loads are never confused. Module files still declare `MODULE_*` names and the `brisartos.module.v1` ABI.
+`kernel/kernel.py` accepts the bundle or builds one by default. It owns the normal lifecycle `created -> starting -> running -> stopping -> stopped`. Startup validates the stored-data marker, starts services in registration order, records kernel startup, opens module work acceptance and optionally discovers modules. Startup exceptions trigger cleanup and are re-raised. A stopped instance cannot restart.
 
-The audit checks source-level import direction and selected host-only operations. It does not prove that every host interaction passes through an adapter: the console reads and prints with built-in input/output, and trusted module files execute as ordinary code.
+The explicit bundle is an injection seam, not a generic dependency container. Callers supplying custom components must preserve the documented interfaces and coherent shared references.
 
-## From router to prompt
+## Service lifecycle
 
-The root `run.py` launches the console in a child interpreter whose working directory is the project root. The console chooses a data root or memory mode and supplies the module-source directory to Kernel.
+ServiceRecord stores name, object, persistent and state. Registry registration order determines startup order; shutdown reverses attempted starts. Optional start/stop hooks allow simple objects without a base class. A failed start includes the attempted service in rollback. Rollback failures remain in lifecycle_errors while the original startup exception propagates.
 
-Kernel construction creates storage, scheduler, device registry, text console, event log, service registry, interpreter and platform declarations, then builds the module context and the module registry from them. Startup registers the three built-in services, changes lifecycle state, logs startup and optionally discovers modules.
+Kernel shutdown sets stopping, closes module work acceptance, cancels/closes pending iterators, invokes module cleanup hooks, stops services and attempts a final kernel event. Failures are collected in shutdown_errors; later phases still run and state becomes stopped. A hook that never returns cannot be interrupted. Trusted direct component access is not universally lifecycle-gated.
 
-The console prints the banner and discovery failures before entering its input loop. Each terminal line is fed to the kernel's TextConsole device. The console's `serve` function reads queued lines back from the device and passes each to Shell, which selects a registered command handler. The handler calls the supplied kernel or one of its components and returns display text, which `serve` writes to the device; the loop prints what it drains.
+## Stored-data ownership
 
-`serve` catches ordinary command exceptions and writes their type and message to the device. Prompt EOF or interrupt ends the loop. A finally clause stops a still-running kernel after that loop block has been entered. Construction, startup and banner failures occur before the cleanup block and are not covered by it.
+Program release version remains solely in root version.py. `storage/schema.py` owns `brisartos.data.v1` and the marker `/system/state/format.txt`. Existing text trees without a marker receive one without rewriting user files. Unknown markers are refused. There is no automatic migration to or from incompatible data formats.
 
-## Source modules and stored module data
+Versioned service envelopes contain format, kind and payload. JSON is encoded/decoded by host/serialization.py and injected into services, so service modules do not import standard-library serializers. Plain JSON-compatible data with text mapping keys is accepted; unsupported objects, tuples and non-finite numbers are rejected. Corrupt or incompatible documents fail startup instead of being reset.
 
-Module source files are discovered as immediate child `NAME/module.py` entries under the configured module-source directory. Discovery executes a file before checking its declarations, ABI and permissions. Ordinary load failures are recorded per folder; base exceptions are not caught by discovery.
-
-Registered entries run through ModuleRegistry with a ModuleAPI built from the module context and carrying their declared permissions. The API prefixes file operations with `/modules/NAME/`. This namespace is stored data, distinct from the source directory containing module.py.
-
-Permissions constrain API calls, not the process. A loaded module can bypass the API using capabilities available to the running interpreter. There is no process isolation or hostile-code sandbox.
-
-## One storage interface, two backends
-
-Storage owns path normalization and text validation. Its default MemoryBackend holds dictionary entries. The disk backend resolves paths below a root directory and stores UTF-8 files. Kernel chooses between them from its data-root argument.
-
-Both backends implement read, write, append, delete, exists, paths and describe. Shared storage tests exercise the same contract against each. This supports common behavior for checked operations, not identical behavior under every host failure or filesystem condition.
-
-Disk replacement writes use a temporary sibling followed by replace. Appends write directly. There is no lock, explicit flush-to-disk step or multi-file transaction. Path checks reject resolved targets outside the root but do not establish a race-free security boundary against concurrent filesystem mutation.
-
-## State lifetimes
-
-| State | Owner | Persistence provided by this implementation |
+| State | Owner | Disk behavior |
 | --- | --- | --- |
-| Text files and log files | Storage backend | Disk mode retains them; memory mode does not |
-| Recent events and the event total | EventLog instance | None across new instances; log files keep their lines |
-| Settings values | Settings instance | None |
-| Named snapshots | Archive instance | None |
-| Update candidates | Updates instance | None |
-| Module-level variables | Loaded module object | Retained between runs; discovery reload creates new objects |
-| Task records and iterators | Scheduler instance | None |
+| User files and text logs | Storage | Retained under data/ |
+| Settings | Settings | `/system/settings.txt` |
+| Named user-file snapshots | Archive | `/system/archive/index.txt` |
+| Update source candidates | Updates | `/system/updates/index.txt` |
+| Format marker | Storage schema | `/system/state/format.txt` |
+| Recent structured events and sequence total | EventLog | Instance-local only |
+| Task records and iterators | Scheduler | Instance-local only |
+| Module globals | Loaded Python object | Until replacement or process exit |
 
-Every event, from the kernel or from a module, goes through one EventLog. It bounds recent events but not log file size, and it updates memory before appending the file line, so an append error can leave the two inconsistent.
+Memory mode uses the same state-document semantics but its backend disappears with the instance. Standalone Settings()/Updates() and Archive(storage) without serialization retain their memory-only use cases.
 
-Archive snapshots exclude `/logs`, and restoration keeps that prefix. This protects logs from that restore operation, not from all callers: the general storage interface still permits writes and deletions. Restore validates input before mutation but applies backend changes individually, so application failures can leave partial state.
+Mutations serialize and write before publishing memory changes. Settings returns detached values in composed mode. Archive excludes and preserves `/logs` and `/system`, avoiding recursive index snapshots and leaving settings/candidates unchanged during user-file restoration. The reserved prefix is a convention, not an access-control boundary.
 
-## Execution paths that remain separate
+Disk writes use sibling replacement; append is direct. No fsync durability, cross-process locking, secure temporary-file creation or multi-file transaction is provided. Snapshot restore can partially apply after backend failure. Back up data before adopting changed state semantics.
 
-The restricted language parses and evaluates its own tuple nodes. Its execution budget counts statements, expressions and loop iterations. Selected addition/multiplication guards do not constitute comprehensive resource isolation. The source-ROM model wraps that interpreter in lifecycle states and explicitly reports no hardware boot.
+## Module compatibility and manifests
 
-The scheduler advances supplied iterators cooperatively. The shell exposes task inspection and stepping but has no task-spawn command. The TextConsole device carries the interactive session, but terminal reading and printing still happen in the console loop. These distinctions matter when interpreting component status: implemented objects are not automatically integrated into every entry point.
+New modules declare manifest.txt beside module.py. The host loader reads inert key/value text. Registry validates required fields, safe names, permissions, duplicates and API compatibility before executing Python. Malformed manifests do not fall back to legacy loading. After import, run must be callable; optional stop must also be callable.
 
-Platform capabilities are fixed declarations. Boot-media and firmware-handoff methods always raise. No path in this architecture produces an independently bootable system.
+The API contract is `(name, major, required_minor)`: name must be brisartos.module, major must match and runtime minor must meet or exceed required_minor. Minor changes are for compatible additions; breaking changes require a new major. The contract identifier is independent of the program release.
 
-## Evidence and documentation ownership
+Required fields are name, display_name, version, author, description, api, api_major, api_minor, permissions and entry. Entry is run; version=runtime resolves the central release value. Manifest metadata is authoritative when present.
 
-Directory READMEs describe local implementations. Python headers retain the six required sections and combine authored explanations with generated syntax facts. The header tool's relationship graph is static: router references can appear as importers, and test imports are not measured execution coverage.
+Legacy declaration-only modules retain the brisartos.module.v1 path and eight required Python declarations. They execute before validation. Optional MODULE_API declares explicit compatibility; otherwise the baseline is assumed. The unchanged legacy ABI does not establish compatibility with older releases that reused it.
 
-The static audit checks configured structural rules. Repository tests additionally check links, fences, README openings and extracted Python examples. Non-Python console transcripts and shell-command header examples are not automatically executed by those example tests.
+Source folders under root modules/ are distinct from runtime `/modules/NAME/` data. Manifest validation is not authentication or hostile-code isolation. All Python shares one host process.
 
-A passing audit is evidence for its checks, not a semantic review of prose. Test results apply to the interpreter and environment used for the run; they do not establish universal platform compatibility, security or bootability.
+## Module service boundary and cleanup
 
-See the [runtime directory map](../brisartos/README.md) for local pages and the [change record](CHANGELOG.md) for this documentation revision.
+ModuleContext holds storage, services, events, platform and work acceptance. ModuleAPI gates declared operations and returns SettingsAccess, ArchiveAccess or UpdatesAccess rather than live service objects. Facades expose operational methods, not start/stop. Unknown services require an explicit facade implementation. Private references remain reachable to trusted Python code.
+
+Module runs record structured start/finish/failure events. Optional stop() hooks run without arguments in reverse registration order during shutdown. Acceptance is already closed, so hooks should release owned resources rather than request new gated API work. Reload retains code registrations and replaces discovered entries; it is not transactional and does not guarantee old-resource cleanup.
+
+## Event ordering
+
+EventLog entries contain sequence, time, source, kind, message and details. Details are copied on input and output. The text append succeeds before total/recent are published; failed appends leave no new in-memory entry but may have partially changed the backend.
+
+Core kinds cover kernel start/stop, module load/rejection/start/finish/failure, service start/stop and task spawn/finish/failure. Existing text log display remains TIME SOURCE: MESSAGE. Kind/details are not persisted as structured records. Recent history is bounded, text files are not rotated, and sequence numbers restart per instance.
+
+## Execution paths
+
+Root run.py launches child interpreters from the project root. Console startup/banner/input are inside cleanup scope. TextConsole carries commands and results between terminal input/output and Shell. Ordinary command errors are displayed; base exceptions propagate after cleanup.
+
+The language remains a restricted parser/interpreter with selected step/growth limits, not arbitrary Python execution or comprehensive resource isolation. `machine/machine.py` owns the source-ROM lifecycle; the old language.rom import is removed, while run.py rom remains supported.
+
+Scheduler advances iterators cooperatively and closes cancelled iterators where possible. It cannot preempt a non-yielding task. Shell exposes task inspection/stepping, not task spawning. Platform flags remain declarations: no hardware boot, native code generation or self-hosting is introduced.
+
+## Maintainer decisions and release gate
+
+Keep explicit domain boundaries, implicit namespace packages, root version ownership and the six-section Python headers. Do not add a generic core/utils directory or dependency-injection framework. Add a domain only with a distinct responsibility, README, tests and audited layer placement.
+
+Run tests and audit before edits. After edits refresh headers, review the diff, rerun tests/audit/header check and manually review changed prose. Update the first changelog release heading with the central version. Review data-format and module-API compatibility independently; changing program version performs no migration.
+
+README files own local behavior; this page owns cross-domain flows and decisions. Static relationship lines are not measured execution coverage. Passing tests establish checked behavior on the interpreter used, not universal compatibility, security or bootability.
+
+See [the runtime map](../brisartos/README.md) and [the changelog](CHANGELOG.md).

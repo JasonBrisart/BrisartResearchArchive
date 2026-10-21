@@ -37,8 +37,8 @@ Settings / parameters
 - MODULE_VERSION = __version__ -- Read from version.py so the example reports
   the release version.
 - MODULE_AUTHOR = 'Jason Brisart' -- Shown by the describe command.
-- MODULE_DESCRIPTION = 'Uses each part of the module API once.' -- Shown by the
-  describe command.
+- MODULE_DESCRIPTION = 'Demonstrates four permission-gated module operations.'
+  -- Shown by the describe command.
 - MODULE_ABI = 'brisartos.module.v1' -- The compatibility string the registry
   requires.
 - MODULE_PERMISSIONS = ('log', 'storage', 'object_id', 'service:settings') --
@@ -52,7 +52,7 @@ raise AccessDenied, which the registry logs as a failed run.
 Known limitations
 -----------------
 - It writes real files when the console uses disk storage, and its settings
-  entry is lost when the program ends.
+  entry follows the composed service persistence mode.
 - It reads its version from the BrisartOS root-level version module.
 
 Examples
@@ -71,7 +71,7 @@ MODULE_NAME = "hello_lab"
 MODULE_DISPLAY_NAME = "Hello Lab"
 MODULE_VERSION = __version__
 MODULE_AUTHOR = "Jason Brisart"
-MODULE_DESCRIPTION = "Uses each part of the module API once."
+MODULE_DESCRIPTION = "Demonstrates four permission-gated module operations."
 MODULE_ABI = "brisartos.module.v1"
 MODULE_PERMISSIONS = ("log", "storage", "object_id", "service:settings")
 

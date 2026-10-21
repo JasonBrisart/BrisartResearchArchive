@@ -1,32 +1,23 @@
-# Shipped Module Directory
+# Shipped Module Sources
 
-This directory contains the `hello_lab/` module folder supplied with BrisartOS.
+This directory contains trusted drop-in module source folders; it is distinct from files written under the runtime storage namespace.
 
-## Contents and entry shape
+## Contents
 
-[hello_lab/README.md](hello_lab/README.md) describes the actual example and its effects. Its `module.py` is the entry file. There are no other shipped module directories in this snapshot.
+[hello_lab/README.md](hello_lab/README.md) describes the shipped example. Its `manifest.txt` declares inert metadata and `module.py` provides `run(api)`. The loader implementation lives in [the extension system](../brisartos/extensions/README.md).
 
-The directory itself contains no loader implementation. The [extension-system README](../brisartos/extensions/README.md) owns discovery, validation, API behavior and failure handling. This page records the entry contract used by the module stored here rather than inventing additional module examples.
+## Preferred manifest contract
 
-## Declarations used by the shipped entry
+Place `manifest.txt` beside `module.py`. Required fields are name, display_name, version, author, description, api, api_major, api_minor, permissions and entry. The shipped manifest uses `version=runtime`, `api=brisartos.module`, major 1, minor 0 and `entry=run`. Registry validates compatibility and permission declarations before executing the entry file. Invalid manifests are rejected without legacy fallback.
 
-| Name | Value or role in `hello_lab/module.py` |
-| --- | --- |
-| `MODULE_NAME` | `hello_lab` |
-| `MODULE_DISPLAY_NAME` | `Hello Lab` |
-| `MODULE_VERSION` | Imported BrisartOS release version |
-| `MODULE_AUTHOR` | Author metadata |
-| `MODULE_DESCRIPTION` | Description metadata |
-| `MODULE_ABI` | `brisartos.module.v1` |
-| `MODULE_PERMISSIONS` | The four permissions needed by the entry body |
-| `run` | `run(api)` performs the example's operations |
+The permission vocabulary is `log`, `storage`, `object_id`, `platform_info` and `service:NAME`. The example uses `service:settings` plus log, storage and object_id. Service access returns narrow facades, not live lifecycle objects.
 
-The module-system permission vocabulary is `log`, `storage`, `object_id`, `platform_info` and `service:NAME`. The shipped entry uses `log`, `storage`, `object_id` and the specific service permission `service:settings`; it does not request `platform_info`.
+## Legacy compatibility
 
-## Source files and runtime files are different
+Manifest-free entries still require `MODULE_NAME`, `MODULE_DISPLAY_NAME`, `MODULE_VERSION`, `MODULE_AUTHOR`, `MODULE_DESCRIPTION`, `MODULE_ABI`, `MODULE_PERMISSIONS` and `run`. The legacy ABI is `brisartos.module.v1`; optional MODULE_API declares the explicit name/major/minor requirement. Legacy loading executes code before validation and is only suitable for trusted modules.
 
-The source entry lives here under `modules/hello_lab/`. Files written through its API belong to the BrisartOS storage namespace `/modules/hello_lab/`, not this source directory. In disk mode the console places that storage namespace below its data root.
+## Source and state
 
-The module source is executed during discovery. Only trusted entry files belong in a discovered module directory; declaration and permission checks do not isolate their top-level code.
+`modules/hello_lab/module.py` is source. `/modules/hello_lab/hello.txt` is a runtime file below the selected storage root. They are not the same path. Disk mode retains files and built-in service state; memory mode retains neither across new instances. An optional module-level stop() releases owned resources during kernel shutdown.
 
-The registry's integration test loads this shipped folder. There is no local `tests/` directory here; the implementation tests live with the module system.
+Manifests are compatibility metadata, not signatures. All loaded Python shares the host process. The registry integration tests and kernel architecture tests exercise the shipped entry and manifest-first path; no local tests/ directory is shipped here.

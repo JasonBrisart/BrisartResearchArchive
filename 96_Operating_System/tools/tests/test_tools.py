@@ -140,7 +140,7 @@ class AuditTests(unittest.TestCase):
         self.assertAuditFails('layer violation: services')
 
     def test_absolute_brisartos_imports_are_refused_in_product_code(self):
-        self.project.edit('brisartos/kernel/kernel.py', 'from .devices import', 'from brisartos.kernel.devices import DeviceRegistry as Unused\nfrom .devices import')
+        self.project.edit('brisartos/kernel/composition.py', 'from .devices import', 'from brisartos.kernel.devices import DeviceRegistry as Unused\nfrom .devices import')
         self.assertAuditFails('only brisartos/host/ may import brisartos')
 
     def test_loose_files_in_the_package_root_are_refused(self):

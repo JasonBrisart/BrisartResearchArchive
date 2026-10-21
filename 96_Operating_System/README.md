@@ -13,7 +13,7 @@ python -B run.py start
 python -B run.py start --memory
 ```
 
-The first command keeps text files and logs in `data/`. The second keeps them in memory for that session. Settings, saved snapshots and staged update candidates are memory-only in either mode. Deleting `data/` deletes the files and logs stored there; it is not a harmless cache cleanup.
+The first command keeps text files and logs in `data/`. The second keeps them in memory for that session. Settings, saved snapshots and staged update candidates now persist under `data/system/` in disk mode; memory mode discards all state. User-file snapshots exclude `/logs` and `/system`. Deleting `data/` deletes the files and logs stored there; it is not a harmless cache cleanup.
 
 The console accepts one command per line. Enter `help` to see its registered commands and `exit` to stop the session. The [shell README](brisartos/shell/README.md) owns command syntax and console behavior.
 
@@ -45,6 +45,14 @@ Only `start` forwards extra options to its child program. Test filters that matc
 
 ## Runtime requirement
 
-This documentation pass was checked with Python 3.12.15. Compatibility across other interpreter versions was not established by that run. A host Python interpreter remains necessary for every entry point.
+This release passed 271 tests across 12 test folders on Python 3.12.15 in a clean local source copy. Compatibility with other interpreter versions is not established by that run. A host Python interpreter remains necessary for every entry point.
 
 The [architecture page](docs/ARCHITECTURE.md) explains how components connect. The [changelog](docs/CHANGELOG.md) records what changed in each release.
+
+## Maintainer entry point
+
+Component wiring lives in `brisartos/kernel/composition.py`; lifecycle lives in `kernel.py`. Stored-data schema is independent of release version. New modules should use manifest-first loading; legacy declaration-only entries remain trusted-code compatibility inputs. Module service access returns facades.
+
+Before changing code, establish a baseline with `python -B run.py test`, `python -B run.py audit` and `python -B tools/headers.py --check`. After changes, run header refresh, inspect its diff, rerun tests/audit/check and review the affected README and architecture sections. Passing structural checks does not replace reviewing whether the prose is true.
+
+Before release, update only root version.py for the release string, add the matching first changelog entry, check schema/API compatibility separately and package only source files. Do not delete data/ as a cleanup step. Back up existing data before adopting changed persistence semantics. Unknown data-format markers are refused; no automatic migration is implemented.

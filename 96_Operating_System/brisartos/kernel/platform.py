@@ -28,8 +28,8 @@ Communication / relationships
 -----------------------------
 Standard library: none.
 Imported by:
+- brisartos/kernel/composition.py
 - brisartos/kernel/devices.py
-- brisartos/kernel/kernel.py
 Covered by tests: brisartos/extensions/tests/test_api.py,
 brisartos/kernel/tests/test_components.py.
 

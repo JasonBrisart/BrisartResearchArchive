@@ -3,82 +3,73 @@ File: brisartos/kernel/kernel.py
 
 Purpose
 -------
-Compose the BrisartOS runtime and coordinate its one-way lifecycle, module
-discovery, event recording and stored-program execution.
+Coordinate explicit startup, work acceptance and best-effort reverse shutdown
+over an injected component bundle.
 
 Public interface:
-- class Kernel -- The composition root: storage, scheduler, devices, services,
-  modules, language and platform facts.
-- Kernel(data_root=None, modules_path=None, max_steps=10000, event_limit=1000)
-  -- Build every component; data_root selects disk storage, modules_path a
-  folder of modules to discover.
-- Kernel.start() -- Register the settings, archive and updates services, log
-  the start and discover modules.
-- Kernel.reload_modules() -- Rediscover modules, log each failure and return
-  the failures mapping.
-- Kernel.stop() -- Cancel every waiting task and log the stop.
-- Kernel.run_file(path) -- Run a stored file with the restricted language and
-  return its result.
-- Kernel.describe() -- Return the state, platform facts, ABI, storage,
-  services, modules and total event count.
+- class Kernel -- The lifecycle coordinator for a composed runtime.
+- Kernel(data_root=None, modules_path=None, max_steps=10000, event_limit=1000,
+  components=None) -- Build or accept explicit components and retain runtime
+  options.
+- Kernel.start() -- Validate schema, start services, record startup and
+  discover modules.
+- Kernel.reload_modules() -- Discover modules only while running and record
+  structured outcomes.
+- Kernel.stop() -- Block new work, run all cleanup phases and return failure
+  records.
+- Kernel.run_file(path) -- Execute stored restricted-language source only while
+  running.
+- Kernel.describe() -- Return the existing seven-field runtime description.
 
 Design notes:
 
-Construction selects a storage backend and builds the components, then hands
-the module system a ModuleContext holding only storage, services, the event log
-and platform facts, so module code never receives the kernel itself. start
-registers three services before recording the start and discovering modules;
-stop cancels waiting tasks before recording the stop and changing state. Every
-kernel event goes through the same EventLog that modules write to.
+Construction delegates assembly to composition.py. Startup validates
+stored-data format before services load. Any startup failure enters cleanup.
+Shutdown blocks module API work, cancels tasks, runs module hooks, stops
+services and records a final event.
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
-- brisartos.events.events (brisartos/events/events.py)
 - brisartos.extensions.api (brisartos/extensions/api.py)
-- brisartos.extensions.registry (brisartos/extensions/registry.py)
-- brisartos.host.disk (brisartos/host/disk.py)
-- brisartos.host.system (brisartos/host/system.py)
-- brisartos.kernel.devices (brisartos/kernel/devices.py)
-- brisartos.kernel.platform (brisartos/kernel/platform.py)
-- brisartos.kernel.scheduler (brisartos/kernel/scheduler.py)
-- brisartos.language.interpreter (brisartos/language/interpreter.py)
-- brisartos.services.archive (brisartos/services/archive.py)
-- brisartos.services.registry (brisartos/services/registry.py)
-- brisartos.services.settings (brisartos/services/settings.py)
-- brisartos.services.updates (brisartos/services/updates.py)
-- brisartos.storage.storage (brisartos/storage/storage.py)
+- brisartos.kernel.composition (brisartos/kernel/composition.py)
+- brisartos.storage.schema (brisartos/storage/schema.py)
 Standard library: none.
 Imported by:
 - brisartos/shell/console.py
 Covered by tests: brisartos/extensions/tests/test_api.py,
 brisartos/extensions/tests/test_registry.py,
+brisartos/kernel/tests/test_architecture.py,
 brisartos/kernel/tests/test_kernel.py, brisartos/shell/tests/test_console.py,
 brisartos/shell/tests/test_shell.py.
 
 Settings / parameters
 ---------------------
-Kernel(data_root=None, modules_path=None, max_steps=10000, event_limit=1000).
-With data_root=None files live in memory; with a folder they live on disk
-there. With modules_path=None no modules are discovered.
+Constructor arguments select the supplied components and policies; no
+module-level configuration is defined.
 
 Edge cases
 ----------
-A module that fails to load is recorded as "module NAME not loaded: REASON" and
-never stops start. An invalid event_limit is refused by the event log during
-construction. run_file lets storage and language errors pass through to the
-caller.
+Invalid inputs are rejected before the documented operation; backend and
+callback failures propagate unless explicitly collected.
 
 - Kernel.start() raises RuntimeError: "kernel can only start once"
+- Kernel.start() re-raises the active exception
+- Kernel.reload_modules() raises RuntimeError: "kernel is not running"
 - Kernel.stop() raises RuntimeError: "kernel is not running"
+- Kernel.run_file() raises RuntimeError: "kernel is not running"
+- Kernel.start() catches BaseException -- Collect the failure as documented and
+  continue cleanup or report it to the caller.
+- Kernel._shutdown() catches BaseException -- Collect the failure as documented
+  and continue cleanup or report it to the caller.
 
 Known limitations
 -----------------
-- A stopped kernel cannot restart; build a new one.
-- Everything runs in one host Python process with no isolation between the
-  kernel, the shell and modules.
-- Settings, snapshots and update candidates live in memory only, so they are
-  not restored when a new kernel opens the same data folder.
+- A stopped kernel cannot restart; construct a new instance.
+- Cleanup is best effort and cannot interrupt a non-returning hook; errors are
+  retained in shutdown_errors.
+- This is a single host-Python process, not an independent bootable operating
+  system.
 
 Examples
 --------
@@ -87,74 +78,80 @@ Run from the repository root.
 ::
 
     from brisartos.kernel.kernel import Kernel
-
-    kernel = Kernel()
-    kernel.start()
-    kernel.storage.write('/p.py', 'print(6 * 7)')
-    assert kernel.run_file('/p.py')['output'] == ['42']
-    kernel.stop()
-    assert kernel.state == 'stopped'
+    k = Kernel()
+    k.start()
+    k.storage.write('/p.py', 'print(42)')
+    assert k.run_file('/p.py')['output'] == ['42']
+    assert k.stop() == []
+    assert k.state == 'stopped'
 """
-
-from ..host import disk, system
-from ..language.interpreter import Interpreter
-from ..events.events import EventLog
-from ..extensions.api import MODULE_ABI, ModuleContext
-from ..extensions.registry import ModuleRegistry
-from ..services.archive import Archive
-from ..services.registry import ServiceRegistry
-from ..services.settings import Settings
-from ..services.updates import Updates
-from .devices import DeviceRegistry, TextConsole
-from .platform import Platform
-from .scheduler import Scheduler
-from ..storage.storage import Storage
-
+from ..extensions.api import MODULE_ABI
+from ..storage.schema import initialize
+from .composition import build_runtime
 
 class Kernel:
-    def __init__(self, data_root=None, modules_path=None, max_steps=10000, event_limit=1000):
-        self.platform = Platform()
-        self.storage = Storage(None if data_root is None else disk.DiskBackend(data_root))
-        self.scheduler = Scheduler()
-        self.devices = DeviceRegistry()
-        self.console = TextConsole()
-        self.devices.register('console', self.console)
-        self.events = EventLog(self.storage, system.now_utc, event_limit)
-        self.services = ServiceRegistry()
-        self.modules = ModuleRegistry(ModuleContext(self.storage, self.services, self.events, self.platform))
-        self.language = Interpreter(max_steps)
-        self.modules_path = modules_path
-        self.state = 'created'
-
+    def __init__(self, data_root=None, modules_path=None, max_steps=10000, event_limit=1000, components=None):
+        components = build_runtime(data_root, modules_path, max_steps, event_limit) if components is None else components
+        self.components = components
+        self.storage, self.scheduler, self.devices = components.storage, components.scheduler, components.devices
+        self.console, self.events, self.services = components.console, components.events, components.services
+        self.modules, self.language, self.platform = components.modules, components.language, components.platform
+        self.modules_path, self.state = modules_path, 'created'
+        self.shutdown_errors = []
     def start(self):
         if self.state != 'created':
             raise RuntimeError('kernel can only start once')
-        self.services.register('settings', Settings())
-        self.services.register('archive', Archive(self.storage))
-        self.services.register('updates', Updates())
-        self.state = 'running'
-        self.events.record('kernel', 'started on host Python; no firmware boot occurred')
-        if self.modules_path is not None:
-            self.reload_modules()
-
+        self.state = 'starting'
+        try:
+            initialize(self.storage)
+            self.services.start_all()
+            self.events.record('kernel', 'started on host Python; no firmware boot occurred', kind='kernel.started')
+            self.state = 'running'
+            self.modules.context.accepting = True
+            if self.modules_path is not None:
+                self.reload_modules()
+        except BaseException:
+            self._shutdown()
+            raise
     def reload_modules(self):
+        if self.state != 'running':
+            raise RuntimeError('kernel is not running')
+        if self.modules_path is None:
+            return {}
         failures = self.modules.discover(self.modules_path)
+        for name in self.modules.names():
+            self.events.record('kernel', 'module ' + name + ' loaded', kind='module.loaded', details={'module': name})
         for label, reason in sorted(failures.items()):
-            self.events.record('kernel', 'module ' + label + ' not loaded: ' + reason)
+            self.events.record('kernel', 'module ' + label + ' not loaded: ' + reason, kind='module.rejected', details={'module': label, 'reason': reason})
         return failures
-
+    def _shutdown(self):
+        self.state = 'stopping'
+        self.modules.context.accepting = False
+        self.shutdown_errors = []
+        for name, cleanup in (('tasks', self.scheduler.cancel_all), ('modules', self.modules.stop_all), ('services', self.services.stop_all)):
+            try:
+                result = cleanup()
+                if isinstance(result, list):
+                    self.shutdown_errors.extend(result)
+            except BaseException as error:
+                self.shutdown_errors.append({'component': name, 'error': type(error).__name__ + ': ' + str(error)})
+        self.shutdown_errors.extend(self.scheduler.cleanup_errors)
+        self.shutdown_errors.extend(self.services.lifecycle_errors)
+        try:
+            self.events.record('kernel', 'stopped', kind='kernel.stopped', details={'cleanup_errors': len(self.shutdown_errors)})
+        except BaseException as error:
+            self.shutdown_errors.append({'component': 'events', 'error': type(error).__name__ + ': ' + str(error)})
+        self.state = 'stopped'
     def stop(self):
         if self.state != 'running':
             raise RuntimeError('kernel is not running')
-        self.scheduler.cancel_all()
-        self.events.record('kernel', 'stopped')
-        self.state = 'stopped'
-
+        self._shutdown()
+        return list(self.shutdown_errors)
     def run_file(self, path):
+        if self.state != 'running':
+            raise RuntimeError('kernel is not running')
         return self.language.run(self.storage.read(path))
-
     def describe(self):
         return {'state': self.state, 'platform': self.platform.describe(),
                 'module_abi': MODULE_ABI, 'storage': self.storage.describe(),
-                'services': self.services.names(),
-                'modules': self.modules.names(), 'events': self.events.total}
+                'services': self.services.names(), 'modules': self.modules.names(), 'events': self.events.total}

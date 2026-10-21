@@ -66,7 +66,7 @@ class EventLogTests(unittest.TestCase):
     def test_record_numbers_keeps_and_writes_an_event(self):
         self.events.record('probe', 'hello')
         self.assertEqual(self.events.recent(), [{'sequence': 1, 'time': '2026-01-01T00:00:00+00:00',
-                                                 'source': 'probe', 'message': 'hello'}])
+                                                 'source': 'probe', 'message': 'hello', 'kind': 'message', 'details': {}}])
         self.assertEqual(self.storage.read('/logs/probe.log'), '2026-01-01T00:00:00+00:00 probe: hello\n')
 
     def test_each_source_gets_its_own_file(self):

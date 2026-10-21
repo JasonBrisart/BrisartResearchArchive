@@ -3,23 +3,20 @@ File: brisartos/host/loader.py
 
 Purpose
 -------
-Discover immediate child folders containing module.py and execute an individual
-entry file into a fresh module object.
+Discover module entries, parse inert manifests and execute approved entry files
+through importlib.
 
 Public interface:
-- module_files(folder) -- Return the NAME/module.py files directly under
-  folder, in alphabetical order; a missing folder, loose files and folders
-  without module.py are ignored.
-- load_module(path) -- Execute one module file with importlib and return the
-  resulting module object.
+- module_files(folder) -- Return sorted immediate child module.py entries.
+- load_module(path) -- Execute a Python entry into a fresh module object.
+- read_manifest(path) -- Read and parse manifest.txt without executing module
+  code.
 
 Design notes:
 
-Discovery sorts directory entries and ignores loose files and child folders
-without the entry file. Loading constructs an import specification and executes
-it without explicitly inserting the new object into sys.modules. The file is
-executed before its declarations can be inspected; this loader performs no
-permission or compatibility validation.
+read_manifest reads only text. The extension registry validates its contents
+before calling load_module. Missing manifests use the documented legacy
+declaration path; they cannot be prevalidated.
 
 Communication / relationships
 -----------------------------
@@ -30,23 +27,27 @@ Covered by tests: brisartos/host/tests/test_loader.py.
 
 Settings / parameters
 ---------------------
-- ENTRY_FILE = 'module.py' -- The file name looked for inside each module
-  folder.
+- ENTRY_FILE = 'module.py' -- Fixed local policy used by the operations
+  documented above.
+- MANIFEST_FILE = 'manifest.txt' -- Fixed local policy used by the operations
+  documented above.
 
 Edge cases
 ----------
-Any exception raised by the module's own top-level code reaches the caller
-unchanged; the registry catches and records it. A missing or non-folder path
-yields an empty list.
+Invalid inputs are rejected before the documented operation; backend and
+callback failures propagate unless explicitly collected.
 
 - load_module() raises ImportError: "cannot load module: {...}"
+- read_manifest() raises ValueError: "invalid or duplicate manifest field:
+  {...}"
+- read_manifest() raises ValueError: "missing manifest fields: {...}"
+- read_manifest() raises ValueError: "manifest entry must be run"
 
 Known limitations
 -----------------
-- Loading executes the file before anything checks it, so only code you trust
-  belongs in the modules folder.
-- There is no sandbox, signature check or unloading: an old module object lives
-  until it is garbage collected.
+- Legacy modules still execute before declaration checks.
+- Even manifest-approved Python runs as trusted code without isolation or
+  signature verification.
 
 Examples
 --------
@@ -54,18 +55,9 @@ Run from the repository root.
 
 ::
 
-    import tempfile
-    from pathlib import Path
-    from brisartos.host import loader
-
-    with tempfile.TemporaryDirectory() as folder:
-        (Path(folder) / 'demo').mkdir()
-        (Path(folder) / 'demo' / 'module.py').write_text('VALUE = 42\n')
-        paths = loader.module_files(folder)
-        assert [path.parent.name for path in paths] == ['demo']
-        assert loader.load_module(paths[0]).VALUE == 42
+    from brisartos.host.loader import module_files
+    assert module_files('/nonexistent/brisartos') == []
 """
-
 import importlib.util
 from pathlib import Path
 
@@ -88,3 +80,29 @@ def load_module(path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+MANIFEST_FILE = 'manifest.txt'
+
+def read_manifest(path):
+    manifest = Path(path).with_name(MANIFEST_FILE)
+    if not manifest.is_file():
+        return None
+    fields = {}
+    allowed = {'name', 'display_name', 'version', 'author', 'description', 'api', 'api_major', 'api_minor', 'permissions', 'entry'}
+    for raw in manifest.read_text(encoding='utf-8').splitlines():
+        line = raw.strip()
+        if not line or line.startswith('#'):
+            continue
+        key, separator, value = line.partition('=')
+        key, value = key.strip(), value.strip()
+        if not separator or key not in allowed or key in fields:
+            raise ValueError('invalid or duplicate manifest field: ' + key)
+        fields[key] = value
+    if set(fields) != allowed:
+        raise ValueError('missing manifest fields: ' + ', '.join(sorted(allowed - set(fields))))
+    if fields['entry'] != 'run':
+        raise ValueError('manifest entry must be run')
+    fields['api_major'] = int(fields['api_major'])
+    fields['api_minor'] = int(fields['api_minor'])
+    fields['permissions'] = tuple(item.strip() for item in fields['permissions'].split(',') if item.strip())
+    return fields

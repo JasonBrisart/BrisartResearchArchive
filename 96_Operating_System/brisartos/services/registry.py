@@ -3,24 +3,34 @@ File: brisartos/services/registry.py
 
 Purpose
 -------
-Register service objects under validated unique names and expose their live
-objects and descriptive metadata.
+Register named service records, start in insertion order and collect
+reverse-order shutdown failures.
 
 Public interface:
-- class ServiceRegistry -- Holds registered services by name.
-- ServiceRegistry.register(name, service) -- Add a service under a unique safe
-  name.
-- ServiceRegistry.get(name) -- Return the live service or raise KeyError.
-- ServiceRegistry.names() -- Return the sorted service names.
-- ServiceRegistry.describe(name) -- Return name, version, status and class for
-  one service.
+- class ServiceRecord -- Lifecycle metadata and the live service reference.
+- ServiceRecord(name, service, persistent=False) -- Bind a name, service and
+  persistence declaration.
+- class ServiceRegistry -- A named service table with ordered lifecycle
+  coordination.
+- ServiceRegistry(events=None) -- Create a registry with optional structured
+  event recording.
+- ServiceRegistry.register(name, service, persistent=False) -- Validate and
+  register a service in startup order.
+- ServiceRegistry.get(name) -- Return the underlying live service for trusted
+  runtime callers.
+- ServiceRegistry.names() -- Return sorted registered names.
+- ServiceRegistry.start_all() -- Start in registration order; unwind attempted
+  starts on failure.
+- ServiceRegistry.stop_all() -- Stop in reverse order and return collected
+  failure records.
+- ServiceRegistry.describe(name) -- Return metadata including lifecycle state
+  and persistence.
 
 Design notes:
 
-The registry validates the name but imposes no interface on the object.
-describe calls status when that attribute exists and reads version with a
-fallback. A status method can raise, and a non-callable status attribute also
-fails; this file does not convert those failures into health information.
+Lifecycle hooks are optional for simple third-party service objects. Failed
+startup cleans up attempted services and re-raises the original failure;
+shutdown continues after individual hook or event failures.
 
 Communication / relationships
 -----------------------------
@@ -28,28 +38,38 @@ Depends on (project modules):
 - brisartos.common.names (brisartos/common/names.py)
 Standard library: none.
 Imported by:
-- brisartos/kernel/kernel.py
+- brisartos/kernel/composition.py
 Covered by tests: brisartos/extensions/tests/test_api.py,
+brisartos/kernel/tests/test_architecture.py,
 brisartos/services/tests/test_services.py.
 
 Settings / parameters
 ---------------------
-No module-level settings. Names must pass common.names.require_name.
+Constructor arguments select the supplied components and policies; no
+module-level configuration is defined.
 
 Edge cases
 ----------
-A duplicate name raises ValueError and so does an invalid name; an unknown
-service raises KeyError.
+Invalid inputs are rejected before the documented operation; backend and
+callback failures propagate unless explicitly collected.
 
 - ServiceRegistry.register() raises ValueError: "service already registered:
   {...}"
+- ServiceRegistry.register() raises ValueError: "service object required"
 - ServiceRegistry.get() raises KeyError: "unknown service: {...}"
+- ServiceRegistry.start_all() raises RuntimeError: "service already started:
+  {...}"
+- ServiceRegistry.start_all() re-raises the active exception
+- ServiceRegistry.start_all() catches BaseException -- Collect the failure as
+  documented and continue cleanup or report it to the caller.
+- ServiceRegistry.stop_all() catches BaseException -- Collect the failure as
+  documented and continue cleanup or report it to the caller.
 
 Known limitations
 -----------------
-- The status text is whatever the service returns. It is a label, not a health
-  check.
-- Registration order is not preserved; names() always sorts.
+- Status text remains a service-supplied label, not an independent health
+  probe.
+- Cleanup cannot interrupt a hook that never returns.
 
 Examples
 --------
@@ -59,36 +79,77 @@ Run from the repository root.
 
     from brisartos.services.registry import ServiceRegistry
     from brisartos.services.settings import Settings
-
-    registry = ServiceRegistry()
-    registry.register('settings', Settings())
-    assert registry.names() == ['settings']
-    assert registry.describe('settings')['status'] == 'online'
+    r = ServiceRegistry()
+    r.register('settings', Settings())
+    r.start_all()
+    assert r.describe('settings')['state'] == 'running'
+    assert r.stop_all() == []
 """
-
 from ..common.names import require_name
 
+class ServiceRecord:
+    def __init__(self, name, service, persistent=False):
+        self.name, self.service, self.persistent = name, service, bool(persistent)
+        self.state = 'registered'
 
 class ServiceRegistry:
-    def __init__(self):
+    def __init__(self, events=None):
         self._services = {}
-
-    def register(self, name, service):
+        self._started = []
+        self._events = events
+        self.lifecycle_errors = []
+    def register(self, name, service, persistent=False):
         require_name(name, 'service name')
         if name in self._services:
             raise ValueError('service already registered: ' + name)
-        self._services[name] = service
-
+        if service is None:
+            raise ValueError('service object required')
+        self._services[name] = ServiceRecord(name, service, persistent)
     def get(self, name):
         if name not in self._services:
             raise KeyError('unknown service: ' + str(name))
-        return self._services[name]
-
+        return self._services[name].service
     def names(self):
         return sorted(self._services)
-
+    def start_all(self):
+        try:
+            for name, record in self._services.items():
+                if record.state != 'registered':
+                    raise RuntimeError('service already started: ' + name)
+                self._started.append(name)
+                record.state = 'starting'
+                callback = getattr(record.service, 'start', None)
+                if callback is not None:
+                    callback()
+                record.state = 'running'
+                if self._events is not None:
+                    self._events.record('services', 'started ' + name, kind='service.started', details={'service': name})
+        except BaseException:
+            self.lifecycle_errors.extend(self.stop_all())
+            raise
+    def stop_all(self):
+        failures = []
+        for name in reversed(self._started):
+            record = self._services[name]
+            try:
+                callback = getattr(record.service, 'stop', None)
+                if callback is not None:
+                    callback()
+                record.state = 'stopped'
+            except BaseException as error:
+                record.state = 'failed'
+                failures.append({'service': name, 'error': type(error).__name__ + ': ' + str(error)})
+            try:
+                if self._events is not None:
+                    self._events.record('services', 'stopped ' + name, kind='service.stopped', details={'service': name, 'state': record.state})
+            except BaseException as error:
+                failures.append({'service': name, 'error': 'logging: ' + str(error)})
+        self._started = []
+        return failures
     def describe(self, name):
         service = self.get(name)
+        record = self._services[name]
         status = service.status() if hasattr(service, 'status') else 'no status'
         return {'name': name, 'version': getattr(service, 'version', 'unknown'),
-                'status': status, 'class': type(service).__name__}
+                'status': status, 'class': type(service).__name__,
+                'state': record.state, 'persistent': record.persistent}

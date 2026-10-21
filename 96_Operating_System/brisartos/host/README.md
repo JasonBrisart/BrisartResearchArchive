@@ -1,6 +1,6 @@
 # Host Adapters
 
-Three files provide host-backed values, disk storage and dynamic entry-file execution.
+Four files provide host-backed values, disk storage, inert manifest parsing, dynamic entry-file execution and mapping serialization.
 
 ## `system.py`: values from the running process
 
@@ -51,3 +51,9 @@ Replacement is not a power-loss durability guarantee. There is no explicit flush
 - `tests/test_loader.py`: discovery filtering, execution, fresh objects and propagated exceptions.
 
 These tests do not simulate power failure, concurrent writers or exhausted storage.
+
+## `serialization.py`: injected state encoding
+
+`encode_mapping()` produces deterministic JSON for plain mappings with text keys. Unsupported values and non-finite numbers are rejected. `decode_mapping()` rejects non-mapping roots and non-finite constants. Neither operation authenticates data or enforces a size/nesting budget. Composition injects these callbacks into services.
+
+`loader.py` additionally provides `read_manifest(path)`, reading sibling manifest.txt without execution. It rejects duplicate/unknown/missing fields, converts API versions to integers and parses comma-separated permissions. Registry performs compatibility/name/permission checks before load_module. A missing manifest selects the documented legacy path.

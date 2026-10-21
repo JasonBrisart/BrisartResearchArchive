@@ -5,7 +5,36 @@ system research project.
 
 ---
 
-# BrisartOS Changelog
+## [0.0.14] - 2026-10-21
+
+### Added
+- Added an explicit RuntimeComponents bundle and build_runtime composition function so component wiring is separate from kernel lifecycle.
+- Added ordered service start/stop hooks, lifecycle records, persistence metadata and reverse cleanup with retained failure records.
+- Added an independent stored-data format marker and versioned state envelopes; unknown formats and corrupt state are refused instead of silently reset.
+- Added injected host JSON serialization and write-through persistence for settings, named user-file snapshots and update candidates.
+- Added manifest-first module loading so metadata, permissions and API compatibility can be rejected before executing new-format entries.
+- Added explicit API name/major/minor compatibility checks while retaining legacy declaration-only loading as a trusted-code fallback.
+- Added narrow settings, archive and update service facades for module access instead of returning live lifecycle objects.
+- Added structured event kinds/details, task outcome events and append-before-publication event ordering.
+- Added starting/stopping kernel states, optional module stop hooks, iterator close on cancellation and best-effort shutdown failure collection.
+- Added architecture regression tests for persistence, compatibility, manifests, composition, event failure ordering and cleanup behavior.
+
+### Changed
+- Moved the source-ROM lifecycle model from language/rom.py to machine/machine.py and moved its tests; the root rom command is unchanged.
+- Changed disk mode to retain settings, snapshots and staged candidates under /system; memory mode still discards all state.
+- Changed archive snapshots to exclude and preserve both /logs and /system, preventing recursive snapshot indexes and service-state rollback.
+- Changed service descriptions to include lifecycle state and persistence, and module descriptions to include explicit API requirements.
+- Changed persistent settings to accept detached plain JSON-compatible values; standalone memory-only settings retain shallow reference behavior.
+- Updated the audit layer map for machine and allowed only modules/NAME/manifest.txt as a narrow text-file exception.
+- Updated affected Python headers, local READMEs, architecture guidance, maintainer workflow and shipped example metadata.
+
+### Fixed
+- Extended console cleanup scope to cover startup and banner failures as well as the input loop.
+- Preserved the original startup failure while retaining cleanup errors and continuing later shutdown phases.
+- Prevented a failed log append from publishing a new recent event or sequence total.
+- Corrected stale component-test documentation referring to the removed object-memory implementation.
+
+---
 
 ## [0.0.13] - 2026-10-20
 

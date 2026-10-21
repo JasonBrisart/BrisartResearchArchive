@@ -99,7 +99,7 @@ class RegistryTests(unittest.TestCase):
         registry.register('settings', Settings())
         registry.register('plain', object())
         self.assertEqual(registry.describe('settings'),
-                         {'name': 'settings', 'version': __version__, 'status': 'online', 'class': 'Settings'})
+                         {'name': 'settings', 'version': __version__, 'status': 'offline', 'class': 'Settings', 'state': 'registered', 'persistent': False})
         self.assertEqual(registry.describe('plain')['status'], 'no status')
         self.assertEqual(registry.names(), ['plain', 'settings'])
 
@@ -153,7 +153,7 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(storage.read('/logs/kernel.log'), 'before save\nafter save\n')
 
     def test_snapshots_do_not_contain_logs(self):
-        self.assertEqual(PROTECTED, ('/logs',))
+        self.assertEqual(PROTECTED, ('/logs', '/system'))
         storage = Storage()
         storage.write('/logs/k.log', 'x')
         storage.write('/a', 'y')

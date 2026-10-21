@@ -138,7 +138,10 @@ class ModuleAPITests(unittest.TestCase):
         self.assertIn('demo: hello', self.kernel.storage.read('/logs/demo.log'))
         self.assertEqual(len(api.new_object_id()), 32)
         self.assertFalse(api.platform_info()['bootable'])
-        self.assertIs(api.get_service('settings'), self.kernel.services.get('settings'))
+        self.assertIsNot(api.get_service('settings'), self.kernel.services.get('settings'))
+        api.get_service('settings').set('facade.test', 'ok')
+        self.assertEqual(self.kernel.services.get('settings').get('facade.test'), 'ok')
+        self.assertFalse(hasattr(api.get_service('settings'), 'stop'))
         self.assertEqual(api.available_services(), ['archive', 'settings', 'updates'])
         self.assertTrue(api.now_utc().endswith('+00:00'))
 

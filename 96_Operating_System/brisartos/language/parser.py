@@ -33,7 +33,7 @@ Depends on (project modules):
 Standard library: none.
 Imported by:
 - brisartos/language/interpreter.py
-- brisartos/language/rom.py
+- brisartos/machine/machine.py
 Covered by tests: brisartos/language/tests/test_language.py.
 
 Settings / parameters

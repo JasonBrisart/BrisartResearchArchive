@@ -12,7 +12,7 @@ python -B run.py audit
 
 The checks cover delivered file types and path names; required header structure and prose presence; relative imports and configured layer direction; selected host-only imports/calls/bytes literals; README mentions of Python files and subdirectories; and stale generated header content.
 
-`LAYERS` maps the nine runtime directories to their import levels. Test files are exempt from product-layer/host restrictions but still require valid headers and imports. The README check uses substring presence, not a semantic comparison between prose and implementation.
+`LAYERS` maps the ten runtime directories to their import levels. Test files are exempt from product-layer/host restrictions but still require valid headers and imports. The README check uses substring presence, not a semantic comparison between prose and implementation.
 
 This audit does not validate Markdown links or execute documentation examples. Those checks are implemented by the repository-wide tests. It also cannot prove runtime isolation, security or bootability.
 
@@ -47,3 +47,7 @@ Header refresh does not rewrite Markdown pages or judge whether authored prose r
 ## Tests of the tools
 
 `tests/test_tools.py` copies the project into temporary directories. It checks that a clean copy passes, deliberately breaks individual audit rules, and checks that header refresh preserves authored content while repairing generated fields. The tests launch child interpreters against those copies, not against an edited production tree.
+
+## Architecture release rules
+
+The layer map includes machine at layer 2. A narrowly scoped file-type exception allows only `modules/NAME/manifest.txt`; arbitrary .txt files remain audit failures. `tests/test_tools.py` retains mutation checks for import direction, file types and generated headers. JSON use remains confined to the host serialization adapter in runtime product code.

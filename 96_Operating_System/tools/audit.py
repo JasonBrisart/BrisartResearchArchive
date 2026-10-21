@@ -78,7 +78,7 @@ ROOT = headers.ROOT
 ALLOWED_SUFFIXES = {'.py', '.md'}
 HOST_FOLDER = 'host'
 LAYERS = {'common': 0, 'storage': 0, 'events': 1, 'host': 1, 'language': 1, 'services': 1, 'extensions': 2,
-          'kernel': 3, 'shell': 4}
+          'machine': 2, 'kernel': 3, 'shell': 4}
 FORBIDDEN_CALLS = {'open', 'eval', 'exec', 'compile', '__import__'}
 
 
@@ -94,7 +94,7 @@ def _check_paths(errors):
         relative = path.relative_to(ROOT)
         if any('__' in part for part in relative.parts):
             errors.append(relative.as_posix() + ': double underscores are not allowed in paths')
-        if path.suffix not in ALLOWED_SUFFIXES:
+        if path.suffix not in ALLOWED_SUFFIXES and not (path.name == 'manifest.txt' and len(relative.parts) == 3 and relative.parts[0] == 'modules'):
             errors.append(relative.as_posix() + ': unexpected file type')
 
 

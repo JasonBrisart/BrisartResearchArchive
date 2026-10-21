@@ -78,7 +78,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 COMMANDS = {
     'start': ['-m', 'brisartos.shell.console'],
-    'rom': ['-m', 'brisartos.language.rom'],
+    'rom': ['-m', 'brisartos.machine.machine'],
     'audit': ['tools/audit.py'],
     'headers': ['tools/headers.py'],
 }

@@ -38,8 +38,8 @@ Depends on (project modules):
 - brisartos.language.parser (brisartos/language/parser.py)
 Standard library: none.
 Imported by:
-- brisartos/kernel/kernel.py
-- brisartos/language/rom.py
+- brisartos/kernel/composition.py
+- brisartos/machine/machine.py
 Covered by tests: brisartos/language/tests/test_language.py.
 
 Settings / parameters

@@ -31,7 +31,7 @@ The following table describes the handlers implemented in this file. References 
 | `reload` | Rediscover modules in the modules folder | `loaded: a, b`, then one `not loaded: FOLDER (REASON)` line per failure |
 | `settings` | List every setting | `key: value` lines |
 | `get KEY` | Show one setting | The value; `KeyError: unknown setting: KEY` |
-| `set KEY VALUE` | Store a setting as text (memory only) | `KEY = VALUE`; spaces in `VALUE` are kept |
+| `set KEY VALUE` | Store a setting as text | `KEY = VALUE`; spaces in `VALUE` are kept |
 | `unset KEY` | Remove a setting | `removed` |
 | `stage NAME PATH` | Stage a file as an update candidate (never applied) | `staged NAME` |
 | `staged` | List staged update candidates | Names, one per line |
@@ -72,10 +72,14 @@ The extra spaces after the path become program indentation. The final handler re
 
 An `Exception` raised by a command becomes the line `error: TYPE: message` and leaves the session running. EOF or an interrupt at the prompt ends the loop. A base exception from command execution is not swallowed. Once the loop's try/finally has been entered, a still-running kernel is stopped on exit.
 
-Kernel construction, startup and banner printing precede that cleanup block. Failures there are not covered by its finally clause. Cleanup itself can also raise, for example if shutdown logging fails. The console does not guarantee a final log line after every possible failure.
+Kernel startup and banner printing are now inside the cleanup scope. Kernel itself unwinds failed startup; a still-running kernel is stopped when the console exits. Shutdown errors are retained in kernel.shutdown_errors rather than skipping later cleanup. Non-returning hooks remain outside any timeout guarantee.
 
 The terminal is still read with `input()` and written with `print()`; the device carries the session between them. Relative paths depend on the working directory; the root router supplies the project root when launching it.
 
 ## Local tests
 
 `tests/test_shell.py` exercises dispatch, handlers, usage, help and this command table. `tests/test_console.py` calls `serve` directly to check that lines, results and errors pass through the device, and launches real child consoles to check errors, EOF, options, persistence, memory mode and module-exit cleanup. Terminal editing and interactive interrupt delivery are not exercised.
+
+## Updated state contracts
+
+Disk mode persists settings, snapshots and candidates under /system. Memory mode discards them. Snapshots exclude /logs and /system. Service descriptions include state and persistent; module descriptions include API requirements. Recent log display retains its text format while events carry kind/details in memory.
