@@ -1,5 +1,5 @@
 """
-File: brisart_native/brisart_hash.py
+File: v2/brisart_hash.py
 
 Purpose
 -------

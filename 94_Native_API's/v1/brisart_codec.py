@@ -1,5 +1,5 @@
 """
-File: brisart_ai/native/brisart_codec.py
+File: v1/brisart_codec.py
 
 Purpose
 -------

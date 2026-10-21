@@ -1,5 +1,5 @@
 """
-File: brisart_native/brisart_json.py
+File: v2/brisart_json.py
 
 Purpose
 -------

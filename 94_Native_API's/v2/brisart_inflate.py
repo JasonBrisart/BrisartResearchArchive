@@ -1,5 +1,5 @@
 """
-File: brisart_native/brisart_inflate.py
+File: v2/brisart_inflate.py
 
 Purpose
 -------
