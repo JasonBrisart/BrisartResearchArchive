@@ -87,13 +87,3 @@ Root run.py launches child interpreters from the project root. Console startup/b
 The language remains a restricted parser/interpreter with selected step/growth limits, not arbitrary Python execution or comprehensive resource isolation. `machine/machine.py` owns the source-ROM lifecycle; the old language.rom import is removed, while run.py rom remains supported.
 
 Scheduler advances iterators cooperatively and closes cancelled iterators where possible. It cannot preempt a non-yielding task. Shell exposes task inspection/stepping, not task spawning. Platform flags remain declarations: no hardware boot, native code generation or self-hosting is introduced.
-
-## Maintainer decisions and release gate
-
-Keep explicit domain boundaries, implicit namespace packages, root version ownership and the six-section Python headers. Do not add a generic core/utils directory or dependency-injection framework. Add a domain only with a distinct responsibility, README, tests and audited layer placement.
-
-Run tests and audit before edits. After edits refresh headers, review the diff, rerun tests/audit/header check and manually review changed prose. Update the first changelog release heading with the central version. Review data-format and module-API compatibility independently; changing program version performs no migration.
-
-README files own local behavior; this page owns cross-domain flows and decisions. Static relationship lines are not measured execution coverage. Passing tests establish checked behavior on the interpreter used, not universal compatibility, security or bootability.
-
-See [the runtime map](../brisartos/README.md) and [the changelog](CHANGELOG.md).
