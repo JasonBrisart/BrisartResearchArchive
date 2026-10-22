@@ -4,8 +4,6 @@ This document records every notable project-level change to BrisartSecurityResea
 
 This repository contains experimental research software. A changelog entry records implementation history and design evolution. It does not imply cryptographic validation, certification, production approval, or security guarantees.
 
-Each entry from `0.4.0-alpha` onward follows the Brisart Identity Tools technical style. Every claim in those entries is tied to a source change and to the tests that exercise it. Entries for `0.3.0-alpha` and earlier are reproduced as they were written and were **not re-verified** for this release.
-
 ## 0.4.0-alpha
 
 ### BSR2 Alpha 4
