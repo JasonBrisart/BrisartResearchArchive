@@ -4,6 +4,8 @@ This document records every notable project-level change to BrisartSecurityResea
 
 This repository contains experimental research software. A changelog entry records implementation history and design evolution. It does not imply cryptographic validation, certification, production approval, or security guarantees.
 
+---
+
 ## 0.4.0-alpha
 
 ### BSR2 Alpha 4
