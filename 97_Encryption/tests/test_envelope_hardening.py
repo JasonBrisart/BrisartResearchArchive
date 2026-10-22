@@ -3,36 +3,34 @@ File: tests/test_envelope_hardening.py
 
 Purpose
 -------
-Focused boundary tests for BSR2 envelope defensive hardening.
+Focused resource and failure-boundary checks for the legacy v2 envelope:
+generator-failure wrapping, context size and encodability, metadata types,
+size checks that must run before hex decoding, the new master-key ceiling,
+and unchanged behaviour for valid envelopes.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, unittest.mock, brisart_security_envelope, brisart_security_drbg, brisart_security_envelope.
+Imports brisart_security_envelope.py and brisart_security_drbg.py; patches
+module limits and ``hex_decode`` to prove ordering of checks.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Master key bytes(range(32)); context "hardening:test"; DRBG personalization
+b"BSR2 envelope hardening tests".
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Uses a lone surrogate (``\\ud800``) for the unencodable-context case and
+``True``/``2.0``/``"2"``/``None`` for version-type cases.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Validates failure behaviour and limits only; not a security evaluation.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Focused boundary tests for BSR2 envelope defensive hardening.
-
-These checks validate failure behavior and resource limits. Passing them does
-not establish cryptographic security.
+    python -m unittest -v tests.test_envelope_hardening
 """
-
 import unittest
 from unittest.mock import patch
 
@@ -58,62 +56,31 @@ class EnvelopeHardeningTests(unittest.TestCase):
         return BrisartDRBG(self.seed, b"BSR2 envelope hardening tests")
 
     def envelope(self) -> dict:
-        return encrypt(
-            self.master_key,
-            self.plaintext,
-            self.context,
-            self.generator(),
-        )
+        return encrypt(self.master_key, self.plaintext, self.context, self.generator())
 
     def test_generator_failure_is_wrapped(self) -> None:
         with self.assertRaises(BrisartEnvelopeError) as captured:
-            encrypt(
-                self.master_key,
-                self.plaintext,
-                self.context,
-                FailingGenerator(),
-            )
-        self.assertEqual(
-            str(captured.exception),
-            "generator failed while producing salt",
-        )
+            encrypt(self.master_key, self.plaintext, self.context, FailingGenerator())
+        self.assertEqual(str(captured.exception), "generator failed while producing salt")
         self.assertIsInstance(captured.exception.__cause__, RuntimeError)
 
     def test_encrypt_rejects_oversized_context(self) -> None:
         with patch.object(envelope_module, "MAX_CONTEXT_BYTES", 8):
             with self.assertRaises(BrisartEnvelopeError):
-                encrypt(
-                    self.master_key,
-                    self.plaintext,
-                    "context-too-large",
-                    self.generator(),
-                )
+                encrypt(self.master_key, self.plaintext, "context-too-large", self.generator())
 
     def test_decrypt_rejects_oversized_context(self) -> None:
         envelope = self.envelope()
         with patch.object(envelope_module, "MAX_CONTEXT_BYTES", 8):
             with self.assertRaises(BrisartEnvelopeError):
-                decrypt(
-                    self.master_key,
-                    envelope,
-                    "context-too-large",
-                )
+                decrypt(self.master_key, envelope, "context-too-large")
 
     def test_context_rejects_unencodable_surrogate(self) -> None:
         invalid_context = "invalid\ud800context"
         with self.assertRaises(BrisartEnvelopeError):
-            encrypt(
-                self.master_key,
-                self.plaintext,
-                invalid_context,
-                self.generator(),
-            )
+            encrypt(self.master_key, self.plaintext, invalid_context, self.generator())
         with self.assertRaises(BrisartEnvelopeError):
-            decrypt(
-                self.master_key,
-                self.envelope(),
-                invalid_context,
-            )
+            decrypt(self.master_key, self.envelope(), invalid_context)
 
     def test_decrypt_rejects_non_text_algorithm(self) -> None:
         envelope = self.envelope()
@@ -133,11 +100,7 @@ class EnvelopeHardeningTests(unittest.TestCase):
         envelope = self.envelope()
         envelope["ciphertext"] = "00" * 9
         with patch.object(envelope_module, "MAX_PLAINTEXT_BYTES", 8):
-            with patch.object(
-                envelope_module,
-                "hex_decode",
-                side_effect=AssertionError("hex decoder should not be called"),
-            ):
+            with patch.object(envelope_module, "hex_decode", side_effect=AssertionError("hex decoder should not be called")):
                 with self.assertRaises(BrisartEnvelopeError):
                     decrypt(self.master_key, envelope, self.context)
 
@@ -146,24 +109,21 @@ class EnvelopeHardeningTests(unittest.TestCase):
             with self.subTest(field=field):
                 envelope = self.envelope()
                 envelope[field] = "00"
-                with patch.object(
-                    envelope_module,
-                    "hex_decode",
-                    side_effect=AssertionError(
-                        "hex decoder should not be called"
-                    ),
-                ):
+                with patch.object(envelope_module, "hex_decode", side_effect=AssertionError("hex decoder should not be called")):
                     with self.assertRaises(BrisartEnvelopeError):
                         decrypt(self.master_key, envelope, self.context)
 
+    def test_master_key_ceiling(self) -> None:
+        oversized = bytes(envelope_module.MAX_MASTER_KEY_BYTES + 1)
+        with self.assertRaises(BrisartEnvelopeError):
+            encrypt(oversized, self.plaintext, self.context, self.generator())
+        with self.assertRaises(BrisartEnvelopeError):
+            decrypt(oversized, self.envelope(), self.context)
+
     def test_valid_envelope_behavior_is_unchanged(self) -> None:
         envelope = self.envelope()
-        self.assertEqual(
-            decrypt(self.master_key, envelope, self.context),
-            self.plaintext,
-        )
+        self.assertEqual(decrypt(self.master_key, envelope, self.context), self.plaintext)
 
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
-

@@ -3,38 +3,34 @@ File: tests/test_known_answer_vectors.py
 
 Purpose
 -------
-Regression checks for known_answer_vectors.json.
+Frozen regression checks against tests/known_answer_vectors.json for the
+legacy BSR2 hash, MAC, stream, DRBG, and v2 envelope. In 0.4.0 these vectors
+are the proof that the optimised permutation schedule, the domain initial-state
+cache, and the big-integer XOR changed no output bit.
 
 Communication / relationships
 -----------------------------
-Direct module imports: json, unittest, pathlib, unittest.mock, brisart_security_envelope, brisart_security_drbg, brisart_security_envelope, brisart_security_primitives.
+Reads tests/known_answer_vectors.json; imports brisart_security_primitives.py,
+brisart_security_drbg.py and brisart_security_envelope.py. The v3 formats are
+pinned separately by tests/test_v3_known_answers.py.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Vector format version 2; algorithm BSR2-ARX-SPONGE-ETM; envelope version 2.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+The envelope vector injects all-zero entropy strictly inside this test so the
+frozen deterministic envelope path stays reproducible.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Regression only. Matching vectors say nothing about security.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Regression checks for known_answer_vectors.json.
-
-Envelope generation now uses fresh operating-system entropy. The envelope KAT
-injects an all-zero entropy value strictly inside this test so that the frozen
-vector continues to exercise deterministic envelope logic. Production entropy
-validation is tested separately in test_entropy_hardening.py.
+    python -m unittest -v tests.test_known_answer_vectors
 """
-
 import json
 import unittest
 from pathlib import Path
@@ -67,31 +63,18 @@ class KnownAnswerVectorTests(unittest.TestCase):
 
     def test_mac_vector(self):
         vector = self.vectors["mac"]
-        actual = keyed_mac(
-            bytes.fromhex(vector["key_hex"]),
-            bytes.fromhex(vector["message_hex"]),
-        )
+        actual = keyed_mac(bytes.fromhex(vector["key_hex"]), bytes.fromhex(vector["message_hex"]))
         self.assertEqual(actual.hex(), vector["tag_hex"])
 
     def test_stream_vector(self):
         vector = self.vectors["stream"]
-        actual = stream_bytes(
-            bytes.fromhex(vector["key_hex"]),
-            bytes.fromhex(vector["nonce_hex"]),
-            vector["length"],
-        )
+        actual = stream_bytes(bytes.fromhex(vector["key_hex"]), bytes.fromhex(vector["nonce_hex"]), vector["length"])
         self.assertEqual(actual.hex(), vector["output_hex"])
 
     def test_drbg_vector(self):
         vector = self.vectors["drbg"]
-        generator = BrisartDRBG(
-            bytes.fromhex(vector["seed_hex"]),
-            bytes.fromhex(vector["personalization_hex"]),
-        )
-        actual = generator.generate(
-            vector["length"],
-            bytes.fromhex(vector["additional_input_hex"]),
-        )
+        generator = BrisartDRBG(bytes.fromhex(vector["seed_hex"]), bytes.fromhex(vector["personalization_hex"]))
+        actual = generator.generate(vector["length"], bytes.fromhex(vector["additional_input_hex"]))
         self.assertEqual(actual.hex(), vector["output_hex"])
 
     def test_envelope_vector(self):
@@ -100,24 +83,15 @@ class KnownAnswerVectorTests(unittest.TestCase):
         plaintext = bytes.fromhex(vector["plaintext_hex"])
         envelope = vector["value"]
         self.assertEqual(decrypt(key, envelope, vector["context"]), plaintext)
-
-        with patch.object(
-            envelope_module,
-            "system_entropy",
-            side_effect=(b"\x00" * 32, b"\x00" * 32),
-        ):
+        with patch.object(envelope_module, "system_entropy", side_effect=(b"\x00" * 32, b"\x00" * 32)):
             regenerated = encrypt(
                 key,
                 plaintext,
                 vector["context"],
-                BrisartDRBG(
-                    bytes(range(64)),
-                    b"BSR2 known answer vector",
-                ),
+                BrisartDRBG(bytes(range(64)), b"BSR2 known answer vector"),
             )
         self.assertEqual(regenerated, envelope)
 
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
-

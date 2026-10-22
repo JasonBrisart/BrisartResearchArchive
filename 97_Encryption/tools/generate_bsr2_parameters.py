@@ -3,40 +3,42 @@ File: tools/generate_bsr2_parameters.py
 
 Purpose
 -------
-Deterministically generate BSR2 fixed parameters without crypto libraries.
+Reproducibly derive every fixed BSR2 permutation parameter (24 round constants,
+3 structural constants, 8 rotations, the 16-entry word permutation) from the
+public seed ``BrisartSecurityResearch|BSR2|parameter-generation|v1`` using only
+Python integer and byte operations, and print them as a Python block or JSON.
 
 Communication / relationships
 -----------------------------
-Direct module imports: __future__, argparse, json.
+Standard library only (``argparse``, ``json``). Its output is embedded verbatim
+in brisart_security_primitives.py; tests/test_bsr2_parameters.py imports
+``generate_parameters`` and ``PARAMETER_SEED`` and asserts exact equality.
+Documented in docs/BSR2_PARAMETER_GENERATION.md.
 
 Settings / parameters
 ---------------------
-Module-level named settings: MASK64, PARAMETER_SEED, STATE_WORDS, WARMUP_STEPS, ROUND_CONSTANT_COUNT, ROTATION_COUNT, PERMUTATION_SIZE. See their definitions below for values.
+PARAMETER_SEED       public seed bytes
+STATE_WORDS          8-word generator state
+WARMUP_STEPS         192 discarded transitions
+ROUND_CONSTANT_COUNT 24; ROTATION_COUNT 8; PERMUTATION_SIZE 16
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+* Zero and repeated 64-bit words are skipped when selecting constants.
+* Rotations are drawn from 1..63 without repetition.
+* A Fisher-Yates shuffle that lands on the identity permutation has its first
+  two entries swapped so the word permutation always moves words.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This is a provenance tool, not an entropy source. Reproducible constants say
+nothing about cryptographic strength. Unchanged in 0.4.0 apart from this header.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Deterministically generate BSR2 fixed parameters without crypto libraries.
-
-The generator uses only Python integer and byte operations. Its public seed,
-state transition, warm-up count, output schedule, and selection rules are
-specified in this file so anyone can reproduce the parameters.
-
-This generator is a transparency/reproducibility tool. It is not an entropy
-source and does not establish cryptographic security.
+    python tools/generate_bsr2_parameters.py          # Python block
+    python tools/generate_bsr2_parameters.py --json   # JSON document
 """
-
 from __future__ import annotations
 
 import argparse
@@ -199,4 +201,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

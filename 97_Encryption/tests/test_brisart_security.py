@@ -3,36 +3,39 @@ File: tests/test_brisart_security.py
 
 Purpose
 -------
-Behavioral and boundary tests for the experimental BSR2 implementation.
+Behavioural and boundary suite for the legacy BSR2 layer: the version 2 JSON
+envelope (round trips, randomisation, tamper/wrong-key/wrong-context
+rejection, field validation), the rate-32 primitives (permutation, sponge,
+MAC, stream, XOR, framing, hex), and the BrisartDRBG lifecycle.
 
 Communication / relationships
 -----------------------------
-Direct module imports: copy, unittest, unittest.mock, brisart_security_envelope, brisart_security_drbg, brisart_security_envelope, brisart_security_primitives.
+Imports brisart_security_envelope.py, brisart_security_drbg.py and
+brisart_security_primitives.py. The v3 formats have their own suites
+(test_aead_v3.py, test_stream_v3.py, test_archive.py).
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+setUpClass derives one master key with the legacy KDF at its 10,000-iteration
+research minimum; this is the slowest step in the whole test run.
+``SequenceGenerator`` feeds scripted salt/nonce values to probe generator
+validation.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Covers non-bytes/short/oversize inputs, uppercase/odd/invalid hex, wrong field
+lengths, wrong value types, unknown/missing fields, unsupported versions, and
+DRBG request/byte/interval limits and destroy/reseed behaviour.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Passing results show implemented behaviour and fail-closed input handling
+only; they do not establish cryptographic security.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Behavioral and boundary tests for the experimental BSR2 implementation.
-
-These tests verify implemented behavior and fail-closed input handling. Passing
-results do not establish cryptographic security or production suitability.
+    python -m unittest -v tests.test_brisart_security
 """
-
 import copy
 import unittest
 from unittest.mock import patch
@@ -84,43 +87,22 @@ class BrisartCipherResearchTests(unittest.TestCase):
         cls.seed = bytes(range(64))
         cls.plaintext = "Custom cipher research: cafe archive".encode("utf-8")
 
-    def new_generator(
-        self,
-        label: bytes = b"BSR2 test instance",
-    ) -> BrisartDRBG:
+    def new_generator(self, label: bytes = b"BSR2 test instance") -> BrisartDRBG:
         return BrisartDRBG(self.seed, label)
 
     def new_envelope(self) -> dict:
-        return encrypt(
-            self.master_key,
-            self.plaintext,
-            self.context,
-            self.new_generator(),
-        )
+        return encrypt(self.master_key, self.plaintext, self.context, self.new_generator())
 
     # Core behavioral tests
 
     def test_round_trip(self) -> None:
         envelope = self.new_envelope()
-        self.assertEqual(
-            decrypt(self.master_key, envelope, self.context),
-            self.plaintext,
-        )
+        self.assertEqual(decrypt(self.master_key, envelope, self.context), self.plaintext)
 
     def test_randomized_encryption(self) -> None:
         generator = self.new_generator()
-        first = encrypt(
-            self.master_key,
-            self.plaintext,
-            self.context,
-            generator,
-        )
-        second = encrypt(
-            self.master_key,
-            self.plaintext,
-            self.context,
-            generator,
-        )
+        first = encrypt(self.master_key, self.plaintext, self.context, generator)
+        second = encrypt(self.master_key, self.plaintext, self.context, generator)
         self.assertNotEqual(first["salt"], second["salt"])
         self.assertNotEqual(first["nonce"], second["nonce"])
         self.assertNotEqual(first["ciphertext"], second["ciphertext"])
@@ -140,11 +122,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
 
     def test_wrong_context_fails(self) -> None:
         with self.assertRaises(BrisartEnvelopeError):
-            decrypt(
-                self.master_key,
-                self.new_envelope(),
-                "other-context",
-            )
+            decrypt(self.master_key, self.new_envelope(), "other-context")
 
     def test_wrong_key_fails(self) -> None:
         wrong_key = BrisartDRBG(
@@ -171,16 +149,8 @@ class BrisartCipherResearchTests(unittest.TestCase):
                     decrypt(self.master_key, changed, self.context)
 
     def test_empty_plaintext(self) -> None:
-        envelope = encrypt(
-            self.master_key,
-            b"",
-            self.context,
-            self.new_generator(),
-        )
-        self.assertEqual(
-            decrypt(self.master_key, envelope, self.context),
-            b"",
-        )
+        envelope = encrypt(self.master_key, b"", self.context, self.new_generator())
+        self.assertEqual(decrypt(self.master_key, envelope, self.context), b"")
 
     def test_custom_hex_codec(self) -> None:
         value = bytes(range(256))
@@ -195,10 +165,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
         changed = bytearray(b"A" * 64)
         changed[0] ^= 1
         second = sponge_hash(bytes(changed))
-        differing_bits = sum(
-            (left ^ right).bit_count()
-            for left, right in zip(first, second)
-        )
+        differing_bits = sum((left ^ right).bit_count() for left, right in zip(first, second))
         self.assertGreater(differing_bits, 80)
         self.assertLess(differing_bits, 176)
 
@@ -211,10 +178,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
         first = self.new_generator().generate(96, b"deterministic test")
         second_seed = bytearray(self.seed)
         second_seed[0] ^= 1
-        second = BrisartDRBG(
-            bytes(second_seed),
-            b"BSR2 test instance",
-        ).generate(96, b"deterministic test")
+        second = BrisartDRBG(bytes(second_seed), b"BSR2 test instance").generate(96, b"deterministic test")
         self.assertNotEqual(first, second)
 
     def test_drbg_rejects_short_seed(self) -> None:
@@ -230,12 +194,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
             generate = None
 
         with self.assertRaises(BrisartEnvelopeError):
-            encrypt(
-                self.master_key,
-                self.plaintext,
-                self.context,
-                InvalidGenerator(),
-            )
+            encrypt(self.master_key, self.plaintext, self.context, InvalidGenerator())
 
     def test_encrypt_rejects_invalid_generator_outputs(self) -> None:
         invalid_pairs = (
@@ -249,27 +208,14 @@ class BrisartCipherResearchTests(unittest.TestCase):
             (b"S" * 32, b"N" * 33),
         )
         for salt, nonce in invalid_pairs:
-            with self.subTest(
-                salt_type=type(salt).__name__,
-                nonce_type=type(nonce).__name__,
-            ):
+            with self.subTest(salt_type=type(salt).__name__, nonce_type=type(nonce).__name__):
                 with self.assertRaises(BrisartEnvelopeError):
-                    encrypt(
-                        self.master_key,
-                        self.plaintext,
-                        self.context,
-                        SequenceGenerator((salt, nonce)),
-                    )
+                    encrypt(self.master_key, self.plaintext, self.context, SequenceGenerator((salt, nonce)))
 
     def test_encrypt_rejects_equal_salt_and_nonce(self) -> None:
         repeated = b"X" * 32
         with self.assertRaises(BrisartEnvelopeError):
-            encrypt(
-                self.master_key,
-                self.plaintext,
-                self.context,
-                SequenceGenerator((repeated, repeated)),
-            )
+            encrypt(self.master_key, self.plaintext, self.context, SequenceGenerator((repeated, repeated)))
 
     def test_drbg_requires_personalization(self) -> None:
         with self.assertRaises(BrisartDRBGError):
@@ -302,23 +248,13 @@ class BrisartCipherResearchTests(unittest.TestCase):
 
     def test_encrypt_and_decrypt_reject_non_byte_master_key(self) -> None:
         with self.assertRaises(BrisartEnvelopeError):
-            encrypt(
-                "not-bytes",
-                self.plaintext,
-                self.context,
-                self.new_generator(),
-            )
+            encrypt("not-bytes", self.plaintext, self.context, self.new_generator())
         with self.assertRaises(BrisartEnvelopeError):
             decrypt("not-bytes", self.new_envelope(), self.context)
 
     def test_encrypt_and_decrypt_reject_short_master_key(self) -> None:
         with self.assertRaises(BrisartEnvelopeError):
-            encrypt(
-                b"short",
-                self.plaintext,
-                self.context,
-                self.new_generator(),
-            )
+            encrypt(b"short", self.plaintext, self.context, self.new_generator())
         with self.assertRaises(BrisartEnvelopeError):
             decrypt(b"short", self.new_envelope(), self.context)
 
@@ -326,21 +262,11 @@ class BrisartCipherResearchTests(unittest.TestCase):
         for value in ("plaintext", bytearray(b"plaintext"), None):
             with self.subTest(value_type=type(value).__name__):
                 with self.assertRaises(BrisartEnvelopeError):
-                    encrypt(
-                        self.master_key,
-                        value,
-                        self.context,
-                        self.new_generator(),
-                    )
+                    encrypt(self.master_key, value, self.context, self.new_generator())
 
     def test_encrypt_and_decrypt_reject_empty_context(self) -> None:
         with self.assertRaises(BrisartEnvelopeError):
-            encrypt(
-                self.master_key,
-                self.plaintext,
-                "",
-                self.new_generator(),
-            )
+            encrypt(self.master_key, self.plaintext, "", self.new_generator())
         with self.assertRaises(BrisartEnvelopeError):
             decrypt(self.master_key, self.new_envelope(), "")
 
@@ -348,12 +274,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
         for value in (None, b"context", 1):
             with self.subTest(value_type=type(value).__name__):
                 with self.assertRaises(BrisartEnvelopeError):
-                    encrypt(
-                        self.master_key,
-                        self.plaintext,
-                        value,
-                        self.new_generator(),
-                    )
+                    encrypt(self.master_key, self.plaintext, value, self.new_generator())
                 with self.assertRaises(BrisartEnvelopeError):
                     decrypt(self.master_key, self.new_envelope(), value)
 
@@ -386,21 +307,12 @@ class BrisartCipherResearchTests(unittest.TestCase):
     def test_encrypt_rejects_oversized_plaintext(self) -> None:
         with patch.object(envelope_module, "MAX_PLAINTEXT_BYTES", 8):
             with self.assertRaises(BrisartEnvelopeError):
-                encrypt(
-                    self.master_key,
-                    b"A" * 9,
-                    self.context,
-                    self.new_generator(),
-                )
+                encrypt(self.master_key, b"A" * 9, self.context, self.new_generator())
 
     def test_decrypt_rejects_oversized_ciphertext(self) -> None:
         envelope = self.new_envelope()
         ciphertext_bytes = len(envelope["ciphertext"]) // 2
-        with patch.object(
-            envelope_module,
-            "MAX_PLAINTEXT_BYTES",
-            ciphertext_bytes - 1,
-        ):
+        with patch.object(envelope_module, "MAX_PLAINTEXT_BYTES", ciphertext_bytes - 1):
             with self.assertRaises(BrisartEnvelopeError):
                 decrypt(self.master_key, envelope, self.context)
 
@@ -472,10 +384,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
 
     def test_drbg_rejects_request_over_limit(self) -> None:
         with self.assertRaises(BrisartDRBGError):
-            self.new_generator().generate(
-                MAX_REQUEST_BYTES + 1,
-                b"request",
-            )
+            self.new_generator().generate(MAX_REQUEST_BYTES + 1, b"request")
 
     def test_drbg_rejects_non_byte_seed(self) -> None:
         with self.assertRaises(BrisartDRBGError):
@@ -500,10 +409,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
     def test_drbg_reseed_after_destroy_reactivates_generator(self) -> None:
         generator = self.new_generator(b"BSR2 destroy reseed test")
         generator.destroy()
-        generator.reseed(
-            bytes(reversed(self.seed)),
-            b"reseed after destroy",
-        )
+        generator.reseed(bytes(reversed(self.seed)), b"reseed after destroy")
         output = generator.generate(32, b"request after reseed")
         self.assertEqual(len(output), 32)
 
@@ -522,4 +428,3 @@ class BrisartCipherResearchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
-

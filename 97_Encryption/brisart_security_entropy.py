@@ -3,45 +3,59 @@ File: brisart_security_entropy.py
 
 Purpose
 -------
-Fresh operating-system entropy for BSR2 envelope diversification.
+The only place in the Brisart Research Archive 97_Encryption project that
+touches non-deterministic randomness. It asks the operating system for fresh
+bytes through the standard-library ``secrets`` module, runs catastrophic-failure
+health checks on every sample, and hands the result to the envelope, sealed
+message, stream, archive, and key-generation layers.
 
 Communication / relationships
 -----------------------------
-Direct module imports: __future__, secrets, threading.
+Imports ``os``, ``secrets``, ``threading`` (standard library only). Imported by
+brisart_security_envelope.py (legacy v2 salt/nonce diversification),
+brisart_security_drbg.py (``BrisartDRBG.from_system_entropy``),
+brisart_security_aead.py, brisart_security_stream.py,
+brisart_security_archive.py, and brisart_security_keys.py.
 
 Settings / parameters
 ---------------------
-Module-level named settings: _LOCK, _PREVIOUS_SAMPLE. See their definitions below for values.
+HEALTH_SAMPLE_BYTES   32. Requests shorter than this are served from a
+                      32-byte health-checked draw and truncated, so the
+                      all-zero and repeat checks never misfire on short reads.
+MAX_ENTROPY_REQUEST   1 MiB per call.
+_PREVIOUS_SAMPLE      Last full health sample (process-local, lock protected).
+_OWNER_PID            PID that owns _PREVIOUS_SAMPLE; reset after fork.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+* Lengths must be real ints (``True`` is rejected).
+* An all-zero draw, a draw made of one repeated byte value, or a draw equal to
+  the previous draw raises ``BrisartEntropyError``; the previous-sample memory
+  is cleared on that failure so a retry is possible.
+* After ``os.fork`` the child discards the parent's previous-sample memory
+  instead of comparing against it.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+The checks detect a stuck or broken source, not a weak one. This module does
+not estimate entropy and does not validate the operating system's generator.
+A full machine snapshot that also rolls back OS randomness is out of reach for
+any process-local code.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
-
-Additional module documentation
--------------------------------
-Fresh operating-system entropy for BSR2 envelope diversification.
-
-The custom BSR2 DRBG is deterministic. This module adds an independent,
-non-deterministic input at each encryption so a recreated DRBG state does not,
-by itself, recreate the envelope salt and nonce.
-
-This module uses only the Python standard library, but the entropy is supplied
-by the operating system through secrets.token_bytes. It is intentionally not a
-custom entropy source.
+>>> from brisart_security_entropy import system_entropy
+>>> len(system_entropy(32))
+32
 """
-
 from __future__ import annotations
 
+import os
 import secrets
 import threading
+
+HEALTH_SAMPLE_BYTES = 32
+MAX_ENTROPY_REQUEST = 1024 * 1024
 
 
 class BrisartEntropyError(RuntimeError):
@@ -50,26 +64,28 @@ class BrisartEntropyError(RuntimeError):
 
 _LOCK = threading.Lock()
 _PREVIOUS_SAMPLE: bytes | None = None
+_OWNER_PID = os.getpid()
 
 
 def system_entropy(length: int) -> bytes:
-    """Return fresh operating-system entropy and perform basic health checks.
+    """Return fresh operating-system entropy after basic health checks.
 
-    The duplicate-sample check is only a catastrophic-failure detector. It is
-    not an entropy estimate and does not validate the operating-system source.
+    The checks are catastrophic-failure detectors only. They are not an entropy
+    estimate and do not validate the operating-system source.
     """
-
+    global _PREVIOUS_SAMPLE, _OWNER_PID
     if type(length) is not int or length <= 0:
         raise BrisartEntropyError("entropy length must be a positive integer")
-
+    if length > MAX_ENTROPY_REQUEST:
+        raise BrisartEntropyError("entropy request exceeds the size limit")
+    request = max(length, HEALTH_SAMPLE_BYTES)
     try:
-        sample = secrets.token_bytes(length)
+        sample = secrets.token_bytes(request)
     except Exception as exc:
         raise BrisartEntropyError(
             "operating-system entropy request failed"
         ) from exc
-
-    if not isinstance(sample, bytes) or len(sample) != length:
+    if not isinstance(sample, bytes) or len(sample) != request:
         raise BrisartEntropyError(
             "operating-system entropy returned an invalid result"
         )
@@ -77,15 +93,19 @@ def system_entropy(length: int) -> bytes:
         raise BrisartEntropyError(
             "operating-system entropy returned an all-zero sample"
         )
-
-    global _PREVIOUS_SAMPLE
+    if sample.count(sample[0]) == len(sample):
+        raise BrisartEntropyError(
+            "operating-system entropy returned a constant sample"
+        )
     with _LOCK:
+        pid = os.getpid()
+        if pid != _OWNER_PID:
+            _OWNER_PID = pid
+            _PREVIOUS_SAMPLE = None
         if _PREVIOUS_SAMPLE == sample:
             _PREVIOUS_SAMPLE = None
             raise BrisartEntropyError(
                 "operating-system entropy repeated the previous sample"
             )
         _PREVIOUS_SAMPLE = sample
-
-    return sample
-
+    return sample[:length]
