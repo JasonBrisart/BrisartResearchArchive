@@ -71,7 +71,6 @@ class Base64Tests(unittest.TestCase):
                      "Zm9v\u00e9", " Zm9v"):
             with self.assertRaises(BrisartBase64Error, msg=repr(text)):
                 brisart_b64decode(text)
-        self.assertEqual(base64.b64decode("Zm9vYg==Zm9v"), b"foob")       # the leniency being avoided
 
     def test_two_character_tails_follow_the_trailing_bits_rule(self):
         for a in STD:
@@ -137,7 +136,7 @@ class Base32Tests(unittest.TestCase):
     def test_padding_policies_and_lengths(self):
         self.assertEqual(brisart_b32decode("MY", padding="optional"), b"f")
         with self.assertRaises(BrisartBase32Error):
-            brisart_b32decode("MY")                                   # padding required by default
+            brisart_b32decode("MY")
         with self.assertRaises(BrisartBase32Error):
             brisart_b32decode("MY======", padding="forbidden")
         for text in ("M", "MZX", "MZXW6Y", "MY=====", "MY=======", "MZXW6===MY======", "=MY=====", "MZXQ===",
@@ -164,7 +163,7 @@ class Base32Tests(unittest.TestCase):
         for text in ("6", "666", "6G", "66 ", " 66", "6\u0666", "ab"):
             with self.assertRaises(BrisartBase32Error, msg=repr(text)):
                 brisart_b16decode(text)
-        self.assertEqual(bytes.fromhex("66 6f"), b"fo")                # what fromhex alone would accept
+        self.assertEqual(bytes.fromhex("66 6f"), b"fo")
         with self.assertRaises(BrisartBase32Error):
             brisart_b16decode("66 6F")
         with self.assertRaises(BrisartBase32Error):
