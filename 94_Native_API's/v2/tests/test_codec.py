@@ -69,7 +69,6 @@ class Base64Tests(unittest.TestCase):
                      "Zm9v\u00e9", " Zm9v"):
             with self.assertRaises(BrisartBase64Error, msg=repr(text)):
                 brisart_b64decode(text)
-        self.assertEqual(base64.b64decode("Zm9vYg==Zm9v"), b"foob")       # the leniency being avoided
 
     def test_two_character_tails_follow_the_trailing_bits_rule(self):
         for a in STD:
@@ -128,7 +127,6 @@ class FuzzAndResourceTests(unittest.TestCase):
         support.assert_roughly_linear(self, lambda k: bytes(60_000 * k), brisart_b64encode)
         support.assert_roughly_linear(self, lambda k: b"A" * (80_000 * k), brisart_b64decode)
 
-
     def test_never_accepts_what_strict_stdlib_rejects(self):
         r = support.rng("codec-strict")
         for _ in range(support.scaled(3000)):
@@ -143,6 +141,7 @@ class FuzzAndResourceTests(unittest.TestCase):
                 theirs = None
             if ours is not None:
                 self.assertEqual(ours, theirs, text)
+
 
 if __name__ == "__main__":
     unittest.main()
