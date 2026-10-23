@@ -94,10 +94,7 @@ Projects should preserve sufficient accompanying metadata to determine:
 - the project or archive component represented by the recording;
 - the documentation or changelog material associated with it;
 - the applicable software or documentation version where relevant;
-- when the recording was created;
-- and whether the recording supplements, explains, or directly represents an existing written document.
-
-Audio documentation should remain understandable without requiring it to become a substitute for the corresponding written record.
+- and when the recording was created.
 
 ---
 
