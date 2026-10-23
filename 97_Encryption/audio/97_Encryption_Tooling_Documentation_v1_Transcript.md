@@ -8,7 +8,7 @@
 **Record Type:** Contemporary Audio Documentation  
 **Recorded:** 2026-10-23  
 **Audio File:** `97_Encryption_Tooling_Documentation_v1.mp3`  
-**Transcript File:** `97_Encryption_Tooling_Documentation_v1_Transcript.md`
+**Transcript File:** `97_Encryption_Tooling_Documentation_v1_Transcript.md`  
 
 > This transcript accompanies the `97_Encryption` Tooling Documentation v1 audio record preserved within the Brisart Research Archive.
 >
@@ -34,9 +34,9 @@
 
 **Host 2:** "We really want to talk directly to you, the listener. Because the concepts we're about to unpack are the exact mechanisms protecting your banking data, your private messages, and your entire digital identity. It's all running in the background all the time. To explore this, we are dissecting this fascinating stack of technical documents, design notes, source code, and highly detailed change logs from an experimental research project."
 
-**Host 1:** "Right. The Brussart research archive-97 encryption."
+**Host 1:** "Right. The Brisart Research Archive, 97_Encryption."
 
-**Host 2:** "Yeah. Specifically focusing on a release labeled BSR2 alpha 4, which was authored by Jason Brissard, which is just a gold mine of information."
+**Host 2:** "Yeah. Specifically focusing on a release labeled BSR2 alpha 4, which was authored by Jason Brisart, which is just a gold mine of information."
 
 **Host 1:** "It really is. Okay, let me unpack this. Our mission today is to look under the hood of this custom-built cryptographic research suite. We should probably mention the warnings first."
 
@@ -58,7 +58,7 @@
 
 **Host 2:** "Well, think about it. Computers are deterministic machines. They take an input, execute a rigidly defined set of instructions, and produce the exact same output every single time. Predictability is literally the core feature of a computer, which is great for a calculator, sure, but fatal for cryptography."
 
-**Host 1:** "Exactly. If an attacker can predict how your computer generates its random numbers, they can predict your encryption keys. So the Prisart project tackles this by pulling what is called true entropy directly from the operating system."
+**Host 1:** "Exactly. If an attacker can predict how your computer generates its random numbers, they can predict your encryption keys. So the Brisart project tackles this by pulling what is called true entropy directly from the operating system."
 
 **Host 2:** "Right. Instead of just doing math, the OS acts as a bridge to the messy physical world. It measures microscopic unpredictable variations in the hardware itself, doesn't it?"
 
@@ -76,7 +76,7 @@
 
 **Host 1:** "Ah, I see. So to an attacker who doesn't know the seed, the stream looks completely random."
 
-**Host 2:** "Exactly. Even though it's mathematically determined. The fascinating part to me is that the Brousard project refuses to just blindly trust that OS seed."
+**Host 2:** "Exactly. Even though it's mathematically determined. The fascinating part to me is that the Brisart project refuses to just blindly trust that OS seed."
 
 **Host 1:** "Oh, it's aggressively paranoid. Right? The code managing the entropy runs these catastrophic health checks on every single request it makes to the operating system."
 
@@ -114,7 +114,7 @@
 
 **Host 2:** "If they both proceed to ask for a random number to create separate encryption keys, they are going to spit out the exact same random sequence and completely compromise the security of whichever system happens to use that duplicate key."
 
-**Host 1:** "To prevent this, the Bryceart DRBG records the operating system's Process ID (the PID) the moment it is initialized, so it knows exactly who it is."
+**Host 1:** "To prevent this, the Brisart DRBG records the operating system's Process ID (the PID) the moment it is initialized, so it knows exactly who it is."
 
 **Host 2:** "And every single time it is asked to generate a number, it pauses and asks the OS, 'am I still the same process?'"
 
@@ -168,9 +168,9 @@
 
 ---
 
-## 4. BSR2-P1.24 Permutation & BSR2-S64 Sponge Construction
+## 4. BSR2-P1024 Permutation & BSR2-S64 Sponge Construction
 
-**Host 1:** "Moving into the mathematical core of the project, where we find the BSR2-P1.24 permutation. The specifications on this engine are intense."
+**Host 1:** "Moving into the mathematical core of the project, where we find the BSR2-P1024 permutation. The specifications on this engine are intense."
 
 **Host 2:** "Oh, they really are. It features a 1,024-bit state divided into 16 separate words of 64 bits each. And by default, it runs this state through 32 rounds of mixing, rotating, and bitwise operations because the goal of this permutation is total cryptographic diffusion."
 
@@ -220,11 +220,11 @@
 
 **Host 1:** "How does this system actually wrap and format a user's file? This is handled by the Sealed Message V3 format and the BSR-stream 1 protocol."
 
-**Host 2:** "The V3 format introduces a 104-byte header right at the beginning of the file containing a 32-bit key commitment check."
+**Host 2:** "The V3 format introduces a 104-byte header right at the beginning of the file containing a 32-byte key commitment check."
 
 **Host 1:** "In older, naive tools, if you attempted to decrypt a file using the wrong password, the software would just blindly execute the math and spit out garbage data. In complex modern architectures, outputting garbage data opens the door to chosen ciphertext attacks where an attacker feeds corrupted data into the system just to see how parsers react, potentially triggering a buffer overflow."
 
-**Host 2:** "Key commitment stops all of this instantly. The 32-bit commitment is verified before a single byte of actual ciphertext is processed. If the key is wrong, it triggers a cryptographic collision, immediately halts, and throws an authentication error."
+**Host 2:** "Key commitment stops all of this instantly. The 32-byte commitment is verified before a single byte of actual ciphertext is processed. If the key is wrong, it triggers a cryptographic collision, immediately halts, and throws an authentication error."
 
 **Host 1:** "Another deeply impressive feature is how it obscures data size using Padme padding."
 
@@ -264,11 +264,11 @@
 
 ## 7. Interleaved XOR Parity & Zero-Trust Archive Extraction
 
-**Host 2:** "What happens when a magnetic hard drive platter gets a physical scratch? If a single bit flips due to hardware degradation, SIV authentication fails and the system permanently refuses to decrypt. The project solves this with the BSR-1 recovery record, which uses interleaved XOR parity."
+**Host 2:** "What happens when a magnetic hard drive platter gets a physical scratch? If a single bit flips due to hardware degradation, SIV authentication fails and the system permanently refuses to decrypt. The project solves this with the BSRR-1 recovery record, which uses interleaved XOR parity."
 
-**Host 1:** "In simple parity, losing contiguous chunks to a wide disk scratch collapses recovery. Interleaved parity assigns chunks using modulo arithmetic: $\text{chunk } i \in \text{parity group } (i \pmod P)$."
+**Host 1:** "In simple parity, losing contiguous chunks to a wide disk scratch collapses recovery. Interleaved parity assigns chunks using modulo arithmetic: $\text{chunk } i \in \text{parity group } (i \bmod P)$."
 
-**Host 2:** "If $P=5$ and a scratch wipes out 5 contiguous chunks (chunks 6, 7, 8, 9, 10), those destroyed chunks actually belong to 5 completely different parity groups. Group A lost chunk 6, but still has chunk 1, chunk 11, and its parity block intact to rebuild chunk 6."
+**Host 2:** "If $P = 5$ and a scratch wipes out 5 contiguous chunks (chunks 6, 7, 8, 9, 10), those destroyed chunks actually belong to 5 completely different parity groups. Group A lost chunk 6, but still has chunk 1, chunk 11, and its parity block intact to rebuild chunk 6."
 
 **Host 1:** "And it repairs encrypted data without needing the decryption key! Checksums like CRC32/Adler32 pinpoint corrupted chunks, and once repaired, the system re-authenticates the repaired ciphertext against the cryptographic MACs inside the archive."
 
@@ -278,4 +278,4 @@
 
 **Host 2:** "It is a masterclass in overlapping paranoid defensive engineering. Every single layer exists specifically to catch the inevitable failures of the layer beneath it."
 
-**Host 1:** "Security is not a state you achieve. It is an ongoing process of out-engineering an adversary who is constantly adapting. Thank you for joining us on this deep dive into the 97 encryption research archive!"
+**Host 1:** "Security is not a state you achieve. It is an ongoing process of out-engineering an adversary who is constantly adapting. Thank you for joining us on this deep dive into the 97_Encryption research archive!"
