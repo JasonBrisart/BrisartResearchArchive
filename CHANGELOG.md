@@ -101,16 +101,6 @@ Projects should preserve sufficient accompanying metadata to determine:
 
 Audio documentation should remain understandable without requiring it to become a substitute for the corresponding written record.
 
-#### Relationship to Written Documentation
-
-The adoption of audio documentation does not reduce the archive's written documentation requirements.
-
-Documentation, changelogs, specifications, security records, migration records, and other technical materials that require written preservation must continue to exist in written form.
-
-Audio provides a parallel preservation medium intended to make the Brisart Research Archive more understandable and accessible to future individuals reviewing its projects and history.
-
-The resulting archival model is therefore based on maintaining both a precise written technical record and a complementary spoken record of significant documentation and development history.
-
 ---
 
 ## 2026-10-23
