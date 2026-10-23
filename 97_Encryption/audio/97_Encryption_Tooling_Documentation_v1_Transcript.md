@@ -56,7 +56,7 @@
 
 **Host 1:** "No, absolutely not. But that lack of enterprise abstraction is exactly what makes it the perfect laboratory for us. It's completely transparent. We get to see precisely how modern encryption is built, how it gets layered, how it breaks down under attack, and you know, how it gets patched."
 
-**Host 2:** from the absolute bedrock of generating random numbers up to a fully secured disaster resistant file archiver."
+**Host 2:** "From the absolute bedrock of generating random numbers up to a fully secured disaster resistant file archiver."
 
 ---
 
