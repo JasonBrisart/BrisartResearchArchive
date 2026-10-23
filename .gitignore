@@ -270,3 +270,4 @@ tfl_autosave_*.csv
 # If CanonSync is run against this repo, it injects its managed block
 # between the markers below and preserves everything above untouched.
 # ==================================================
+98_Tooling/ProjectContextHelper/last_export_settings.json
