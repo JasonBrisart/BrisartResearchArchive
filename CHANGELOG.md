@@ -27,13 +27,11 @@ This is an archive-level documentation standard rather than a podcast requiremen
 
 #### Audio Documentation Strategy
 
-Audio documentation is intended to supplement the written archival record rather than replace it.
+Audio documentation is intended to supplement the written archival record.
 
 Written documentation remains the authoritative technical record for source behavior, interfaces, compatibility requirements, implementation details, security behavior, migration requirements, tests, and other information that requires precise reference.
 
 Audio recordings provide an additional archival representation of that information and may preserve explanations, historical context, design reasoning, development commentary, release discussions, or walkthroughs that are useful when reviewing a project later.
-
-The archive should preserve enough information alongside each recording to identify what the recording documents and how it relates to the corresponding written material.
 
 #### Project Integration
 
