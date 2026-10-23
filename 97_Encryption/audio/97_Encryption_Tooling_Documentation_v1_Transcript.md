@@ -18,31 +18,45 @@
 
 ## 1. Introduction: Applied Cryptography vs. Traditional Engineering
 
-**Host 1:** "You know, usually when we talk about building software, there's this underlying expectation of structural predictability, right? Like normal engineering."
+**Host 1:** "You know, usually when we talk about building software, there's this underlying expectation of structural predictability."
 
-**Host 2:** "Exactly. Yeah. Like traditional engineering. You pour a concrete foundation, you frame the walls, and the building just stands there. The laws of physics are your ally. Gravity pulls down, the concrete cures, and things generally stay right where you put them."
+**Host 2:** right, Like normal engineering."
 
-**Host 1:** "Because you're relying on a baseline of normal, benign conditions. I mean, the environment isn't actively trying to dismantle your building while you're pouring the cement."
+**Host 1:** "Exactly. Yeah. Like traditional engineering. You pour a concrete foundation, you frame the walls, and the building just stands there. The laws of physics are your ally. Gravity pulls down, the concrete cures, and things generally stay right where you put them."
 
-**Host 2:** "But stepping into the world of applied cryptography and secure systems, architecture that predictability just completely vanishes."
+**Host 2:** "Because you're relying on a baseline of normal, benign conditions. I mean, the environment isn't actively trying to dismantle your building while you're pouring the cement."
 
-**Host 1:** "Oh, totally. It's a completely different paradigm."
+**Host 1:** "But stepping into the world of applied cryptography and secure systems, architecture that predictability just completely vanishes."
 
-**Host 2:** "Right. We're looking at a landscape where the environment isn't just chaotic, it's actively malicious. You have to assume that every input, every process, and like every hardware interaction is potentially being manipulated by an adversary who's just trying to tear your structure down to the molecular level."
+**Host 2:** "Oh, totally. It's a completely different paradigm."
 
-**Host 1:** "And today, we're taking you directly into that hostile territory. Yeah, we are. Whether you're a curious learner trying to wrap your head around digital security or you're prepping for a highly technical discussion on cryptographic implementation. Today is your shortcut to understanding the invisible armor of the digital world."
+**Host 1:** "Right. We're looking at a landscape where the environment isn't just chaotic, it's actively malicious. You have to assume that every input, every process, and like every hardware interaction is potentially being manipulated by an adversary who's just trying to tear your structure down to the molecular level."
 
-**Host 2:** "We really want to talk directly to you, the listener. Because the concepts we're about to unpack are the exact mechanisms protecting your banking data, your private messages, and your entire digital identity. It's all running in the background all the time. To explore this, we are dissecting this fascinating stack of technical documents, design notes, source code, and highly detailed change logs from an experimental research project."
+**Host 2:** "And today, we're taking you directly into that hostile territory."
 
-**Host 1:** "Right. The Brisart Research Archive, 97_Encryption."
+**Host 1:** Yeah, we are. Whether you're a curious learner trying to wrap your head around digital security or you're prepping for a highly technical discussion on cryptographic implementation. Today is your shortcut to understanding the invisible armor of the digital world."
 
-**Host 2:** "Yeah. Specifically focusing on a release labeled BSR2 alpha 4, which was authored by Jason Brisart, which is just a gold mine of information."
+**Host 2:** "We really want to talk directly to you, the listener. Because the concepts we're about to unpack are the exact mechanisms protecting your banking data, your private messages, and your entire digital identity. 
 
-**Host 1:** "It really is. Okay, let me unpack this. Our mission today is to look under the hood of this custom-built cryptographic research suite. We should probably mention the warnings first."
+**Host 1:** It's all running in the background all the time. To explore this, we are dissecting this fascinating stack of technical documents, design notes, source code, and highly detailed change logs from an experimental research project."
 
-**Host 2:** "Oh yeah, definitely. The documentation itself is plastered with warnings. It explicitly states this is experimental, unanalyzed research software, so it's not something you would ever drop into a production server for a Fortune 500 company today."
+**Host 2:** "Right. The Brisart Research Archive, 97_Encryption."
 
-**Host 1:** "No, absolutely not. But that lack of enterprise abstraction is exactly what makes it the perfect laboratory for us. It's completely transparent. We get to see precisely how modern encryption is built, how it gets layered, how it breaks down under attack, and you know, how it gets patched from the absolute bedrock of generating random numbers up to a fully secured disaster resistant file archiver."
+**Host 1:** "Yeah. Specifically focusing on a release labeled BSR2 alpha 4, which was authored by Jason Brisart."
+
+**Host 2:** Which is just a gold mine of information."
+
+**Host 1:** "It really is. Okay, let me unpack this. Our mission today is to look under the hood of this custom-built cryptographic research suite. 
+
+**Host 2:** but, we should probably mention the warnings first."
+
+**Host 1:** "Oh yeah, definitely. The documentation itself is plastered with warnings. It explicitly states this is experimental, unanalyzed research software."
+
+**Host 2:** Right, so it's not something you would ever drop into a production server for a Fortune 500 company today."
+
+**Host 1:** "No, absolutely not. But that lack of enterprise abstraction is exactly what makes it the perfect laboratory for us. It's completely transparent. We get to see precisely how modern encryption is built, how it gets layered, how it breaks down under attack, and you know, how it gets patched."
+
+**Host 2:** from the absolute bedrock of generating random numbers up to a fully secured disaster resistant file archiver."
 
 ---
 
