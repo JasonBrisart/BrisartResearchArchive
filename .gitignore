@@ -1,128 +1,241 @@
 # ==================================================
-# The Brisart Ecosystem
+# Brisart Research Archive
 # Pure Python / Local First / Dependency Free
-# Single root .gitignore for the Brisart Research Archive
+# Single root .gitignore
 # ==================================================
 #
-# Layout:
-#   1. Global rules (apply everywhere)
-#   2. Shared tooling artifacts (written into any folder)
-#   3. Per-folder rules, scoped to their own path so a generic folder
-#      name (data/, exports/, models/) never swallows research or
-#      curriculum content elsewhere in the archive.
-
-
+# Purpose
+# -------
+# Exclude generated tooling artifacts, local application state,
+# build products, caches, and sensitive runtime material.
+# Preserve authored research, source code, documentation, curriculum,
+# published evidence, and intentionally archived media.
+#
+# Communication / relationships
+# -----------------------------
+# Shared artifact rules cover tools that write into selected projects.
+# Project-specific rules are anchored to their owning archive folders.
+# Project Context Helper export filters are separate from Git policy:
+# exclusion from a text export does not imply exclusion from Git.
+#
+# Settings / parameters
+# ---------------------
+# Unanchored artifact names apply at any depth.
+# Leading "/" anchors a rule to the archive root.
+# Project-scoped "**/" patterns cover nested release lines.
+# Trailing "/" restricts a pattern to directories.
+#
+# Edge cases
+# ----------
+# Do not globally ignore data/, records/, reports/, results/, models/,
+# exports/, state/, packages/, storage/, modules/, or extensions/.
+# These names can identify authored content or implementation packages.
+# Do not globally ignore JSON, CSV, Markdown, ZIP, PDF, or audio files.
+# Do not globally ignore *.lock: dependency lockfiles can be source.
+#
+# Known limitations
+# -----------------
+# Ignore rules do not remove files already tracked by Git.
+# Ignore rules are not access controls, encryption, or secret scanning.
+# Custom output locations require explicit rules when not covered here.
+# Files written outside this repository are outside this policy.
+# A filename cannot establish whether its contents contain secrets.
+#
+# Examples
+# --------
+# Ignored: PROJECT_CONTEXT_EXPORTS/<timestamp>/PROJECT_CONTEXT.md
+# Ignored: 98_Tooling/ProjectContextHelper/last_export_settings.json
+# Ignored: 95_Identity_Tools/main/vault/data/private_record.json
+# Preserved: 97_Encryption/results/research_test_results.json
+# Preserved: 98_Tooling/CanonSync/canon/gitignore.master
+# Preserved: authored audio/, docs/, tests/, fixtures/, and curriculum.
+#
 # ==================================================
-# 1. GLOBAL
+# 1. GLOBAL DEVELOPMENT ARTIFACTS
 # ==================================================
 
 # ---------------------------------------------------------------------------
-# Python
+# Python bytecode and interpreter caches
 # ---------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-*.pyd
 
-# Distribution / packaging
+# ---------------------------------------------------------------------------
+# Python packaging and build products
+#
+# Build specifications are intentionally not ignored globally.
+# A maintained *.spec file can be part of a reproducible build.
+# ---------------------------------------------------------------------------
 build/
 dist/
 *.egg-info/
 .eggs/
-*.spec
+*.egg
+*.whl
+pip-wheel-metadata/
 
-# Compiled executables and native libraries
+# ---------------------------------------------------------------------------
+# Generated native binaries and libraries
+#
+# Authored C/C++/assembly source remains trackable.
+# Deliberately archived binary fixtures require explicit exceptions.
+# ---------------------------------------------------------------------------
 *.exe
 *.dll
+*.so
+*.so.*
+*.pyd
 *.dylib
+*.o
+*.obj
+*.a
+*.lib
+*.exp
+*.pdb
+*.ilk
 
-# Type checkers / linters / test caches
-.mypy_cache/
+# ---------------------------------------------------------------------------
+# Test runners, coverage, static analysis, and development caches
+#
+# These rules cover development tools, not application dependencies.
+# Do not blanket-ignore tests/, fixtures/, vectors/, or results/.
+# ---------------------------------------------------------------------------
 .pytest_cache/
+.mypy_cache/
 .ruff_cache/
+.pyre/
+.pytype/
+.hypothesis/
 .tox/
+.nox/
 .coverage
 .coverage.*
 htmlcov/
+.pybuilder/
+.dmypy.json
+dmypy.json
 
 # ---------------------------------------------------------------------------
-# Virtual Environments
+# Virtual environments and local dependency installations
 # ---------------------------------------------------------------------------
 .venv/
 venv/
 env/
 ENV/
+__pypackages__/
+node_modules/
 
 # ---------------------------------------------------------------------------
-# Editors / IDEs
+# Editors and IDEs
 # ---------------------------------------------------------------------------
 .vscode/
 .idea/
+.vs/
+.spyproject/
+.ropeproject/
 *.swp
 *.swo
+*.swn
 *~
+.#*
+\#*#
+*.sublime-workspace
 
 # ---------------------------------------------------------------------------
-# OS-generated files
+# Operating-system metadata
 # ---------------------------------------------------------------------------
 .DS_Store
+._*
+.Spotlight-V100/
+.Trashes/
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
 desktop.ini
+$RECYCLE.BIN/
 
 # ---------------------------------------------------------------------------
-# Local Secrets / Keys
+# Office application lock files
+#
+# Actual Word, Excel, PowerPoint, and PDF documents remain trackable.
+# ---------------------------------------------------------------------------
+~$*
+
+# ---------------------------------------------------------------------------
+# Local environment secrets
+#
+# Keep deliberately authored example/template files trackable.
+# Do not put real credentials into those examples.
 # ---------------------------------------------------------------------------
 .env
-.env.local
-.env.development
-.env.production
-.env.test
-*.pem
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.*.example
+!.env.*.sample
+!.env.*.template
+.envrc.local
+
+# ---------------------------------------------------------------------------
+# Private-key containers and common private-key filenames
+#
+# Public certificates (*.crt, *.cer, *.pub) are not globally excluded.
+# PEM files can contain private keys, so exclude them conservatively.
+# ---------------------------------------------------------------------------
 *.key
-*.crt
+*.pem
 *.p12
 *.pfx
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+private_key.json
 
 # ---------------------------------------------------------------------------
-# Generic Cache / Temp / Logs
+# Disposable caches and temporary files
+#
+# No global logs/, *.log, *.db, or *.sqlite rules:
+# those can also be intentional research or test artifacts.
 # ---------------------------------------------------------------------------
 .cache/
-tmp/
-temp/
 *.tmp
 *.temp
-*.bak
 *.part
-*.lock
-logs/
-*.log
+*.partial
+*.crdownload
+*.download
+*.bak
+*.orig
+*.rej
 
-# ---------------------------------------------------------------------------
-# SQLite Databases
-# ---------------------------------------------------------------------------
-*.sqlite
-*.sqlite3
+# SQLite transient sidecars, not the primary database itself.
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-journal
 *.sqlite3-shm
 *.sqlite3-wal
-*.db
-
-# ---------------------------------------------------------------------------
-# Self-updater staging (AIO Launcher and Project Context Helper)
-# ---------------------------------------------------------------------------
-updates/
-apply_update.bat
-staged_update.exe
-download.zip
-
+*.db-journal
+*.db-shm
+*.db-wal
 
 # ==================================================
-# 2. SHARED TOOLING ARTIFACTS
-# (tools that write output into whatever folder they are pointed at)
+# 2. SHARED BRISART TOOLING ARTIFACTS
+#
+# These tools can write into arbitrary selected project folders.
+# Their distinctive artifact names therefore apply at any depth.
 # ==================================================
 
 # ---------------------------------------------------------------------------
 # Project Context Helper
+#
+# Export bundles, generated context, machine preferences, profiles,
+# history, and export-state files belong together in this section.
+# No separate last_export_settings.json rule is needed at the bottom.
 # ---------------------------------------------------------------------------
 PROJECT_CONTEXT_EXPORTS/
 PROJECT_CONTEXT.md
@@ -131,143 +244,341 @@ PROJECT_MANIFEST.json
 PROJECT_SUMMARY.txt
 PROJECT_SNAPSHOT.zip
 
-# Per-machine application state (any depth)
+# Project Context Helper machine-local application state.
 app_settings.json
 build_history.json
 custom_profiles.json
 last_export_settings.json
 
+# Explicit recovery copies of machine-local state.
+app_settings.json.bak
+build_history.json.bak
+custom_profiles.json.bak
+last_export_settings.json.bak
+
 # ---------------------------------------------------------------------------
 # ArchiveSnapshot
+#
+# Ignore snapshot stores and machine-local automation state.
+# Snapshot contents are covered by their containing store directory.
+# Do not globally ignore HASHES.sha256, FOLDER_TREE.txt,
+# ARCHIVE_MANIFEST.json, or ARCHIVE_SUMMARY.md: those names can also
+# identify intentionally published archival records.
 # ---------------------------------------------------------------------------
-
-# Snapshot store (current name, plus legacy name from earlier builds)
 ARCHIVE_SNAPSHOT/
 ARCHIVE_TIMELINE/
 
-# GUI settings and headless daily automation (per-machine, not source)
 ARCHIVE_SNAPSHOT_SETTINGS.json
 DAILY_SNAPSHOT_CONFIG.json
 DAILY_SNAPSHOT_STATE.json
 DAILY_SNAPSHOT_LOG.md
 
-# Staged inbox and Project Context Helper handoff folders
+# Snapshot staging and Project Context Helper handoff artifacts.
 SNAPSHOT_ACTIVE/
 PROJECT_CONTEXT_HELPER/
 PROJECT_CONTEXT_INDEX.json
 
 # ---------------------------------------------------------------------------
 # AutoExeBuilder
+#
+# Preserve authored build configuration and source specifications.
+# Ignore generated build output and generated build manifests.
 # ---------------------------------------------------------------------------
 auto_exe_output/
+EXE_BUILD_MANIFEST.json
 
 # ---------------------------------------------------------------------------
-# ReadmeBuilder (generated drafts, never the real README.md)
+# ReadmeBuilder
+#
+# Generated drafts are disposable.
+# Real README.md files remain trackable.
 # ---------------------------------------------------------------------------
 README_DRAFT.md
 README_ANALYSIS.md
 README_BUILDER_MANIFEST.json
 
 # ---------------------------------------------------------------------------
-# ReleaseNoteBuilder (generated drafts)
-# RELEASE_NOTES.md is intentionally NOT ignored so finalized notes can be
-# committed.
+# ReleaseNoteBuilder
+#
+# Generated drafts/manifests are disposable.
+# Final CHANGELOG.md and RELEASE_NOTES.md remain trackable.
 # ---------------------------------------------------------------------------
 CHANGELOG_DRAFT.md
 RELEASE_MANIFEST.json
 
+# ---------------------------------------------------------------------------
+# Shared self-updater artifacts
+#
+# Keep updater source, release metadata, signatures, and trust anchors.
+# Ignore downloaded/staged replacement payloads.
+# ---------------------------------------------------------------------------
+updates/
+apply_update.bat
+staged_update.exe
+download.zip
+
+# ---------------------------------------------------------------------------
+# AirGapped-Web portable backups
+#
+# This is the distinctive generated backup filename.
+# Do not globally ignore JSON, HTML, ZIP, records/, or archive content.
+# ---------------------------------------------------------------------------
+airgapped-web-backup-*.json
 
 # ==================================================
-# 3. PER-FOLDER RULES
+# 3. PROJECT-SCOPED RUNTIME AND PRIVATE DATA
 # ==================================================
 
 # ---------------------------------------------------------------------------
-# 95_Identity_Tools (main and LTS-2028)
+# 02_Execution
+#
+# Keep framework configuration, stimuli, source, and published evidence.
+# Ignore the execution updater's local preference file.
 # ---------------------------------------------------------------------------
-# Runtime data/ directories under biometrics/, vault/, and packages/ hold
-# real identity records, sealed biometric templates, the biometrics
-# keyring, verification and audit reports, sealed vault files, sealed
-# packages, and demo packages. None of it belongs in version control.
-# Paths are CWD-relative, so match data/ at any depth inside this folder.
-95_Identity_Tools/**/data/
+/02_Execution/settings.json
 
-# Key material and sealed identity artifacts (defense in depth)
-95_Identity_Tools/**/keyring.json
-95_Identity_Tools/**/device_key.json
-95_Identity_Tools/**/*_passphrase.txt
+# ==================================================
+# 4. NATIVE APIs
+# ==================================================
+
+# ---------------------------------------------------------------------------
+# 94_Native_API's
+#
+# Versioned implementations, test vectors, fixtures, and documentation
+# remain trackable. Global development-artifact rules cover caches.
+# No blanket API output/data exclusions are introduced.
+# ---------------------------------------------------------------------------
+
+# ==================================================
+# 5. IDENTITY TOOLS
+# ==================================================
+
+# ---------------------------------------------------------------------------
+# 95_Identity_Tools
+#
+# Covers main, LTS-2028, and nested runtime data locations.
+# Do not ignore the biometrics/, packages/, vault/, reports/, or
+# vendor/ implementation directories themselves.
+# ---------------------------------------------------------------------------
+/95_Identity_Tools/**/data/
+
+# Keyrings, device keys, and plaintext passphrase artifacts.
+/95_Identity_Tools/**/keyring.json
+/95_Identity_Tools/**/device_key.json
+/95_Identity_Tools/**/*_passphrase.txt
+
+# Sealed identity records and identity packages.
+# Retained globally because custom output paths can leave the project.
 *.identity
 *.ibp
 
-# Demo package folders created outside data/ by a custom output path
-95_Identity_Tools/**/DEMO_DO_NOT_USE_*/
+# Demo packages created outside the normal runtime data directory.
+/95_Identity_Tools/**/DEMO_DO_NOT_USE_*/
 
-# Synthetic capture output
-95_Identity_Tools/**/*.brvid
+# Synthetic capture artifacts.
+/95_Identity_Tools/**/*.brvid
+
+# ==================================================
+# 6. BRISARTOS
+# ==================================================
 
 # ---------------------------------------------------------------------------
-# 96_Operating_System (BrisartOS)
+# 96_Operating_System
+#
+# Keep kernel, host, storage, modules, extensions, schemas, tests,
+# ROM source, and authored configuration trackable.
+# Do not translate virtual filesystem paths into speculative host
+# ignore rules: /system inside the OS is not necessarily a repo path.
 # ---------------------------------------------------------------------------
-# System API creates module_data/ and logs/ in the working directory.
-96_Operating_System/**/module_data/
-module_data/
 
-# Boot sector and floppy images (build/ is already ignored globally)
-96_Operating_System/**/*.img
-96_Operating_System/**/*.vfd
+# System API module runtime storage.
+/96_Operating_System/**/module_data/
+
+# Legacy/current-working-directory runtime storage at archive root.
+/module_data/
+
+# Host-side temporary replacement files.
+/96_Operating_System/**/*.brisart-tmp
+
+# Generated boot/floppy images.
+/96_Operating_System/**/*.img
+/96_Operating_System/**/*.vfd
+
+# ==================================================
+# 7. ENCRYPTION RESEARCH
+# ==================================================
 
 # ---------------------------------------------------------------------------
 # 97_Encryption
+#
+# Intentionally preserved:
+#   results/
+#   research_test_results.csv
+#   research_test_results.json
+#   research_test_results.md
+#   research_test_config.json
+#   known-answer vectors and test fixtures
+#   security documentation and audio documentation
+#
+# No blanket results/, reports/, JSON, CSV, or transcript exclusions.
+# Global bytecode/cache/private-key rules still apply.
 # ---------------------------------------------------------------------------
-# No extra rules needed. results/ is intentionally tracked: it is the
-# published research test evidence (research_test_results.csv/.json/.md),
-# and the suite writes nothing else. Caches are covered globally.
 
-# ---------------------------------------------------------------------------
-# 98_Tooling/BrisartAI
-# ---------------------------------------------------------------------------
-# Runtime databases (also covered by *.sqlite3, listed for clarity)
-98_Tooling/BrisartAI/conversation_memory.sqlite3
-98_Tooling/BrisartAI/session_memory.sqlite3
-98_Tooling/BrisartAI/brisart_ai_index.sqlite3
-
-# Exported knowledge archives
-98_Tooling/BrisartAI/exports/
-98_Tooling/BrisartAI/archive_exports/
-98_Tooling/BrisartAI/knowledge_exports/
-
-# Future AI models and downloads
-98_Tooling/BrisartAI/models/
-98_Tooling/BrisartAI/downloads/
-
-# Future plugin, crawl, and scan caches
-98_Tooling/BrisartAI/plugins/cache/
-98_Tooling/BrisartAI/crawl_cache/
-98_Tooling/BrisartAI/web_cache/
-98_Tooling/BrisartAI/scan_cache/
+# ==================================================
+# 8. TOOLING PROJECTS
+# ==================================================
 
 # ---------------------------------------------------------------------------
-# aio-launcher-prerelease (Brisart Research Archive AIO Launcher)
+# BrisartAI
+#
+# Ignore named runtime databases and designated generated stores.
+# Do not ignore the engine's source packages, tests, or documentation.
 # ---------------------------------------------------------------------------
-# Release signing private key -- NEVER commit
-aio-launcher-prerelease/signing/keys/
-private_key.json
+/98_Tooling/BrisartAI/conversation_memory.sqlite3
+/98_Tooling/BrisartAI/session_memory.sqlite3
+/98_Tooling/BrisartAI/brisart_ai_index.sqlite3
 
-# Legacy / local settings and activity history
-aio-launcher-prerelease/user_settings.json
-aio-launcher-prerelease/user_settings.json.tmp
-aio-launcher-prerelease/user_settings.invalid*.json
-aio-launcher-prerelease/activity_log.json
-aio-launcher-prerelease/activity_log.json.tmp
+/98_Tooling/BrisartAI/exports/
+/98_Tooling/BrisartAI/archive_exports/
+/98_Tooling/BrisartAI/knowledge_exports/
 
-# Framework run output
-aio-launcher-prerelease/outputs/
+/98_Tooling/BrisartAI/models/
+/98_Tooling/BrisartAI/downloads/
+
+/98_Tooling/BrisartAI/plugins/cache/
+/98_Tooling/BrisartAI/crawl_cache/
+/98_Tooling/BrisartAI/web_cache/
+/98_Tooling/BrisartAI/scan_cache/
+
+# Project-local operational logs, not research logs elsewhere.
+/98_Tooling/BrisartAI/logs/
+
+# ---------------------------------------------------------------------------
+# Entitle
+#
+# These are the runtime directories defined by entitle/paths.py.
+# Keep entitle/records.py, report.py, tracking/, examples/, tests/,
+# vendor/, and documentation trackable.
+# ---------------------------------------------------------------------------
+/98_Tooling/Entitle/entitlements/
+/98_Tooling/Entitle/records/
+/98_Tooling/Entitle/reports/
+
+# ---------------------------------------------------------------------------
+# AirGapped-Web
+#
+# Keep authored site assets, registry content, records, HTML, CSS,
+# JavaScript, and intentionally imported archival material trackable.
+#
+# Browser-local state is not a repository file.
+# Portable backup JSON is covered in the shared-artifact section.
+# Site-export ZIP files are not globally ignored: they may be
+# intentional preservation artifacts.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# CanonSync
+#
+# Keep canonsync.config.json and canon/ master files trackable.
+# Timestamped *.bak files are covered by the global backup rule.
+# Do not ignore synchronized .gitignore, .gitattributes,
+# .editorconfig, or LICENSE files.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# ProjectContextHelper / ArchiveSnapshot / AutoExeBuilder /
+# ReadmeBuilder / ReleaseNoteBuilder
+#
+# Their generated artifacts are consolidated in section 2.
+# Do not duplicate per-machine settings rules at the file's end.
+# Source, tests, constants, and documentation remain trackable.
+# ---------------------------------------------------------------------------
+
+# ==================================================
+# 9. AIO LAUNCHER
+# ==================================================
+
+# ---------------------------------------------------------------------------
+# aio-launcher-prerelease
+# ---------------------------------------------------------------------------
+
+# Private release-signing material.
+# Keep signing scripts and public verification material trackable.
+/aio-launcher-prerelease/signing/keys/
+
+# Local application settings.
+/aio-launcher-prerelease/user_settings.json
+/aio-launcher-prerelease/user_settings.json.tmp
+/aio-launcher-prerelease/user_settings.json.bak
+/aio-launcher-prerelease/user_settings.invalid*.json
+
+# Legacy settings location used by config/runtime.py.
+/aio-launcher-prerelease/config/user_settings.json
+/aio-launcher-prerelease/config/user_settings.json.tmp
+/aio-launcher-prerelease/config/user_settings.json.bak
+/aio-launcher-prerelease/config/user_settings.invalid*.json
+
+# Local activity history.
+/aio-launcher-prerelease/activity_log.json
+/aio-launcher-prerelease/activity_log.json.tmp
+/aio-launcher-prerelease/activity_log.json.bak
+
+# Framework execution output.
+/aio-launcher-prerelease/outputs/
+
+# Distinctive run/autosave names can appear at custom output paths.
 tfl_output_*.csv
 tfl_autosave_*.csv
 
+# ==================================================
+# 10. OPTIONAL LOCAL-ONLY WORKSPACE
+#
+# Reserved convention for future manual/local work.
+# These are policy additions, not claims that tools create them.
+# Do not place source, published evidence, or archival originals here.
+# ==================================================
+/.local/
+/.local-artifacts/
+/.local-secrets/
 
 # ==================================================
-# CanonSync
-# If CanonSync is run against this repo, it injects its managed block
-# between the markers below and preserves everything above untouched.
+# 11. PRESERVATION BOUNDARIES
+#
+# Intentionally no blanket exclusions for:
+#
+#   03_WIP/
+#   04_Documentation/
+#   05_Framework_Development/
+#   06_Curriculum/
+#   07_Podcast/
+#   99_Admin/
+#   audio/
+#   docs/
+#   tests/
+#   fixtures/
+#   vectors/
+#   results/
+#
+# Also intentionally no global exclusions for:
+#
+#   *.md / *.txt / *.json / *.csv / *.sql
+#   *.pdf / *.docx / *.xlsx / *.pptx
+#   *.mp3 / *.m4a / *.wav / *.flac
+#   *.png / *.jpg / *.jpeg / *.svg / *.ico
+#   *.zip / *.7z / *.tar / *.gz
+#   *.lock / *.spec / *.crt / *.cer / *.pub
+#
+# Private student records, participant data, and unpublished research
+# require explicitly scoped storage rules once their actual paths
+# are defined. Do not hide authored curriculum or evidence by guessing.
+#
 # ==================================================
-98_Tooling/ProjectContextHelper/last_export_settings.json
+# 12. CANONSYNC MANAGED BLOCK
+#
+# CanonSync's managed content belongs between its actual markers.
+# Review any injected rules against the preservation boundaries above.
+# Later matching patterns can change earlier ignore decisions.
+# ==================================================
+
+# >>> CANONICAL (managed by CanonSync) - DO NOT EDIT >>>
+# <<< CANONICAL <<<
