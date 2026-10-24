@@ -4,43 +4,42 @@ File: engine/timing.py
 Purpose
 -------
 Provide the shared timer contract for framework session engines:
-TimerInterface (the contract), MonotonicTimer (real GUI scheduling),
-and NullSchedulerTimer (a deterministic virtual clock for tests).
+TimerInterface, MonotonicTimer (GUI scheduling), DeadlineOnlyTimer
+(console runs), and NullSchedulerTimer (deterministic virtual clock).
 
 Communication / relationships
 -----------------------------
 - frameworks/TFL/engine.py consumes any TimerInterface.
 - frameworks/TFL/session_gui.py builds a MonotonicTimer bound to its
   Toplevel's after() and after_cancel().
-- app/headless.py and tests/test_merged.py use NullSchedulerTimer.
-- Intended for reuse by future framework engines.
+- frameworks/TFL/cli_runner.py uses DeadlineOnlyTimer.
+- app/headless.py and the tests use NullSchedulerTimer.
 
 Settings / parameters
 ---------------------
 - MonotonicTimer(schedule_fn=None, cancel_fn=None); now() uses
   time.monotonic().
-- NullSchedulerTimer: the clock starts at 0.0; advance(seconds) moves
-  it; fire(handle) runs one scheduled callback.
+- DeadlineOnlyTimer: now() is monotonic; schedule() returns None and
+  never calls back, so deadlines are enforced at submission time.
+- NullSchedulerTimer: clock starts at 0.0; advance(seconds); fire(handle).
 
 Edge cases
 ----------
-- schedule() without a schedule_fn raises RuntimeError.
-- cancel(None) is a no-op.
+- MonotonicTimer.schedule() without a schedule_fn raises RuntimeError.
+- cancel(None) is a no-op everywhere.
 - fire() on a cancelled or unknown handle does nothing.
-- NullSchedulerTimer ignores delay_ms; callbacks run only through fire().
 
 Known limitations
 -----------------
 - No repeating timers.
 - NullSchedulerTimer does not fire callbacks automatically when
-  advance() passes their deadline.
+  advance() passes a deadline; tests call fire().
 
 Examples
 --------
-- timer = NullSchedulerTimer(); handle = timer.schedule(12000, callback); timer.fire(handle)
+- timer = NullSchedulerTimer(); handle = timer.schedule(12000, cb); timer.fire(handle)
 - MonotonicTimer(schedule_fn=window.after, cancel_fn=window.after_cancel)
 """
-
 from __future__ import annotations
 
 import time
@@ -59,17 +58,7 @@ class TimerInterface:
 
 
 class MonotonicTimer(TimerInterface):
-    """
-    Real-time timer driven by a host scheduler.
-    schedule_fn/cancel_fn are normally bound to a Tk Toplevel's
-    .after()/.after_cancel(), but any compatible scheduler works.
-    """
-
-    def __init__(
-        self,
-        schedule_fn: Callable[[int, Callable[[], None]], object] | None = None,
-        cancel_fn: Callable[[object], None] | None = None,
-    ):
+    def __init__(self, schedule_fn=None, cancel_fn=None):
         self._schedule_fn = schedule_fn
         self._cancel_fn = cancel_fn
 
@@ -86,11 +75,21 @@ class MonotonicTimer(TimerInterface):
             self._cancel_fn(handle)
 
 
-class NullSchedulerTimer(MonotonicTimer):
-    """
-    Deterministic virtual-clock timer for headless engine tests.
-    """
+class DeadlineOnlyTimer(TimerInterface):
+    """Real clock without callbacks: blocking console input cannot be
+    interrupted portably, so the engine checks deadlines on submission."""
 
+    def now(self) -> float:
+        return time.monotonic()
+
+    def schedule(self, delay_ms: int, callback: Callable[[], None]) -> object:
+        return None
+
+    def cancel(self, handle: object) -> None:
+        return None
+
+
+class NullSchedulerTimer(MonotonicTimer):
     def __init__(self):
         self.current = 0.0
         self.callbacks: dict[int, Callable[[], None]] = {}
@@ -118,5 +117,4 @@ class NullSchedulerTimer(MonotonicTimer):
             callback()
 
 
-__all__ = ["TimerInterface", "MonotonicTimer", "NullSchedulerTimer"]
-
+__all__ = ["TimerInterface", "MonotonicTimer", "DeadlineOnlyTimer", "NullSchedulerTimer"]

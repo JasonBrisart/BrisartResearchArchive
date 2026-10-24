@@ -3,59 +3,60 @@ File: frameworks/TFL/session_gui.py
 
 Purpose
 -------
-Provide TFLGuiSession, the adapter that wires TFLSessionEngine to a Tk
-window: participant prompt, options screen, engine construction,
-autosave, cancel, and hand-off back to the host app.
+Provide TFLGuiSession, the adapter that connects the shared TFL engine
+to a Tk window: options screen, run construction, per-trial saving,
+completion, cancellation, and hand-off back to the host app.
 
 Communication / relationships
 -----------------------------
-- Launched by services/framework_service.py, which instantiates the
-  runner_class named in frameworks/TFL/framework.py with the app.
+- Launched by services/framework_service.py from FRAMEWORK_METADATA.
 - Renders through options_screen.render_options() and
   screen.render_trial().
-- Autosaves through analysis.autosave_rows().
-- Logs through app.log(); after completion calls app.show_page("Results")
-  and app.analyze_tfl().
+- Saves through output.SessionWriter (one flushed row per trial).
+- Logs through app.log(); after completion opens Results and runs
+  app.analyze_tfl().
 
 Settings / parameters
 ---------------------
-- TFLGuiSession(app=None, participant_id="").
-- Window 980x720, minimum 900x650; kept topmost for 200 ms when opened.
-- AUTOSAVE_INTERVAL_TRIALS comes from frameworks/TFL/settings.py.
+- TFLGuiSession(app=None, participant_id=""); participant_id is accepted
+  for launcher compatibility and not recorded (the reference has no
+  participant field).
+- Output folder: the host's live Output Directory setting when an app is
+  present, otherwise the saved setting.
+- Window 980x720, minimum 900x650.
 
 Edge cases
 ----------
-- With app=None, a hidden Tk root is created and the session runs its
-  own mainloop.
-- A blank or cancelled participant ID is allowed.
-- Failures rendering the options screen or building trials show an
-  error dialog instead of leaving a blank window.
-- The cancel prompt reports how many trials were already completed.
-- An autosave failure is logged and the run continues.
+- Completion is handled once, in after_input() / the timeout hook, never
+  inside rendering.
+- Cancelling keeps every completed trial in the session file and leaves
+  tfl_output.csv untouched.
+- With app=None a hidden Tk root is created and the session runs its own
+  mainloop.
 
 Known limitations
 -----------------
-- A cancelled run produces no final output file; only trials captured
-  by the last autosave remain on disk.
-- The participant prompt appears before the options window.
+- Native Tk rendering is not exercised by the automated tests.
 
 Examples
 --------
 - TFLGuiSession(app).start()
-- TFLGuiSession().start()
 """
-
 from __future__ import annotations
+
 import tkinter as tk
+from tkinter import messagebox
+
 from engine.timing import MonotonicTimer
-from . import analysis
-from .config import apply_default_options
+
+from .config import apply_default_options, update_run_mode
 from .engine import TFLSessionEngine
 from .options_screen import render_options
+from .output import SessionWriter
 from .screen import render_trial
 from .stimuli import apply_stimulus_limit, load_stimuli
 from .trial_builder import build_trials
-from .settings import AUTOSAVE_INTERVAL_TRIALS
+
 try:
     from gui.theme import COLORS
 except ImportError:
@@ -63,160 +64,101 @@ except ImportError:
 
 
 class TFLGuiSession:
-    """GUI-native TFL runner. Delegates all state to TFLSessionEngine."""
     def __init__(self, app=None, participant_id: str = ""):
         self.app = app
         self.participant_id = str(participant_id).strip()
-        # Config is built immediately so the options screen has real
-        # default values to show. Stimuli/trials/engine are built only in
-        # begin_session(), once the user confirms options on the
-        # pre-session screen -- so options_screen.render_options() is
-        # actually reached rather than start() jumping straight to trials.
         self.config = apply_default_options()
         self.option_vars: dict = {}
-        self.stimuli: list[dict] = []
-        self.trials: list[dict] = []
         self.win: tk.Toplevel | None = None
         self.engine: TFLSessionEngine | None = None
+        self.writer: SessionWriter | None = None
+        self.completion_message = ""
+        self.finished = False
         self.parent_root = None
         self.created_parent_root = False
+        self.rendered_stage = None
 
-    # ------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------
-    def start(self):
+    # ---------------------------------------------------------- lifecycle
+    def start(self) -> None:
         parent = self.app
         if parent is None:
             parent = tk.Tk()
             parent.withdraw()
             self.parent_root = parent
             self.created_parent_root = True
-        # Optional participant ID prompt (blank/cancelled is fine).
-        if not self.participant_id:
-            self.participant_id = self._prompt_for_participant_id(parent)
         self.win = tk.Toplevel(parent)
-        self.win.title("TFL GUI Assay")
+        self.win.title("Temporal Feedback Loop")
         self.win.geometry("980x720")
         self.win.minsize(900, 650)
         self.win.configure(bg=COLORS.get("bg", "#070b14"))
         self.win.protocol("WM_DELETE_WINDOW", self.cancel)
-        # Force the window to the front so it never opens behind the main
-        # app window or fails to grab focus (which looks like nothing
-        # opened), especially for a Toplevel created from a withdrawn root.
         self.win.lift()
         self.win.attributes("-topmost", True)
         self.win.after(200, lambda: self.win.attributes("-topmost", False))
         self.win.focus_force()
-        # Show the pre-session options screen first. The engine is not
-        # built until begin_session() runs, on "Start Session".
-        self._render_options_safely()
-        if self.app is None:
-            parent.mainloop()
-
-    def _prompt_for_participant_id(self, dialog_parent) -> str:
-        """
-        Optional participant ID prompt. Returns "" (not mandatory) if the
-        user cancels, closes the dialog, or leaves it blank -- a blank
-        participant_id is a valid state the engine and analysis layer
-        already handle.
-        """
-        try:
-            from tkinter import simpledialog
-            entered = simpledialog.askstring(
-                "TFL Participant",
-                "Participant ID (optional - leave blank to skip):",
-                parent=dialog_parent,
-            )
-        except tk.TclError:
-            return ""
-        return str(entered or "").strip()
-
-    def _render_options_safely(self) -> None:
-        # Wrapped in try/except so a broken options screen shows a real
-        # error instead of leaving a blank/invisible window.
         try:
             render_options(self)
         except Exception as exc:
-            self.log(f"TFL options screen failed to render: {type(exc).__name__}: {exc}")
-            import traceback
-            traceback.print_exc()
-            try:
-                from tkinter import messagebox
-                messagebox.showerror(
-                    "TFL Options Failed",
-                    f"The TFL options screen could not be displayed.\n\n{type(exc).__name__}: {exc}",
-                    parent=self.win,
-                )
-            except tk.TclError:
-                pass
+            self._error("TFL Options Failed", f"The TFL options screen could not be displayed.\n\n{type(exc).__name__}: {exc}")
+        if self.app is None:
+            parent.mainloop()
+
+    def _output_dir(self):
+        from config.runtime import get_framework_output_dir
+        settings = self.app._collect_settings() if hasattr(self.app, "_collect_settings") else None
+        return get_framework_output_dir("TFL", settings)
 
     def begin_session(self) -> None:
-        """
-        Called by the options screen once the user clicks Start Session.
-        Builds stimuli/trials against the (possibly edited) config, then
-        builds and starts the engine.
-        """
+        update_run_mode(self.config)
         try:
-            self.stimuli = apply_stimulus_limit(load_stimuli(), self.config)
-            self.trials = build_trials(self.config, self.stimuli)
+            stimuli = apply_stimulus_limit(load_stimuli(), self.config)
+            trials = build_trials(self.config, stimuli)
+            self.writer = SessionWriter(self._output_dir())
         except Exception as exc:
-            self.log(f"TFL could not build trials: {type(exc).__name__}: {exc}")
-            try:
-                from tkinter import messagebox
-                messagebox.showerror(
-                    "TFL Setup Failed",
-                    f"TFL could not build stimuli/trials from the current options.\n\n{type(exc).__name__}: {exc}",
-                    parent=self.win,
-                )
-            except tk.TclError:
-                pass
-            return
-        if not self.stimuli or not self.trials:
-            self.log("TFL cannot start: no stimuli or trials were generated.")
+            self._error("TFL Setup Failed", f"TFL could not prepare this run.\n\n{type(exc).__name__}: {exc}")
             return
         self.engine = TFLSessionEngine(
             self.config,
-            self.trials,
-            MonotonicTimer(
-                schedule_fn=lambda ms, cb: self.win.after(ms, cb),
-                cancel_fn=lambda handle: self.win.after_cancel(handle),
-            ),
-            participant_id=self.participant_id,
-            on_trial_recorded=self._autosave_if_due,
-            # Re-render the screen immediately when a timed window expires
-            # unattended: on timeout the engine advances its stage
-            # internally, and without this the window keeps showing the old
-            # stage's buttons, which then silently do nothing when clicked.
-            on_stage_advanced=self.render,
+            trials,
+            MonotonicTimer(schedule_fn=lambda ms, cb: self.win.after(ms, cb),
+                           cancel_fn=lambda handle: self.win.after_cancel(handle)),
+            on_trial_recorded=self.writer.write_row,
+            on_stage_advanced=self.after_input,
         )
-        self.log(f"TFL session started: {self.engine.session_id}")
-        self.engine.start_trial()
+        self.log(f"TFL session started ({self.config['run_mode']}): {self.writer.session_file.name}")
+        self.engine.start()
         self.render()
-
-    def render_options(self) -> None:
-        self._render_options_safely()
 
     def render(self) -> None:
         render_trial(self)
 
-    def _autosave_if_due(self, rows: list[dict]) -> None:
-        """Checkpoint to disk every AUTOSAVE_INTERVAL_TRIALS completed trials."""
-        if self.engine is None or not rows:
-            return
-        if len(rows) % AUTOSAVE_INTERVAL_TRIALS != 0:
-            return
-        try:
-            path = analysis.autosave_rows(rows, self.engine.session_id)
-        except Exception as exc:
-            self.log(f"Autosave failed at {len(rows)} trials: {type(exc).__name__}: {exc}")
-            return
-        self.log(f"Autosaved {len(rows)} trials to {path.name}")
+    def after_input(self) -> None:
+        if self.engine is not None and self.engine.completed and not self.finished:
+            self._finish()
+        self.render()
 
-    def window_exists(self) -> bool:
-        if self.win is None:
-            return False
+    def _finish(self) -> None:
+        self.finished = True
         try:
-            return bool(self.win.winfo_exists())
+            latest = self.writer.finalize()
+            self.completion_message = (
+                f"Saved {self.writer.rows_written} trials to:\n{latest}\n\nSession file:\n{self.writer.session_file}"
+            )
+        except Exception as exc:
+            self.completion_message = (
+                f"The run finished, but tfl_output.csv could not be updated.\n\n{type(exc).__name__}: {exc}\n\n"
+                f"All completed trials are in:\n{self.writer.session_file}"
+            )
+        if self.engine.record_errors:
+            self.completion_message += "\n\nWrite errors:\n" + "\n".join(self.engine.record_errors)
+        self.log(self.completion_message.splitlines()[0])
+        if self.app is not None:
+            self.after_finish_in_host_app()
+
+    # ---------------------------------------------------------- windows
+    def window_exists(self) -> bool:
+        try:
+            return self.win is not None and bool(self.win.winfo_exists())
         except tk.TclError:
             return False
 
@@ -232,25 +174,19 @@ class TFLGuiSession:
     def cancel(self) -> None:
         if not self.window_exists():
             return
-        completed_trial_count = len(self.engine.rows) if self.engine is not None else 0
-        if completed_trial_count > 0:
-            cancel_prompt = (
-                "Cancel this TFL GUI run?\n\n"
-                f"{completed_trial_count} completed trial(s) were already autosaved and will remain on disk, "
-                "but no final output file will be produced for this run."
-            )
-        else:
-            cancel_prompt = "Cancel this TFL GUI run?\n\nNo trials have been completed yet."
-        try:
-            from tkinter import messagebox
-            should_cancel = messagebox.askyesno("Cancel TFL Run", cancel_prompt, parent=self.win)
-        except tk.TclError:
-            should_cancel = True
-        if not should_cancel:
-            return
-        if self.engine is not None:
+        if self.engine is not None and not self.engine.completed:
+            done = len(self.engine.rows)
+            prompt = ("Cancel this TFL run?\n\n"
+                      f"{done} completed trial(s) are already saved in the session file. "
+                      "tfl_output.csv will not be replaced.")
+            try:
+                if not messagebox.askyesno("Cancel TFL Run", prompt, parent=self.win):
+                    return
+            except tk.TclError:
+                pass
             self.engine.cancel()
-        self.log("TFL GUI assay cancelled.")
+            path = self.writer.abandon()
+            self.log(f"TFL run cancelled after {done} trial(s); kept in {path.name}")
         self.close_windows()
 
     def close_windows(self) -> None:
@@ -262,31 +198,27 @@ class TFLGuiSession:
         self.win = None
         if self.created_parent_root and self.parent_root is not None:
             try:
-                if self.parent_root.winfo_exists():
-                    self.parent_root.destroy()
+                self.parent_root.destroy()
             except tk.TclError:
                 pass
             self.parent_root = None
             self.created_parent_root = False
 
     def after_finish_in_host_app(self) -> None:
-        if self.app is None:
-            return
+        for name, args in (("show_page", ("Results",)), ("analyze_tfl", ())):
+            method = getattr(self.app, name, None)
+            if callable(method):
+                try:
+                    method(*args)
+                except (AttributeError, tk.TclError) as exc:
+                    self.log(f"Post-run {name} failed: {exc}")
+
+    def _error(self, title: str, message: str) -> None:
+        self.log(message.splitlines()[0])
         try:
-            if not self.app.winfo_exists():
-                return
-        except (AttributeError, tk.TclError):
-            return
-        if hasattr(self.app, "show_page"):
-            try:
-                self.app.show_page("Results")
-            except (AttributeError, tk.TclError) as exc:
-                self.log(f"Could not open Results page: {exc}")
-        if hasattr(self.app, "analyze_tfl"):
-            try:
-                self.app.analyze_tfl()
-            except (AttributeError, tk.TclError) as exc:
-                self.log(f"Could not start TFL analysis: {exc}")
+            messagebox.showerror(title, message, parent=self.win)
+        except tk.TclError:
+            pass
 
     def log(self, text: str) -> None:
         if self.app is not None and hasattr(self.app, "log"):
@@ -299,4 +231,3 @@ class TFLGuiSession:
 
 
 __all__ = ["TFLGuiSession"]
-

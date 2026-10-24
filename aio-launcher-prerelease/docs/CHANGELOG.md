@@ -3,6 +3,144 @@ All notable changes to Brisart Research Archive are documented here.
 
 ---
 
+## [0.9.3 ALPHA] - 2026-10-24
+
+### Release overview
+
+TFL now runs the 02_Execution TFL Baseline Reference Implementation v2.6 procedure natively inside the Archive. The reference was not copied in or wrapped. Its behavior was rebuilt in the Archive's own modules: one front-end-independent engine, driven by a rebuilt GUI and by a new command-line suite modeled on the 02_Execution launcher. Trial generation, stimulus text, the trial sequence, feedback and perturbation wording, the 27 reference CSV columns, and the analysis rules all follow the reference. Its features that 0.9.2 lacked are now present.
+
+The whole application is standard library only. The reference's pandas analysis was ported to plain Python, and the dependency audit now fails on any third-party import anywhere in the tree. Tkinter is imported only by GUI modules, so the CLI also runs on Python builds without Tk.
+
+The Archive adds three things the reference does not have: an optional response timer, per-session output files, and the GUI/CLI front ends. With the timer off (the default), a run follows the reference procedure.
+
+Verification: 53 automated tests pass on Python 3.12 without Tk (`tests/test_merged.py` 19, `tests/test_tfl_protocol.py` 34). Native Tk rendering was not exercised.
+
+### Changed: trial generation now matches the reference (`frameworks/TFL/trial_builder.py`)
+
+0.9.2 used a different algorithm: a shuffled stimulus pool, an alternating A/B prior only in the belief block, a fixed contradiction cycle, and a rotating perturbation order. The builder now uses the reference algorithm. For each trial it draws a random stimulus (with replacement), then a random A/B prior in every block, then a random perturbation type on perturbation trials, then a random contradiction-block feedback level, all from the same seed and in the reference's draw order. Delayed reentry is block-local and copies the stimulus from six trials back. Run length is `trials_per_block × len(blocks)`, and `num_trials` is informational, as in the reference.
+
+The one deliberate difference is how the seed is used. Draws come from a private `random.Random(seed)` instead of the reference's process-wide `random.seed()`, so building trials no longer changes random state elsewhere in the application. A test compares every trial dictionary against a verbatim port of the reference algorithm for all 16 option combinations at seeds 0, 1, 2026, and 9017 (64 configurations). The sequences are identical, and a separate test confirms the global random state is untouched.
+
+### Changed: settings, defaults, and stimulus text (`settings.py`, `config.py`, `stimuli.py`)
+
+`settings.py` now holds the reference identity and wording: "TFL Baseline Reference Implementation v2.6", the session intro with its en dash, and the prediction prompt. Defaults are the reference's: three 40-trial blocks, probes every 4th trial, delayed reentry every 6th trial within a block, perturbations every 5th trial when enabled, seed 2026, and the first 20 stimuli. `AUTOSAVE_INTERVAL_TRIALS`, `VALID_BLOCKS`, and `VALID_FEEDBACK_LEVELS` were removed because nothing uses them now.
+
+`config.py` follows the reference option rules. Restoring defaults resets every run option but keeps structural values. A run is labelled `default_tfl` only when all options are at their defaults, otherwise `modified_tfl`. The "Current Settings" text is now generated in one place and shared by both front ends.
+
+The embedded 60-item library in `stimuli.py` now matches the reference `tfl_stimuli.csv` character for character. That includes the typographic apostrophes in S014, S024, S032, S037, S042, S050, and S059, which 0.9.2 had replaced with straight quotes. A test compares the library against a SHA-256 digest of the reference CSV rows.
+
+### Changed: feedback and perturbation wording (`frameworks/TFL/feedback.py`)
+
+`determine_feedback()` uses the reference semantics: neutral and unknown levels return `("", "none")`. 0.9.2 returned `("", "")` for blank predictions and the prediction itself for unknown levels. The new `feedback_text()` returns the reference sentences ("Feedback: Confirmed. Interpretation A was supported.", and the mild and strong contradiction forms). Perturbation instructions are the reference texts. The only non-reference sentence is "Feedback: No prediction was recorded before the time limit.", which replaces a sentence with an empty interpretation letter and can only appear when the optional timer has expired.
+
+### Changed: the session engine (`frameworks/TFL/engine.py`)
+
+`TFLSessionEngine` was rebuilt around the reference trial sequence. Each trial runs:
+
+1. Cue and prior.
+2. View stimulus.
+3. Prediction (A/B).
+4. Affect.
+5. Optional perturbation instruction, then the A/B/U post-perturbation probe.
+6. Behavioral choice (A/B).
+7. Feedback.
+8. Optional A/B/U content probe.
+9. Row recorded.
+
+Compared with 0.9.2:
+
+- **Cue stage:** 0.9.2 showed the stimulus immediately. The new cue stage is the GUI and CLI equivalent of the reference's "Press Enter to view the stimulus".
+- **Feedback:** 0.9.2 never presented feedback to the participant. It is now computed after the behavioral choice and shown before the content probe, with no acknowledgement step.
+- **Perturbation:** the instruction is now its own step, followed by its probe. In 0.9.2 the instruction was shown on every stage of a perturbation trial.
+- **Affect:** a whole number from 0 to 100, entered with `int(text.strip())` as in the reference. "50.5", blanks, and booleans are rejected. The 0.9.2 slider, which pre-filled 50 and let a participant continue without answering, is gone.
+- **Untimed by default:** prediction and behavioral choice wait for a valid answer. 0.9.2 always enforced a 12-second limit.
+
+Reaction times run from the moment each prompt appears to the answer, rounded to four decimals, as in the reference, but use the monotonic clock instead of `time.time()`. Timer generations increase for the engine's lifetime, so a stale timer callback can never act on a later stage. `finish_session()` is idempotent. A failing row writer is recorded in `record_errors` instead of stopping the session.
+
+Tests check:
+
+- The exact stage order for all eight probe/delayed-reentry/perturbation combinations.
+- That feedback is present on the content-probe stage.
+- Reference affect validation.
+- Rejection of invalid and duplicate answers.
+- That untimed runs accept an answer after 10,000 virtual seconds.
+- Reaction times measured from each prompt.
+- A full 120-trial session.
+
+### Added: optional response timer (options screen, CLI options, engine)
+
+The timer can be switched on before a run from either options menu, with a limit from 3 to 120 seconds (default 12). It applies to prediction and behavioral choice. An expired stage records a blank answer, sets `prediction_timed_out` or `behavioral_timed_out`, and advances. A submission at or after the deadline counts as a timeout. Any timer use labels the run `modified_tfl`, because the reference has no timer.
+
+The GUI expires stages live and shows a countdown. Blocking console input cannot be interrupted portably, so the CLI prints the limit with each timed prompt and treats an answer typed after it as a timeout (`DeadlineOnlyTimer` in `engine/timing.py`). Tests cover live expiry, the deadline boundary (4.99 s accepted, 5.00 s timed out at a 5-second limit), stale callbacks, clamping 999 seconds to 120, and late console answers.
+
+### Changed: TFL options screen (`frameworks/TFL/options_screen.py`)
+
+The pre-run screen now shows the reference default-settings list, the four reference toggles with the response timer and its seconds field, and a live "Current Settings" panel that switches between Default TFL and Modified TFL as options change. The "Restore Defaults" and "Start Session" buttons were replaced by **Restore Default Settings** and **Start Experiment**, alongside Cancel.
+
+### Changed: GUI session and trial screens (`session_gui.py`, `screen.py`)
+
+The trial screens render the engine's stages. They include the cue screen with the previous trial's feedback, the typed affect entry, the separate perturbation step, the content probe showing the current trial's feedback, and a completion screen with the final feedback and save locations. Enter activates View Stimulus, the affect Continue, and the perturbation Continue.
+
+The participant-ID prompt was removed because the reference has no participant field. The `participant_id` argument is still accepted so existing launch code works. Completion is handled once in the session adapter, never during rendering. Output goes to the host's live Output Directory setting. GUI wiring is exercised end to end with widget doubles in a separate interpreter (`tests/tfl_gui_doubles_check.py`): a timed, perturbation-enabled 120-trial run, a cancel after three trials, and Restore Default Settings.
+
+### Changed: output files (`frameworks/TFL/output.py`, `schema.py`)
+
+Like the reference, each completed trial is written and flushed before the next begins. Unlike the reference, which overwrote `tfl_output.csv` at the start of every run, each run writes its own `tfl_output_<timestamp>.csv`. A completed run then atomically publishes a copy as `tfl_output.csv`. A cancelled or interrupted run keeps its completed trials in its session file and leaves `tfl_output.csv` untouched. This replaces 0.9.2's five-trial autosave checkpoints, which could lose up to four trials.
+
+`schema.py` now owns the columns: the 27 reference columns in reference order, then `response_timer_sec`, `prediction_timed_out`, and `behavioral_timed_out`. The 0.9.2 columns `session_id`, `participant_id`, `completion_status`, and the ISO timestamps were removed because they are not in the reference. `frameworks/shared/schema.py` re-exports the list for older imports. Tests check per-trial flushing mid-session, publishing on completion, `tfl_output.csv` left untouched after a cancel, and a failing writer reported without stopping the run.
+
+### Changed: standard-library analysis (`frameworks/TFL/analysis.py`)
+
+The report follows the reference analysis section by section: run metadata, trial counts, prediction and behavior, affect and reaction time, prior consistency, contradiction (with affect by level), probes (with recurrence rate), delayed reentry, perturbations, and the completion gate. A Response Timer section appears only when a timer was used. Summaries compute pandas `describe()` values (sample standard deviation, linear-interpolated quartiles). The gate uses the reference rule: A/B prediction, A/B behavioral choice, and a non-blank affect, against `int(rows × 0.8)` of the rows present.
+
+The 0.9.2 prediction-behavior consistency and feedback-carryover reports were removed because they are not in the reference. The planned-count gate (from an unreleased draft) was also not carried forward.
+
+As a one-off check during development, a 120-trial run with random answers, extra stimuli, and perturbations was analyzed by both this module and the reference pandas analyzer. All eleven reported figures matched (prior-consistency rates, contradiction, probe and recurrence counts, reentry and perturbation counts, gate values, unique stimuli), as did the affect and reaction-time summaries. That comparison needs pandas and is therefore not part of the shipped suite. The suite checks the gate rule, quartile and standard-deviation conventions, every section heading on a real session, and the missing-file message.
+
+### Added: command-line suite (`cli.py`, `frameworks/TFL/cli_runner.py`, `main.py`)
+
+`python cli.py` (or `python main.py --cli`) opens a numbered menu in the style of the 02_Execution launcher: Run Framework, Analyze Results, List Frameworks, Show Output Folder, Quit. The `list`, `run <ID>`, `analyze <ID> [--file PATH]`, and `where` subcommands support scripted use. The CLI finds runners through new `FRAMEWORK_METADATA` keys (`cli_module`, `cli_function`, `analysis_module`) and uses the same settings file and output folder as the GUI.
+
+The TFL console runner reproduces the reference flow:
+
+1. A startup menu (ENTER to start, O for options).
+2. A numbered options menu. Items 1 to 5 match the reference; 6 toggles the response timer and 7 sets its seconds.
+3. The session intro.
+4. Prompt-by-prompt trials with the reference prompts and retry messages.
+
+Ctrl+C keeps completed trials in the session file. Tests drive a full default 120-trial console run, an options-menu run (perturbations plus a 20-second timer), a late-answer timeout run, an interrupt after two trials, and the top-level commands, including unknown and reserved frameworks.
+
+### Changed: headless builder and timers (`app/headless.py`, `engine/timing.py`)
+
+`build_default_engine(config_overrides=None, **hooks)` builds a started engine from the defaults plus any overrides on the virtual clock. `engine/timing.py` adds `DeadlineOnlyTimer` for console runs.
+
+### Changed: tests and documentation
+
+`tests/test_tfl_protocol.py` is new, with 34 tests covering:
+
+- Reference parity.
+- The trial procedure.
+- The timer.
+- Output files.
+- Analysis.
+- The CLI.
+- The GUI doubles check.
+- An AST dependency audit that rejects any non-stdlib import in any file.
+- A check that the CLI and headless paths never load Tkinter.
+
+In `tests/test_merged.py`, 31 tests were removed that targeted the 0.9.2 engine, its autosave, and its extended analysis. The 19 host, registry, trial-structure, header, navigation, and updater tests remain. Every Python file keeps the six-section header. `docs/ARCHITECTURE.md` is new and describes the layering, the TFL flow, the timer, the output files, and the testing boundaries. `services/tfl_analysis.py` now documents `tfl_output.csv`. `version.txt` reads 0.9.3 ALPHA.
+
+### Compatibility limits
+
+- **Protocol change from 0.9.2.** Trial sequences, priors, feedback levels, stimulus text, and the response flow all differ from 0.9.2. Runs from the two versions are not comparable as the same protocol.
+- **CSV format.** Output now uses the reference columns plus three timer columns. 0.9.2 files (34 columns) remain readable by the analysis, but their removed columns are ignored. Old `tfl_output_latest.csv` and `autosave/` files are left in place and are no longer read by default.
+- **Removed APIs.** `analysis.save_rows`, `write_rows`, `autosave_rows`, `get_autosave_file`, `remove_autosave_file`, `prediction_behavior_consistency_report`, `feedback_carryover_report`, `sorted_completed_rows`, the old `TFLSessionEngine` constructor and stage API, and the participant prompt are gone. External scripts using them need updating.
+- **Remaining differences from the reference in default runs.** Reaction times use the monotonic clock and include GUI interaction time. The GUI shows feedback on screen instead of in a scrolling console. Output goes to the configured output folder as a session file plus `tfl_output.csv`, instead of overwriting `TFL/data/tfl_output.csv` at the start of a run. Analysis text layout differs from pandas' printed tables, though the reported values match.
+- **Untested here.** Native Tk rendering, focus, and window management were not tested (no Tk in the test environment). Updater network paths, production signing, and Windows executable swapping were not exercised. The trust anchor is still the placeholder key.
+- **Concurrent runs.** Two runs into the same folder each keep their own session file, but the last run to finish owns `tfl_output.csv`.
+
+---
+
 ## [0.9.2 ALPHA] - 2026-09-26
 
 ### Removed

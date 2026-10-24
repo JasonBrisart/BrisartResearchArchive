@@ -4,67 +4,53 @@ File: app/headless.py
 Purpose
 -------
 Build a fully wired TFLSessionEngine on a deterministic virtual clock
-for tests and any future CLI or CI harness, with zero Tkinter
-involvement. This is what keeps the TFL engine provably testable.
+for tests and automation, with no Tkinter involvement.
 
 Communication / relationships
 -----------------------------
-- Imports get_default_config from frameworks/TFL/config.py.
-- Imports load_stimuli and apply_stimulus_limit from frameworks/TFL/stimuli.py.
-- Imports build_trials from frameworks/TFL/trial_builder.py.
-- Imports TFLSessionEngine from frameworks/TFL/engine.py.
-- Imports NullSchedulerTimer from engine/timing.py.
-- Used by tests/test_merged.py.
+- Uses frameworks/TFL config, stimuli, trial_builder, and engine.
+- Uses NullSchedulerTimer from engine/timing.py.
+- Used by tests/test_merged.py and tests/test_tfl_protocol.py.
 
 Settings / parameters
 ---------------------
-- build_default_engine(**engine_kwargs) forwards participant_id,
-  session_id, on_trial_recorded, and on_stage_advanced straight to
-  TFLSessionEngine.
-- Always uses the official default TFL configuration: first 20 stimuli,
-  probes on, delayed reentry on, perturbations off.
+- build_default_engine(config_overrides=None, **engine_kwargs): applies
+  the overrides on top of the default configuration, recomputes the run
+  mode, forwards on_trial_recorded and on_stage_advanced.
 
 Edge cases
 ----------
-- The engine is returned with its first trial already started, so the
-  active stage is "prediction".
-- The virtual clock never advances on its own; timeouts fire only when a
-  test calls timer.fire(handle).
+- The engine is returned already started, on the first trial's "cue"
+  stage.
+- The virtual clock only moves when a test calls timer.advance().
 
 Known limitations
 -----------------
-- Only builds the default configuration. Tests that need a modified
-  configuration must build the engine directly.
 - TFL-specific; future frameworks need their own builder.
 
 Examples
 --------
 - engine, timer = build_default_engine()
-- engine, timer = build_default_engine(participant_id="P042")
+- engine, timer = build_default_engine({"enable_response_timer": True})
 """
-
 from __future__ import annotations
+
 from engine.timing import NullSchedulerTimer
-from frameworks.TFL.config import get_default_config
+from frameworks.TFL.config import get_default_config, update_run_mode
 from frameworks.TFL.engine import TFLSessionEngine
 from frameworks.TFL.stimuli import apply_stimulus_limit, load_stimuli
 from frameworks.TFL.trial_builder import build_trials
 
 
-def build_default_engine(**engine_kwargs) -> tuple[TFLSessionEngine, NullSchedulerTimer]:
-    """
-    Build a fully wired engine against a virtual clock. Extra keyword
-    arguments (participant_id, session_id, on_trial_recorded) pass
-    straight through to TFLSessionEngine for tests that need them.
-    """
+def build_default_engine(config_overrides: dict | None = None, **engine_kwargs):
     config = get_default_config()
-    stimuli = apply_stimulus_limit(load_stimuli(), config)
-    trials = build_trials(config, stimuli)
+    config.update(config_overrides or {})
+    update_run_mode(config)
+    trials = build_trials(config, apply_stimulus_limit(load_stimuli(), config))
     timer = NullSchedulerTimer()
     engine = TFLSessionEngine(config, trials, timer, **engine_kwargs)
-    engine.start_trial()
+    engine.start()
     return engine, timer
 
 
 __all__ = ["build_default_engine"]
-

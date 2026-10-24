@@ -15,7 +15,8 @@ Communication / relationships
 
 Settings / parameters
 ---------------------
-- Always works on tfl_output_latest.csv.
+- Always works on tfl_output.csv in the saved TFL output folder (the
+  file a completed GUI or CLI run publishes).
 
 Edge cases
 ----------
