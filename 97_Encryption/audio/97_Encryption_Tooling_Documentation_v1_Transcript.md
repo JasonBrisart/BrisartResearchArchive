@@ -26,17 +26,17 @@
 
 **Host 2:** "Because you're relying on a baseline of normal, benign conditions. I mean, the environment isn't actively trying to dismantle your building while you're pouring the cement."
 
-**Host 1:** "But stepping into the world of applied cryptography and secure systems, architecture that predictability just completely vanishes."
+**Host 1:** "But stepping into the world of applied cryptography and secure systems architecture, that predictability just completely vanishes."
 
 **Host 2:** "Oh, totally. It's a completely different paradigm."
 
-**Host 1:** "Right. We're looking at a landscape where the environment isn't just chaotic, it's actively malicious. You have to assume that every input, every process, and like every hardware interaction is potentially being manipulated by an adversary who's just trying to tear your structure down to the molecular level."
+**Host 1:** "Right. We're looking at a landscape where the environment isn't just chaotic, it's actively malicious. You have to assume that every input, every process, and like every hardware interaction, is potentially being manipulated by an adversary who's just trying to tear your structure down to the molecular level."
 
 **Host 2:** "And today, we're taking you directly into that hostile territory."
 
-**Host 1:** "Yeah, we are. Whether you're a curious learner trying to wrap your head around digital security or you're prepping for a highly technical discussion on cryptographic implementation. Today is your shortcut to understanding the invisible armor of the digital world."
+**Host 1:** "Yeah, we are. Whether you're a curious learner trying to wrap your head around digital security, or you're prepping for a highly technical discussion on cryptographic implementation, today is your shortcut to understanding the invisible armor of the digital world."
 
-**Host 2:** "We really want to talk directly to you, the listener. Because the concepts we're about to unpack are the exact mechanisms protecting your banking data, your private messages, and your entire digital identity. 
+**Host 2:** "We really want to talk directly to you, the listener. Because the concepts we're about to unpack are the exact mechanisms protecting your banking data, your private messages, and your entire digital identity."
 
 **Host 1:** "It's all running in the background all the time. To explore this, we are dissecting this fascinating stack of technical documents, design notes, source code, and highly detailed change logs from an experimental research project."
 
@@ -46,7 +46,7 @@
 
 **Host 2:** "Which is just a gold mine of information."
 
-**Host 1:** "It really is. Okay, let me unpack this. Our mission today is to look under the hood of this custom-built cryptographic research suite. 
+**Host 1:** "It really is. Okay, let me unpack this. Our mission today is to look under the hood of this custom-built cryptographic research suite."
 
 **Host 2:** "But, we should probably mention the warnings first."
 
@@ -62,27 +62,47 @@
 
 ## 2. Hardware Entropy, DRBG Health Checks, & Process Forking
 
-**Host 2:** "Because encryption isn't just one magic math equation. It's this towering stack of very specific, highly specialized tools. And each one is defending against wildly different failures of both machines and human beings."
+**Host 1:** "Because encryption isn't just one magic math equation, it's this towering stack of very specific, highly specialized tools, and each one is defending against wildly different failures of both machines and human beings."
 
-**Host 1:** "And it really all starts at that bedrock you mentioned, which is randomness, which sounds simple, but it's not. Right."
+**Host 2:** "And it really all starts at that bedrock you mentioned, which is randomness."
+
+**Host 1:** "Which sounds simple, but it's not, Right?"
 
 **Host 2:** "Not at all. Generating a truly unpredictable number is arguably the hardest problem in computer science."
 
 **Host 1:** "Wait, really? The hardest?"
 
-**Host 2:** "Well, think about it. Computers are deterministic machines. They take an input, execute a rigidly defined set of instructions, and produce the exact same output every single time. Predictability is literally the core feature of a computer, which is great for a calculator, sure, but fatal for cryptography."
+**Host 2:** "Well, think about it: Computers are deterministic machines. They take an input, execute a rigidly defined set of instructions, and produce the exact same output every single time. Predictability is literally the core feature of a computer."
 
-**Host 1:** "Exactly. If an attacker can predict how your computer generates its random numbers, they can predict your encryption keys. So the Brisart project tackles this by pulling what is called true entropy directly from the operating system."
+**Host 1:** "Which is great for a calculator, sure, but fatal for cryptography?"
 
-**Host 2:** "Right. Instead of just doing math, the OS acts as a bridge to the messy physical world. It measures microscopic unpredictable variations in the hardware itself, doesn't it?"
+**Host 2:** "Exactly. If an attacker can predict how your computer generates its random numbers, they can predict your encryption keys."
 
-**Host 1:** "Yeah. Things like the exact microsecond timing of hardware interrupts or thermal noise across the motherboard."
+**Host 1:** "So the Brisart project tackles this by pulling what is called true entropy directly from the operating system."
 
-**Host 2:** "Thermal noise. Like literal heat fluctuations."
+**Host 2:** "Right. Instead of just doing math, the OS acts as a bridge to the messy physical world."
 
-**Host 1:** "Literal heat fluctuations. Yeah. Or the physical spin-up latency of a magnetic hard drive. It gathers all this physical chaos and distills it into bits."
+**Host 1:** "It measures microscopic unpredictable variations in the hardware itself, doesn't it?"
 
-**Host 2:** "But the challenge is that gathering physical chaos like that is incredibly slow. True entropy is a precious limited resource. If you want to encrypt a massive video file, you cannot wait for the motherboard to generate a gigabyte of thermal noise data. The system would just grind to a halt completely."
+**Host 2:** "Yeah. Things like the exact microsecond timing of hardware interrupts, or thermal noise across the motherboard."
+
+**Host 1:** "Thermal noise?!"
+
+**Host 2:** "Like literal heat fluctuations."
+
+**Host 1:** "Literal heat fluctuations. Yeah."
+
+**Host 2:** "Or the physical spin-up latency of a magnetic hard drive. It gathers all this physical chaos and distills it into bits."
+
+**Host 1:** "But the challenge is that gathering physical chaos like that is incredibly slow. True entropy is a precious limited resource."
+
+**Host 2:** "Very limited."
+
+**Host 1:** "If you want to encrypt a massive video file, you cannot wait for the motherboard to generate a gigabyte of thermal noise data."
+
+**Host 2:** The system would just grind to a halt."
+
+**Host 1:** "completely."
 
 **Host 1:** "So modern cryptography uses a deterministic random bit generator or DRBG."
 
