@@ -29,14 +29,12 @@ Edge cases
 Known limitations
 -----------------
 - Markdown is shown as raw text, not rendered.
-- Read-only; one document per window.
 - Files that are not UTF-8 are rejected.
 
 Examples
 --------
 - open_local_doc(app)
 """
-
 from __future__ import annotations
 
 import tkinter as tk

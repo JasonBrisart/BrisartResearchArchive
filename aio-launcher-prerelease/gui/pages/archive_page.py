@@ -3,49 +3,36 @@ File: gui/pages/archive_page.py
 
 Purpose
 -------
-Render the Archive page: a single card that opens the local document
-viewer for README files, framework notes, release notes, and protocol
-drafts.
+Render the Archive page: open local documentation (README files, notes,
+release notes, protocol drafts) in the read-only viewer.
 
 Communication / relationships
 -----------------------------
-- Registered as "Archive" in config/registries.get_page_registry().
-- Rendered by gui/main_window.BrisartSuiteApp.show_page("Archive").
-- The button calls app.open_local_doc(), which reaches
-  gui/components/document_viewer.py through SystemController.
+- Rendered by gui/main_window.show_page("Archive") through
+  gui/navigation.py.
+- The button calls app.open_local_doc(), which opens
+  gui/components/document_viewer.py.
 
 Settings / parameters
 ---------------------
-- The card sits at grid row 2; rows 0 and 1 hold the page title and
-  subtitle from page_shell().
+- One card at grid row 2.
 
 Edge cases
 ----------
-- The page is destroyed and rebuilt on every navigation and holds no
-  state of its own.
+- Holds no state; rebuilt on every visit.
 
 Known limitations
 -----------------
-- There is no document index or browser; the user picks files through
-  the file dialog.
+- No document index; documents are picked through the file dialog.
 
 Examples
 --------
 - app.show_page("Archive")
 """
-
 def render(app):
-    root = app.page_shell(
-        "Archive",
-        "Open local documentation, framework notes, and release files.",
-    )
+    root = app.page_shell("Archive", "Open local documentation and release files.")
     app.add_card(
         root, 2, "Open Archive Document",
-        (
-            "Open a local .txt or .md document inside the GUI. "
-            "Use this for README files, framework notes, release notes, lab workflow documents, "
-            "version rationales, and local protocol drafts."
-        ),
+        "Open a local .txt or .md file, such as docs/CHANGELOG.md or a protocol draft.",
         [("Open Document", app.open_local_doc, True)],
     )
-

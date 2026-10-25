@@ -4,34 +4,38 @@ File: config/runtime.py
 Purpose
 -------
 Load, normalize, validate, and atomically persist application settings,
-and resolve output directories. Pure standard library.
+and resolve where output is written. Standard library only; safe to
+import without Tk.
 
 Communication / relationships
 -----------------------------
 - gui/main_window.py calls load_settings() at startup.
 - controllers/system_controller.py uses normalize_settings(),
-  save_settings(), and get_output_folder().
+  save_settings(), get_output_folder(), and get_tfl_output_dir().
+- frameworks/TFL/output.py calls get_tfl_output_dir() when no folder is given.
+- cli.py calls get_tfl_output_dir() for "where" and for runs.
 - config/activity_log.py reads APP_DIR.
-- frameworks/TFL/framework.py and frameworks/TFL/analysis.py call
-  get_framework_output_dir().
 
 Settings / parameters
 ---------------------
-- APP_DIR: %APPDATA%/Brisart Research Archive, falling back to the home
-  directory when APPDATA is not set.
-- SETTINGS_FILE: user_settings.json, with .tmp and .bak companions.
-- DEFAULT_SETTINGS: default_framework "TFL", theme "dark",
-  output_folder "outputs" (relative to APP_DIR), enable_update_checks,
-  notify_on_update, and auto_install_updates all True, window 800x600.
-- MIN_WINDOW_WIDTH/MIN_WINDOW_HEIGHT (800x600) must stay in sync with
-  the minsize() call in gui/main_window.py, or whichever floor is larger
-  silently overrides the other.
-- MAX_WINDOW_WIDTH/MAX_WINDOW_HEIGHT: 7680x4320.
-- ALLOWED_THEMES: {"dark"}.
+- APP_DIR: %APPDATA%/Brisart Research Archive (on Windows,
+  C:/Users/<name>/AppData/Roaming/Brisart Research Archive). Falls back
+  to the home folder when APPDATA is not set (macOS and Linux).
+- Default TFL output: APP_DIR/outputs/TFL.
+- SETTINGS_FILE: APP_DIR/user_settings.json with .tmp and .bak
+  companions.
+- DEFAULT_SETTINGS: theme "dark", output_folder "outputs" (relative to
+  APP_DIR), enable_update_checks, notify_on_update, and
+  auto_install_updates all True, window 800x600.
+- MIN_WINDOW_WIDTH/MIN_WINDOW_HEIGHT (800x600) must match the minsize()
+  in gui/main_window.py.
 
 Edge cases
 ----------
-- An unreadable or invalid settings file is moved aside to
+- normalize_settings() keeps only known keys, so retired settings (such
+  as default_framework from 0.9.3 and earlier) are dropped on the next
+  save.
+- An unreadable settings file is moved aside to
   user_settings.invalid.json (or .invalid.N.json) and defaults are used.
 - A stale .tmp file is promoted when the main file is missing and the
   temp file is valid; otherwise it is deleted.
@@ -39,12 +43,15 @@ Edge cases
 - Unsafe output-folder text (reserved Windows names, control characters,
   trailing dots or spaces, invalid characters, stray colons) falls back
   to "outputs".
-- Boolean settings accept strings such as "yes", "off", or "enabled".
-- Framework IDs are reduced to letters, digits, "-" and "_", then
-  uppercased.
+- An absolute output folder chosen in Settings moves output out of
+  AppData; a relative one stays inside APP_DIR.
 
 Known limitations
 -----------------
+- Python installed from the Microsoft Store redirects writes under
+  %APPDATA% to a private LocalCache folder, so files may appear under
+  %LOCALAPPDATA%/Packages/PythonSoftwareFoundation.Python.*/LocalCache/
+  Roaming instead. The Settings page shows the real resolved path.
 - Only the dark theme exists.
 - Output-path validation applies Windows filename rules on every OS.
 - Window size is saved, but gui/main_window.py always opens at 800x600.
@@ -52,18 +59,21 @@ Known limitations
 Examples
 --------
 - settings = load_settings()
-- save_settings(settings)
-- output_dir = get_framework_output_dir("TFL")
+- get_tfl_output_dir()
 """
-
 from __future__ import annotations
+
 import json
 import os
 import shutil
 from pathlib import Path, PureWindowsPath
 from typing import Any
+
+
 # ============================================================
 # Constants
+
+
 # ============================================================
 APP_NAME = "Brisart Research Archive"
 SETTINGS_VERSION = 1
@@ -74,19 +84,11 @@ SETTINGS_BACKUP_FILE = APP_DIR / "user_settings.json.bak"
 LEGACY_SETTINGS_FILE = Path(__file__).resolve().parent / "user_settings.json"
 DEFAULT_SETTINGS = {
     "settings_version": SETTINGS_VERSION,
-    "default_framework": "TFL",
     "theme": "dark",
     "output_folder": "outputs",
     "enable_update_checks": True,
     "notify_on_update": True,
-    # Governs BOTH the automatic startup check and the manual "Check
-    # Updates" button: when True, a verified newer release is installed
-    # automatically rather than only downloaded. Defaults to True since
-    # this app is built first for daily use by its own author -- flip to
-    # False in Settings to always confirm installs via the Yes/No prompt.
     "auto_install_updates": True,
-    # 800x600 so the window opens at a reasonable size. MIN_WINDOW_WIDTH/
-    # HEIGHT below must match -- see the module docstring.
     "window_width": 800,
     "window_height": 600,
 }
@@ -101,14 +103,20 @@ WINDOWS_RESERVED_NAMES = {
     *(f"COM{i}" for i in range(1, 10)),
     *(f"LPT{i}" for i in range(1, 10)),
 }
+
+
 # ============================================================
 # Normalization
+
+
 # ============================================================
 def normalize_text(value: Any, default: str) -> str:
     if value is None:
         return str(default)
     text = str(value).strip()
     return text or str(default)
+
+
 def normalize_bool(value: Any, default: bool) -> bool:
     if isinstance(value, bool):
         return value
@@ -124,37 +132,44 @@ def normalize_bool(value: Any, default: bool) -> bool:
         if normalized in {"false", "0", "no", "n", "off", "disabled", ""}:
             return False
     return bool(default)
+
+
 def normalize_int(value: Any, default: int, minimum: int, maximum: int) -> int:
     try:
         normalized = int(value)
     except (TypeError, ValueError, OverflowError):
         return int(default)
     return max(minimum, min(normalized, maximum))
+
+
 def normalize_theme(value: Any) -> str:
     theme = normalize_text(value, DEFAULT_SETTINGS["theme"]).casefold()
     if theme not in ALLOWED_THEMES:
         return DEFAULT_SETTINGS["theme"]
     return theme
-def normalize_framework_id(value: Any) -> str:
-    framework_id = normalize_text(value, DEFAULT_SETTINGS["default_framework"])
-    cleaned = "".join(
-        character for character in framework_id
-        if character.isalnum() or character in {"-", "_"}
-    )
-    return cleaned.upper() or DEFAULT_SETTINGS["default_framework"]
+
+
 # ============================================================
 # Path validation
+
+
 # ============================================================
 def contains_control_character(text: str) -> bool:
     return any(ord(character) < 32 for character in str(text))
+
+
 def windows_path_parts(text: str) -> tuple[str, ...]:
     try:
         return PureWindowsPath(text).parts
     except (TypeError, ValueError, OSError):
         return ()
+
+
 def is_windows_drive_part(part: str) -> bool:
     normalized = str(part).strip()
     return len(normalized) >= 2 and normalized[1] == ":" and normalized[0].isalpha()
+
+
 def invalid_path_part(part: str, *, is_first_part: bool) -> bool:
     if part is None:
         return True
@@ -178,6 +193,8 @@ def invalid_path_part(part: str, *, is_first_part: bool) -> bool:
     if name_without_extension in WINDOWS_RESERVED_NAMES:
         return True
     return any(character in INVALID_WINDOWS_FILENAME_CHARS for character in stripped)
+
+
 def is_safe_output_folder_text(text: str) -> bool:
     if text is None:
         return False
@@ -195,18 +212,24 @@ def is_safe_output_folder_text(text: str) -> bool:
         if invalid_path_part(part, is_first_part=(index == 0)):
             return False
     return True
+
+
 def normalize_output_folder(value: Any) -> str:
     text = normalize_text(value, DEFAULT_SETTINGS["output_folder"])
     if not is_safe_output_folder_text(text):
         return DEFAULT_SETTINGS["output_folder"]
     return text
+
+
 # ============================================================
 # Settings normalization + output paths
+
+
 # ============================================================
 def normalize_settings(data: Any) -> dict:
-    settings = dict(data) if isinstance(data, dict) else {}
+    source = data if isinstance(data, dict) else {}
+    settings = {key: source.get(key) for key in DEFAULT_SETTINGS}
     settings["settings_version"] = SETTINGS_VERSION
-    settings["default_framework"] = normalize_framework_id(settings.get("default_framework"))
     settings["theme"] = normalize_theme(settings.get("theme"))
     settings["output_folder"] = normalize_output_folder(settings.get("output_folder"))
     settings["enable_update_checks"] = normalize_bool(
@@ -225,13 +248,12 @@ def normalize_settings(data: Any) -> dict:
         settings.get("window_height"), DEFAULT_SETTINGS["window_height"], MIN_WINDOW_HEIGHT, MAX_WINDOW_HEIGHT
     )
     return settings
-def get_app_dir() -> Path:
-    return APP_DIR
-def ensure_app_dir() -> Path:
-    APP_DIR.mkdir(parents=True, exist_ok=True)
-    return APP_DIR
+
+
 def get_default_output_dir() -> Path:
     return APP_DIR / DEFAULT_SETTINGS["output_folder"]
+
+
 def resolve_output_folder(value: str | Path | None = None) -> Path:
     if value is None:
         return get_default_output_dir()
@@ -245,29 +267,33 @@ def resolve_output_folder(value: str | Path | None = None) -> Path:
     if path.is_absolute():
         return path
     return APP_DIR / path
+
+
 def get_output_folder(settings: dict | None = None) -> Path:
     normalized = load_settings() if settings is None else normalize_settings(settings)
     return resolve_output_folder(normalized["output_folder"])
-def sanitize_framework_id(framework_id: Any) -> str:
-    normalized_id = normalize_text(framework_id, "UNKNOWN")
-    safe_id = "".join(
-        character if (character.isalnum() or character in {"-", "_"}) else "_"
-        for character in normalized_id
-    )
-    safe_id = safe_id.strip("._")
-    return safe_id or "UNKNOWN"
-def get_framework_output_dir(framework_id: str, settings: dict | None = None) -> Path:
-    safe_id = sanitize_framework_id(framework_id)
-    output_dir = get_output_folder(settings) / safe_id
+
+
+TFL_OUTPUT_SUBFOLDER = "TFL"
+
+
+def get_tfl_output_dir(settings: dict | None = None) -> Path:
+    output_dir = get_output_folder(settings) / TFL_OUTPUT_SUBFOLDER
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
+
+
 # ============================================================
 # JSON storage
+
+
 # ============================================================
 def read_json_file(path: Path) -> Any:
     path = Path(path)
     with open(path, "r", encoding="utf-8-sig") as file:
         return json.load(file)
+
+
 def write_json_file(path: Path, data: Any) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -279,6 +305,8 @@ def write_json_file(path: Path, data: Any) -> None:
             os.fsync(file.fileno())
         except OSError:
             pass
+
+
 def settings_file_is_valid(path: Path) -> bool:
     path = Path(path)
     if not path.is_file():
@@ -291,8 +319,12 @@ def settings_file_is_valid(path: Path) -> bool:
         return True
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
         return False
+
+
 # ============================================================
 # Recovery
+
+
 # ============================================================
 def cleanup_stale_temp_settings() -> None:
     if not SETTINGS_TEMP_FILE.exists():
@@ -307,6 +339,8 @@ def cleanup_stale_temp_settings() -> None:
         SETTINGS_TEMP_FILE.unlink(missing_ok=True)
     except OSError:
         pass
+
+
 def migrate_legacy_settings() -> bool:
     if SETTINGS_FILE.exists():
         return True
@@ -322,6 +356,8 @@ def migrate_legacy_settings() -> bool:
     except OSError as exc:
         print(f"Could not migrate legacy settings: {exc}")
         return False
+
+
 def backup_invalid_settings_file() -> Path | None:
     if not SETTINGS_FILE.exists():
         return None
@@ -335,8 +371,12 @@ def backup_invalid_settings_file() -> Path | None:
         return candidate
     except OSError:
         return None
+
+
 # ============================================================
 # Persistence
+
+
 # ============================================================
 def load_settings() -> dict:
     cleanup_stale_temp_settings()
@@ -354,6 +394,8 @@ def load_settings() -> dict:
             print(f"Invalid settings were preserved at: {backup_path}")
         return normalize_settings(DEFAULT_SETTINGS)
     return normalize_settings(data)
+
+
 def save_settings(settings: dict) -> bool:
     if not isinstance(settings, dict):
         print("Could not save settings: settings must be a dictionary.")
@@ -378,18 +420,18 @@ def save_settings(settings: dict) -> bool:
         except OSError:
             pass
         return False
-def reset_settings() -> bool:
-    return save_settings(dict(DEFAULT_SETTINGS))
+
+
 __all__ = [
     "APP_NAME", "SETTINGS_VERSION", "APP_DIR", "SETTINGS_FILE", "SETTINGS_TEMP_FILE",
     "SETTINGS_BACKUP_FILE", "LEGACY_SETTINGS_FILE", "DEFAULT_SETTINGS",
     "MIN_WINDOW_WIDTH", "MIN_WINDOW_HEIGHT", "MAX_WINDOW_WIDTH", "MAX_WINDOW_HEIGHT",
     "normalize_text", "normalize_bool", "normalize_int", "normalize_theme",
-    "normalize_framework_id", "normalize_output_folder", "normalize_settings",
-    "is_safe_output_folder_text", "get_app_dir", "ensure_app_dir", "get_default_output_dir",
-    "resolve_output_folder", "get_output_folder", "sanitize_framework_id",
-    "get_framework_output_dir", "read_json_file", "write_json_file", "settings_file_is_valid",
+    "normalize_output_folder", "normalize_settings",
+    "is_safe_output_folder_text", "get_default_output_dir",
+    "resolve_output_folder", "get_output_folder",
+    "get_tfl_output_dir", "read_json_file", "write_json_file", "settings_file_is_valid",
     "cleanup_stale_temp_settings", "migrate_legacy_settings", "backup_invalid_settings_file",
-    "load_settings", "save_settings", "reset_settings",
+    "load_settings", "save_settings",
 ]
 

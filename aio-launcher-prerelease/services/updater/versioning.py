@@ -3,26 +3,29 @@ File: services/updater/versioning.py
 
 Purpose
 -------
-Parse and compare MAJOR.MINOR.PATCH versions and read the locally
-installed version from version.txt.
+Parse and compare MAJOR.MINOR.PATCH versions and read the installed
+version from version.py.
 
 Communication / relationships
 -----------------------------
-- Used by services/updater/orchestration.py, services/updater/download.py,
-  services/updater/install.py, and services/updater/exe_swap.py.
+- Used by services/updater/orchestration.py, download.py, install.py,
+  and exe_swap.py.
 - Reads LOCAL_VERSION_FILE and VERSION_PATTERN from
   services/updater/constants.py.
 
 Settings / parameters
 ---------------------
 - VERSION_PATTERN accepts an optional "v" prefix and any suffix after a
-  space or hyphen, for example "0.9.2 ALPHA".
+  space or hyphen, for example "0.9.4 ALPHA".
+- read_local_version() parses version.py with ast and reads its VERSION
+  string literal; the module is never imported, so the value on disk is
+  read even after an in-place update in the same process.
 
 Edge cases
 ----------
-- A missing or invalid version.txt reads as "0.0.0", so any remote
-  version appears newer.
-- Suffixes are ignored when comparing: "0.9.2 ALPHA" equals "0.9.2".
+- A missing, unparsable, or non-literal VERSION reads as "0.0.0", so any
+  remote version appears newer.
+- Suffixes are ignored when comparing: "0.9.4 ALPHA" equals "0.9.4".
 
 Known limitations
 -----------------
@@ -30,11 +33,12 @@ Known limitations
 
 Examples
 --------
-- is_remote_newer("0.9.3", "0.9.2 ALPHA") returns True
-- canonical_version("v0.9.2 ALPHA") returns "0.9.2"
+- is_remote_newer("0.9.5", "0.9.4 ALPHA") returns True
+- canonical_version("v0.9.4 ALPHA") returns "0.9.4"
 """
-
 from __future__ import annotations
+
+import ast
 
 from collections.abc import Callable
 from typing import Any
@@ -68,14 +72,22 @@ def default_emit(line: str) -> None:
     print(line)
 
 
+def version_from_source(source: str) -> str:
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.Assign) and any(getattr(t, "id", None) == "VERSION" for t in node.targets):
+            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                return node.value.value
+    raise ValueError("version.py does not define VERSION as a string literal.")
+
+
 def read_local_version(emit: Callable[[str], None] = default_emit) -> str:
     if not LOCAL_VERSION_FILE.is_file():
-        emit("Local version metadata was not found. Using 0.0.0.")
+        emit("version.py was not found. Using 0.0.0.")
         return "0.0.0"
     try:
-        value = LOCAL_VERSION_FILE.read_text(encoding="utf-8-sig").strip()
-        return canonical_version(value)
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
-        emit(f"Local version metadata is invalid. Using 0.0.0: {exc}")
+        source = LOCAL_VERSION_FILE.read_text(encoding="utf-8-sig")
+        return canonical_version(version_from_source(source))
+    except (OSError, UnicodeDecodeError, SyntaxError, ValueError) as exc:
+        emit(f"version.py is invalid. Using 0.0.0: {exc}")
         return "0.0.0"
 

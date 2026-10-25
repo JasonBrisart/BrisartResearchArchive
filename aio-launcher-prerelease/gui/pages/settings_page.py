@@ -3,50 +3,47 @@ File: gui/pages/settings_page.py
 
 Purpose
 -------
-Render the Settings page: application info, output directory, update
-preferences, update output, and the persistent Activity Log.
+Render the Settings page: application info, the output folder (with the
+exact folder TFL is writing to), update preferences, update output, and
+the persistent Activity Log.
 
 Communication / relationships
 -----------------------------
-- Registered as "Settings" in config/registries.get_page_registry().
-- Binds directly to AppState variables through the app proxy
-  properties, so values survive page rebuilds.
-- Buttons call app.browse_output_folder(), app.open_output_folder(), and
-  app.check_updates().
+- Rendered by gui/main_window.show_page("Settings") through
+  gui/navigation.py.
+- Binds to the AppState Tk variables through the app proxy properties,
+  so values survive page rebuilds.
+- Buttons call app.browse_output_folder(), app.open_output_folder(),
+  app.open_tfl_folder(), and app.check_updates().
 - Reads config/activity_log.load_activity_log().
 - services/updater/gui_integration.set_update_text() writes into
-  app.update_box, navigating here first if needed.
+  app.update_box.
 
 Settings / parameters
 ---------------------
-- Dependency rule: "Automatically download and install updates" and
-  "Notify me about updates" only matter while "Enable update checks" is
-  on.
+- "Automatically download and install updates" and "Notify me about
+  updates" only apply while "Enable update checks" is on.
 - The Activity Log shows up to 100 persisted entries, newest first.
 
 Edge cases
 ----------
-- Unchecking "Enable update checks" force-unchecks and disables both
-  dependent options. Re-enabling it does not restore their previous
-  values; the user must opt back in.
-- The dependency state is re-applied on every render, so the page is
-  always correct even after settings load from disk.
-- An empty history shows "Activity log ready.".
-- Both Text boxes use the scroll passthrough (Fix 7 in
-  gui/components/page_helpers.py).
+- Unchecking "Enable update checks" unchecks and disables both dependent
+  options; re-enabling it does not restore them.
+- The dependency state is re-applied on every render.
+- The TFL folder line is recomputed on every render from the live
+  output-folder value.
 
 Known limitations
 -----------------
-- There is no Save button; changes are written when the app closes or
-  when another action calls save_config().
-- Output-folder text typed into the entry is validated only when saved;
-  unsafe values fall back to "outputs".
+- There is no Save button; settings are written when the app closes or
+  when Browse saves a new folder.
+- Output-folder text typed by hand is validated when saved; unsafe
+  values fall back to "outputs".
 
 Examples
 --------
 - app.show_page("Settings")
 """
-
 from __future__ import annotations
 
 import tkinter as tk
@@ -55,7 +52,7 @@ from tkinter import ttk
 from config.activity_log import load_activity_log
 from gui.components.page_helpers import bind_text_widget_scroll_passthrough
 from gui.theme import COLORS, FONT_MONO
-from gui.widgets.card import Card
+from gui.components.card import Card
 
 
 def _apply_update_checks_enabled_state(app) -> None:
@@ -131,7 +128,10 @@ def render(app):
     )
     ttk.Label(
         output_card,
-        text="Default location for future archive-wide outputs, reports, and exports.",
+        text=(
+            "Relative folders are kept inside the Archive's AppData folder. "
+            f"TFL sessions are currently saved to:\n{app.tfl_output_dir()}"
+        ),
         style="CardMuted.TLabel", wraplength=950,
     ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(7, 10))
     ttk.Entry(output_card, textvariable=app.output_folder).grid(
@@ -142,6 +142,9 @@ def render(app):
     )
     ttk.Button(output_card, text="Open Folder", command=app.open_output_folder).grid(
         row=3, column=2, padx=(8, 0), pady=(0, 8)
+    )
+    ttk.Button(output_card, text="Open TFL Folder", command=app.open_tfl_folder).grid(
+        row=4, column=2, padx=(8, 0), pady=(0, 8)
     )
 
     # ------------------------------------------------------------
@@ -236,7 +239,7 @@ def render(app):
 
     app.add_card(
         root, 7, "Activity Log",
-        "Recent application activity: framework launches, autosaves, registry refreshes, and errors. "
+        "Recent application activity: TFL runs, saves, analyses, updates, and errors. "
         "Kept across sessions -- the most recent 100 actions are shown, newest first.",
     )
     app.log_box = tk.Text(

@@ -20,15 +20,13 @@ Settings / parameters
   with auto_install, downloads, verifies, and installs without asking;
   with confirm_install, asks before downloading and returns "declined"
   on No; with neither, downloads and verifies but does not install.
-- startup_update_check(emit): check and download only; never installs
-  or prompts.
 - Result dictionaries carry status, local_version, remote_version,
   downloaded_file, message, and changelog.
 
 Edge cases
 ----------
-- When the trust anchor is still the placeholder, both entry points
-  return status "trust_anchor_unconfigured" before any network request.
+- When the trust anchor is still the placeholder, the check returns
+  status "trust_anchor_unconfigured" before any network request.
 - An "exe" asset while running from source, or a "zip" asset while
   frozen, returns "asset_mismatch" and is not applied.
 - Exceptions are mapped to registry_error, verification_failed,
@@ -155,32 +153,6 @@ def _map_exception(exc: Exception, local_version: str) -> dict[str, Any]:
     if isinstance(exc, (OSError, UnicodeDecodeError, ValueError, zipfile.BadZipFile, zipfile.LargeZipFile)):
         return build_update_result(status="validation_error", local_version=local_version, message=f"{type(exc).__name__}: {exc}")
     return build_update_result(status="unexpected_error", local_version=local_version, message=f"{type(exc).__name__}: {exc}")
-
-
-def startup_update_check(emit: Callable[[str], None] = default_emit) -> dict[str, Any]:
-    """Check + download-only. Never installs, never prompts. Kept for
-    callers that explicitly want a "just tell me" check with zero side
-    effects on the application's own files and zero UI interaction."""
-    local_version = read_local_version(emit)
-    if not trust_anchor_is_configured():
-        return _unconfigured_result(local_version)
-    try:
-        entry = fetch_registry_entry()
-        remote_version = canonical_version(entry.version)
-        if is_remote_newer(remote_version, local_version):
-            downloaded_file = download_and_verify_release(entry, emit)
-            return build_update_result(
-                status="downloaded", local_version=local_version, remote_version=remote_version,
-                downloaded_file=downloaded_file, changelog=entry.changelog,
-                message="A newer, signature-verified update package was downloaded.",
-            )
-        if normalize_version(remote_version) == normalize_version(local_version):
-            status, message = "current", "The installed version matches the registry version."
-        else:
-            status, message = "local_newer", "The local version is newer than the registry version."
-        return build_update_result(status=status, local_version=local_version, remote_version=remote_version, message=message)
-    except Exception as exc:
-        return _map_exception(exc, local_version)
 
 
 def check_and_maybe_install(

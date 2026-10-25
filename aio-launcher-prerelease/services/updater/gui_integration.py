@@ -8,8 +8,9 @@ Updates button, the automatic startup check, and update-output display.
 
 Communication / relationships
 -----------------------------
-- controllers/system_controller.py imports check_updates(),
-  set_update_text(), and update_check_is_running().
+- controllers/system_controller.py imports check_updates().
+- gui/pages/settings_page.py creates the update_box that
+  set_update_text() writes into.
 - gui/main_window.py schedules startup_check() once after launch.
 - Uses services/updater/orchestration.py, services/updater/notify.py,
   and services/updater/tk_helpers.py.
@@ -254,8 +255,7 @@ def _run_check(app: Any, *, silent_when_nothing_new: bool) -> None:
         if silent_when_nothing_new and status in STARTUP_SILENT_STATUSES:
             return  # nothing actionable to report on an unattended startup check
         schedule_on_ui_thread(app, lambda: set_update_text(app, report))
-        context = "install" if status in {"installed", "exe_swap_pending"} else "check"
-        maybe_notify_result(app, result, context=context)
+        maybe_notify_result(app, result)
 
     try:
         thread = threading.Thread(target=worker, name="BrisartUpdateCheck", daemon=True)
@@ -271,10 +271,6 @@ def check_updates(app: Any) -> None:
     itself. This is the one path that works even when both
     auto_install_updates and notify_on_update are off."""
     _run_check(app, silent_when_nothing_new=False)
-
-
-def run_update_check(app: Any) -> None:
-    check_updates(app)
 
 
 def should_run_automatic_startup_check(app: Any) -> bool:
@@ -307,11 +303,4 @@ def startup_check(app: Any) -> None:
         return
     _run_check(app, silent_when_nothing_new=True)
 
-
-def update_check_is_running() -> bool:
-    acquired = _update_lock.acquire(blocking=False)
-    if not acquired:
-        return True
-    _update_lock.release()
-    return False
 

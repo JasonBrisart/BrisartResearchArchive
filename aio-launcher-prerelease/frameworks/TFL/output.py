@@ -3,49 +3,59 @@ File: frameworks/TFL/output.py
 
 Purpose
 -------
-Persist TFL rows the way the reference does (header first, one flushed
-row per completed trial) while keeping every session: each run writes
-its own timestamped file, and a completed run is then published as
-tfl_output.csv.
+Save TFL sessions so nothing is ever overwritten and nothing answered is
+ever lost: every run gets its own CSV whose name ends with the date and
+time it started, and the whole session is re-saved after every single
+answer.
 
 Communication / relationships
 -----------------------------
-- session_gui.py and cli_runner.py create a SessionWriter and pass
-  writer.write_row as the engine's on_trial_recorded hook.
-- analysis.py reads tfl_output.csv by default, or any explicit path.
-- Uses config/runtime.get_framework_output_dir() only when no directory
-  is supplied.
+- frameworks/TFL/gui_session.py and frameworks/TFL/cli_runner.py create a SessionWriter and
+  pass writer.save as the engine's on_progress hook.
+- frameworks/TFL/analysis.py uses latest_session_file() and list_session_files().
+- default_output_dir() resolves the folder through config/runtime.py:
+  %APPDATA%/Brisart Research Archive/outputs/TFL unless the user picked
+  another output folder in Settings.
 
 Settings / parameters
 ---------------------
-- SessionWriter(output_dir): opens tfl_output_<YYYYmmdd_HHMMSS_ffffff>.csv.
-- write_row(row, rows): writes, flushes, and fsyncs one row.
-- finalize(): closes the session file and atomically replaces
-  tfl_output.csv with a copy of it.
-- abandon(): closes the session file and leaves tfl_output.csv alone.
+- File name: tfl_output_[<label>_]YYYY-MM-DD_HH-MM-SS.csv. If two runs
+  start in the same second, a counter is added: ..._HH-MM-SS_2.csv.
+- SessionWriter(output_dir=None, label="", started_at=None).
+- save(rows): writes the full snapshot to a temporary file in the same
+  folder, flushes and fsyncs it, then os.replace()s it over this run's
+  own file.
+- close(): marks the run finished; the file already holds everything.
 
 Edge cases
 ----------
-- Every completed trial is on disk before the next trial begins, so an
-  interrupted run keeps all completed trials in its session file.
-- finalize() and abandon() are idempotent; the second call is a no-op.
-- The latest-file copy goes through a .tmp file and os.replace().
+- The file is created with exclusive mode ("x"), so a writer can never
+  open, truncate, or overwrite any existing file, including another
+  run's.
+- A crash or power loss during a save leaves either the previous
+  snapshot or the new one, never a half-written CSV.
+- If a save fails (for example the CSV is open in Excel on Windows and
+  locked), the temporary file is removed and the error propagates to the
+  engine, which records it and continues; the next successful save
+  writes the complete session again.
+- save() after close() raises RuntimeError.
 
 Known limitations
 -----------------
-- Two simultaneous runs into the same folder each keep their own session
-  file, but the last to finish owns tfl_output.csv.
+- Each save rewrites the session file; at 120 trials this is a few
+  hundred kilobytes in total per answer and is not noticeable.
+- Nothing is ever deleted; old session files accumulate until removed by
+  hand.
 
 Examples
 --------
-- writer = SessionWriter(output_dir); engine.on_trial_recorded = writer.write_row
-- writer.finalize()
+- writer = SessionWriter(output_dir, label="pilot01")
+- writer.save(engine.snapshot())
 """
 from __future__ import annotations
 
 import csv
 import os
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -54,64 +64,67 @@ from .schema import TRIAL_FIELDNAMES
 
 
 def default_output_dir() -> Path:
-    from config.runtime import get_framework_output_dir
-    return get_framework_output_dir(settings.FRAMEWORK_ID)
+    from config.runtime import get_tfl_output_dir
+    return get_tfl_output_dir()
 
 
-def latest_output_file(output_dir: Path | None = None) -> Path:
-    return Path(output_dir or default_output_dir()) / settings.OUTPUT_FILENAME
+def list_session_files(output_dir: Path | str | None = None) -> list[Path]:
+    """All TFL CSVs in the folder, oldest first by last save time."""
+    folder = Path(output_dir) if output_dir is not None else default_output_dir()
+    if not folder.is_dir():
+        return []
+    files = [path for path in folder.glob(f"{settings.OUTPUT_FILE_PREFIX}*.csv") if path.is_file()]
+    return sorted(files, key=lambda path: (path.stat().st_mtime, path.name))
+
+
+def latest_session_file(output_dir: Path | str | None = None) -> Path | None:
+    files = list_session_files(output_dir)
+    return files[-1] if files else None
 
 
 class SessionWriter:
-    def __init__(self, output_dir: Path | str | None = None):
+    def __init__(self, output_dir: Path | str | None = None, label: str = "", started_at: datetime | None = None):
         self.output_dir = Path(output_dir) if output_dir is not None else default_output_dir()
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        self.session_file = self.output_dir / f"{settings.SESSION_FILE_PREFIX}{stamp}.csv"
-        self.latest_file = self.output_dir / settings.OUTPUT_FILENAME
-        self.rows_written = 0
+        stamp = (started_at or datetime.now()).strftime(settings.OUTPUT_TIMESTAMP_FORMAT)
+        stem = f"{settings.OUTPUT_FILE_PREFIX}_{label + '_' if label else ''}{stamp}"
+        self.path = self._create_exclusive(stem)
+        self.rows_saved = 0
         self.closed = False
-        self.finalized = False
-        self._handle = open(self.session_file, "w", newline="", encoding="utf-8")
-        self._writer = csv.DictWriter(self._handle, fieldnames=TRIAL_FIELDNAMES, extrasaction="raise")
-        self._writer.writeheader()
-        self._sync()
 
-    def _sync(self) -> None:
-        self._handle.flush()
-        try:
-            os.fsync(self._handle.fileno())
-        except OSError:
-            pass
-
-    def write_row(self, row: dict, _rows: list[dict] | None = None) -> None:
-        if self.closed:
-            raise RuntimeError("Session file is already closed.")
-        self._writer.writerow(row)
-        self._sync()
-        self.rows_written += 1
-
-    def _close(self) -> None:
-        if not self.closed:
-            self._handle.close()
-            self.closed = True
-
-    def abandon(self) -> Path:
-        self._close()
-        return self.session_file
-
-    def finalize(self) -> Path:
-        self._close()
-        if not self.finalized:
-            temporary = self.latest_file.with_name(self.latest_file.name + ".tmp")
+    def _create_exclusive(self, stem: str) -> Path:
+        counter = 1
+        while True:
+            path = self.output_dir / (f"{stem}.csv" if counter == 1 else f"{stem}_{counter}.csv")
             try:
-                shutil.copyfile(self.session_file, temporary)
-                os.replace(temporary, self.latest_file)
-            finally:
-                if temporary.exists():
-                    temporary.unlink()
-            self.finalized = True
-        return self.latest_file
+                with open(path, "x", newline="", encoding="utf-8") as handle:
+                    csv.DictWriter(handle, fieldnames=TRIAL_FIELDNAMES).writeheader()
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                return path
+            except FileExistsError:
+                counter += 1
+
+    def save(self, rows: list[dict]) -> None:
+        if self.closed:
+            raise RuntimeError("This session file is closed.")
+        temporary = self.path.with_name(f".{self.path.name}.tmp")
+        try:
+            with open(temporary, "w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=TRIAL_FIELDNAMES, extrasaction="raise")
+                writer.writeheader()
+                writer.writerows(rows)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, self.path)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+        self.rows_saved = len(rows)
+
+    def close(self) -> Path:
+        self.closed = True
+        return self.path
 
 
-__all__ = ["SessionWriter", "default_output_dir", "latest_output_file"]
+__all__ = ["SessionWriter", "default_output_dir", "list_session_files", "latest_session_file"]

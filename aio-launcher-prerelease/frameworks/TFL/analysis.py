@@ -3,44 +3,49 @@ File: frameworks/TFL/analysis.py
 
 Purpose
 -------
-Analyze TFL CSV output with the standard library. The report follows
-the 02_Execution reference analysis section by section, including its
-completion gate, without pandas.
+Analyze TFL session CSVs with the standard library only. The report
+follows the 02_Execution reference analysis section by section,
+including its completion gate, with no pandas.
 
 Communication / relationships
 -----------------------------
-- services/tfl_analysis.py calls analyze_output(), load_output(), and
-  get_default_output_file().
-- framework.py exposes lazy wrappers; cli_runner.py prints the report.
-- Reads the default file location through frameworks/TFL/output.py.
+- controllers/system_controller.py calls analyze_output() for the
+  Results page; cli.py prints it for "analyze".
+- Finds the newest session through frameworks/TFL/output.latest_session_file().
 
 Settings / parameters
 ---------------------
-- Sections: Run Metadata, Trial Counts, Prediction and Behavior, Affect
-  and Reaction Time, Prior Consistency, Contradiction, Probes, Delayed
-  Reentry, Perturbations, Response Timer (only when a timer was used),
-  Completion Gate.
+- Sections: Session, Run Metadata, Trial Counts, Prediction and
+  Behavior, Affect and Reaction Time, Prior Consistency, Contradiction,
+  Probes, Delayed Reentry, Perturbations, Response Timer (only when a
+  timer was used), Completion Gate.
 - Summaries report count, mean, std (sample, n-1), min, 25%, 50%, 75%,
-  and max, with linear-interpolated quartiles, as pandas.describe() does.
-- Completion gate: rows with A/B prediction, A/B behavioral choice, and a
-  non-blank affect, against int(row_count * 0.8), as in the reference.
+  and max with linear-interpolated quartiles, matching pandas'
+  describe().
+- Completion gate: complete rows with an A/B prediction, an A/B
+  behavioral choice, and a non-blank affect, against
+  int(complete_rows * 0.8), as in the reference.
 
 Edge cases
 ----------
+- Rows marked trial_status "in_progress" (the partly answered last trial
+  of an interrupted run) are excluded from every figure and counted in
+  the Session section.
+- CSVs without a trial_status column (0.9.3 and earlier) are treated as
+  all complete.
 - A missing, empty, or header-less file returns a readable message
-  instead of raising from analyze_output().
+  instead of raising.
 - Blank values are counted as "<blank>" where pandas shows NaN.
-- Boolean columns accept True/1/yes, case-insensitively.
 
 Known limitations
 -----------------
-- Text layout differs from pandas' printed tables; the numbers and the
+- Text layout differs from pandas' printed tables; the figures and the
   gate rule are the reference's.
 
 Examples
 --------
 - print(analyze_output())
-- analyze_output(Path("tfl_output_20261024_101500_000000.csv"))
+- analyze_output(Path("tfl_output_2026-10-24_18-45-12.csv"))
 """
 from __future__ import annotations
 
@@ -49,28 +54,14 @@ import math
 from pathlib import Path
 
 from . import settings
-from .output import latest_output_file
+from .output import latest_session_file
 
 SUMMARY_KEYS = ("count", "mean", "std", "min", "25%", "50%", "75%", "max")
+REQUIRED_COLUMNS = {"prediction", "behavioral_choice", "affect"}
 
 
-# ============================================================
-# Loading
-# ============================================================
-def get_output_dir() -> Path:
-    return latest_output_file().parent
-
-
-def get_default_output_file() -> Path:
-    return latest_output_file()
-
-
-def get_latest_output_file() -> Path:
-    return latest_output_file()
-
-
-def load_output(path: Path | str | None = None) -> list[dict]:
-    path = Path(path or get_default_output_file())
+def load_output(path: Path | str) -> list[dict]:
+    path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Output file not found: {path}")
     with open(path, newline="", encoding="utf-8-sig") as file:
@@ -79,10 +70,16 @@ def load_output(path: Path | str | None = None) -> list[dict]:
         fieldnames = reader.fieldnames or []
     if not fieldnames:
         raise ValueError(f"Output CSV has no header: {path}")
-    missing = {"prediction", "behavioral_choice", "affect"} - set(fieldnames)
+    missing = REQUIRED_COLUMNS - set(fieldnames)
     if missing:
         raise ValueError("Output CSV is missing required columns: " + ", ".join(sorted(missing)))
     return rows
+
+
+def split_by_status(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    complete = [row for row in rows if (row.get("trial_status") or "complete") == "complete"]
+    in_progress = [row for row in rows if (row.get("trial_status") or "complete") != "complete"]
+    return complete, in_progress
 
 
 # ============================================================
@@ -270,15 +267,29 @@ def report_perturbations(rows, columns) -> list[str]:
     return lines + ["", "Perturbation types:"] + format_counts(perturbed, "perturbation_type")
 
 
+def report_session(path, complete, in_progress, columns) -> list[str]:
+    lines = section("Session") + [f"File: {path}", f"Complete trials: {len(complete)}"]
+    if in_progress:
+        lines.append(f"Incomplete trials excluded: {len(in_progress)} (run was interrupted mid-trial)")
+    if "random_seed" in columns:
+        seeds = sorted({str(row.get("random_seed", "")) for row in complete if row.get("random_seed", "")})
+        lines.append("Random seed: " + (", ".join(seeds) if seeds else "<blank>"))
+    if "session_label" in columns:
+        labels = sorted({row.get("session_label", "") for row in complete if row.get("session_label", "")})
+        lines.append("Session label: " + (", ".join(labels) if labels else "(none)"))
+    return lines
+
+
 def report_response_timer(rows, columns) -> list[str]:
     if "response_timer_sec" not in columns:
         return []
     timed = [r for r in rows if str(r.get("response_timer_sec", "")).strip()]
     if not timed:
         return []
+    limits = ", ".join(f"{value or '<blank>'} x{count}" for value, count in value_counts(timed, "response_timer_sec"))
     return section("Response Timer") + [
         f"Timed trials: {len(timed)}",
-        "Time limits (seconds): " + ", ".join(f"{v or '<blank>'} x{c}" for v, c in value_counts(timed, "response_timer_sec")),
+        f"Time limits (seconds): {limits}",
         f"Prediction timeouts: {sum(is_true(r.get('prediction_timed_out')) for r in timed)}",
         f"Behavioral choice timeouts: {sum(is_true(r.get('behavioral_timed_out')) for r in timed)}",
     ]
@@ -294,44 +305,43 @@ def completion_gate(rows) -> tuple[int, int, bool]:
 
 def report_completion_gate(rows) -> list[str]:
     usable, minimum, passed = completion_gate(rows)
-    verdict = "PASS" if passed else "FAIL"
     return section("Completion Gate") + [
         "Completed usable trials:", str(usable), "",
         "Recommended minimum usable trials:", str(minimum), "",
-        f"{verdict} \u2014 {usable} / {len(rows)} usable trials",
+        f"{'PASS' if passed else 'FAIL'} \u2014 {usable} / {len(rows)} usable trials",
     ]
 
 
-# ============================================================
-# Entry point
-# ============================================================
 def analyze_output(path: Path | str | None = None) -> str:
-    path = Path(path or get_default_output_file())
+    if path is None:
+        path = latest_session_file()
+        if path is None:
+            return "No TFL session files exist yet. Run TFL first."
+    path = Path(path)
     if not path.exists():
-        return f"CSV file does not exist yet: {path}"
+        return f"CSV file does not exist: {path}"
     try:
         rows = load_output(path)
     except Exception as exc:
         return f"Could not load TFL output.\n\n{type(exc).__name__}: {exc}"
-    if not rows:
-        return f"CSV exists but contains no trial rows: {path}"
+    complete, in_progress = split_by_status(rows)
+    if not complete:
+        return f"CSV exists but contains no completed trials: {path}"
     columns = set(rows[0].keys())
-    lines = [f"{settings.FRAMEWORK_ID} Analysis", "-" * 40, f"File: {path}"]
-    lines += report_metadata(rows, columns)
-    lines += report_trial_counts(rows, columns)
-    lines += report_prediction_behavior(rows)
-    lines += report_affect_rt(rows, columns)
-    lines += report_prior_consistency(rows)
-    lines += report_contradiction(rows, columns)
-    lines += report_probes(rows, columns)
-    lines += report_delayed_reentry(rows, columns)
-    lines += report_perturbations(rows, columns)
-    lines += report_response_timer(rows, columns)
-    lines += report_completion_gate(rows)
+    lines = [f"{settings.FRAMEWORK_ID} Analysis", "-" * 40]
+    lines += report_session(path, complete, in_progress, columns)
+    lines += report_metadata(complete, columns)
+    lines += report_trial_counts(complete, columns)
+    lines += report_prediction_behavior(complete)
+    lines += report_affect_rt(complete, columns)
+    lines += report_prior_consistency(complete)
+    lines += report_contradiction(complete, columns)
+    lines += report_probes(complete, columns)
+    lines += report_delayed_reentry(complete, columns)
+    lines += report_perturbations(complete, columns)
+    lines += report_response_timer(complete, columns)
+    lines += report_completion_gate(complete)
     return "\n".join(lines)
 
 
-__all__ = [
-    "get_output_dir", "get_default_output_file", "get_latest_output_file", "load_output",
-    "describe", "value_counts", "completion_gate", "analyze_output",
-]
+__all__ = ["load_output", "split_by_status", "describe", "value_counts", "completion_gate", "analyze_output"]

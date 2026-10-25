@@ -3,8 +3,8 @@ File: gui/components/page_helpers.py
 
 Purpose
 -------
-Provide the UIController mixin (page_shell and add_card) that every
-page renders through, plus the scrolling and text-wrapping helpers.
+Provide the UIController mixin (page_shell and add_card) that every page
+renders through, plus the mouse-wheel and text-wrapping helpers.
 
 Communication / relationships
 -----------------------------
@@ -14,62 +14,54 @@ Communication / relationships
   widget_is_or_contains_text() in its global wheel handler.
 - gui/pages/settings_page.py and gui/pages/results_page.py call
   bind_text_widget_scroll_passthrough().
-- Uses Card from gui/widgets/card.py.
+- Uses Card from gui/components/card.py.
 
 Settings / parameters
 ---------------------
-- MIN_DYNAMIC_WRAPLENGTH (220): lowest wraplength applied while a
-  container briefly reports a near-zero width during layout.
-- page_shell() places the scrollable canvas on self._page_canvas so the
-  global wheel handler knows which canvas to scroll.
+- MIN_DYNAMIC_WRAPLENGTH (220): lowest wraplength while a container
+  briefly reports a near-zero width during layout.
+- page_shell() stores the scrollable canvas on app._page_canvas so the
+  global wheel handler knows what to scroll.
 - add_card(root, row, title, body, actions): actions is a list of
   (label, command, is_primary) tuples.
 
 Edge cases
 ----------
-- mousewheel_units() guarantees at least one unit for any nonzero
-  delta, since trackpads send deltas below 120.
-- The Text passthrough forwards the wheel to the page only when the Text
-  content is already fully visible; otherwise Tk's own Text scrolling
-  runs.
+- mousewheel_units() returns at least one unit for any nonzero delta,
+  because trackpads send deltas below 120.
+- The Text passthrough forwards the wheel to the page only when the
+  Text content already fits; otherwise Tk's own Text scrolling runs.
 - Wraplength is recalculated after idle, so rebuilt pages wrap
-  correctly immediately.
-- Every bind uses add="+" and is guarded against TclError.
+  immediately.
 
 Known limitations
 -----------------
-- Touchpad two-finger scrolling over the general page area still does
-  not work; see docs/KNOWN_ISSUES.md.
-- Fix history, in chronological order:
-  Fix 1: hover-gated Enter/Leave binding; failed because the canvas is
-  fully covered by its own child widgets.
-  Fix 2: small trackpad deltas truncated to zero; fixed by
-  mousewheel_units().
-  Fix 3 and Fix 4: routing the wheel by keyboard focus; insufficient.
-  Fix 5: per-widget instance binding (bind_scrolling_recursively());
-  fixed the physical mouse wheel.
-  Fix 6: global root handler in gui/main_window.py that resolves the
-  widget under the cursor with winfo_containing(); current primary
-  mechanism.
-  Fix 7: Text widgets swallowed the wheel even when their content fit;
-  fixed by bind_text_widget_scroll_passthrough().
+- Touchpad two-finger scrolling over the general page area does not
+  work, although a physical mouse wheel does. Per-widget bindings, small-
+  delta handling, and a global handler resolving the widget under the
+  cursor (the current mechanism) have been tried. Next step: log every
+  wheel event Tk receives during a touchpad scroll; if none arrive, the
+  fix is outside the Archive.
 
 Examples
 --------
-- root = app.page_shell("Results", "Run analysis tools.")
-- app.add_card(root, 2, "Title", "Body", [("Run", app.analyze_tfl, True)])
+- root = app.page_shell("Results", "Analyze TFL sessions.")
+- app.add_card(root, 2, "Title", "Body", [("Run", app.start_tfl, True)])
 """
-
 from __future__ import annotations
+
 import tkinter as tk
 from tkinter import ttk
 from typing import Callable
 from gui.theme import COLORS
-from gui.widgets.card import Card
+from gui.components.card import Card
+
 # Minimum sensible wraplength, in pixels, so a container that briefly
 # reports a near-zero width during initial layout never collapses a
 # label's wrapping down to an unreadably narrow column.
 MIN_DYNAMIC_WRAPLENGTH = 220
+
+
 def widget_is_or_contains_text(widget: tk.Misc | None) -> bool:
     """
     True if `widget` is a tk.Text widget, or is nested inside one. Used
@@ -82,10 +74,8 @@ def widget_is_or_contains_text(widget: tk.Misc | None) -> bool:
             return True
         widget = getattr(widget, "master", None)
     return False
-def _event_target_is_text_widget(event: object) -> bool:
-    """Back-compat wrapper around widget_is_or_contains_text() for any
-    caller still passing a raw event object instead of a widget."""
-    return widget_is_or_contains_text(getattr(event, "widget", None))
+
+
 def mousewheel_units(event: object) -> int:
     """
     Convert a raw <MouseWheel> event into a signed integer number of
@@ -101,8 +91,8 @@ def mousewheel_units(event: object) -> int:
     if steps == 0:
         steps = 1 if delta > 0 else -1
     return -steps
-# Back-compat alias (older code/tests may import the underscored name).
-_mousewheel_units = mousewheel_units
+
+
 def bind_dynamic_wraplength(label: ttk.Label, container: tk.Misc, margin: int = 0) -> None:
     """
     Keep `label`'s wraplength in sync with `container`'s current width
@@ -110,6 +100,7 @@ def bind_dynamic_wraplength(label: ttk.Label, container: tk.Misc, margin: int = 
     size. `margin` is subtracted from the measured width (e.g. for the
     container's own padding) so wrapped text never touches the edge.
     """
+
     def _update_wraplength(_event=None) -> None:
         try:
             if not label.winfo_exists() or not container.winfo_exists():
@@ -131,6 +122,8 @@ def bind_dynamic_wraplength(label: ttk.Label, container: tk.Misc, margin: int = 
         container.after_idle(_update_wraplength)
     except tk.TclError:
         pass
+
+
 def bind_text_widget_scroll_passthrough(text_widget: tk.Text, app: tk.Misc) -> None:
     """
     Forward the mouse wheel to the page canvas when this Text widget's
@@ -150,6 +143,7 @@ def bind_text_widget_scroll_passthrough(text_widget: tk.Text, app: tk.Misc) -> N
     gui/pages/settings_page.py (update_box, log_box) and
     gui/pages/results_page.py (analysis_box) for the call sites.
     """
+
     def _handler(event):
         try:
             top_fraction, bottom_fraction = text_widget.yview()
@@ -178,33 +172,11 @@ def bind_text_widget_scroll_passthrough(text_widget: tk.Text, app: tk.Misc) -> N
     text_widget.bind("<MouseWheel>", _handler)
     text_widget.bind("<Button-4>", _handler)
     text_widget.bind("<Button-5>", _handler)
-def bind_scrolling_recursively(root_widget: tk.Misc, on_mousewheel: Callable) -> None:
-    """
-    Walk `root_widget` and every descendant, binding <MouseWheel>,
-    <Button-4>, and <Button-5> directly on each one as an instance
-    binding. A supplementary/defensive layer -- confirmed working for a
-    physical mouse wheel -- while the primary mechanism for the general
-    page area is the global handler in main_window.py. Safe to call on a
-    widget tree still being built or partially destroyed mid-walk (each
-    bind() is guarded); add="+" throughout so it never clobbers an
-    existing binding.
-    """
-    def _walk(widget: tk.Misc) -> None:
-        try:
-            widget.bind("<MouseWheel>", on_mousewheel, add="+")
-            widget.bind("<Button-4>", on_mousewheel, add="+")
-            widget.bind("<Button-5>", on_mousewheel, add="+")
-        except tk.TclError:
-            return
-        try:
-            children = widget.winfo_children()
-        except tk.TclError:
-            return
-        for child in children:
-            _walk(child)
-    _walk(root_widget)
+
+
 class UIController:
     """Mixed into BrisartSuiteApp so pages can call app.page_shell()/app.add_card()."""
+
     def page_shell(self, title: str, subtitle: str) -> ttk.Frame:
         """
         Build a scrollable page shell. The returned frame is the grid
@@ -224,11 +196,13 @@ class UIController:
         root = ttk.Frame(canvas, style="Bg.TFrame")
         root.grid_columnconfigure(0, weight=1)
         canvas_window = canvas.create_window((0, 0), window=root, anchor="nw")
+
         def _sync_scrollregion(_event=None) -> None:
             try:
                 canvas.configure(scrollregion=canvas.bbox("all"))
             except tk.TclError:
                 pass
+
         def _sync_inner_width(event) -> None:
             try:
                 canvas.itemconfigure(canvas_window, width=event.width)
@@ -244,6 +218,7 @@ class UIController:
         subtitle_label.grid(row=1, column=0, sticky="w", padx=26, pady=(0, 16))
         bind_dynamic_wraplength(subtitle_label, canvas, margin=52)
         return root
+
     def add_card(
         self,
         root: ttk.Frame,
@@ -271,8 +246,10 @@ class UIController:
                     row=0, column=index, padx=(0, 8)
                 )
         return card
+
+
 __all__ = [
-    "UIController", "COLORS", "bind_dynamic_wraplength", "bind_scrolling_recursively",
+    "UIController", "bind_dynamic_wraplength",
     "widget_is_or_contains_text", "mousewheel_units", "bind_text_widget_scroll_passthrough",
 ]
 

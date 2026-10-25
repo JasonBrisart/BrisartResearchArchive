@@ -9,30 +9,31 @@ perturbation instructions, all with 02_Execution reference wording.
 
 Communication / relationships
 -----------------------------
-- frameworks/TFL/engine.py calls determine_feedback() and feedback_text().
-- frameworks/TFL/screen.py and cli_runner.py display the text the engine
-  stores; they never compose feedback themselves.
+- frameworks/TFL/engine.py calls determine_feedback(), feedback_text(), and
+  make_perturbation_instruction().
+- The GUI and CLI only display text the engine stores; neither composes
+  feedback itself.
 
 Settings / parameters
 ---------------------
 - Levels: neutral, confirmatory, mildly_contradictory,
   strongly_contradictory.
-- Perturbation types: head_turn, posture_shift, scene_shift, breath_reset.
+- Perturbation types: head_turn, posture_shift, scene_shift,
+  breath_reset.
 
 Edge cases
 ----------
-- determine_feedback() keeps reference semantics for every input:
-  neutral and unknown levels return ("", "none").
+- Neutral and unknown levels return ("", "none"), as in the reference.
 - feedback_text() returns "" for an unknown level, as the reference
-  prints nothing in that case.
-- A blank prediction can only occur when the optional timer expires;
-  feedback_text() then reports that no prediction was recorded instead
-  of printing an empty interpretation letter.
+  prints nothing then.
+- A blank prediction only exists after a response-timer timeout; the
+  feedback then says no prediction was recorded instead of printing an
+  empty interpretation letter.
 
 Known limitations
 -----------------
-- The timeout wording is an Archive addition; it never appears in a
-  default (untimed) run.
+- The timeout sentence is an Archive addition and never appears in an
+  untimed run.
 
 Examples
 --------
@@ -51,11 +52,7 @@ DEFAULT_PERTURBATION_INSTRUCTION = "Change posture or gaze briefly, then continu
 
 
 def opposite_choice(choice: str) -> str:
-    if choice == "A":
-        return "B"
-    if choice == "B":
-        return "A"
-    return ""
+    return {"A": "B", "B": "A"}.get(choice, "")
 
 
 def determine_feedback(prediction: str, feedback_level: str) -> tuple[str, str]:

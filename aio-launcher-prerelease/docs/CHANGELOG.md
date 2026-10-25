@@ -3,6 +3,143 @@ All notable changes to Brisart Research Archive are documented here.
 
 ---
 
+## [0.9.4 ALPHA] - 2026-10-24
+
+### Release overview
+
+This release makes the Archive a single-framework application built around TFL. The multi-framework layer (registry, discovery, five reserved "Coming Soon" frameworks, the Frameworks page, and the framework service) is gone, and everything TFL-specific now lives in one folder, `frameworks/TFL/`, with no other framework beside it. TFL gains eight new run options, for 14 in total, all defined in one table that both the GUI and the CLI are generated from. Saving changes from once per completed trial to after every single answer, into a CSV whose name ends with the run's date and time and which can never overwrite another file. `version.txt` becomes `version.py`. Every Python file passes a six-section header test, with headers rewritten for the files this release changed.
+
+With default options, trial generation still matches the 02_Execution reference algorithm draw for draw: a test compares the generated trials against a port of that algorithm for all 16 combinations of the four reference toggles at four seeds, and the embedded stimulus text is checked against a digest of the reference CSV. The other differences from the reference listed in the 0.9.3 entry still apply, and this release adds per-run session files and in-progress rows.
+
+All 51 automated tests pass on Python 3.12 without Tk (0.9.3 had 53): 38 in `tests/test_tfl.py` and 13 in `tests/test_app.py`. They pass both when each file is run directly and through `unittest discover`. The suite includes `tests/gui_doubles_check.py`, which drives the Archive window, every page, and a TFL run with widget doubles. Native Tk rendering was not exercised.
+
+### Changed: one framework, flatter layout
+
+- **One folder for TFL: `frameworks/TFL/`.** All TFL logic, timing, headless driver, output, analysis, and both front ends (GUI and console) now live there: 15 modules. `framework.py`, whose only jobs were registry metadata and lazy wrappers, is removed, and `frameworks/shared/schema.py` is removed (the schema lives in `frameworks/TFL/schema.py`). The GUI modules are renamed to say what they are: `session_gui.py` → `gui_session.py`, `options_screen.py` → `gui_options.py`, `screen.py` → `gui_screens.py`. `engine/timing.py` moves to `frameworks/TFL/timing.py` and `app/headless.py` to `frameworks/TFL/headless.py`, because TFL is their only user. No `tfl/` folder is created at the project root. TFL-specific code outside the folder is limited to host wiring and entry points: `gui/pages/tfl_page.py` (every page lives in `gui/pages/` and is registered in `gui/navigation.py`), the TFL actions in `controllers/system_controller.py`, the pages that call them, `cli.py`, `get_tfl_output_dir()` in `config/runtime.py` (the output location is an application setting), and the tests in `tests/`, which also cover the rest of the Archive.
+- **Registry and framework service removed.** `config/registries.py` (framework discovery and metadata, plus the SST, IRE, PFT, PCT, and RIET placeholders) and `services/framework_service.py` are removed. The page table and sidebar entries move to the new `gui/navigation.py`. `controllers/system_controller.start_tfl()` opens the TFL window directly. A second Run brings the open window forward instead of starting a parallel run.
+- **TFL page replaces the Frameworks page.** The new `gui/pages/tfl_page.py` explains the procedure and shows where sessions are saved. The sidebar is now Dashboard, TFL, Results, Archive, and Settings. The old page names "Frameworks" and "Execution" still resolve to TFL.
+- **Merged into callers.** `services/tfl_analysis.py` is merged into `controllers/system_controller.py` (`open_tfl_csv()` becomes `open_latest_tfl_csv()`, and `fallback_csv_summary()` is dropped), and `services/timestamps.py` into `controllers/log_controller.py`. `gui/widgets/card.py` moves to `gui/components/card.py`.
+- **Controller rewrite.** `controllers/system_controller.py` is now 264 lines. Its repeated try/except-and-dialog blocks are collapsed into one `_fail()` path, and the methods for framework selection, registry refresh, and the selected-framework setting are removed.
+- **Size.** Python source (`.py` files, counted with `wc -l`) drops from 10,299 lines to 8,538 while adding the new options and per-answer saving.
+
+### Added: TFL run options (`frameworks/TFL/config.py`)
+
+Options are now declared once in `OPTION_SPECS`, with each option's kind, limits, dependency, and whether it changes the protocol. `frameworks/TFL/gui_options.py` builds the options screen from this table and `frameworks/TFL/cli_runner.py` builds its numbered menu from it, so the two front ends cannot disagree. Both validate through the same `set_option()`, which rejects bad input with a reason instead of clamping it.
+
+New options, all at their reference values by default:
+
+| Option | Default | Range |
+| --- | --- | --- |
+| Trials Per Block | 40 | 1–200 |
+| Blocks | all three | any non-empty subset |
+| Shuffle Block Order | off | on/off |
+| Probe Interval | 4 | 1–50 |
+| Delayed Reentry Interval | 6 | 1–50 |
+| Perturbation Interval | 5 | 1–50 |
+| Random Seed | 2026 | 0–2147483647, or `random` |
+| Session Label | none | letters, digits, `-`, `_`; up to 40 characters |
+
+These join the existing perturbations, extra stimuli, probes, delayed reentry, and response timer options. Response Timer Seconds is now a regular entry in the table.
+
+- **Run mode.** Changing any option except the session label labels the run `modified_tfl`.
+- **Seeds.** A `random` seed is drawn fresh for each run and written to every row, so the run can be reproduced exactly.
+- **Shuffled blocks.** The block order is shuffled by a separate generator seeded from the run seed. This makes the order reproducible and leaves the trial draws themselves unchanged.
+- **Restore Default Settings** resets every option except the session label.
+- **CLI numbering.** Items 2 to 5 keep the reference positions: perturbations, extra stimuli, probes, and delayed reentry.
+
+Tests cover:
+
+- That every protocol option marks the run modified and the label does not.
+- That 11 kinds of invalid input are rejected and leave the configuration untouched.
+- Trial counts, block selection, and interval placement.
+- That shuffled orders are reproducible and vary across seeds.
+- That random seeds are recorded in every row.
+- Restore Default Settings.
+- A CLI run driven through the options menu, including a rejected value.
+
+### Changed: saving after every answer, never overwriting (`frameworks/TFL/output.py`, `frameworks/TFL/engine.py`)
+
+In 0.9.3, a trial reached disk only once it was complete. Now the engine calls its save hook after every accepted answer and every timeout: prediction, affect, post-perturbation probe, behavioral choice, and content probe. Each save carries the complete session, including the trial in progress, marked `trial_status = in_progress`. `SessionWriter.save()` writes that snapshot to a temporary file, flushes and fsyncs it, and replaces the run's CSV with `os.replace()`. The CSV is therefore a complete, readable snapshot even if the process is killed mid-save. Power-loss durability is not claimed. Cue and perturbation "continue" steps are not answers and do not save.
+
+- **One file per run.** Each run's file is named `tfl_output_[<label>_]YYYY-MM-DD_HH-MM-SS.csv` and created in exclusive mode, so it cannot open or truncate an existing file. If two runs start in the same second, `_2`, `_3`, and so on are appended. The 0.9.3 practice of copying each finished run over `tfl_output.csv` is removed, so no run ever replaces another. Analysis now defaults to the most recently saved session file.
+- **Failed saves.** A failed save is recorded in `engine.save_errors`, shown immediately (a GUI footer and Activity Log entry, or a console warning), and does not stop the run. Because every save is a full snapshot, the next successful save writes everything.
+- **Interrupted runs.** Cancelling a run, closing its window, closing the Archive, or pressing Ctrl+C keeps every answer already given. Closing the Archive during a run now asks first.
+
+Tests check:
+
+- That the CSV on disk equals the engine snapshot after every one of the 422 answers in a perturbation-enabled run.
+- That a single prediction is on disk as an in-progress row.
+- That an existing file and a same-second collision are never overwritten.
+- The file-name format.
+- That a failed save is recovered by the next one.
+- That temporary files are cleaned up and a closed writer refuses saves.
+- Selection of the latest session.
+- That a console run interrupted mid-trial keeps two complete trials plus the in-progress answer.
+
+### Verified: output is in AppData (`config/runtime.py`)
+
+By default TFL sessions are saved to `%APPDATA%\Brisart Research Archive\outputs\TFL`; on Windows that is `C:\Users\<name>\AppData\Roaming\Brisart Research Archive\outputs\TFL`. Tests confirm that the default folder and a writer's file both sit under `APPDATA/Brisart Research Archive/outputs/TFL`, and that a relative output folder stays inside the Archive's AppData folder.
+
+The Settings, TFL, and Results pages now show the exact folder in use, and the CLI prints it with `where`. Before each run the CLI prints the path of that run's session file. `get_framework_output_dir(framework_id)` is replaced by `get_tfl_output_dir()`.
+
+### Changed: analysis (`frameworks/TFL/analysis.py`)
+
+A new Session section reports the file, the number of complete trials, the random seed, the session label, and how many in-progress rows were excluded. In-progress rows are left out of every figure, so the reference completion gate counts only completed trials. CSVs from 0.9.3 and earlier, which have no `trial_status` column, are treated as all complete. Other sections, the summary statistics, and the gate rule are unchanged from 0.9.3.
+
+### Changed: CSV schema (`frameworks/TFL/schema.py`)
+
+Three columns are appended after the 27 reference columns and the three timer columns: `session_label`, `random_seed`, and `trial_status`, for 33 columns in total.
+
+### Changed: command line (`cli.py`, `frameworks/TFL/cli_runner.py`)
+
+The main menu is now Run TFL, Analyze Latest Session, List Sessions, Show Output Folder, and Quit. The subcommands are `run`, `analyze [--file PATH]`, `sessions`, and `where`. `list` and the framework arguments are removed, because there is only one framework. `analyze --file` with a missing file exits with status 1.
+
+### Changed: `version.txt` → `version.py`
+
+`version.py` defines `VERSION = "0.9.4"`, `RELEASE_LABEL = "ALPHA"`, and `DISPLAY_VERSION`. The GUI and CLI import it. The updater's `read_local_version()` parses it with `ast` instead of importing it, so it reads the version on disk even after an in-place update in the same process. A missing or non-literal `VERSION` reads as 0.0.0. `LOCAL_VERSION_FILE` now points at `version.py`.
+
+### Removed: leftovers and dead code
+
+- **Unused code paths:**
+  - `bind_scrolling_recursively()` (Fix 5) and two backward-compatibility aliases in `gui/components/page_helpers.py`.
+  - The `home_log_box` writer in `controllers/log_controller.py`; no page created that box.
+  - `run_update_check()` and `update_check_is_running()` in `services/updater/gui_integration.py`.
+  - `startup_update_check()` in `services/updater/orchestration.py`.
+  - The unused `context` argument of `services/updater/notify.maybe_notify_result()`.
+  - `get_app_dir()`, `ensure_app_dir()`, and `reset_settings()` in `config/runtime.py`.
+  - The ignored `participant_id` argument of the TFL session.
+  - `FALLBACK_STIMULI`, `NUM_TRIALS`, `AFFECT_SCALE`, and `PROBE_CHOICES`.
+  - The "Run Selected Framework" buttons on the Dashboard and Results pages; both pages now start TFL directly.
+- **Settings file.** `default_framework` is retired, and `normalize_settings()` now keeps only known keys, so it and any other stale keys drop out of `user_settings.json` on the next save.
+- **`app.state` shadowing.** The main window stored its `AppState` as `self.state`, which hid Tk's own `state()` window method. It is now `self.app_state`.
+- **Stale documentation:**
+  - Headers and `tools/envinfo.py` referred to a `docs/KNOWN_ISSUES.md` that is not shipped. Those references are gone. The touchpad-scrolling limitation is now described directly in the headers of `gui/main_window.py` and `gui/components/page_helpers.py`, with what was tried and the next diagnostic step.
+  - The Activity Log described entries as "autosaves" and "registry refreshes", which no longer exist.
+  - The Archive page's example list no longer names a document that is not shipped.
+- **Formatting.** Blank-line spacing was normalized to PEP 8 in carried-over files such as `config/runtime.py`, `gui/theme.py`, and `gui/components/page_helpers.py`. An AST comparison confirmed that these passes changed no code.
+
+### Changed: documentation
+
+- **File headers.** Headers were rewritten for the files this release changed, under the six sections: Purpose, Communication / relationships, Settings / parameters, Edge cases, Known limitations, and Examples. Files this release did not change keep their existing headers: `config/activity_log.py`, `services/rsa_signing.py`, `services/trust_anchor.py`, and `services/updater/` `archive_safety.py`, `download.py`, `http_utils.py`, `registry.py`, and `tk_helpers.py`. They were scanned for references to removed modules, and none were found. Every file passes the header test.
+- **New tests.** `tests/test_app.py` enforces the header standard on every file. It also fails on any non-standard-library import and on leftover phrases from the old multi-framework layout, such as "Coming Soon", "selected_framework", "from tfl", and any reference to `KNOWN_ISSUES`. It also checks that `frameworks/` holds only `TFL/`, that no `tfl/` folder exists at the root, and that the retired modules are gone.
+
+### Changed: updater cleanup list (`services/updater/constants.py`)
+
+`OBSOLETE_RELEASE_PATHS` now lists the 17 files this release removes: `version.txt`, the old `app/`, `engine/`, `frameworks/shared/`, and `gui/widgets/` modules, the registry, the three services, the Frameworks page, `frameworks/TFL/framework.py`, `options_screen.py`, `screen.py`, and `session_gui.py`, and the three old test files. An update installed by 0.9.4 or later deletes them from existing installations after the backup step. The list deliberately omits every file that still exists in `frameworks/TFL/` (`engine.py`, `config.py`, `output.py`, and so on): those paths are live files and are overwritten in place, never deleted. Tests confirm that no listed path exists in the source, that none coincides with a live Python file (re-adding `frameworks/TFL/engine.py` to the list makes the suite fail), and that removal stays inside the application folder.
+
+### Compatibility limits
+
+- **Imports moved.** Code that imports `frameworks.TFL.session_gui`, `.screen`, `.options_screen`, or `.framework`, or `engine.timing`, `app.headless`, `config.registries`, `services.framework_service`, `services.tfl_analysis`, or `services.timestamps`, must switch to `frameworks.TFL.gui_session`, `.gui_screens`, `.gui_options`, `.timing`, `.headless`, `gui.navigation`, or the controller. `frameworks.TFL.analysis`, `.engine`, `.config`, `.output`, `.schema`, `.settings`, `.stimuli`, `.feedback`, and `.trial_builder` keep their import paths, but their contents changed (see above). `build_default_engine(config_overrides)` is now `frameworks.TFL.headless.build_engine(options)`, and its overrides are validated.
+- **Analysis default.** `tfl_output.csv` is no longer written. Analysis and Open Latest CSV use the most recently saved `tfl_output*.csv`, and an old `tfl_output.csv` is still readable by choosing it.
+- **Six extra columns.** The CSV has 33 columns. Tools that compare whole headers against the 27-column reference will see the three timer and three session columns; reading by column name is unaffected.
+- **Run-mode labels.** A run is labelled `modified_tfl` when any protocol option differs from its default. The session label does not count. A `random` seed always does, because the seed is drawn fresh for each run.
+- **Upgrading in place.** The 0.9.3 updater only removes the files on its own older list, so an update from 0.9.3 overwrites the files that keep their paths but leaves the 17 retired files on disk until the next update installed by 0.9.4. The leftovers are never imported by 0.9.4 code. In practice no update can install yet, because the trust anchor still holds the placeholder key.
+- **Excel locks.** On Windows, a session CSV that is open in Excel is expected to block the save. The behavior was tested with an injected `PermissionError`, not with Excel itself: the run continues, a warning is shown for each blocked save, and the next successful save writes the whole session.
+- **Native GUI not tested.** Rendering, focus, key bindings, and layout were not tested on a real display; GUI wiring was tested with widget doubles only. With all 14 options, the options screen opens at 1100x900 and does not scroll.
+- **Platforms.** Python from the Microsoft Store stores AppData files in its own `LocalCache` folder; the Settings page shows the real path. On macOS and Linux the Archive folder is in the home folder.
+
+---
+
 ## [0.9.3 ALPHA] - 2026-10-24
 
 ### Release overview
@@ -128,7 +265,7 @@ Ctrl+C keeps completed trials in the session file. Tests drive a full default 12
 - An AST dependency audit that rejects any non-stdlib import in any file.
 - A check that the CLI and headless paths never load Tkinter.
 
-In `tests/test_merged.py`, 31 tests were removed that targeted the 0.9.2 engine, its autosave, and its extended analysis. The 19 host, registry, trial-structure, header, navigation, and updater tests remain. Every Python file keeps the six-section header. `docs/ARCHITECTURE.md` is new and describes the layering, the TFL flow, the timer, the output files, and the testing boundaries. `services/tfl_analysis.py` now documents `tfl_output.csv`. `version.txt` reads 0.9.3 ALPHA.
+In `tests/test_merged.py`, 31 tests were removed that targeted the 0.9.2 engine, its autosave, and its extended analysis. The 19 host, registry, trial-structure, header, navigation, and updater tests remain. Every Python file keeps the six-section header. `services/tfl_analysis.py` now documents `tfl_output.csv`. `version.txt` reads 0.9.3 ALPHA.
 
 ### Compatibility limits
 

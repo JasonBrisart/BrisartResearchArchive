@@ -37,7 +37,7 @@ Known limitations
 
 Examples
 --------
-- result = apply_zip_update(verified_zip, current_version="0.9.2")
+- result = apply_zip_update(verified_zip, current_version="0.9.4")
 - remove_obsolete_files(app_dir)
 """
 

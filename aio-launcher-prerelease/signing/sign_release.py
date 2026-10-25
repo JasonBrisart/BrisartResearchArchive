@@ -36,7 +36,7 @@ Known limitations
 Examples
 --------
 - python signing/sign_release.py generate-keys
-- python signing/sign_release.py sign --file BrisartResearchArchive-0.9.2.zip --version 0.9.2 --url "https://brisartresearcharchive.com/..."
+- python signing/sign_release.py sign --file BrisartResearchArchive-0.9.4.zip --version 0.9.4 --url "https://brisartresearcharchive.com/..."
 """
 
 import argparse

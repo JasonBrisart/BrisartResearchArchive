@@ -4,11 +4,11 @@ File: main.py
 Purpose
 -------
 Launch the Brisart Research Archive: the GUI by default, or the
-command-line suite with --cli.
+command line with --cli.
 
 Communication / relationships
 -----------------------------
-- Calls gui.main_window.main() for the GUI.
+- Calls gui/main_window.main() for the GUI.
 - Forwards everything after --cli to cli.main().
 
 Settings / parameters
@@ -18,8 +18,8 @@ Settings / parameters
 
 Edge cases
 ----------
-- The GUI module is imported only when the GUI is requested, so the
-  command line works on Python builds without Tk.
+- The GUI is imported only when requested, so the command line works on
+  Python builds without Tk.
 
 Known limitations
 -----------------
@@ -28,7 +28,7 @@ Known limitations
 Examples
 --------
 - python main.py
-- python main.py --cli run TFL
+- python main.py --cli run
 """
 import sys
 

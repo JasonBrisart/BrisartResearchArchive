@@ -3,43 +3,40 @@ File: gui/components/sidebar.py
 
 Purpose
 -------
-Build the application sidebar and connect each navigation entry to the
-corresponding registered page.
+Build the application sidebar and connect each entry to its page.
 
 Communication / relationships
 -----------------------------
-- Reads NAV_ITEMS and SETTINGS_NAV_ITEM from config/registries.py.
-- Calls app.show_page() when a navigation entry is selected.
-- Stores navigation widgets in app.nav for active-page highlighting.
-- Is called once by gui/main_window.py during layout construction.
+- Reads NAV_ITEMS and SETTINGS_NAV_ITEM from gui/navigation.py.
+- Calls app.show_page() when an entry is clicked.
+- Stores entry widgets in app.nav so gui/main_window.py can highlight
+  the active page.
 
 Settings / parameters
 ---------------------
-- The sidebar width is fixed at 210 pixels.
-- NAV_ITEMS are rendered in the upper navigation group.
-- SETTINGS_NAV_ITEM is pinned at the bottom beneath a divider.
+- Fixed width of 210 pixels.
+- NAV_ITEMS fill the upper group; SETTINGS_NAV_ITEM is pinned at the
+  bottom under a divider.
 
 Edge cases
 ----------
-- Navigation callbacks resolve page names only when clicked.
-- The expanding spacer keeps Settings pinned to the bottom regardless
-  of the number of primary navigation entries.
+- An expanding spacer keeps Settings at the bottom whatever the number
+  of upper entries.
 
 Known limitations
 -----------------
-- The sidebar does not collapse or resize independently.
-- Icons depend on the active system font supporting their characters.
+- The sidebar does not collapse.
+- Icons depend on the system font supporting the characters.
 
 Examples
 --------
 - build_sidebar(app)
 """
-
 from __future__ import annotations
 
 import tkinter as tk
 
-from config.registries import NAV_ITEMS, SETTINGS_NAV_ITEM
+from gui.navigation import NAV_ITEMS, SETTINGS_NAV_ITEM
 from gui.theme import COLORS, FONT
 
 

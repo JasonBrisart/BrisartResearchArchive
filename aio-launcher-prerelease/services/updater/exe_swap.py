@@ -36,7 +36,7 @@ Known limitations
 
 Examples
 --------
-- apply_exe_update(verified_path, current_version="0.9.2")
+- apply_exe_update(verified_path, current_version="0.9.4")
 """
 
 from __future__ import annotations

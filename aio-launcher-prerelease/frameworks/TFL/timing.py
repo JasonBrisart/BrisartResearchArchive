@@ -1,27 +1,28 @@
 """
-File: engine/timing.py
+File: frameworks/TFL/timing.py
 
 Purpose
 -------
-Provide the shared timer contract for framework session engines:
-TimerInterface, MonotonicTimer (GUI scheduling), DeadlineOnlyTimer
-(console runs), and NullSchedulerTimer (deterministic virtual clock).
+Provide the timer contract for the TFL engine: TimerInterface,
+MonotonicTimer (GUI scheduling), DeadlineOnlyTimer (console), and
+NullSchedulerTimer (deterministic virtual clock for tests and
+automation).
 
 Communication / relationships
 -----------------------------
 - frameworks/TFL/engine.py consumes any TimerInterface.
-- frameworks/TFL/session_gui.py builds a MonotonicTimer bound to its
-  Toplevel's after() and after_cancel().
+- frameworks/TFL/gui_session.py builds a MonotonicTimer bound to its window's
+  after() and after_cancel().
 - frameworks/TFL/cli_runner.py uses DeadlineOnlyTimer.
-- app/headless.py and the tests use NullSchedulerTimer.
+- frameworks/TFL/headless.py and the tests use NullSchedulerTimer.
 
 Settings / parameters
 ---------------------
-- MonotonicTimer(schedule_fn=None, cancel_fn=None); now() uses
+- MonotonicTimer(schedule_fn=None, cancel_fn=None); now() is
   time.monotonic().
-- DeadlineOnlyTimer: now() is monotonic; schedule() returns None and
-  never calls back, so deadlines are enforced at submission time.
-- NullSchedulerTimer: clock starts at 0.0; advance(seconds); fire(handle).
+- DeadlineOnlyTimer: real clock, never calls back; deadlines are checked
+  when an answer is submitted.
+- NullSchedulerTimer: starts at 0.0; advance(seconds); fire(handle).
 
 Edge cases
 ----------
@@ -32,13 +33,12 @@ Edge cases
 Known limitations
 -----------------
 - No repeating timers.
-- NullSchedulerTimer does not fire callbacks automatically when
-  advance() passes a deadline; tests call fire().
+- NullSchedulerTimer never fires callbacks on its own when advance()
+  passes a deadline; callers use fire().
 
 Examples
 --------
 - timer = NullSchedulerTimer(); handle = timer.schedule(12000, cb); timer.fire(handle)
-- MonotonicTimer(schedule_fn=window.after, cancel_fn=window.after_cancel)
 """
 from __future__ import annotations
 

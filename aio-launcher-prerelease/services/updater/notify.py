@@ -33,11 +33,10 @@ Known limitations
 -----------------
 - The Yes/No prompt before downloading is raised from
   gui_integration.py, not here.
-- The context argument is accepted but does not change behavior.
 
 Examples
 --------
-- maybe_notify_result(app, result, context="check")
+- maybe_notify_result(app, result)
 """
 
 from __future__ import annotations
@@ -87,16 +86,8 @@ def _format_changelog_section(changelog: str) -> str:
     return f"\n\nWhat's new:\n{changelog}"
 
 
-def maybe_notify_result(app: Any, result: dict[str, Any], *, context: str) -> None:
-    """
-    Inspects a check_and_maybe_install()/startup_update_check() result
-    dict and shows an appropriate notification, if any is warranted.
-
-    context is "check" (a check-only pass that did not install
-    anything) or "install" (an install, or exe-swap staging, actually
-    happened). Currently unused for branching here, but kept for
-    callers/logging that want to distinguish the two.
-    """
+def maybe_notify_result(app: Any, result: dict[str, Any]) -> None:
+    """Show the popup a check or install result warrants, if any."""
     status = str(result.get("status", ""))
     remote_version = str(result.get("remote_version", ""))
     message = str(result.get("message", ""))

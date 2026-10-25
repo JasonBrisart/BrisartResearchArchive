@@ -1,27 +1,26 @@
 """
-File: gui/widgets/card.py
+File: gui/components/card.py
 
 Purpose
 -------
-Provide Card, the standard padded panel used across the GUI: dashboard
-tiles, framework tiles, settings sections, and TFL trial blocks.
+Provide Card, the standard padded panel used across the GUI and the TFL
+screens.
 
 Communication / relationships
 -----------------------------
 - Used by gui/components/page_helpers.add_card(),
-  gui/pages/frameworks_page.py, gui/pages/settings_page.py, and
-  frameworks/TFL/options_screen.py and screen.py.
+  gui/pages/settings_page.py, gui/pages/tfl_page.py,
+  frameworks/TFL/gui_options.py, and frameworks/TFL/gui_screens.py.
 - The "Card.TFrame" style is defined in gui/theme.apply_theme().
 
 Settings / parameters
 ---------------------
-- Default style "Card.TFrame" and padding (16, 14); keyword arguments
-  passed by the caller override both.
+- Default style "Card.TFrame" and padding (16, 14); caller keyword
+  arguments override both.
 
 Edge cases
 ----------
-- If apply_theme() has not run, the frame falls back to the default ttk
-  look.
+- Before apply_theme() runs, the frame uses the default ttk look.
 
 Known limitations
 -----------------
@@ -29,10 +28,8 @@ Known limitations
 
 Examples
 --------
-- card = Card(root)
-- card.grid(row=2, column=0, sticky="ew")
+- card = Card(root); card.grid(row=2, column=0, sticky="ew")
 """
-
 from __future__ import annotations
 
 from tkinter import ttk
@@ -46,4 +43,3 @@ class Card(ttk.Frame):
 
 
 __all__ = ["Card"]
-

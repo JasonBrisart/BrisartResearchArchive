@@ -3,15 +3,15 @@ File: gui/theme.py
 
 Purpose
 -------
-Define the central visual theme: APP_NAME, APP_VERSION (read from
-version.txt), the COLORS palette, font constants, and apply_theme(),
-which configures every ttk style used by the app.
+Define the visual theme: APP_NAME, APP_VERSION, the COLORS palette,
+font constants, and apply_theme(), which configures every ttk style the
+GUI and the TFL screens use.
 
 Communication / relationships
 -----------------------------
-- Imported by gui/main_window.py, gui/components/, gui/pages/,
-  gui/widgets/, and frameworks/TFL/ GUI modules (with fallbacks).
-- APP_VERSION is shown on the Settings page.
+- Imported by gui/main_window.py, gui/components/, gui/pages/, and the
+  frameworks/TFL/gui_*.py screens.
+- APP_VERSION comes from version.py and is shown on the Settings page.
 
 Settings / parameters
 ---------------------
@@ -23,13 +23,10 @@ Settings / parameters
 
 Edge cases
 ----------
-- A missing or unreadable version.txt gives "Unknown Version".
 - If "clam" is unavailable, the platform default theme is kept.
 
 Known limitations
 -----------------
-- The version is read once at import; restart after an update to see
-  the new number.
 - Only the dark palette exists.
 - Segoe UI and Consolas are Windows fonts; other systems substitute.
 
@@ -38,19 +35,13 @@ Examples
 - apply_theme(root)
 - COLORS["accent"]
 """
-
 import tkinter as tk
-from pathlib import Path
 from tkinter import ttk
+
+from version import DISPLAY_VERSION
+
 APP_NAME = "Brisart Research Archive"
-def load_version():
-    try:
-        root = Path(__file__).resolve().parents[1]
-        version_file = root / "version.txt"
-        return version_file.read_text(encoding="utf-8").strip()
-    except Exception:
-        return "Unknown Version"
-APP_VERSION = load_version()
+APP_VERSION = DISPLAY_VERSION
 COLORS = {
     "bg": "#070b14",
     "panel": "#0c1320",
@@ -70,6 +61,8 @@ FONT_SMALL = ("Segoe UI", 9)
 FONT_TITLE = ("Segoe UI", 20, "bold")
 FONT_HEAD = ("Segoe UI", 13, "bold")
 FONT_MONO = ("Consolas", 10)
+
+
 def apply_theme(root: tk.Tk):
     style = ttk.Style(root)
     try:

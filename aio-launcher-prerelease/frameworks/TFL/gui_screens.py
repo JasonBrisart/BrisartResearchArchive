@@ -1,39 +1,41 @@
 """
-File: frameworks/TFL/screen.py
+File: frameworks/TFL/gui_screens.py
 
 Purpose
 -------
-Render the TFL trial screens for the GUI. Pure presentation: it shows
-the engine's current stage, forwards input to engine methods, and never
-writes files or decides protocol behavior.
+Render the TFL trial screens. Pure presentation: show the engine's
+current stage, forward input to engine methods, and never write files or
+decide protocol behavior.
 
 Communication / relationships
 -----------------------------
-- Called through TFLGuiSession.render() in frameworks/TFL/session_gui.py.
-- Reads session.engine; after every accepted input calls
-  session.after_input(), which handles completion and redraws.
-- Uses gui/widgets/card.py with a fallback.
+- render_trial(session) is called by frameworks/TFL/gui_session.TFLGuiSession.render().
+- Reads session.engine; after each input calls session.after_input(),
+  which handles completion and redraws.
+- Shows session.save_status() in the footer of every trial screen.
+- Uses gui/components/card.py.
 
 Settings / parameters
 ---------------------
-- Stage screens: cue (cue, prior, previous feedback, View Stimulus),
+- Screens: cue (previous feedback, cue, prior, View Stimulus),
   prediction, affect (typed 0-100 entry), perturbation, post-perturbation
   probe, behavioral choice, content probe (with this trial's feedback),
-  completion (final feedback and save location).
-- Countdown label refreshes every 250 ms when the timer is on.
+  completion (final feedback, save location, any save problems).
+- The countdown label refreshes every 250 ms while the response timer
+  is on.
 
 Edge cases
 ----------
 - Invalid affect text shows the reference message and stays on the
   stage.
-- The countdown loop stops as soon as its label is destroyed.
-- Enter activates View Stimulus, the affect Continue, and the
-  perturbation Continue.
+- The countdown stops as soon as its label is destroyed.
+- Enter activates View Stimulus, affect Continue, and perturbation
+  Completed.
 
 Known limitations
 -----------------
 - The screen is rebuilt on every stage change.
-- Requires Tk; headless code paths never import this module.
+- Requires Tk; the CLI and tests never import this module.
 
 Examples
 --------
@@ -48,14 +50,7 @@ from typing import Any
 from . import settings
 from .config import format_run_mode
 
-try:
-    from gui.widgets.card import Card
-except ImportError:
-    class Card(ttk.Frame):
-        def __init__(self, parent, *args, **kwargs):
-            kwargs.setdefault("style", "Card.TFrame")
-            kwargs.setdefault("padding", (16, 14))
-            super().__init__(parent, *args, **kwargs)
+from gui.components.card import Card
 
 WRAP = 860
 
@@ -114,7 +109,7 @@ def _tick(session, variable, label) -> None:
 def _affect_form(session, parent) -> None:
     form = Card(parent)
     form.pack(fill="x", pady=10)
-    ttk.Label(form, text="Affect intensity for this prediction (0\u2013100)",
+    ttk.Label(form, text=settings.AFFECT_PROMPT.rstrip(": "),
               style="CardTitle.TLabel").pack(anchor="w")
     row = ttk.Frame(form, style="Card.TFrame")
     row.pack(anchor="w", pady=(8, 0))
@@ -152,6 +147,8 @@ def render_trial(session: Any) -> None:
         if engine.last_feedback:
             info_block(root, "Final trial feedback", engine.last_feedback)
         info_block(root, "Session saved", session.completion_message)
+        if engine.save_errors:
+            info_block(root, "Save problems", "\n".join(engine.save_errors[-5:]))
         ttk.Button(root, text="Close", command=session.close_windows).pack(anchor="e", pady=(12, 0))
         return
 
@@ -204,6 +201,7 @@ def render_trial(session: Any) -> None:
     actions = ttk.Frame(root, style="Bg.TFrame")
     actions.pack(fill="x", pady=(10, 0))
     ttk.Button(actions, text="Cancel Run", command=session.cancel).pack(side="left")
+    ttk.Label(actions, text=session.save_status(), style="Muted.TLabel").pack(side="right")
 
 
 __all__ = ["render_trial", "info_block"]

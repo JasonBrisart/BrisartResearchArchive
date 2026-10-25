@@ -3,32 +3,35 @@ File: frameworks/TFL/stimuli.py
 
 Purpose
 -------
-Provide the embedded 60-item TFL stimulus library, matching the
-02_Execution reference CSV text exactly, plus validation and the
-baseline stimulus limit.
+Provide the embedded 60-item TFL stimulus library, character-for-
+character identical to the 02_Execution reference tfl_stimuli.csv, plus
+validation and the baseline 20-item limit.
 
 Communication / relationships
 -----------------------------
-- Used by session_gui.py, cli_runner.py, app/headless.py, framework.py,
-  and the tests.
+- Used by frameworks/TFL/headless.py, frameworks/TFL/gui_session.py, frameworks/TFL/cli_runner.py, and
+  the tests.
 - Reads BASE_STIMULUS_LIMIT from frameworks/TFL/settings.py.
 
 Settings / parameters
 ---------------------
-- REQUIRED_STIMULUS_FIELDS: stimulus_id, cue, ambiguous_text,
-  interpretation_a, interpretation_b.
-- Only the first 20 stimuli are used unless enable_extra_stimuli is on.
+- Required fields: stimulus_id, cue, ambiguous_text, interpretation_a,
+  interpretation_b.
+- The first 20 stimuli are used unless enable_extra_stimuli is on.
 
 Edge cases
 ----------
-- validate_stimuli() rejects non-lists, empty lists, non-dictionary rows,
-  blank fields, and duplicate IDs.
-- New dictionaries are returned so callers cannot mutate the library.
+- validate_stimuli() rejects non-lists, empty lists, non-dictionary
+  rows, blank fields, and duplicate IDs.
+- load_stimuli() returns fresh dictionaries, so callers cannot mutate
+  the library.
+- Seven stimuli (S014, S024, S032, S037, S042, S050, S059) use
+  typographic apostrophes exactly as the reference does.
 
 Known limitations
 -----------------
-- Content is edited in source; there is no external stimulus file, so
-  the runtime has no file-system dependency for stimuli.
+- Stimuli are edited in this file; there is no external stimulus file
+  to load or lose.
 
 Examples
 --------
@@ -46,9 +49,6 @@ REQUIRED_STIMULUS_FIELDS = (
     "interpretation_b",
 )
 
-# Text matches 02_Execution TFL/stimuli/tfl_stimuli.csv exactly,
-# including the typographic apostrophes in S014, S024, S032, S037,
-# S042, S050, and S059.
 EMBEDDED_STIMULI = [
     {'stimulus_id': 'S001', 'cue': 'context_person', 'ambiguous_text': 'Jordan saw Alex with the binoculars.', 'interpretation_a': 'Jordan used the binoculars.', 'interpretation_b': 'Alex had the binoculars.'},
     {'stimulus_id': 'S002', 'cue': 'context_message', 'ambiguous_text': "Taylor said Morgan's reply was cold.", 'interpretation_a': "Morgan's reply was emotionally distant.", 'interpretation_b': "Morgan's reply referred to low temperature."},
@@ -112,8 +112,6 @@ EMBEDDED_STIMULI = [
     {'stimulus_id': 'S060', 'cue': 'context_event', 'ambiguous_text': 'Blake said the task became easier later.', 'interpretation_a': 'It became easier later.', 'interpretation_b': 'Blake commented later.'},
 ]
 
-FALLBACK_STIMULI = EMBEDDED_STIMULI
-
 
 def normalize_stimulus_row(row: dict, row_number: int) -> dict:
     if not isinstance(row, dict):
@@ -145,7 +143,6 @@ def load_stimuli() -> list[dict]:
 
 
 def apply_stimulus_limit(stimuli: list[dict], config: dict) -> list[dict]:
-    """Reference rule: first BASE_STIMULUS_LIMIT unless extra stimuli are on."""
     validated = validate_stimuli(list(stimuli))
     if config.get("enable_extra_stimuli", False):
         return validated

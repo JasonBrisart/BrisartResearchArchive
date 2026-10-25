@@ -4,7 +4,7 @@ File: tools/envinfo.py
 Purpose
 -------
 Print a one-shot environment snapshot for bug reports. Paste the output
-into the Environment field of a docs/KNOWN_ISSUES.md entry.
+into the Environment section of a bug report.
 
 Communication / relationships
 -----------------------------

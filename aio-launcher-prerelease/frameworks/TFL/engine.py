@@ -4,62 +4,70 @@ File: frameworks/TFL/engine.py
 Purpose
 -------
 Run one TFL session as a front-end-independent state machine that
-reproduces the 02_Execution trial procedure. The GUI and the CLI both
-drive this one engine; neither owns protocol logic.
+reproduces the 02_Execution trial procedure, and hand a complete
+snapshot of the session to the save hook after every single answer.
+The GUI and the CLI both drive this one engine; neither owns protocol
+logic.
 
 Communication / relationships
 -----------------------------
-- Uses TimerInterface from engine/timing.py.
-- Uses feedback.determine_feedback(), feedback_text(), and
-  make_perturbation_instruction().
-- Driven by frameworks/TFL/screen.py + session_gui.py (GUI),
-  frameworks/TFL/cli_runner.py (console), app/headless.py and tests.
-- Rows go to the on_trial_recorded hook (frameworks/TFL/output.py).
+- Uses TimerInterface from frameworks/TFL/timing.py and frameworks/TFL/feedback.py.
+- Driven by frameworks/TFL/gui_screens.py through frameworks/TFL/gui_session.py, by
+  frameworks/TFL/cli_runner.py, and by frameworks/TFL/headless.py in tests.
+- on_progress(rows) is normally frameworks/TFL/output.SessionWriter.save.
+- on_stage_advanced() lets the GUI redraw after a timer expiry.
 
 Settings / parameters
 ---------------------
 - Stage order per trial: cue -> prediction -> affect ->
   [perturbation -> post_perturbation_probe] -> behavioral_choice ->
-  [content_probe] -> row recorded -> next cue / completion.
-- Feedback is computed after behavioral_choice and exposed as
+  [content_probe] -> row complete -> next cue or completion.
+- Feedback is computed after the behavioral choice and exposed as
   current_feedback (shown with the content probe) and last_feedback
-  (shown on the next cue screen or the completion screen). There is no
+  (shown on the next cue or completion screen). There is no
   acknowledgement step, as in the reference.
-- Timer: only when config["enable_response_timer"] is true; applies to
-  prediction and behavioral_choice for trial_duration_sec seconds.
+- Saving: after every accepted answer and every timeout, on_progress
+  receives all completed rows plus the current trial as an
+  "in_progress" row.
+- Timer: only with enable_response_timer; applies to prediction and
+  behavioral_choice for trial_duration_sec seconds.
 
 Edge cases
 ----------
-- Invalid choices and invalid affect return False and do not advance.
-- Affect follows the reference: int(text.strip()) between 0 and 100;
-  "50.5", "", and booleans are rejected.
-- Submissions at or after the deadline are recorded as timeouts.
+- Invalid choices and invalid affect return False, do not advance, and
+  do not save.
+- Affect follows the reference: int(text.strip()) from 0 to 100; "50.5",
+  blanks, and booleans are rejected.
+- A submission at or after the deadline is recorded as a timeout.
 - Timer generations increase for the engine's lifetime, so a stale
-  callback can never match a later stage.
-- Hook exceptions are swallowed so a failing writer or redraw never
-  stops a session; record_errors keeps the messages.
+  callback can never act on a later stage.
+- Save-hook exceptions are recorded in save_errors and never stop the
+  session. Because every save is a full snapshot, the next successful
+  save restores anything a failed save missed.
 - finish_session() is idempotent.
 
 Known limitations
 -----------------
-- Reaction times use the injected timer (monotonic), rounded to four
-  decimals; the reference used time.time().
+- Reaction times use the injected timer (monotonic clock), rounded to
+  four decimals; the reference used time.time().
+- Cue and perturbation "continue" steps are not answers and do not
+  trigger a save.
 
 Examples
 --------
-- engine = TFLSessionEngine(config, trials, NullSchedulerTimer()); engine.start()
-- engine.continue_cue(); engine.submit_prediction("A"); engine.submit_affect("60")
+- engine = TFLSessionEngine(config, trials, NullSchedulerTimer(), on_progress=writer.save)
+- engine.start(); engine.continue_cue(); engine.submit_prediction("A")
 """
 from __future__ import annotations
 
 from typing import Any, Callable
 
-from engine.timing import TimerInterface
-
 from . import feedback
-from .config import normalize_timer_seconds
+from .timing import TimerInterface
 
 TIMED_STAGES = {"prediction", "behavioral_choice"}
+CHOICES_AB = {"A", "B"}
+CHOICES_ABU = {"A", "B", "U"}
 
 
 class TFLSessionEngine:
@@ -69,27 +77,27 @@ class TFLSessionEngine:
         trials: list[dict],
         timer: TimerInterface,
         *,
-        on_trial_recorded: Callable[[dict, list[dict]], None] | None = None,
+        on_progress: Callable[[list[dict]], None] | None = None,
         on_stage_advanced: Callable[[], None] | None = None,
     ):
         self.config = dict(config)
         self.trials = [dict(trial) for trial in trials]
         self.timer = timer
-        self.on_trial_recorded = on_trial_recorded
+        self.on_progress = on_progress
         self.on_stage_advanced = on_stage_advanced
         self.timer_enabled = bool(self.config.get("enable_response_timer", False))
-        self.timer_seconds = (
-            normalize_timer_seconds(self.config.get("trial_duration_sec")) if self.timer_enabled else None
-        )
+        self.timer_seconds = int(self.config.get("trial_duration_sec", 12)) if self.timer_enabled else None
         self.index = 0
         self.rows: list[dict] = []
-        self.record_errors: list[str] = []
+        self.save_errors: list[str] = []
+        self.saves = 0
         self.stage = "idle"
         self.completed = False
         self.cancelled = False
         self.response: dict[str, Any] = {}
         self.current_feedback = ""
         self.last_feedback = ""
+        self._answered = False
         self._stage_started_at: float | None = None
         self._deadline_at: float | None = None
         self._timer_handle: object | None = None
@@ -107,7 +115,7 @@ class TFLSessionEngine:
         return self.stage
 
     def progress_label(self) -> str:
-        return f"{self.index + 1} / {len(self.trials)}"
+        return f"{min(self.index + 1, len(self.trials))} / {len(self.trials)}"
 
     def completion_count(self) -> int:
         return self._completion_count
@@ -116,11 +124,16 @@ class TFLSessionEngine:
         trial = self.current_trial or {}
         return feedback.make_perturbation_instruction(trial.get("perturbation_type", ""))
 
-    def seconds_remaining(self, now: float | None = None) -> int | None:
+    def seconds_remaining(self) -> int | None:
         if self.stage not in TIMED_STAGES or self._deadline_at is None:
             return None
-        current = self.timer.now() if now is None else now
-        return max(0, int((self._deadline_at - current) + 0.999))
+        return max(0, int((self._deadline_at - self.timer.now()) + 0.999))
+
+    def snapshot(self) -> list[dict]:
+        rows = list(self.rows)
+        if self._answered and not self.completed and self.current_trial is not None:
+            rows.append(self.build_output_row("in_progress"))
+        return rows
 
     # ---------------------------------------------------------- lifecycle
     def start(self) -> None:
@@ -148,19 +161,12 @@ class TFLSessionEngine:
 
     def _begin_trial(self) -> None:
         self.response = {
-            "prediction": "",
-            "prediction_rt": "",
-            "prediction_timed_out": False,
-            "affect": "",
-            "behavioral_choice": "",
-            "behavioral_rt": "",
-            "behavioral_timed_out": False,
-            "post_perturbation_probe": "",
-            "perturbation_match_prediction": "",
-            "content_probe": "",
-            "correct_answer": "",
-            "contradiction": "",
+            "prediction": "", "prediction_rt": "", "prediction_timed_out": False,
+            "affect": "", "behavioral_choice": "", "behavioral_rt": "", "behavioral_timed_out": False,
+            "post_perturbation_probe": "", "perturbation_match_prediction": "",
+            "content_probe": "", "correct_answer": "", "contradiction": "",
         }
+        self._answered = False
         self.current_feedback = ""
         self._begin_stage("cue")
 
@@ -173,8 +179,7 @@ class TFLSessionEngine:
             self._deadline_at = self._stage_started_at + self.timer_seconds
             generation = self._generation
             self._timer_handle = self.timer.schedule(
-                int(self.timer_seconds * 1000),
-                lambda: self.handle_timeout(stage, generation),
+                int(self.timer_seconds * 1000), lambda: self.handle_timeout(stage, generation),
             )
 
     def _invalidate_timer(self) -> None:
@@ -191,15 +196,17 @@ class TFLSessionEngine:
             return ""
         return round(self.timer.now() - self._stage_started_at, 4)
 
-    def _notify(self) -> None:
-        if self.on_stage_advanced is None:
+    def _save(self) -> None:
+        if self.on_progress is None:
             return
+        rows = self.snapshot()
         try:
-            self.on_stage_advanced()
-        except Exception:
-            pass
+            self.on_progress(rows)
+            self.saves += 1
+        except Exception as exc:
+            self.save_errors.append(f"save of {len(rows)} row(s) failed: {type(exc).__name__}: {exc}")
 
-    # ---------------------------------------------------------- submissions
+    # ---------------------------------------------------------- answers
     def continue_cue(self) -> bool:
         if not self._active("cue"):
             return False
@@ -219,12 +226,14 @@ class TFLSessionEngine:
             self._expire(stage)
             return False
         value = str(choice).strip().upper()
-        if value not in {"A", "B"}:
+        if value not in CHOICES_AB:
             return False
         elapsed = self._elapsed()
+        self._answered = True
         if stage == "prediction":
             self.response.update(prediction=value, prediction_rt=elapsed)
             self._begin_stage("affect")
+            self._save()
         else:
             self.response.update(behavioral_choice=value, behavioral_rt=elapsed)
             self._after_behavioral_choice()
@@ -234,13 +243,19 @@ class TFLSessionEngine:
         if not self._active(stage) or generation != self._generation:
             return False
         self._expire(stage)
-        self._notify()
+        if self.on_stage_advanced is not None:
+            try:
+                self.on_stage_advanced()
+            except Exception:
+                pass
         return True
 
     def _expire(self, stage: str) -> None:
+        self._answered = True
         if stage == "prediction":
             self.response.update(prediction="", prediction_rt="", prediction_timed_out=True)
             self._begin_stage("affect")
+            self._save()
         else:
             self.response.update(behavioral_choice="", behavioral_rt="", behavioral_timed_out=True)
             self._after_behavioral_choice()
@@ -255,10 +270,8 @@ class TFLSessionEngine:
         if not 0 <= number <= 100:
             return False
         self.response["affect"] = number
-        if self.current_trial.get("perturbation_trial"):
-            self._begin_stage("perturbation")
-        else:
-            self._begin_stage("behavioral_choice")
+        self._begin_stage("perturbation" if self.current_trial.get("perturbation_trial") else "behavioral_choice")
+        self._save()
         return True
 
     def continue_perturbation(self) -> bool:
@@ -271,13 +284,14 @@ class TFLSessionEngine:
         if not self._active("post_perturbation_probe"):
             return False
         value = str(choice).strip().upper()
-        if value not in {"A", "B", "U"}:
+        if value not in CHOICES_ABU:
             return False
         self.response["post_perturbation_probe"] = value
         prediction = self.response["prediction"]
-        if value in {"A", "B"} and prediction in {"A", "B"}:
+        if value in CHOICES_AB and prediction in CHOICES_AB:
             self.response["perturbation_match_prediction"] = value == prediction
         self._begin_stage("behavioral_choice")
+        self._save()
         return True
 
     def _after_behavioral_choice(self) -> None:
@@ -288,21 +302,22 @@ class TFLSessionEngine:
         self.current_feedback = feedback.feedback_text(trial["feedback_level"], prediction, correct_answer)
         if trial.get("probe_trial") or trial.get("delayed_reentry"):
             self._begin_stage("content_probe")
+            self._save()
         else:
-            self._record_and_advance()
+            self._complete_trial()
 
     def submit_content_probe(self, choice: Any) -> bool:
         if not self._active("content_probe"):
             return False
         value = str(choice).strip().upper()
-        if value not in {"A", "B", "U"}:
+        if value not in CHOICES_ABU:
             return False
         self.response["content_probe"] = value
-        self._record_and_advance()
+        self._complete_trial()
         return True
 
     # ---------------------------------------------------------- recording
-    def build_output_row(self) -> dict:
+    def build_output_row(self, status: str = "complete") -> dict:
         trial, r = self.current_trial, self.response
         return {
             "trial_id": trial["trial_id"],
@@ -335,17 +350,15 @@ class TFLSessionEngine:
             "response_timer_sec": self.timer_seconds if self.timer_enabled else "",
             "prediction_timed_out": r["prediction_timed_out"],
             "behavioral_timed_out": r["behavioral_timed_out"],
+            "session_label": self.config.get("session_label", ""),
+            "random_seed": self.config.get("random_seed", ""),
+            "trial_status": status,
         }
 
-    def _record_and_advance(self) -> None:
+    def _complete_trial(self) -> None:
         self._invalidate_timer()
-        row = self.build_output_row()
-        self.rows.append(row)
-        if self.on_trial_recorded is not None:
-            try:
-                self.on_trial_recorded(row, self.rows)
-            except Exception as exc:
-                self.record_errors.append(f"trial {row['trial_id']}: {type(exc).__name__}: {exc}")
+        self.rows.append(self.build_output_row("complete"))
+        self._answered = False
         self.last_feedback = self.current_feedback
         self.current_feedback = ""
         self.index += 1
@@ -353,6 +366,7 @@ class TFLSessionEngine:
             self.finish_session()
         else:
             self._begin_trial()
+        self._save()
 
 
 __all__ = ["TFLSessionEngine", "TIMED_STAGES"]
