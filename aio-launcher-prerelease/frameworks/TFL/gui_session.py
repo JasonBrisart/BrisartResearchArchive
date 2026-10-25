@@ -24,7 +24,7 @@ Settings / parameters
 - Output folder: app.tfl_output_dir() (the live Output Directory
   setting) when an app is present, otherwise config/runtime's saved
   setting.
-- Window 1100x900, minimum 900x650.
+- Window 1000x700, minimum 800x600; options scroll vertically.
 
 Edge cases
 ----------
@@ -87,8 +87,8 @@ class TFLGuiSession:
             parent.withdraw()
         self.win = tk.Toplevel(parent)
         self.win.title("Temporal Feedback Loop")
-        self.win.geometry("1100x900")
-        self.win.minsize(900, 650)
+        self.win.geometry("1000x700")
+        self.win.minsize(800, 600)
         self.win.configure(bg=COLORS["bg"])
         self.win.protocol("WM_DELETE_WINDOW", self.cancel)
         self.win.lift()
@@ -127,7 +127,7 @@ class TFLGuiSession:
     def save_status(self) -> str:
         if self.writer is None or self.engine is None:
             return ""
-        if self.engine.save_errors:
+        if self.engine.last_save_error:
             return f"Last save failed. Saving to {self.writer.path.name}"
         return f"Saved after every answer to {self.writer.path.name}"
 

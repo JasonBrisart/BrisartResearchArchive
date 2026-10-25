@@ -560,6 +560,41 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(cli.main(["analyze", "--file", str(Path(APPDATA) / "missing.csv")]), 1)
 
 
+class RegressionTests(unittest.TestCase):
+    def test_zero_affect_is_usable_in_memory(self):
+        self.assertEqual(analysis.completion_gate([
+            {"prediction": "A", "behavioral_choice": "B", "affect": 0}
+        ]), (1, 0, True))
+
+    def test_save_error_clears_after_recovery(self):
+        calls = []
+        def save(rows):
+            calls.append(rows)
+            if len(calls) == 1:
+                raise PermissionError("locked")
+        engine, _ = single_trial_engine(on_progress=save)
+        engine.continue_cue()
+        engine.submit_prediction("A")
+        self.assertTrue(engine.last_save_error)
+        engine.submit_affect("0")
+        self.assertEqual(engine.last_save_error, "")
+        self.assertEqual(len(engine.save_errors), 1)
+
+    def test_invalid_startup_choice_does_not_start_run(self):
+        answers = iter(["invalid", "Q"])
+        output = []
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertIsNone(cli_runner.run_cli(lambda prompt: next(answers), output.append,
+                                                output_dir=directory))
+            self.assertEqual(list(Path(directory).iterdir()), [])
+        self.assertIn("Invalid choice. Press ENTER, O, or Q.", output)
+
+    def test_renamed_entrypoint_supports_cli_without_tk(self):
+        self.assertFalse((ROOT / "main.py").exists())
+        result = subprocess.run([sys.executable, "run.py", "--cli", "where"],
+                                cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
 class IsolationTests(unittest.TestCase):
     def test_gui_adapter_with_widget_doubles(self):
         result = subprocess.run([sys.executable, str(ROOT / "tests" / "gui_doubles_check.py")], cwd=ROOT,

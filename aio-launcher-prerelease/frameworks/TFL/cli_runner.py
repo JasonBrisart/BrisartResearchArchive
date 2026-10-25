@@ -30,6 +30,7 @@ Edge cases
   option values print the reason and leave the option unchanged.
 - With the timer on, an answer typed after the limit is recorded as a
   timeout, because blocking console input cannot be interrupted.
+- Unknown startup selections repeat the menu rather than starting a run.
 - Ctrl+C or end-of-input stops the run; every answer already given is
   in the CSV.
 - A failed save is printed as a warning immediately; the run continues.
@@ -239,7 +240,9 @@ def run_cli(
             if selection == "O":
                 config = options_menu(config, input_fn, say)
                 continue
-            break
+            if selection == "":
+                break
+            say("Invalid choice. Press ENTER, O, or Q.")
     except (KeyboardInterrupt, EOFError):
         say("\nTFL run cancelled before it started.")
         return None

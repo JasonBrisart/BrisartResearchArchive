@@ -3,6 +3,28 @@ All notable changes to Brisart Research Archive are documented here.
 
 ---
 
+## [0.9.5 ALPHA] - 2026-10-25
+
+### Changed: application entry point
+- `main.py` is renamed to `run.py`. `python run.py` launches the GUI and `python run.py --cli ...` forwards to the unchanged command-line entry point. Launcher examples in `cli.py` and `gui/main_window.py` now use the new name. A subprocess regression checks `run.py --cli where` without loading the GUI.
+- `services/updater/constants.py` adds `main.py` to the obsolete-file list. The existing updater deletes it after backup when that updater version performs an installation.
+
+### Fixed: TFL options scrolling
+- New `gui/components/scroll_frame.py` embeds a content frame in a Canvas and connects a permanently displayed vertical ttk Scrollbar in both directions. Content size updates the scroll region; viewport size updates the embedded frame width.
+- `frameworks/TFL/gui_options.py` places Run Options and Current Settings in a single vertically stacked scrollable body. Restore Default Settings, Cancel, Start Experiment, and validation messages remain outside that body. This avoids the former side-by-side minimum-width pressure.
+- Wheel handlers are attached to the owning Toplevel, accept events only from descendants of this scrolling frame, handle MouseWheel and Linux Button-4/Button-5 events, and do not move a fully visible body. Destruction removes only this instance's binding IDs.
+- `frameworks/TFL/gui_session.py` changes the initial window from 1100x900 to 1000x700 and the minimum from 900x650 to 800x600. Options no longer depend on a 900-pixel-tall display.
+- `gui/main_window.py` now verifies that the pointer target belongs to the active page canvas before scrolling it. Wheel activity in TFL or another window no longer scrolls the Archive page behind it. The widget-double check covers the unrelated-target case.
+- An unreadable Tk option variable now produces a validation error instead of being silently skipped by `gui_options._read_controls()`.
+
+### Fixed: additional reproducible defects
+- `frameworks/TFL/engine.py` tracks `last_save_error` independently of the historical `save_errors` list and clears it after a successful save. `gui_session.save_status()` uses that current status, so a recovered save no longer leaves the footer permanently claiming the last save failed. The regression injects a failed prediction save followed by a successful affect save and confirms that history remains available.
+- `frameworks/TFL/cli_runner.py` rejects unrecognized startup-menu input and repeats the menu. Previously any selection other than O or Q started a run. The regression enters an invalid selection followed by Q and confirms no session file is created.
+- `frameworks/TFL/analysis.py` no longer treats numeric affect `0` as blank in `completion_gate()`. CSV string `"0"` already worked; this corrects callers supplying in-memory numeric rows. The reference threshold formula remains unchanged.
+- `tests/test_tfl.py` adds four regression tests. `tests/gui_doubles_check.py` supplies Toplevel lookup in its widget double and adds scrolling lifecycle assertions.
+
+---
+
 ## [0.9.4 ALPHA] - 2026-10-24
 
 ### Release overview

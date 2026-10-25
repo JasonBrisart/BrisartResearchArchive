@@ -32,9 +32,8 @@ Edge cases
 
 Known limitations
 -----------------
-- The option list does not scroll. The TFL window opens at 1100x900 so
-  every option is visible; on screens shorter than that, maximize the
-  window. Native layout has not been checked on a real display.
+- The option body scrolls vertically; action buttons remain outside it.
+- Native rendering and touchpad delivery require testing on the target OS.
 
 Examples
 --------
@@ -47,6 +46,7 @@ from tkinter import ttk
 from typing import Any
 
 from gui.components.card import Card
+from gui.components.scroll_frame import ScrollFrame
 
 from . import settings
 from .config import OPTION_SPECS, default_mode_description, describe_current_options, restore_defaults, set_option
@@ -61,6 +61,7 @@ def _read_controls(session) -> list[str]:
         try:
             raw = [b for b, v in variable.items() if v.get()] if spec.kind == "blocks" else variable.get()
         except tk.TclError:
+            errors.append(f"{spec.label} could not be read. Check its value.")
             continue
         ok, message = set_option(session.config, spec.key, raw)
         if not ok:
@@ -137,18 +138,19 @@ def render_options(session: Any) -> None:
     ttk.Label(root, text="Default settings: " + " \u00b7 ".join(default_mode_description()),
               style="Muted.TLabel", wraplength=1000, justify="left").pack(anchor="w", pady=(4, 10))
 
-    body = ttk.Frame(root, style="Bg.TFrame")
-    body.pack(fill="both", expand=True)
-    body.grid_columnconfigure(0, weight=3)
-    body.grid_columnconfigure(1, weight=2)
+    viewport = ScrollFrame(root)
+    viewport.pack(fill="both", expand=True)
+    session.options_viewport = viewport
+    body = viewport.content
+    body.grid_columnconfigure(0, weight=1)
     options = Card(body)
-    options.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+    options.grid(row=0, column=0, sticky="nsew")
     ttk.Label(options, text="Run Options", style="CardTitle.TLabel").grid(row=0, column=0, columnspan=2, sticky="w")
     for index, spec in enumerate(OPTION_SPECS):
         _build_control(session, options, spec, 1 + index * 2)
 
     summary = Card(body)
-    summary.grid(row=0, column=1, sticky="nsew")
+    summary.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
     ttk.Label(summary, text="Current Settings", style="CardTitle.TLabel").pack(anchor="w")
     session.summary_var = tk.StringVar(master=session.win)
     ttk.Label(summary, textvariable=session.summary_var, style="CardMuted.TLabel", justify="left").pack(anchor="w", pady=(8, 0))

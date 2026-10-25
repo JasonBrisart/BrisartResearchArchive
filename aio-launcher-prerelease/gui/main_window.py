@@ -40,7 +40,7 @@ Known limitations
 
 Examples
 --------
-- python main.py
+- python run.py
 """
 from __future__ import annotations
 
@@ -129,7 +129,10 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         except (tk.TclError, AttributeError):
             target = None
         canvas = self._page_canvas
-        if widget_is_or_contains_text(target) or canvas is None:
+        ancestor = target
+        while ancestor is not None and ancestor is not canvas:
+            ancestor = getattr(ancestor, "master", None)
+        if ancestor is None or widget_is_or_contains_text(target) or canvas is None:
             return
         try:
             if not canvas.winfo_exists():

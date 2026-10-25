@@ -298,7 +298,7 @@ def report_response_timer(rows, columns) -> list[str]:
 def completion_gate(rows) -> tuple[int, int, bool]:
     usable = [r for r in rows if r.get("prediction") in {"A", "B"}
               and r.get("behavioral_choice") in {"A", "B"}
-              and str(r.get("affect", "") or "").strip()]
+              and r.get("affect") is not None and str(r.get("affect", "")).strip()]
     minimum = int(len(rows) * 0.8)
     return len(usable), minimum, len(usable) >= minimum
 

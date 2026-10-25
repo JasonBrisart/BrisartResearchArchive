@@ -83,6 +83,7 @@ ALLOWED_REMOTE_HOSTS = {
 # entry is a path relative to the application directory, using forward
 # slashes. Removal happens only after the pre-install backup is written.
 OBSOLETE_RELEASE_PATHS = (
+    "main.py",  # Renamed to run.py in 0.9.5.
     "config/tooling_catalog.py",
     "config/tooling_state.py",
     "gui/pages/tooling_page.py",

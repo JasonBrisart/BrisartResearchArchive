@@ -45,6 +45,7 @@ Edge cases
   session. Because every save is a full snapshot, the next successful
   save restores anything a failed save missed.
 - finish_session() is idempotent.
+- last_save_error clears on recovery; save_errors retains failure history.
 
 Known limitations
 -----------------
@@ -90,6 +91,7 @@ class TFLSessionEngine:
         self.index = 0
         self.rows: list[dict] = []
         self.save_errors: list[str] = []
+        self.last_save_error = ""
         self.saves = 0
         self.stage = "idle"
         self.completed = False
@@ -203,8 +205,10 @@ class TFLSessionEngine:
         try:
             self.on_progress(rows)
             self.saves += 1
+            self.last_save_error = ""
         except Exception as exc:
-            self.save_errors.append(f"save of {len(rows)} row(s) failed: {type(exc).__name__}: {exc}")
+            self.last_save_error = f"save of {len(rows)} row(s) failed: {type(exc).__name__}: {exc}"
+            self.save_errors.append(self.last_save_error)
 
     # ---------------------------------------------------------- answers
     def continue_cue(self) -> bool:

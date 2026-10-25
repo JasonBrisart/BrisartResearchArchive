@@ -48,6 +48,8 @@ class Widget:
         pass
 
     def __getattr__(self, name):
+        if name == "winfo_toplevel":
+            return lambda: self
         if name == "winfo_exists":
             return lambda *a, **k: True
         if name == "winfo_children":
@@ -170,3 +172,29 @@ app.on_close()
 assert first.writer.closed and first.engine.cancelled
 assert len(first.writer.path.read_text(encoding="utf-8").splitlines()) == 2
 print("GUI adapter double check passed")
+
+from types import SimpleNamespace
+from gui.components.scroll_frame import ScrollFrame
+from unittest.mock import Mock
+view = session.options_viewport
+view.canvas = Mock()
+view.canvas.yview.return_value = (0.0, 0.25)
+child = SimpleNamespace(master=view)
+assert view._wheel(SimpleNamespace(widget=child, delta=-120)) == "break"
+view.canvas.yview_scroll.assert_called_once_with(1, "units")
+view.canvas.reset_mock()
+assert view._wheel(SimpleNamespace(widget=SimpleNamespace(master=None), delta=-120)) is None
+view.canvas.yview_scroll.assert_not_called()
+view.canvas.yview.return_value = (0.0, 1.0)
+assert view._wheel(SimpleNamespace(widget=child, delta=-1)) == "break"
+view.canvas.yview_scroll.assert_not_called()
+view._top = Mock()
+view._bindings = [("<MouseWheel>", "binding-id")]
+view._cleanup(SimpleNamespace(widget=view))
+view._top.unbind.assert_called_once_with("<MouseWheel>", "binding-id")
+assert view._bindings == []
+app._page_canvas = Mock()
+app.winfo_containing = lambda *args: SimpleNamespace(master=None)
+app._on_global_mousewheel(SimpleNamespace(x_root=0, y_root=0, delta=-120))
+app._page_canvas.yview_scroll.assert_not_called()
+print("Scrollbar routing and binding cleanup checks passed")

@@ -1,5 +1,5 @@
 """
-File: main.py
+File: run.py
 
 Purpose
 -------
@@ -13,8 +13,8 @@ Communication / relationships
 
 Settings / parameters
 ---------------------
-- python main.py            GUI
-- python main.py --cli ...  command line (same arguments as cli.py)
+- python run.py            GUI
+- python run.py --cli ...  command line (same arguments as cli.py)
 
 Edge cases
 ----------
@@ -27,8 +27,8 @@ Known limitations
 
 Examples
 --------
-- python main.py
-- python main.py --cli run
+- python run.py
+- python run.py --cli run
 """
 import sys
 

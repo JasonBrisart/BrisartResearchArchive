@@ -14,7 +14,7 @@ Communication / relationships
 - Lists sessions through frameworks/TFL/output.list_session_files().
 - Resolves the output folder through config/runtime.get_tfl_output_dir(),
   the same saved setting the GUI uses.
-- main.py forwards "python main.py --cli ..." here.
+- run.py forwards "python run.py --cli ..." here.
 
 Settings / parameters
 ---------------------
@@ -37,7 +37,7 @@ Known limitations
 Examples
 --------
 - python cli.py run
-- python main.py --cli analyze --file tfl_output_2026-10-24_18-45-12.csv
+- python run.py --cli analyze --file tfl_output_2026-10-24_18-45-12.csv
 """
 from __future__ import annotations
 
