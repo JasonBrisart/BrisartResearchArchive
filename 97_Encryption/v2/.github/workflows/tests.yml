@@ -1,0 +1,35 @@
+name: Research Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile source, research, and test files
+        run: |
+          python -m py_compile \
+            brisart_security_primitives.py \
+            brisart_security_drbg.py \
+            brisart_security_envelope.py \
+            research/run_research_suite.py \
+            tests/generate_test_vectors.py \
+            tests/test_brisart_security.py \
+            tests/test_known_answer_vectors.py
+
+      - name: Run behavioral, boundary, and known-answer tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Run configurable research suite
+        run: python research/run_research_suite.py --config research/research_test_config.json

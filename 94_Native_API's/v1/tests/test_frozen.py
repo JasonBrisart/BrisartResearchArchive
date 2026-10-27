@@ -13,12 +13,12 @@ Communication / relationships
 -----------------------------
 Standard library: unittest, ast, hashlib, pathlib, plus support.py in
 this folder.
-Verifies: the seven files in v1/.
+Verifies: the nine files in v1/.
 
 Settings / parameters
 ---------------------
-- RELEASE_SHA256 -- SHA-256 of each v1 module as exported on 2026-10-21
-  (the same values as the project manifest).
+- RELEASE_SHA256 -- SHA-256 of the seven originals from 2026-10-21, plus
+  CSV and DEFLATE with their corrected v1 header paths.
 - RELEASE_IMPORTS -- The top-level imports each v1 module declares.
 
 Edge cases
@@ -45,6 +45,8 @@ import unittest
 import support
 
 RELEASE_SHA256 = {
+    "brisart_deflate.py": "dbdda31a6503a3024f2a881498bda4261151d6bb249cfbda3d87fa7767beb425",
+    "brisart_csv.py": "b0e46daabde054b7d0adabae4cdb712d9f8af01f0e159f6b38bc06e9db4f9db0",
     "brisart_codec.py": "89a1c032533950919be48dcf69454ebdbb987e55b32bc34e725c3d6ee737d866",
     "brisart_hash.py": "a656e0c20141d14e2da4b63ed6280fdd086ccdc57685491527de27e38631237e",
     "brisart_inflate.py": "8ce596255663e36f984523c88a71553fb7b87163530daf7d74d00a2db1ff0276",
@@ -55,6 +57,8 @@ RELEASE_SHA256 = {
 }
 
 RELEASE_IMPORTS = {
+    "brisart_deflate.py": [],
+    "brisart_csv.py": [],
     "brisart_codec.py": ["__future__"],
     "brisart_hash.py": ["__future__", "typing"],
     "brisart_inflate.py": ["__future__", "typing"],

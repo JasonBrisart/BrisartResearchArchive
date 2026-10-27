@@ -40,6 +40,8 @@ Examples
     python -B -m unittest discover -s v1/tests
 """
 
+import gc
+import time
 import importlib.util
 import os
 import random
@@ -84,3 +86,29 @@ def rng(label):
 
 def random_bytes(r, n):
     return bytes(r.getrandbits(8) for _ in range(n))
+
+
+def best_time(function, repeats=3):
+    best = None
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        for _ in range(repeats):
+            started = time.perf_counter()
+            function()
+            elapsed = time.perf_counter() - started
+            best = elapsed if best is None or elapsed < best else best
+    finally:
+        if was_enabled:
+            gc.enable()
+    return best
+
+
+def assert_roughly_linear(test, make_input, run, small=1, large=4, factor=3.0, floor=0.002):
+    """Fail if `large` times the input costs more than factor * large times the small input."""
+    small_input, large_input = make_input(small), make_input(large)
+    t_small = max(best_time(lambda: run(small_input)), floor)
+    t_large = best_time(lambda: run(large_input))
+    ratio = t_large / t_small
+    test.assertLess(ratio, (large / small) * factor,
+                    "growth ratio %.1f for %dx input suggests super-linear time" % (ratio, large // small))

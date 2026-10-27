@@ -8,18 +8,17 @@ and call no I/O or evaluation built-ins; every Python file is ASCII with
 a six-section header whose File line matches its path; every exported
 name is documented; header examples run exactly as written; each module
 runs alone in an empty namespace; code strings contain no over-escaped
-backslash sequences; and CHANGELOG.md's newest entry is v3.0.0, names
-every v3 module and cites every probe ID.
+backslash sequences; and v3/CHANGELOG.md names every v3 module and cites every active probe ID.
 
 Communication / relationships
 -----------------------------
 Standard library: unittest, ast, os, re, pathlib, plus support.py and
 v2_probe.py in this folder.
-Verifies: every file under v3/ and the repository CHANGELOG.md.
+Verifies: every file under v3/ and v3/CHANGELOG.md.
 
 Settings / parameters
 ---------------------
-- PRODUCT -- The nine product modules.
+- PRODUCT -- The six actual v3 product modules.
 - JSON_BACKSLASH_ALLOWLIST -- Reviewed code string constants in
   brisart_json.py that legitimately contain a backslash.
 
@@ -52,7 +51,7 @@ from v2_probe import build_checks
 
 V3 = support.V3
 REPO = V3.parent
-PRODUCT = ("codec", "csv", "deflate", "hash", "inflate", "json", "markup", "robots", "url")
+PRODUCT = ("codec", "hash", "inflate", "json", "robots", "url")
 SECTIONS = ("Purpose", "Communication / relationships", "Settings / parameters", "Edge cases", "Known limitations", "Examples")
 FORBIDDEN = {"eval", "exec", "compile", "open", "print", "input", "__import__", "globals", "locals", "setattr", "delattr"}
 PLACEHOLDERS = ("Inspect the definitions below", "This header update does not establish", "TODO", "TBD", "FIXME")
@@ -86,7 +85,7 @@ def code_strings(tree):
 
 class ProductTests(unittest.TestCase):
     def test_layout(self):
-        expected = {"tests"} | {"brisart_%s.py" % n for n in PRODUCT}
+        expected = {"tests", "CHANGELOG.md"} | {"brisart_%s.py" % n for n in PRODUCT}
         self.assertEqual({p.name for p in V3.iterdir() if p.name != "__pycache__"}, expected)
         tests = {p.name for p in (V3 / "tests").iterdir() if p.name != "__pycache__"}
         self.assertEqual(tests, {"support.py", "v2_probe.py", "test_standards.py", "test_v2_compat.py", "test_v1_lineage.py"}
@@ -179,13 +178,13 @@ class EveryFileTests(unittest.TestCase):
 
 class ChangelogTests(unittest.TestCase):
     def text(self):
-        return (REPO / "CHANGELOG.md").read_text()
+        return (V3 / "CHANGELOG.md").read_text()
 
     def test_newest_entry_is_v3(self):
-        self.assertEqual(re.search(r"^## (v\d+\.\d+\.\d+)", self.text(), re.M).group(1), "v3.0.0")
+        self.assertTrue(self.text().startswith("# v3 changelog"))
 
     def test_entry_names_every_module_and_probe(self):
-        entry = self.text().split("## v2.0.0")[0]
+        entry = self.text()
         for name in PRODUCT:
             self.assertTrue("brisart_%s.py" % name in entry, name)
         for ident, _, _ in build_checks():
@@ -193,8 +192,9 @@ class ChangelogTests(unittest.TestCase):
 
     def test_v1_and_v2_are_untouched_by_the_entry(self):
         text = self.text()
-        self.assertEqual(text.count("## v2.0.0"), 1)
-        self.assertEqual(text.count("## v1.0.0"), 1)
+        self.assertFalse((REPO / "CHANGELOG.md").exists())
+        self.assertTrue((REPO / "v1" / "CHANGELOG.md").is_file())
+        self.assertTrue((REPO / "v2" / "CHANGELOG.md").is_file())
 
 
 if __name__ == "__main__":

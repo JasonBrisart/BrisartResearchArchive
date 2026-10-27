@@ -11,7 +11,7 @@ Communication / relationships
 -----------------------------
 Standard library: unittest, importlib.util, os, plus support.py in this
 folder.
-Verifies: v3/ against v1/, using the probe file in v2/tests/. Skipped if
+Verifies: v3/ and explicitly v2 markup against v1/, using the probe file in v2/tests/. Skipped if
 v1/ or v2/tests/v1_probe.py is absent.
 
 Settings / parameters
@@ -37,6 +37,7 @@ Examples
 
 import importlib.util
 import os
+import types
 import unittest
 
 import support
@@ -52,7 +53,11 @@ class V1LineageTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("v3_lineage_v1_probe", PROBE)
         cls.probe = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.probe)
-        cls.v3 = cls.probe.load_version(support.V3, "lineage_v3")
+        cls.v3 = types.SimpleNamespace(**{
+            name: cls.probe._load_file(
+                "lineage_latest_" + name,
+                (REPO / "v2" if name == "markup" else support.V3) / ("brisart_%s.py" % name))
+            for name in cls.probe.NAMES})
         cls.checks = cls.probe.build_checks(slow=os.environ.get("BRISART_SKIP_SLOW") != "1")
 
     def test_no_v1_defect_reproduces_on_v3(self):

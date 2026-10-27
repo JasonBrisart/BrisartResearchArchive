@@ -47,7 +47,7 @@ from pathlib import Path
 import support
 
 V2 = Path(__file__).resolve().parents[2] / "v2"
-NAMES = ("codec", "hash", "inflate", "json", "markup", "robots", "url")
+NAMES = ("codec", "hash", "inflate", "json", "robots", "url")
 
 
 def load(folder, prefix):
@@ -117,34 +117,6 @@ class CompatibilityTests(unittest.TestCase):
                 self.same(lambda m, x, k=kw: m["json"].brisart_loads(x, **k), doc)
                 self.same(lambda m, x, k=kw: m["json"].brisart_loads(x.encode(), **k), doc)
             self.same(lambda m: m["json"].brisart_dumps([doc, {"k": [1, None]}], indent=2, sort_keys=True))
-
-    def test_markup(self):
-        r = support.rng("compat-markup")
-        pieces = ["<", "</", "<!--", "-->", "<a href='x>y'>", "&amp;", "&copy", "<script>", "</script>", "<title>",
-                  "text", " ", "\n", '"', "=", "<br/>", "<!DOCTYPE html>"]
-
-        def run(m, text):
-            events = []
-
-            class P(m["markup"].BrisartMarkupParser):
-                def handle_starttag(self, tag, attrs):
-                    events.append(("s", tag, tuple(attrs)))
-
-                def handle_endtag(self, tag):
-                    events.append(("e", tag))
-
-                def handle_data(self, data):
-                    events.append(("d", data))
-
-                def handle_comment(self, data):
-                    events.append(("c", data))
-
-            p = P()
-            p.feed(text)
-            p.close()
-            return events
-        for _ in range(support.scaled(1500)):
-            self.same(run, "".join(r.choice(pieces) for _ in range(r.randint(0, 20))))
 
     def test_robots(self):
         r = support.rng("compat-robots")

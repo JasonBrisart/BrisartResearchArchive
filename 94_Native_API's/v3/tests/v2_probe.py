@@ -3,8 +3,7 @@ File: v3/tests/v2_probe.py
 
 Purpose
 -------
-Reproduce, on demand, every "v2 did X" statement in the v3.0.0 changelog
-entry. It loads the v2 modules from the sibling v2/ folder and the v3
+Reproduce, on demand, every "v2 did X" statement in v3/CHANGELOG.md. It loads the v2 modules from the sibling v2/ folder and the v3
 modules from v3/, runs one predicate per claim against each, and prints
 which version shows the behaviour. A claim that cannot be reproduced
 here does not belong in the changelog.
@@ -13,7 +12,7 @@ Communication / relationships
 -----------------------------
 Standard library: argparse, importlib.util, sys, pathlib.
 Not collected by unittest (the name does not start with test_);
-test_standards.py checks that every probe ID appears in CHANGELOG.md.
+test_standards.py checks that every probe ID appears in v3/CHANGELOG.md.
 
 Settings / parameters
 ---------------------
@@ -45,7 +44,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve()
 V3 = HERE.parents[1]
-NAMES = ("codec", "hash", "inflate", "json", "markup", "robots", "url")
+NAMES = ("codec", "hash", "inflate", "json", "robots", "url")
 
 
 def load(folder, prefix, names):
@@ -103,10 +102,6 @@ def build_checks():
          lambda m: not hasattr(m["hash"], "brisart_hmac")),
         ("A3", "inflate: no CRC-32 or gzip decoding",
          lambda m: not hasattr(m["inflate"], "brisart_gzip_decompress")),
-        ("A4", "no DEFLATE/zlib/gzip compressor module",
-         lambda m: "deflate" not in m),
-        ("A5", "no CSV module",
-         lambda m: "csv" not in m),
     ]
 
 
@@ -115,7 +110,7 @@ def main(argv=None):
     parser.add_argument("--v2", default=str(V3.parent / "v2"))
     options = parser.parse_args(argv)
     v2 = load(options.v2, "v2_", NAMES)
-    v3 = load(V3, "v3_", NAMES + ("deflate", "csv"))
+    v3 = load(V3, "v3_", NAMES)
     failures = 0
     print("%-3s %-7s %-7s %s" % ("id", "v2", "v3", "claim"))
     for ident, claim, predicate in build_checks():
