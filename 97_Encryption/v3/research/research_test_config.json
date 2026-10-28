@@ -1,0 +1,66 @@
+{
+  "profile_name": "intermediate",
+  "deterministic_seed": 20260718,
+  "output_directory": "results",
+  "hash": {
+    "avalanche_trials": 128,
+    "collision_trials": 1000,
+    "domain_separation_trials": 64,
+    "message_sizes": [
+      1,
+      31,
+      32,
+      33,
+      64,
+      128,
+      257
+    ],
+    "avalanche_mean_min": 0.45,
+    "avalanche_mean_max": 0.55
+  },
+  "mac": {
+    "tamper_trials": 128,
+    "domain_trials": 64
+  },
+  "stream": {
+    "unique_block_trials": 256,
+    "sample_bytes": 8192,
+    "ones_ratio_min": 0.48,
+    "ones_ratio_max": 0.52,
+    "max_absolute_serial_correlation": 0.03
+  },
+  "drbg": {
+    "determinism_trials": 64,
+    "seed_sensitivity_trials": 64,
+    "output_bytes_per_trial": 64
+  },
+  "envelope": {
+    "round_trip_trials": 16,
+    "tamper_trials": 64,
+    "wrong_context_trials": 16,
+    "wrong_key_trials": 16,
+    "maximum_random_plaintext_bytes": 512
+  },
+  "performance": {
+    "hash_message_sizes": [
+      32,
+      1024,
+      8192
+    ],
+    "hash_repetitions": [
+      50,
+      5,
+      1
+    ],
+    "envelope_message_sizes": [
+      32,
+      1024,
+      8192
+    ],
+    "envelope_repetitions": [
+      10,
+      2,
+      1
+    ]
+  }
+}

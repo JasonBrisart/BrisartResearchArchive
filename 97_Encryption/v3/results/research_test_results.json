@@ -1,0 +1,299 @@
+{
+  "generated_utc": "2026-07-18T22:00:24.782457+00:00",
+  "warning": "Passing results demonstrate only the measured behavior. They do not establish cryptographic security.",
+  "provenance": {
+    "python_version": "3.14.6",
+    "python_implementation": "CPython",
+    "operating_system": "Windows",
+    "platform_release": "11",
+    "source_revision": null,
+    "source_tree_dirty": null,
+    "configuration_path": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartSecurityResearch\\research\\research_test_config.json",
+    "configuration_sha256": "853d680e709b40e1fd66c107bac020ffa7c8a4e625f68dd29e1f4e860ca69c71",
+    "known_answer_vector_path": "tests/known_answer_vectors.json",
+    "known_answer_vector_sha256": "93904aca493410cfed43be9c083d82484c8ecc558e1836861155cfeda6beeb3c"
+  },
+  "configuration": {
+    "profile_name": "intermediate",
+    "deterministic_seed": 20260718,
+    "output_directory": "results",
+    "hash": {
+      "avalanche_trials": 128,
+      "collision_trials": 1000,
+      "domain_separation_trials": 64,
+      "message_sizes": [
+        1,
+        31,
+        32,
+        33,
+        64,
+        128,
+        257
+      ],
+      "avalanche_mean_min": 0.45,
+      "avalanche_mean_max": 0.55
+    },
+    "mac": {
+      "tamper_trials": 128,
+      "domain_trials": 64
+    },
+    "stream": {
+      "unique_block_trials": 256,
+      "sample_bytes": 8192,
+      "ones_ratio_min": 0.48,
+      "ones_ratio_max": 0.52,
+      "max_absolute_serial_correlation": 0.03
+    },
+    "drbg": {
+      "determinism_trials": 64,
+      "seed_sensitivity_trials": 64,
+      "output_bytes_per_trial": 64
+    },
+    "envelope": {
+      "round_trip_trials": 16,
+      "tamper_trials": 64,
+      "wrong_context_trials": 16,
+      "wrong_key_trials": 16,
+      "maximum_random_plaintext_bytes": 512
+    },
+    "performance": {
+      "hash_message_sizes": [
+        32,
+        1024,
+        8192
+      ],
+      "hash_repetitions": [
+        50,
+        5,
+        1
+      ],
+      "envelope_message_sizes": [
+        32,
+        1024,
+        8192
+      ],
+      "envelope_repetitions": [
+        10,
+        2,
+        1
+      ]
+    }
+  },
+  "summary": {
+    "checks_total": 13,
+    "checks_passed": 13,
+    "checks_failed": 0,
+    "checks_errored": 0,
+    "benchmarks_completed": 2,
+    "results_total": 15,
+    "total_duration_seconds": 173.16857300000265
+  },
+  "results": [
+    {
+      "category": "hash",
+      "name": "single-bit avalanche",
+      "status": "PASS",
+      "trials": 128,
+      "duration_seconds": 1.5952076999819838,
+      "metrics": {
+        "mean_changed_bit_ratio": 0.498779296875,
+        "minimum_changed_bit_ratio": 0.40234375,
+        "maximum_changed_bit_ratio": 0.59375,
+        "population_standard_deviation": 0.03168471290625661
+      },
+      "note": "Observational diffusion test; not a proof of resistance to cryptanalysis."
+    },
+    {
+      "category": "hash",
+      "name": "collision observation",
+      "status": "PASS",
+      "trials": 1000,
+      "duration_seconds": 8.223993199993856,
+      "metrics": {
+        "observed_collisions": 0,
+        "unique_digests": 1000
+      },
+      "note": "No observed collisions does not establish collision resistance."
+    },
+    {
+      "category": "hash",
+      "name": "domain separation",
+      "status": "PASS",
+      "trials": 64,
+      "duration_seconds": 1.0160491000278853,
+      "metrics": {
+        "equal_cross_domain_outputs": 0
+      },
+      "note": "Checks observed separation for explicit test domains."
+    },
+    {
+      "category": "mac",
+      "name": "message tamper sensitivity",
+      "status": "PASS",
+      "trials": 128,
+      "duration_seconds": 17.767080900026485,
+      "metrics": {
+        "undetected_message_mutations": 0
+      },
+      "note": "Mutation observation only; not a forgery-resistance proof."
+    },
+    {
+      "category": "mac",
+      "name": "labeled input separation",
+      "status": "PASS",
+      "trials": 64,
+      "duration_seconds": 7.989608899981249,
+      "metrics": {
+        "equal_labeled_outputs": 0
+      },
+      "note": "Tests caller-supplied labels in MAC inputs."
+    },
+    {
+      "category": "stream",
+      "name": "unique nonce blocks",
+      "status": "PASS",
+      "trials": 256,
+      "duration_seconds": 11.193956200033426,
+      "metrics": {
+        "duplicate_blocks": 0,
+        "unique_blocks": 256
+      },
+      "note": "No observed duplicates does not establish stream indistinguishability."
+    },
+    {
+      "category": "stream",
+      "name": "bit balance and serial correlation",
+      "status": "PASS",
+      "trials": 8192,
+      "duration_seconds": 5.715175500023179,
+      "metrics": {
+        "sample_bytes": 8192,
+        "ones_ratio": 0.4994659423828125,
+        "adjacent_byte_serial_correlation": 0.004756641269248001
+      },
+      "note": "Simple output statistics are diagnostic only."
+    },
+    {
+      "category": "drbg",
+      "name": "determinism",
+      "status": "PASS",
+      "trials": 64,
+      "duration_seconds": 15.309120899997652,
+      "metrics": {
+        "determinism_mismatches": 0
+      },
+      "note": "Same complete input and call sequence should reproduce output."
+    },
+    {
+      "category": "drbg",
+      "name": "single-bit seed sensitivity",
+      "status": "PASS",
+      "trials": 64,
+      "duration_seconds": 15.223873500013724,
+      "metrics": {
+        "equal_outputs": 0,
+        "mean_changed_bit_ratio": 0.5001220703125
+      },
+      "note": "Sensitivity observation only."
+    },
+    {
+      "category": "envelope",
+      "name": "randomized round trips",
+      "status": "PASS",
+      "trials": 16,
+      "duration_seconds": 8.247460999991745,
+      "metrics": {
+        "round_trip_failures": 0,
+        "total_plaintext_bytes": 3931
+      },
+      "note": "Behavioral correctness test across deterministic randomized lengths."
+    },
+    {
+      "category": "envelope",
+      "name": "binary field tamper rejection",
+      "status": "PASS",
+      "trials": 64,
+      "duration_seconds": 40.00833549996605,
+      "metrics": {
+        "undetected_envelope_mutations": 0
+      },
+      "note": "Tamper-detection observation; not a forgery-resistance proof."
+    },
+    {
+      "category": "envelope",
+      "name": "wrong context rejection",
+      "status": "PASS",
+      "trials": 16,
+      "duration_seconds": 7.1652099000057206,
+      "metrics": {
+        "wrong_context_acceptances": 0
+      },
+      "note": "Checks that context is authenticated."
+    },
+    {
+      "category": "envelope",
+      "name": "wrong key rejection",
+      "status": "PASS",
+      "trials": 16,
+      "duration_seconds": 7.373745799995959,
+      "metrics": {
+        "wrong_key_acceptances": 0
+      },
+      "note": "Checks observed rejection under unrelated keys."
+    },
+    {
+      "category": "performance",
+      "name": "hash throughput",
+      "status": "BENCHMARK",
+      "trials": 56,
+      "duration_seconds": 1.9723091999767348,
+      "metrics": {
+        "measurements": [
+          {
+            "message_bytes": 32,
+            "repetitions": 50,
+            "bytes_per_second": 3207.483057823371
+          },
+          {
+            "message_bytes": 1024,
+            "repetitions": 5,
+            "bytes_per_second": 8993.042687697616
+          },
+          {
+            "message_bytes": 8192,
+            "repetitions": 1,
+            "bytes_per_second": 9086.491486107561
+          }
+        ]
+      },
+      "note": "Local runtime measurement; machine and interpreter dependent."
+    },
+    {
+      "category": "performance",
+      "name": "envelope round-trip throughput",
+      "status": "BENCHMARK",
+      "trials": 13,
+      "duration_seconds": 24.367445699987,
+      "metrics": {
+        "measurements": [
+          {
+            "message_bytes": 32,
+            "repetitions": 10,
+            "round_trip_bytes_per_second": 52.72752396193569
+          },
+          {
+            "message_bytes": 1024,
+            "repetitions": 2,
+            "round_trip_bytes_per_second": 475.4972858768633
+          },
+          {
+            "message_bytes": 8192,
+            "repetitions": 1,
+            "round_trip_bytes_per_second": 589.213946734305
+          }
+        ]
+      },
+      "note": "Combined encrypt/decrypt local runtime measurement."
+    }
+  ]
+}

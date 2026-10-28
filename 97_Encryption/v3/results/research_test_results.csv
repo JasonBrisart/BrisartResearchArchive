@@ -1,0 +1,16 @@
+category,name,status,trials,duration_seconds,metrics,note
+hash,single-bit avalanche,PASS,128,1.595208,"{""maximum_changed_bit_ratio"": 0.59375, ""mean_changed_bit_ratio"": 0.498779296875, ""minimum_changed_bit_ratio"": 0.40234375, ""population_standard_deviation"": 0.03168471290625661}",Observational diffusion test; not a proof of resistance to cryptanalysis.
+hash,collision observation,PASS,1000,8.223993,"{""observed_collisions"": 0, ""unique_digests"": 1000}",No observed collisions does not establish collision resistance.
+hash,domain separation,PASS,64,1.016049,"{""equal_cross_domain_outputs"": 0}",Checks observed separation for explicit test domains.
+mac,message tamper sensitivity,PASS,128,17.767081,"{""undetected_message_mutations"": 0}",Mutation observation only; not a forgery-resistance proof.
+mac,labeled input separation,PASS,64,7.989609,"{""equal_labeled_outputs"": 0}",Tests caller-supplied labels in MAC inputs.
+stream,unique nonce blocks,PASS,256,11.193956,"{""duplicate_blocks"": 0, ""unique_blocks"": 256}",No observed duplicates does not establish stream indistinguishability.
+stream,bit balance and serial correlation,PASS,8192,5.715176,"{""adjacent_byte_serial_correlation"": 0.004756641269248001, ""ones_ratio"": 0.4994659423828125, ""sample_bytes"": 8192}",Simple output statistics are diagnostic only.
+drbg,determinism,PASS,64,15.309121,"{""determinism_mismatches"": 0}",Same complete input and call sequence should reproduce output.
+drbg,single-bit seed sensitivity,PASS,64,15.223874,"{""equal_outputs"": 0, ""mean_changed_bit_ratio"": 0.5001220703125}",Sensitivity observation only.
+envelope,randomized round trips,PASS,16,8.247461,"{""round_trip_failures"": 0, ""total_plaintext_bytes"": 3931}",Behavioral correctness test across deterministic randomized lengths.
+envelope,binary field tamper rejection,PASS,64,40.008335,"{""undetected_envelope_mutations"": 0}",Tamper-detection observation; not a forgery-resistance proof.
+envelope,wrong context rejection,PASS,16,7.165210,"{""wrong_context_acceptances"": 0}",Checks that context is authenticated.
+envelope,wrong key rejection,PASS,16,7.373746,"{""wrong_key_acceptances"": 0}",Checks observed rejection under unrelated keys.
+performance,hash throughput,BENCHMARK,56,1.972309,"{""measurements"": [{""bytes_per_second"": 3207.483057823371, ""message_bytes"": 32, ""repetitions"": 50}, {""bytes_per_second"": 8993.042687697616, ""message_bytes"": 1024, ""repetitions"": 5}, {""bytes_per_second"": 9086.491486107561, ""message_bytes"": 8192, ""repetitions"": 1}]}",Local runtime measurement; machine and interpreter dependent.
+performance,envelope round-trip throughput,BENCHMARK,13,24.367446,"{""measurements"": [{""message_bytes"": 32, ""repetitions"": 10, ""round_trip_bytes_per_second"": 52.72752396193569}, {""message_bytes"": 1024, ""repetitions"": 2, ""round_trip_bytes_per_second"": 475.4972858768633}, {""message_bytes"": 8192, ""repetitions"": 1, ""round_trip_bytes_per_second"": 589.213946734305}]}",Combined encrypt/decrypt local runtime measurement.
