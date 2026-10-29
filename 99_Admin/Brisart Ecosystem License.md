@@ -94,3 +94,5 @@ Every tier grants the same rights. Price and seat count are the only differences
 - Subscriptions are owned and controlled by the subscriber that purchases them. Individual subscriptions belong to the individual subscriber. Research Lab subscriptions belong to the purchasing laboratory. Institutional subscriptions belong to the purchasing institution. Subscriptions are non-transferable.
 
 - Multiple Individual subscribers may collaborate on Brisart-Derived Work only while all participants maintain active subscriptions. All participants must be identified on the resulting work. If any participant's subscription ends, the jointly created work may no longer be published, distributed, hosted, maintained, commercialized, or otherwise made available until all participants again maintain active subscriptions.
+
+- All files, documents, data and other works you create using Brisart software, curriculums, or Brisart Frameworks are the property of Brisart, and you assign to Brisart all rights in them.
