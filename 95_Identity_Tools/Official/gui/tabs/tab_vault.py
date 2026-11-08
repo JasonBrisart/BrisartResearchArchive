@@ -4,14 +4,22 @@ File: gui/tabs/tab_vault.py
 Purpose
 -------
 The Vault tab: init/unlock/lock a vault, manage JSON records, and
-encrypt/decrypt arbitrary files, folders, or drives (any size, chunked
-transparently past BSR2's single-envelope limit).
+encrypt/decrypt arbitrary files, folders, or drives (any size, large content
+stored as fixed-size sealed chunks).
 
 Public interface:
 - class VaultTab(ttk.Frame) -- Init/unlock/lock a vault, create/view/delete
   JSON records, and encrypt/decrypt arbitrary files, folders, or drives
-  -- any combination, any size, chunked transparently past BSR2's
-  single-envelope limit.
+  -- any combination, any size, large content stored as fixed-size sealed
+  chunks.
+
+Design notes:
+
+Encryption migration. Unlocking a vault that still holds anything in the
+previous encryption first shows gui.widgets.dialogs.migration_prompt(). OK
+runs VaultService.migrate_encryption() in place of the unlock and then shows
+what was re-encrypted, what was left, and any new recovery code; Cancel
+unlocks with the previous encryption and the question comes back next time.
 
 Communication / relationships
 -----------------------------
@@ -48,8 +56,9 @@ Known limitations
   (gui/tests/test_tab_vault.py). The dialog workflows (init, unlock, new
   record, view, encrypt, decrypt) are not exercised by tests and are checked by
   hand.
-- Init and unlock run BSR2 key derivations (hardware-dependent duration at
-  the 10,000-iteration floor, and init runs two), and bulk encryption is slow
+- Init and unlock run key derivations (BSR2-MHF-1 for new vaults, the slower
+  legacy KDF for vaults not yet migrated; init runs two), and bulk
+  encryption is slow
   (docs/KNOWN_ISSUES.md KI-003). They run in a background thread behind a modal
   "Working..." dialog, so the window stays responsive but the action takes that
   long.
@@ -75,18 +84,20 @@ from tkinter import filedialog, messagebox, ttk
 
 from gui.core.constants import APP_TITLE
 from gui.core.busy import run_in_background
-from gui.widgets.dialogs import RecordDialog, TextPromptDialog, TextViewDialog
+from gui.widgets.dialogs import (
+    RecordDialog, TextPromptDialog, TextViewDialog, migration_prompt, migration_summary,
+)
 from gui.widgets.path_panel import PathSelectionPanel
 from vault.config import settings as vault_settings
 from vault.store.vault_file import VaultFileError, vault_exists
-from vault.store.vault_service import VaultService, VaultServiceError
+from vault.store.vault_service import VaultService, VaultServiceError, needs_encryption_migration
 from vault.store.bulk_file_service import BulkFileService
 
 
 class VaultTab(ttk.Frame):
     """Init/unlock/lock a vault, create/view/delete JSON records, and (new)
     encrypt/decrypt arbitrary files, folders, or drives -- any combination,
-    any size, chunked transparently past BSR2's single-envelope limit."""
+    any size, large content stored as fixed-size sealed chunks."""
 
     def __init__(self, master):
         super().__init__(master, padding=12)
@@ -249,6 +260,9 @@ class VaultTab(ttk.Frame):
         if not vault_exists(self.vault_path):
             messagebox.showerror(APP_TITLE, "No vault file exists at this path yet.", parent=self)
             return
+        migrate = needs_encryption_migration(self.vault_path) and messagebox.askokcancel(
+            APP_TITLE, migration_prompt(issues_recovery_code=True), parent=self,
+        )
         prompt = TextPromptDialog(self, "Unlock Vault", [("passphrase", "Passphrase", True)])
         if prompt.result is None:
             return
@@ -259,21 +273,31 @@ class VaultTab(ttk.Frame):
 
         def work():
             service = VaultService(path, audit_dir=vault_settings.AUDIT_DIR)
+            if migrate:
+                return service, service.migrate_encryption(passphrase)
             service.unlock(passphrase)
-            return service
+            return service, None
 
-        def on_success(service):
+        def on_success(result):
+            service, migration = result
             self.service = service
             self._status_label.configure(text="unlocked")
             self._refresh_list()
             self._refresh_file_list()
+            if migration is not None:
+                TextViewDialog(self, "Encryption Migration Complete", migration_summary(
+                    migration["records_migrated"], "record(s)",
+                    [f"record {record_id}" for record_id in migration["records_not_migrated"]],
+                    migration["recovery_code"],
+                ))
 
         def on_error(exc):
             messagebox.showerror(APP_TITLE, f"Unlock failed: {exc}", parent=self)
 
         run_in_background(
             self, work, on_success, on_error,
-            "Unlocking vault (this runs a slow key derivation)...",
+            "Migrating vault to the new encryption..." if migrate
+            else "Unlocking vault (this runs a slow key derivation)...",
         )
 
     def _lock(self):
@@ -513,7 +537,3 @@ class VaultTab(ttk.Frame):
             messagebox.showerror(APP_TITLE, str(exc), parent=self)
 
         run_in_background(self, work, on_success, on_error, "Decrypting and restoring...")
-
-
-
-

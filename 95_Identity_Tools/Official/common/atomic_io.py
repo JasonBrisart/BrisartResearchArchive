@@ -255,7 +255,3 @@ def warn_if_permissive(
         )
         return True
     return False
-
-
-
-

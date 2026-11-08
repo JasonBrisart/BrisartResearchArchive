@@ -122,7 +122,3 @@ class ONVIFTransport(ABC):
         single pre-committed Authorization header value. Used by
         ONVIFCamera to retrieve snapshot bytes from a camera-provided
         snapshot URI."""
-
-
-
-

@@ -9,6 +9,80 @@ multiple projects within the archive.
 
 ---
 
+## 2026-11-08 — Identity Tools LTS-2028 Held as Two Lines
+
+### Overview
+
+Brisart Identity Tools (`95_Identity_Tools`) now holds LTS-2028 as two
+separate lines, so the project maintains three supported lines:
+
+| Line | Folder | What it is | End of life |
+| --- | --- | --- | --- |
+| LTS-2028 1.3.x | `95_Identity_Tools/LTS-2028 1.3.x` | The original LTS-2028 line, with vendored BSR2 0.3.0-alpha and its original contract | 31 December 2028 |
+| LTS-2028 1.4.x | `95_Identity_Tools/LTS-2028 1.4.x` | The original LTS-2028 line, with the new encryption as its only change | 31 December 2028 |
+| Official | `95_Identity_Tools/Official` | The development line | None designated |
+
+All branches are covered. Security updates continue on every line until its
+designated end of life.
+
+### Why
+
+The archive-wide cryptography migration (2026-10-23) says that where adopting
+the shared cryptography would break an established LTS contract, the migration
+should happen outside that LTS line. LTS-2028's contract promised a
+dependency-free line with vendored BSR2 and no stored-format changes. Holding
+LTS-2028 as two lines keeps that contract intact in 1.3.x and puts the
+migration in 1.4.x, which uses `97_Encryption/Official` like Official does.
+
+### Security updates
+
+- Shared application fixes land on 1.3.x first, then 1.4.x, then Official.
+- Brisart Encryption fixes are made once in `97_Encryption/Official` and reach
+  1.4.x and Official together.
+- 1.3.x's vendored BSR2 is maintained within 1.3.x.
+
+### Known vulnerabilities in LTS-2028 1.3.x
+
+Keeping 1.3.x on its original encryption is a deliberate choice, and it has a
+cost. 1.3.x's encryption has known vulnerabilities that the line will not fix,
+because fixing them means changing the encryption:
+
+- the keyring passphrase KDF is not memory-hard (KI-008, Medium);
+- the v2 envelope is not nonce-misuse resistant (KI-009, Low);
+- the vendored randomness lacks Brisart Encryption 0.4.0's fork, copy, and
+  constant-sample protections (KI-010, Low).
+
+Each is recorded in 1.3.x's `docs/KNOWN_ISSUES.md` and stated at the top of
+its `docs/CHANGELOG.md`. LTS-2028 1.4.x is the remedy for all three. 1.4.x and
+Official mention them inside their 1.4.0 and 1.10.0 entries.
+
+### Migration retention
+
+LTS-2028 1.4.x keeps reading the previous encryption, and keeps its migration
+commands and pop-up, until at least 8 February 2027, three months after
+1.4.0.
+
+The full policy is in each line's `docs/SECURITY.md`, which carries identical
+release-line text in all three lines.
+
+### Continuous integration
+
+Each line has its own GitHub Actions workflow:
+
+- `.github/workflows/test-95-identity-tools-lts2028-1.3.yml`, triggered by
+  changes to `LTS-2028 1.3.x` only;
+- `.github/workflows/test-95-identity-tools-lts2028-1.4.yml`, triggered by
+  changes to `LTS-2028 1.4.x` or `97_Encryption/Official`;
+- `.github/workflows/test-95-identity-tools-official.yml`, triggered by
+  changes to `Official` or `97_Encryption/Official`.
+
+`test-95-identity-tools-lts2028.yml` is removed. It named
+`95_Identity_Tools/LTS-2028`, a folder that no longer exists. The Official
+workflow's own path trigger, display name, and report names now use its
+current file name instead of `test-95-identity-tools-main.yml`.
+
+---
+
 ## 2026-10-27 — Unified Archive Architecture
 
 ### Overview
@@ -294,3 +368,14 @@ established LTS line.
 An established LTS line may remain associated with its compatible cryptography
 implementation until the replacement architecture has been completed, tested,
 and is appropriate for adoption by a future LTS baseline.
+
+### Adoption Status
+
+| Project | Status |
+| --- | --- |
+| Identity Tools Official (`95_Identity_Tools/Official`) | Migrated in 1.10.0 (2026-11-08). Linked to `97_Encryption/Official` with no local copy; migrates existing data in place. Integration and migration record: `docs/BSR2_INTEGRATION.md`, "Encryption migration"; details in its `docs/CHANGELOG.md`. |
+| Identity Tools LTS-2028 1.4.x (`95_Identity_Tools/LTS-2028 1.4.x`) | Migrated in 1.4.0 (2026-11-08), with the same code as Official 1.10.0. 1.4.x is the LTS-2028 line that adopts the shared implementation; it shares Official's architecture. It keeps reading the previous encryption and keeps its migration path until at least 8 February 2027. Record: its `docs/BSR2_INTEGRATION.md`, "Encryption migration"; details in its `docs/CHANGELOG.md`. |
+| Identity Tools LTS-2028 1.3.x (`95_Identity_Tools/LTS-2028 1.3.x`) | Not migrating, by designation, under this entry's LTS rule. 1.3.x keeps its original LTS contract and vendored BSR2 0.3.0-alpha until its end of life on 31 December 2028, and still receives security updates. Its encryption has known vulnerabilities it will not fix (KI-008 to KI-010 in its `docs/KNOWN_ISSUES.md`); the migration, and the remedy, is LTS-2028 1.4.x (2026-11-08 entry). |
+
+Every other applicable project remains pending migration until it is listed
+here as migrated.

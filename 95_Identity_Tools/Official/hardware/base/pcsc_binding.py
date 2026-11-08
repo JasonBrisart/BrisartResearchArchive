@@ -147,7 +147,3 @@ class PCSCBinding(ABC):
         """Send an APDU to the currently connected card and return the
         FULL raw response, including the trailing SW1 SW2 status word.
         Raise PCSCBindingError on any transmission failure."""
-
-
-
-

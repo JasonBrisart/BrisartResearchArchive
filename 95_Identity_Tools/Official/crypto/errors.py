@@ -16,6 +16,8 @@ Public interface:
   needs a master key that is not unlocked.
 - class EnvelopeAuthenticationError(Bsr2IntegrationError) -- Raised when a
   sealed payload fails authentication.
+- class EncryptionNotFoundError(RuntimeError) -- Raised when an operation needs
+  encryption and Brisart Encryption is not linked.
 
 Design notes:
 
@@ -24,25 +26,35 @@ treat "this is not shaped like a keyring" as a data bug and "the tag did not
 verify" as a security event, and one shared exception type forces them to
 string-match messages to tell those apart.
 
+EncryptionNotFoundError deliberately sits outside the Bsr2IntegrationError
+family. Integration code catches that family to report a wrong passphrase or a
+non-matching factor (crypto/keyring.py, crypto/factors.py); a missing encryption link must never be mistaken for
+either, so it propagates past those handlers to the CLI or GUI unchanged.
+
 Communication / relationships
 -----------------------------
 Standard library: none.
 Imported by:
+- biometrics/app.py
 - biometrics/engine/attachments.py
 - biometrics/engine/verification.py
 - biometrics/identity/keyring_access.py
 - crypto/context.py
+- crypto/encryption.py
 - crypto/envelope.py
 - crypto/factors.py
 - crypto/keyring.py
 - crypto/rng.py
 - crypto/throttle.py
+- packages/main.py
 - packages/package.py
 - packages/verification.py
+- vault/app.py
 - vault/store/vault_service.py
 Covered by tests: crypto/tests/test_context.py, crypto/tests/test_envelope.py,
 crypto/tests/test_factors.py, crypto/tests/test_keyring.py,
-crypto/tests/test_rng.py, crypto/tests/test_throttle.py.
+crypto/tests/test_rng.py, crypto/tests/test_throttle.py,
+crypto/tests/test_encryption_link.py.
 
 Settings / parameters
 ---------------------
@@ -92,8 +104,10 @@ class KeyringLockedError(Bsr2IntegrationError):
 class EnvelopeAuthenticationError(Bsr2IntegrationError):
     """Raised when a sealed payload fails authentication.
 
-    Wraps the vendored layer's ``BrisartEnvelopeError`` so callers catch a
-    single exception family instead of importing vendor exception types. It
+    Wraps Brisart Encryption's ``BrisartSealError`` (v3 sealed messages),
+    ``BrisartStreamError`` (BSR-STREAM-1), and ``BrisartEnvelopeError`` (legacy
+    v2 envelopes) so callers catch a single exception family instead of
+    importing Brisart Encryption exception types. It
     covers a modified ciphertext, the wrong key, and the wrong context alike:
     all three are indistinguishable to the verifier, and treating them as one
     outcome avoids leaking which one occurred.
@@ -102,5 +116,9 @@ class EnvelopeAuthenticationError(Bsr2IntegrationError):
     """
 
 
+class EncryptionNotFoundError(RuntimeError):
+    """Raised when an operation needs encryption and none is linked.
 
-
+    The message is ``crypto.encryption.status().describe()``: it starts with
+    "Encryption not found" and says what is missing.
+    """

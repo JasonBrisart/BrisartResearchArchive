@@ -102,7 +102,3 @@ def is_chronologically_ordered(earlier: str, later: str) -> bool:
     during a listing sort.
     """
     return earlier <= later
-
-
-
-

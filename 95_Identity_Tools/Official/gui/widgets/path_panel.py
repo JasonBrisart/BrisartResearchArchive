@@ -137,7 +137,3 @@ class PathSelectionPanel(ttk.Frame):
     def _clear_all(self):
         self.paths = []
         self._refresh_listbox()
-
-
-
-

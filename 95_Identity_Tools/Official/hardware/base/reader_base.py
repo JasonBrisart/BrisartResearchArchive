@@ -77,6 +77,3 @@ class ReaderBase(DeviceBase):
     @abstractmethod
     def read_card(self):
         pass
-
-
-

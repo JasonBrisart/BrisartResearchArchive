@@ -264,7 +264,3 @@ def verify_identity(
         "results": results,
         "matched": matched,
     }
-
-
-
-

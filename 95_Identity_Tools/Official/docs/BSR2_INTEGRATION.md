@@ -9,15 +9,60 @@ It is not an independent cryptographic assessment.
 
 BSR2 is custom, unreviewed research cryptography.
 
-Application validation, context binding, regression tests, and file-integrity
-pins do not establish the security of its original constructions.
+Application validation, context binding, and regression tests do not establish
+the security of its original constructions.
 
 BSR2 must not be treated as the sole protection for high-value or irreplaceable
 credentials, identity records, recovery secrets, or comparable material.
 
 ## Integration boundary
 
-The supplied BSR2 files provide primitives used by `crypto/`.
+Identity Tools contains no encryption of its own. BSR2 comes from Brisart
+Encryption, `97_Encryption/Official` in the Brisart Research Archive, which
+`crypto/encryption.py` links to as the single point of contact:
+
+```text
+BrisartResearchArchive/
+├── 95_Identity_Tools/Official/crypto/encryption.py   ─┐ links to
+└── 97_Encryption/Official/brisart_security_*.py      ◄┘
+```
+
+The link is resolved once per process, on first use, and links every library
+module Brisart Encryption ships: `primitives`, `sponge`, `entropy`, `drbg`,
+`envelope`, `aead`, `stream`, `kdf`, `keys`, `recovery`, `archive`, `cli`, and
+`version` (each `brisart_security_<name>.py`). It also checks the formats
+Identity Tools depends on: the legacy `BSR2-ARX-SPONGE-ETM` v2 envelope (data
+written before 1.10.0), sealed format v3 `BSR2-S64-SIV`, stream format 1, and
+the `BSR2-MHF-1` KDF.
+
+| Brisart Encryption module | Used for |
+| --- | --- |
+| `aead` | Every new sealed payload up to 16 MiB |
+| `stream` | Sealed payloads above 16 MiB |
+| `envelope` | Opening and migrating payloads sealed before 1.10.0 |
+| `kdf` | New keyring wrappers |
+| `sponge` | New bound factors, keyring check values, typed-text package keys |
+| `primitives` | Legacy keyring wrappers and bound factors; hex and constant-time comparison |
+| `drbg`, `entropy` | The managed generator, master keys, salts, recovery codes, package content keys |
+| `cli` (with `keys`, `archive`, `recovery`) | `python cli.py encryption` |
+
+If the directory is missing, a module is missing or fails to import, a module
+was already loaded from somewhere else, or a required format differs, the
+link is unavailable. The application still starts and shows
+`Encryption not found: <reason>` in the GUI status line, Help > About, and
+`python cli.py version`. Every operation that seals, opens, derives, or binds
+raises `EncryptionNotFoundError` and the CLIs exit with status 3. Nothing falls
+back to weaker or local cryptography, and a missing link is never reported as
+a wrong passphrase or a non-matching factor.
+
+Three uses of standard-library hashing remain outside the link, none of them
+encryption: `packages.ciphers.legacy_text_master_key` (SHA-256), kept only so
+packages keyed before 1.10.0 can be opened and migrated, and removed with the
+previous encryption; `common/hashing.py` SHA-256 fingerprints of plaintext
+files and custody-chain entries, which are stored integrity metadata that
+existing files and chains are checked against; and the SHA-1 WS-Security
+password digest in `hardware/cameras/onvif_camera.py`, which the ONVIF
+protocol prescribes.
 
 The application integration layer handles:
 
@@ -29,9 +74,101 @@ The application integration layer handles:
 - Generator lifecycle management.
 - Unlock-attempt limiting.
 
-The supplied vendor-integrity test compares file bytes against pinned digests.
-A matching digest establishes agreement with that pin, not upstream
-authenticity, independent review, or cryptographic security.
+`crypto/tests/test_encryption_link.py` checks that every module Brisart
+Encryption ships is linked and loaded from the linked directory, that the
+application tree holds no copy of one, that `cli.py encryption` runs the linked
+toolkit, and that data sealed by 1.9.2's vendored BSR2 0.3.0-alpha still opens.
+`crypto/tests/test_keyring.py` unlocks and migrates a v1 keyring.
+Brisart Encryption's own known-answer vectors and tests are run by its own
+suite. Neither establishes cryptographic security or independent review.
+
+## Encryption migration
+
+This section is Identity Tools Official's record of the archive-wide
+cryptography migration (root `CHANGELOG.md`, 2026-10-23), in the order that
+entry asks for.
+
+**Previous implementation.** Through 1.9.2, BSR2 0.3.0-alpha vendored as four
+byte-pinned copies in `vendor/`. Identity Tools used only its legacy
+constructions: the `BSR2-ARX-SPONGE-ETM` v2 JSON envelope with an 8-byte
+length prefix and 256-byte padding added here; the iterated
+`derive_password_key` (10,000 iterations) for keyring wrappers; a
+`derive_subkey` + `keyed_mac` binding for factors; and an unsalted SHA-256 of
+typed text for package demonstration keys.
+
+**Replacement implementation.** Brisart Encryption (`97_Encryption/Official`,
+0.4.0-alpha at the time of writing), linked through `crypto/encryption.py` and
+not copied. New data uses sealed format v3 `BSR2-S64-SIV` (`block` padding),
+BSR-STREAM-1 above 16 MiB, BSR2-MHF-1 keyring wrappers (8,192 blocks, one
+pass), BSR2-S64 MAC factor bindings and keyring check values, and a BSR2-S64
+hash for typed-text package keys. Master keys, salts, recovery codes, and
+package content keys come from Brisart Encryption's entropy module.
+
+**Affected data and formats.**
+
+| Store | Encrypted parts |
+| --- | --- |
+| Vault file | keyring (both wrappers and check value), every record payload: JSON records, file records, bundle manifests and chunks |
+| Biometrics keyring file | both wrappers and check value |
+| Biometrics identity files | templates, attachments (including bulk manifests and chunks), device binding |
+| Package file | payload, each recipient's key slot and verifier |
+
+**How existing data is migrated.** Every store keeps opening legacy data. When
+it holds any, the CLI prints a notice after unlocking and the GUI shows
+`crypto.encryption.MIGRATION_NOTICE` before unlocking; OK, or `vault migrate`,
+`biometrics migrate`, `package migrate`, migrates. Each payload is opened in
+its legacy format and sealed again, byte-identical, in the current one under
+the same key and context (`crypto.envelope.reseal`). Keyrings go through
+`Keyring.migrate()`, which unlocks first so a wrong passphrase changes nothing.
+Device bindings are re-bound when they verify on the current machine. Packages
+migrate per recipient from that recipient's typed text.
+
+**In place or replacement.** In place, through atomic replacement of each file:
+the vault file once, the biometrics keyring file and then each identity file
+that changed, and the package file. No copy of the previous files is written.
+The master key and package content keys do not change.
+
+**Remaining compatibility with historical data.** Full read compatibility with
+everything Official 1.9.2 and earlier and LTS-2028 1.3.x write, until a
+later release removes the
+previous encryption. Reading does not rewrite: unlocking a store, or declining
+the migration, leaves it readable by the release that wrote it (a v1 keyring is
+kept as stored until a wrapper is replaced; only attempt-limiting state is
+written). Migration is resumable: legacy and migrated items can
+coexist in one store, and running the migration again finishes the rest. What
+can stay legacy after a migration: a vault record that fails to authenticate
+under its stored context (KI-005), a device binding recorded on another
+machine, and package recipients who have not migrated yet. Each is reported.
+
+**Recovery and rollback limits.** There is no rollback. Migrated data cannot be
+read by Official 1.9.2 and earlier or any LTS-2028 1.3.x release (LTS-2028
+1.4.x reads it);
+keep a copy of the files beforehand if that may
+matter. A recovery code that used the previous KDF cannot be re-derived, since
+it is never stored, so the migration issues a new one, shown once; the old
+code no longer opens the migrated keyring but still opens any earlier copy of
+it. The passphrase is unchanged.
+
+**Tests.**
+- `crypto/tests/test_encryption_link.py` -- payloads and a binding sealed by
+  1.9.2 itself open, reseal to v3 with identical content, and re-bind.
+- `crypto/tests/test_envelope.py` -- current formats round trip and reject
+  tampering; legacy envelopes reseal; a wrong key or context never reseals.
+- `crypto/tests/test_keyring.py` -- current keyrings; `migrate()` on a legacy
+  check value, with a wrong passphrase, and (slow) on a real v1 keyring,
+  including the new recovery code.
+- `vault/tests/test_vault_migration.py` -- a legacy vault reads, migrates
+  completely, survives a wrong passphrase, reports an unauthenticated record,
+  migrates nothing the second time, and (slow) migrates on a real v1 keyring.
+- `biometrics/tests/test_encryption_migration.py` -- a legacy data directory
+  reads, migrates templates, attachments, and this machine's device binding,
+  keeps other machines' bindings and the attempt state, and survives a wrong
+  passphrase.
+- `packages/tests/test_package_migration.py` -- a legacy package opens from
+  typed text, migrates one recipient without locking out the other, migrates
+  completely, and survives wrong text.
+- `packages/tests/test_demo.py` -- the demo runs a full cycle on the new
+  encryption, and a saved demo package opens from its saved passphrase.
 
 ## Master keys and wrapping
 
@@ -57,24 +194,26 @@ plaintext retrieval operation.
 
 ## KDF parameters and runtime
 
-Iteration counts are stored and validated against the integration's accepted
-range.
+New keyring wrappers use the memory-hard BSR2-MHF-1 at 8,192 blocks (1 MiB)
+and one pass. Its parameters and salt are stored per wrapper and validated on
+load against ceilings of 65,536 blocks and four passes. Legacy wrappers keep
+their stored iteration count, validated against 10,000 to 1,000,000.
 
 Rejecting out-of-range counts reduces parameter-abuse opportunities. It does
 not establish that every accepted parameter is appropriate for every
 deployment.
 
-KDF runtime depends on iteration count, hardware, interpreter, and system
-load. Earlier development-machine measurements are historical observations,
+KDF runtime depends on parameters, hardware, interpreter, and system load. Earlier development-machine measurements are historical observations,
 not fixed latency guarantees.
 
 Separate CLI invocations do not share an unlocked in-memory session.
 
 ## Factor protection
 
-Password-derived factors use the slow KDF path.
-
-Master-key-bound factors use derived subkeys and keyed MACs.
+Factors are bound under the master key with a BSR2-S64 MAC over the framed
+factor name and value. Records written before 1.10.0 use the legacy derived
+subkey and keyed MAC and still verify. No password-derived factor hashes are
+stored.
 
 The fast binding path relies on the master key remaining protected. Device
 identifiers, machine information, and template digests are not automatically
@@ -97,10 +236,10 @@ an operation.
 
 ## Length padding
 
-The integration prefixes the original length and pads plaintext to 256-byte
-buckets before sealing.
-
-Padding is inside the authenticated plaintext.
+v3 sealed messages use Brisart Encryption's `block` padding (256-byte
+buckets) inside the authenticated payload. Stream payloads above 16 MiB are not
+padded. Legacy payloads carry the earlier length prefix and padding added by
+this layer.
 
 Ciphertext length still reveals a size bucket. Surrounding filenames, labels,
 counts, timestamps, and other metadata can disclose additional information.
@@ -218,7 +357,8 @@ durability.
 
 ## Bulk-file boundaries
 
-Chunking bypasses the per-envelope size limit, not resource limits.
+Sealing has no per-payload size limit since 1.10.0; bulk chunking bounds the
+size of each sealed record, not overall resource use.
 
 Path bundles are materialized as plaintext temporary ZIP files and read
 completely into memory. Restore also reassembles complete content.
@@ -229,7 +369,7 @@ consistent live-filesystem snapshots, or secure-erasure mechanisms.
 Unreadable files can be skipped. Restore can leave partial output if
 interrupted.
 
-## Residual risks
+## Protection limits
 
 - Unreviewed cryptographic constructions.
 - Python execution without whole-program constant-time guarantees.

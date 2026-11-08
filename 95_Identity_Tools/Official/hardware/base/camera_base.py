@@ -77,6 +77,3 @@ class CameraBase(DeviceBase):
     @abstractmethod
     def capture_image(self):
         pass
-
-
-

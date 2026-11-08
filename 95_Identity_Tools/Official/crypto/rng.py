@@ -3,63 +3,68 @@ File: crypto/rng.py
 
 Purpose
 -------
-DRBG construction for BSR2 envelope operations.
+The generator Identity Tools passes to every Brisart Encryption seal: a
+Brisart Encryption DRBG, seeded from Brisart Encryption's health-checked
+operating-system entropy and reseeded before its own lifecycle limits.
 
 Public interface:
-- class ManagedGenerator -- A BSR2 DRBG that reseeds from the operating system
-  before its limits. Public methods: generate, destroy.
-- new_generator(purpose) -- Build a managed DRBG for a named purpose.
+- class ManagedGenerator -- A Brisart Encryption DRBG that reseeds before its
+  limits. Public methods: generate, destroy.
+- new_generator(purpose) -- Build a managed generator for a named purpose.
 
 Design notes:
 
-``brisart_security_envelope.encrypt`` requires a caller-supplied generator and
-deliberately does not create one.
+The v3 sealed format and BSR-STREAM-1 always draw their 32-byte randomizer from
+fresh system entropy and XOR in the caller's generator output when one is
+given. Passing this generator therefore adds an independent second source: a
+randomizer repeats only if both the operating system and the DRBG repeat.
 
-This module seeds from ``secrets.token_bytes`` at double the minimum, and wraps
-the generator so the DRBG's lifecycle limits (100,000 requests, 16 MiB output)
-trigger a transparent reseed from fresh operating-system entropy instead of a
-hard failure mid-run. Upstream raises ``BrisartDRBGError`` at those limits by
-design; a long-lived enrollment process should not crash on record 100,001.
+Seeds come from ``entropy.system_entropy``, which rejects all-zero and
+repeated-block output from the operating system before it reaches the DRBG.
+The DRBG's lifecycle limits (100,000 requests, 16 MiB output) would otherwise
+raise ``BrisartDRBGError`` mid-run by design; this wrapper reseeds before
+them so a long enrollment does not fail on record 100,001.
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- crypto.encryption (crypto/encryption.py) -- the linked ``drbg`` and
+  ``entropy`` modules, resolved when a generator is built.
 - crypto.errors (crypto/errors.py)
-- crypto.vendor (crypto/vendor.py)
-Standard library: secrets.
+Standard library: none.
 Imported by:
 - biometrics/engine/attachments.py
 - biometrics/engine/enrollment.py
 - crypto/keyring.py
 - packages/ciphers.py
 - vault/store/vault_service.py
-Covered by tests: crypto/tests/test_envelope.py, crypto/tests/test_rng.py.
+Covered by tests: crypto/tests/test_rng.py, crypto/tests/test_envelope.py.
 
 Settings / parameters
 ---------------------
-- SEED_BYTES = max(128, MINIMUM_SEED_BYTES * 2) -- Upstream requires 64.
-  Seeding with 128 costs nothing and leaves margin.
-- REQUESTS_BEFORE_RESEED = 50_000 -- Reseed before upstream's own limits rather
-  than at them.
-- BYTES_BEFORE_RESEED = 8 * 1024 * 1024
+- SEED_BYTES = 128 -- The DRBG requires at least 64; 128 leaves margin. The
+  linked DRBG rejects any seed below its own minimum, so a future rise above
+  128 fails loudly rather than silently.
+- REQUESTS_BEFORE_RESEED = 50_000, BYTES_BEFORE_RESEED = 8 MiB -- reseed
+  before the DRBG's own limits rather than at them.
 
 Edge cases
 ----------
+- new_generator() and ManagedGenerator() raise EncryptionNotFoundError when
+  Brisart Encryption is not linked. A generator already built keeps the
+  library it was built with.
 - ManagedGenerator.__init__() raises Bsr2IntegrationError: "personalization
-  must be bytes."
-- ManagedGenerator.__init__() raises Bsr2IntegrationError: "personalization
-  must contain at least {...} bytes."
+  must be bytes." / "personalization must contain at least {...} bytes."
 - new_generator() raises Bsr2IntegrationError: "generator purpose must be a
   non-empty string."
-- ManagedGenerator.generate(): catches BrisartDRBGError and handles it in
-  place; it does not propagate to the caller.
+- ManagedGenerator.generate() catches BrisartDRBGError (the DRBG's health
+  check destroys the instance when it sees a repeated block) and rebuilds from
+  fresh entropy; it does not propagate to the caller.
+- BrisartEntropyError from the operating system does propagate: there is no
+  safe fallback when the system cannot supply entropy.
 
 Known limitations
 -----------------
-- That leaves the caller responsible for seeding it correctly, and the seed is
-  where a deterministic generator lives or dies: BSR2's DRBG expands seed
-  material but cannot create entropy, so a weak seed means weak salts and
-  nonces no matter how good the expansion is.
 - Security rests on BSR2, a custom research construction that has not been
   independently audited (see docs/SECURITY.md); do not treat it as a
   replacement for vetted, audited cryptography.
@@ -76,47 +81,44 @@ additional_input stand for values the caller supplies.
     obj.generate(length, additional_input)
 """
 
-import secrets
-
+from crypto import encryption
 from crypto.errors import Bsr2IntegrationError
-from crypto.vendor import (
-    MINIMUM_PERSONALIZATION_BYTES,
-    MINIMUM_SEED_BYTES,
-    BrisartDRBG,
-    BrisartDRBGError,
-)
 
-# Upstream requires 64. Seeding with 128 costs nothing and leaves margin.
-SEED_BYTES = max(128, MINIMUM_SEED_BYTES * 2)
-
-# Reseed before upstream's own limits rather than at them.
+SEED_BYTES = 128
 REQUESTS_BEFORE_RESEED = 50_000
 BYTES_BEFORE_RESEED = 8 * 1024 * 1024
 
 
 class ManagedGenerator:
-    """A BSR2 DRBG that reseeds from the operating system before its limits.
+    """A Brisart Encryption DRBG that reseeds before its limits.
 
-    Exposes ``generate(length, additional_input)``, which is the entire
-    interface ``brisart_security_envelope.encrypt`` requires.
+    Exposes ``generate(length, additional_input)``, the interface Brisart
+    Encryption's seal functions accept as ``rng``.
     """
 
     def __init__(self, personalization: bytes):
+        self._bsr2 = encryption.require()
         if not isinstance(personalization, bytes):
             raise Bsr2IntegrationError("personalization must be bytes.")
-        if len(personalization) < MINIMUM_PERSONALIZATION_BYTES:
+        minimum = self._bsr2.drbg.MINIMUM_PERSONALIZATION_BYTES
+        if len(personalization) < minimum:
             raise Bsr2IntegrationError(
-                "personalization must contain at least "
-                f"{MINIMUM_PERSONALIZATION_BYTES} bytes."
+                f"personalization must contain at least {minimum} bytes."
             )
         self._personalization = personalization
+        self._drbg = self._new_drbg()
+
+    def _seed(self) -> bytes:
+        return self._bsr2.entropy.system_entropy(SEED_BYTES)
+
+    def _new_drbg(self):
         self._requests = 0
         self._generated_bytes = 0
-        self._drbg = BrisartDRBG(secrets.token_bytes(SEED_BYTES), personalization)
+        return self._bsr2.drbg.BrisartDRBG(self._seed(), self._personalization)
 
     def _reseed(self) -> None:
         self._drbg.reseed(
-            secrets.token_bytes(SEED_BYTES),
+            self._seed(),
             b"BrisartIdentityTools/managed-reseed/" + self._personalization,
         )
         self._requests = 0
@@ -130,15 +132,10 @@ class ManagedGenerator:
             self._reseed()
         try:
             output = self._drbg.generate(length, additional_input)
-        except BrisartDRBGError:
-            # Upstream's continuous health check destroys the generator when it
-            # sees a repeated block. Rebuilding from fresh entropy is the only
-            # correct recovery; retrying the dead instance would raise forever.
-            self._drbg = BrisartDRBG(
-                secrets.token_bytes(SEED_BYTES), self._personalization
-            )
-            self._requests = 0
-            self._generated_bytes = 0
+        except self._bsr2.drbg.BrisartDRBGError:
+            # The health check destroyed the instance; retrying it would raise
+            # forever, so rebuild from fresh entropy.
+            self._drbg = self._new_drbg()
             output = self._drbg.generate(length, additional_input)
         self._requests += 1
         self._generated_bytes += length
@@ -150,18 +147,21 @@ class ManagedGenerator:
 
 
 def new_generator(purpose: str) -> ManagedGenerator:
-    """Build a managed DRBG for a named purpose.
-
-    ``purpose`` becomes part of the personalization string, so generators for
-    unrelated subsystems do not share a personalization value.
-    """
+    """Build a managed generator whose personalization names ``purpose``, so
+    generators for unrelated subsystems never share one."""
+    bsr2 = encryption.require()
     if not isinstance(purpose, str) or not purpose:
         raise Bsr2IntegrationError("generator purpose must be a non-empty string.")
     personalization = (
         b"BrisartIdentityTools/BSR2/v1/" + purpose.encode("utf-8")
-    ).ljust(MINIMUM_PERSONALIZATION_BYTES, b"\x00")
+    ).ljust(bsr2.drbg.MINIMUM_PERSONALIZATION_BYTES, b"\x00")
     return ManagedGenerator(personalization)
 
 
-
-
+__all__ = [
+    "BYTES_BEFORE_RESEED",
+    "REQUESTS_BEFORE_RESEED",
+    "SEED_BYTES",
+    "ManagedGenerator",
+    "new_generator",
+]

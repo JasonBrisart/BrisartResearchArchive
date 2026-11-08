@@ -27,7 +27,7 @@ Covered by tests: tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------
-- __version__ = "1.9.2" -- the release version of this tree.
+- __version__ = "1.10.0" -- the release version of this tree.
 
 Edge cases
 ----------
@@ -53,8 +53,4 @@ Examples
     import version
 """
 
-__version__ = "1.9.2"
-
-
-
-
+__version__ = "1.10.0"

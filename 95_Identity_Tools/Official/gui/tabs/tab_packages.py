@@ -29,6 +29,13 @@ tab can never drift apart from each other:
                                can inspect (and try tampering with) real
                                artifacts firsthand.
 
+Typed master-key text becomes a key through packages.ciphers.text_master_key,
+the same derivation as the CLI and demo. Opening a package as a recipient whose
+part of it still uses the previous encryption first shows
+gui.widgets.dialogs.migration_prompt(); OK migrates that recipient's key slot,
+verifier, and the payload (packages.package.migrate_recipient) before opening,
+Cancel opens it with the previous encryption.
+
 Communication / relationships
 -----------------------------
 Depends on (project modules):
@@ -36,10 +43,11 @@ Depends on (project modules):
 - gui.core.busy (gui/core/busy.py)
 - gui.widgets.dialogs (gui/widgets/dialogs.py)
 - packages.package (packages/package.py)
+- packages.ciphers (packages/ciphers.py) -- text_master_key
 - packages.custody (packages/custody.py)
 - packages.demo (packages/demo.py)
 - common.atomic_io (common/atomic_io.py)
-Standard library: hashlib, json, os, pathlib, subprocess, sys, tkinter.
+Standard library: json, os, pathlib, subprocess, sys, tkinter.
 Imported by:
 - app.py
 Covered by tests: gui/tests/test_tab_packages.py.
@@ -65,10 +73,8 @@ Edge cases
 
 Known limitations
 -----------------
-- Master keys are typed text hashed once. _derive_master_key() turns the
-  "master key text" a user types into a 32-byte key with a single unsalted
-  SHA-256, not BSR2's password KDF, although gui/tests/test_tab_packages.py
-  calls it a key stretch. The same text always gives the same key, and a
+- Master keys are typed text hashed once (packages.ciphers.text_master_key),
+  not a password KDF: the same text always gives the same key, and a
   guessable text gives a guessable key. packages/main.py does the same for the
   CLI.
 - _save_state() writes through common.atomic_io.atomic_write_json, so an
@@ -92,7 +98,6 @@ supplies.
     PackagesTab(master)
 """
 
-import hashlib
 import json
 import os
 import subprocess
@@ -103,8 +108,9 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 from gui.core.constants import APP_TITLE, _Cancelled
 from gui.core.busy import run_in_background
-from gui.widgets.dialogs import TextPromptDialog, TextViewDialog
+from gui.widgets.dialogs import TextPromptDialog, TextViewDialog, migration_prompt
 from common.atomic_io import atomic_write_json
+from packages import ciphers
 from packages import package as ibp_package
 from packages.custody import CustodyError
 from packages.demo import run_demo
@@ -184,10 +190,6 @@ class PackagesTab(ttk.Frame):
         for recipient in ibp_package.list_recipients(self.state):
             self.tree.insert("", "end", values=(recipient["identity_id"], recipient["label"]))
 
-    @staticmethod
-    def _derive_master_key(text):
-        return hashlib.sha256(text.encode("utf-8")).digest()
-
     def _prompt_payload(self, initial='{\n  "message": "hello"\n}'):
         dialog = tk.Toplevel(self)
         dialog.title("Payload (JSON object)")
@@ -249,7 +251,7 @@ class PackagesTab(ttk.Frame):
         except json.JSONDecodeError as exc:
             messagebox.showerror(APP_TITLE, f"Payload is not valid JSON: {exc}", parent=self)
             return
-        master_key = self._derive_master_key(values["master_key"])
+        master_key = ciphers.text_master_key(values["master_key"])
         audit_dir = Path("data") / "packages" / "audit"
         path = self.package_path
 
@@ -285,9 +287,11 @@ class PackagesTab(ttk.Frame):
         if dialog.result is None:
             return
         values = dialog.result
-        opener_key = self._derive_master_key(values["opener_key"])
-        new_key = self._derive_master_key(values["new_key"])
         state = self.state
+        opener_key = ibp_package.recipient_key_from_text(
+            state, values["opener_id"].strip(), values["opener_key"]
+        )
+        new_key = ciphers.text_master_key(values["new_key"])
         audit_dir = Path("data") / "packages" / "audit"
 
         def work():
@@ -323,8 +327,10 @@ class PackagesTab(ttk.Frame):
             return
         values = dialog.result
         identity_id = values["identity_id"].strip() or default_id
-        opener_key = self._derive_master_key(values["opener_key"])
         state = self.state
+        opener_key = ibp_package.recipient_key_from_text(
+            state, values["opener_id"].strip(), values["opener_key"]
+        )
         audit_dir = Path("data") / "packages" / "audit"
 
         def work():
@@ -352,12 +358,19 @@ class PackagesTab(ttk.Frame):
         if dialog.result is None:
             return
         values = dialog.result
-        master_key = self._derive_master_key(values["master_key"])
+        identity_id, text = values["identity_id"].strip(), values["master_key"]
         state = self.state
         audit_dir = Path("data") / "packages" / "audit"
+        migrate = ibp_package.needs_encryption_migration(state, identity_id, text) and messagebox.askokcancel(
+            APP_TITLE, migration_prompt(issues_recovery_code=False), parent=self,
+        )
 
         def work():
-            return ibp_package.open_package(state, values["identity_id"].strip(), master_key, audit_dir=audit_dir)
+            current = state
+            if migrate:
+                current = ibp_package.migrate_recipient(current, identity_id, text, audit_dir=audit_dir)
+            master_key = ibp_package.recipient_key_from_text(current, identity_id, text)
+            return ibp_package.open_package(current, identity_id, master_key, audit_dir=audit_dir)
 
         def on_success(result):
             payload, updated_state = result
@@ -449,7 +462,3 @@ class PackagesTab(ttk.Frame):
                 subprocess.run(["xdg-open", str(folder)], check=False)
         except OSError:
             pass
-
-
-
-

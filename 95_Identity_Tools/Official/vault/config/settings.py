@@ -73,7 +73,3 @@ AUDIT_DIR = DATA_DIR / "audit"
 def ensure_data_dirs() -> None:
     for directory in (DATA_DIR, AUDIT_DIR):
         directory.mkdir(parents=True, exist_ok=True)
-
-
-
-

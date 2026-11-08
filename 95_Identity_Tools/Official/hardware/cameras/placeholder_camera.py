@@ -68,6 +68,3 @@ class PlaceholderCamera(CameraBase):
 
     def capture_image(self):
         return None
-
-
-

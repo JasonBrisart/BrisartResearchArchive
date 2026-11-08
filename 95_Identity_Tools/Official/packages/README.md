@@ -25,10 +25,13 @@ keys, or plaintext already obtained by that recipient.
 
 ## CLI key prompts
 
-The CLI prompts for text and derives a 32-byte demonstration key using a
-single unsalted SHA-256 operation.
+The CLI prompts for text and derives a 32-byte demonstration key with one
+unsalted Brisart Encryption BSR2-S64 hash (`ciphers.text_master_key`). The
+Packages GUI and the demo use the same function.
 
-The Packages GUI uses the same demonstration approach.
+Before the encryption migration the same text was hashed with SHA-256. Packages sealed under
+those keys still open: the CLI and GUI fall back to the old derivation for a
+recipient whose verifier only matches it.
 
 This is not a slow password KDF. Guessable input text produces guessable key
 material, and repeated text produces the same key.
@@ -36,6 +39,22 @@ material, and repeated text produces the same key.
 Application integrations should supply appropriately generated and managed
 master keys rather than treating the demonstration prompt as production
 password authentication.
+
+## Encryption migration
+
+A package in the previous encryption migrates one recipient at a time, because
+each key slot is sealed under that recipient's own key:
+
+```bash
+python cli.py package migrate pkg.json --identity-id alice
+```
+
+Opening such a package in the GUI asks first. Migrating a recipient reseals
+the shared payload, re-seals that recipient's key slot and verifier under the
+current text key, and appends a `payload_rewrapped` custody entry. Recipients
+not yet migrated keep opening the package through their legacy slots. A
+migrated package cannot be opened by Official 1.9.2, LTS-2028 1.3.10, or
+earlier.
 
 ## CLI usage
 
@@ -112,8 +131,9 @@ of package state.
 ## Module map
 
 - `main.py`: CLI and demonstration text-to-key prompts.
-- `package.py`: package orchestration and validation.
-- `ciphers.py`: content-key generation and key-slot sealing.
+- `package.py`: package orchestration, validation, and per-recipient
+  encryption migration.
+- `ciphers.py`: content-key generation, typed-text keys, and key-slot sealing.
 - `identity.py`: recipient descriptors.
 - `verification.py`: recipient factor verification.
 - `custody.py`: internal custody-chain construction and checking.

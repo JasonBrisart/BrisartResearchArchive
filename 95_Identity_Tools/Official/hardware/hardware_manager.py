@@ -74,7 +74,3 @@ class HardwareManager:
                 f"Hardware device '{device_name}' is not registered."
             )
         return device_class(*args, **kwargs)
-
-
-
-

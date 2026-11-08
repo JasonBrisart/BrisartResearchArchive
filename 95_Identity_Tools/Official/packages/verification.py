@@ -105,7 +105,3 @@ def verify_recipient_master_key(master_key: bytes, identity_id: str, verifier: s
     """
     factor_name = f"{RECIPIENT_FACTOR_NAME}:{identity_id}"
     return verify_bound_factor(master_key, factor_name, _VERIFIER_MARKER, verifier)
-
-
-
-

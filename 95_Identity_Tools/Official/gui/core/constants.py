@@ -101,7 +101,3 @@ _MODALITY_FILETYPES = {
 class _Cancelled(Exception):
     """Raised internally when a nested sub-dialog (e.g. a payload editor
     opened from within another dialog) is cancelled by the user."""
-
-
-
-

@@ -203,7 +203,3 @@ def extract_attachment_to_file(record: dict, filename: str, master_key: bytes, o
 def remove_identity_attachment(record: dict, filename: str) -> dict:
     """Return a copy of ``record`` with the named attachment removed."""
     return remove_attachment(record, filename)
-
-
-
-

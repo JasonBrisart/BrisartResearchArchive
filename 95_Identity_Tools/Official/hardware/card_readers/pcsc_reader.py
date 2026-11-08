@@ -233,7 +233,3 @@ class PCSCReader(ReaderBase):
         raise CardAbsentError(
             f"no card detected on {self.name}: {last_exception}"
         )
-
-
-
-

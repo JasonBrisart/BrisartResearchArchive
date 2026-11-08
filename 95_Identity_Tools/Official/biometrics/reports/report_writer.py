@@ -176,7 +176,3 @@ def list_reports(report_dir, identity_id: str = None) -> list:
     if identity_id is None:
         return paths
     return [path for path in paths if f"_{identity_id}_" in path.name]
-
-
-
-

@@ -247,7 +247,3 @@ def write_fingerprint_sample(path, seed: str, size: int = DEFAULT_IMAGE_SIZE) ->
     encoded = generate_fingerprint_image(seed, size)
     with open(path, "wb") as handle:
         handle.write(encoded)
-
-
-
-

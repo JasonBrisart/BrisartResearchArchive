@@ -3,452 +3,186 @@ File: crypto/factors.py
 
 Purpose
 -------
-BSR2 factor protection, split by the entropy of the input.
+Keyed bindings of high-entropy identity factors (device identifiers,
+biometric template digests, signature blobs) under the master key, so a stored
+record can be checked against a presented value but cannot be tested against
+candidate values by anyone without the master key.
 
 Public interface:
-- hash_factor(secret, iterations=ITERATIONS) -- Hash a low-entropy secret with
-  a fresh random salt.
-- verify_factor(secret, encoded) -- Check a low-entropy secret against an
-  encoded hash, in constant time.
-- bind_factor(master_key, factor_name, value) -- Bind a high-entropy factor
-  value under the master key.
+- bind_factor(master_key, factor_name, value) -- Bind a factor value under the
+  master key and return the encoded record.
 - verify_bound_factor(master_key, factor_name, value, encoded) -- Check a
-  high-entropy factor value against a bound record.
-- is_factor_hash(value) -- Report whether ``value`` is a BSR2 KDF factor hash.
-- is_bound_factor(value) -- Report whether ``value`` is a BSR2 keyed factor
-  record.
-- is_legacy_digest(value) -- Report whether ``value`` looks like a bare legacy
-  SHA-256 hex digest.
-- needs_rehash(encoded) -- Report whether a stored KDF hash is weaker than this
-  build now produces.
+  presented value against a bound record, in constant time.
+- is_legacy_binding(encoded) -- Report whether a record uses the legacy
+  keyed_mac construction the encryption migration replaces.
 
 Design notes:
 
-This replaces the unsalted single-pass SHA-256 previously used for every factor
-hash. That construction had two concrete problems: identical factors produced
-identical digests, so stored values revealed which identities shared a
-passphrase and one precomputed table cracked all of them at once; and a single
-SHA-256 runs billions of times per second on a GPU, so any factor drawn from a
-realistic wordlist fell immediately.
+New bindings are a Brisart Encryption BSR2-S64 MAC (``sponge.mac64``) keyed by
+the master key over the framed factor name and value, under a domain string of
+its own. The factor name is part of the MAC input and is checked against the
+record, so a binding made for "device" never verifies in a "fingerprint" slot.
 
-Both are fixed here, but not by the same mechanism, because the factors are not
-the same kind of secret.
+Bindings written before the encryption migration used the legacy construction (a per-name
+``primitives.derive_subkey`` then ``primitives.keyed_mac``). They still verify
+so they can be migrated; nothing writes them any more. A legacy binding is
+migrated by verifying the presented value and binding it again, so only a
+caller holding that value can migrate it.
 
-**Low-entropy secrets** (a human-chosen passphrase or spoken phrase) are
-guessable by construction. They need a deliberately expensive derivation so
-that each guess costs real time. :func:`hash_factor` uses BSR2's
-``derive_password_key`` for this. It is deliberately expensive, with a
-minimum of 10,000 iterations; elapsed time depends on the runtime and hardware.
-
-**High-entropy secrets** (biometric template digests, signature blobs, device
-identifiers) are not guessable, so stretching them buys nothing.
-
-Why the split matters in practice: an identity-bound package verifies several
-factors. Running the expensive KDF on all of them would cost minutes per
-package open and hours across the test suite, while adding no security for the
-inputs that already carry far more entropy than the KDF contributes. Applying
-an expensive KDF to a high-entropy input is cost without benefit; applying a
-fast MAC to a low-entropy one is a real weakness. Each factor gets the
-treatment its entropy actually calls for.
+These factors carry far more entropy than any password KDF would add, so they
+get a fast keyed MAC rather than a deliberately slow derivation. Identity Tools
+stores no low-entropy factor hashes; passphrases only ever unlock the keyring
+(crypto/keyring.py).
 
 Encoded forms::
 
-    bsr2$derive_password_key$iterations=<n>$<salt hex>$<digest hex>
-    bsr2$keyed_mac$<factor name>$<digest hex>
-
-hash_factor() produces the first form (the salt is 32 random bytes and the
-digest is 32 bytes, each written as hex) and bind_factor() the second. A bare
-64-character hex string is a legacy unsalted SHA-256 digest from before BSR2;
-is_legacy_digest() recognizes it.
+    bsr2$mac64$<factor name>$<digest hex>        written since the migration
+    bsr2$keyed_mac$<factor name>$<digest hex>    legacy, verify only
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- crypto.encryption (crypto/encryption.py) -- ``sponge`` for new bindings,
+  ``primitives`` for legacy ones and for hex and constant-time comparison.
 - crypto.errors (crypto/errors.py)
-- crypto.vendor (crypto/vendor.py)
 Standard library: none.
 Imported by:
 - biometrics/identity/device_key.py
+- biometrics/identity/encryption_migration.py
+- packages/package.py
 - packages/verification.py
-Covered by tests: crypto/tests/test_factors.py.
+Covered by tests: crypto/tests/test_factors.py,
+crypto/tests/test_encryption_link.py (a binding written by 1.9.2).
 
 Settings / parameters
 ---------------------
 - PREFIX = "bsr2"
-- KDF_ALGORITHM = "derive_password_key"
-- MAC_ALGORITHM = "keyed_mac"
-- SALT_BYTES = 32
+- MAC_ALGORITHM = "mac64" -- written by bind_factor().
+- LEGACY_MAC_ALGORITHM = "keyed_mac" -- accepted by verify_bound_factor().
 - DIGEST_BYTES = 32
-- ITERATIONS = 10_000
-- MINIMUM_ITERATIONS = 10_000
-- MAXIMUM_ITERATIONS = 1_000_000
-- _KDF_FIELD_COUNT = 5
-- _MAC_FIELD_COUNT = 4
+- _DOMAIN = b"BrisartIdentityTools/factor/v2" -- domain of new bindings.
+- _LEGACY_PURPOSE = b"BrisartIdentityTools/factor/v1" -- subkey purpose of
+  legacy bindings.
 
 Edge cases
 ----------
-- hash_factor() raises Bsr2IntegrationError: "factor secret must be a non-empty
-  string."
-- hash_factor() raises Bsr2IntegrationError: "iterations must be an integer."
-- hash_factor() raises Bsr2IntegrationError: "iteration count is below the
-  {...} minimum."
-- hash_factor() raises Bsr2IntegrationError: "iteration count is above the
-  {...} maximum."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash must be a string."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash is malformed."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash is not a BSR2 factor
-  hash."
-- _parse_kdf() raises Bsr2IntegrationError: "unsupported factor hash algorithm:
-  {...}"
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash parameters are
-  malformed."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash iteration count is not
-  an integer."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash iteration count is
-  below the supported minimum."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash iteration count is
-  above the supported maximum."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash encoding is invalid."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash salt has an invalid
-  length."
-- _parse_kdf() raises Bsr2IntegrationError: "factor hash digest has an invalid
-  length."
-- _factor_mac() raises Bsr2IntegrationError: "master key must be at least 32
-  bytes."
-- _factor_mac() raises Bsr2IntegrationError: "factor name must be a non-empty
-  string."
-- _factor_mac() raises Bsr2IntegrationError: "factor name cannot contain '$'."
-- _factor_mac() raises Bsr2IntegrationError: "factor value must be a string."
-- _parse_mac() raises Bsr2IntegrationError: "bound factor must be a string."
-- _parse_mac() raises Bsr2IntegrationError: "bound factor is malformed."
-- _parse_mac() raises Bsr2IntegrationError: "bound factor is not a BSR2
-  record."
-- _parse_mac() raises Bsr2IntegrationError: "unsupported bound factor
-  algorithm: {...}"
-- _parse_mac() raises Bsr2IntegrationError: "bound factor name is empty."
-- _parse_mac() raises Bsr2IntegrationError: "bound factor encoding is invalid."
-- _parse_mac() raises Bsr2IntegrationError: "bound factor digest has an invalid
-  length."
-- _parse_kdf(), _parse_mac(): translates BrisartPrimitiveError into
-  Bsr2IntegrationError; other exceptions may still propagate.
-- _parse_kdf(): translates ValueError into Bsr2IntegrationError; other
-  exceptions may still propagate.
-- is_bound_factor(), is_factor_hash(), needs_rehash(), verify_bound_factor(),
-  verify_factor(): catches Bsr2IntegrationError and handles it in place; it
-  does not propagate to the caller.
-- verify_bound_factor(): catches (Bsr2IntegrationError, BrisartPrimitiveError)
-  and handles it in place; it does not propagate to the caller.
-- verify_factor(): catches BrisartPrimitiveError and handles it in place; it
-  does not propagate to the caller.
+- bind_factor() raises Bsr2IntegrationError: "master key must be at least 32
+  bytes.", "factor name must be a non-empty string.", "factor name cannot
+  contain '$'." (the encoded form is dollar-delimited), or "factor value must
+  be a string."
+- verify_bound_factor() never raises for bad input: a malformed record, an
+  unknown algorithm, a name mismatch, a non-string value, or a bad key all
+  return False, so a corrupted record reads as "does not verify" instead of
+  crashing an authentication path.
+- Both raise EncryptionNotFoundError when Brisart Encryption is not linked.
 
 Known limitations
 -----------------
-- What they need is a *keyed* digest, so that stealing the stored file does not
-  let an attacker confirm a candidate template offline. :func:`bind_factor`
-  uses ``derive_subkey`` plus ``keyed_mac`` for this, at roughly 15
-  milliseconds.
-- Both paths use only vendored BSR2 primitives.
-- Security rests on BSR2, a custom research construction that has not been
-  independently audited (see docs/SECURITY.md); do not treat it as a
-  replacement for vetted, audited cryptography.
+- Legacy bindings are not rewritten on verify; they move to mac64 only when
+  the caller binds the factor again (biometrics/identity/encryption_migration.py,
+  packages/package.py).
+- BSR2 is custom research cryptography with no independent review (see
+  docs/SECURITY.md); do not treat it as a replacement for vetted, audited
+  cryptography.
 
 Examples
 --------
+Call shapes only: master_key stands for a 32-byte key the caller holds.
+
 ::
 
-    bsr2$derive_password_key$iterations=10000$<hex salt>$<hex digest>
-    bsr2$keyed_mac$<factor name>$<hex digest>
+    from crypto.factors import bind_factor, verify_bound_factor
+    record = bind_factor(master_key, "device", "device-id-123")
+    verify_bound_factor(master_key, "device", "device-id-123", record)  # True
 """
 
+from crypto import encryption
 from crypto.errors import Bsr2IntegrationError
-from crypto.vendor import (
-    BrisartPrimitiveError,
-    constant_time_equal,
-    derive_password_key,
-    derive_subkey,
-    frame,
-    hex_decode,
-    hex_encode,
-    keyed_mac,
-    system_entropy,
-)
 
 PREFIX = "bsr2"
-KDF_ALGORITHM = "derive_password_key"
-MAC_ALGORITHM = "keyed_mac"
-
-SALT_BYTES = 32
+MAC_ALGORITHM = "mac64"
+LEGACY_MAC_ALGORITHM = "keyed_mac"
 DIGEST_BYTES = 32
-ITERATIONS = 10_000
-MINIMUM_ITERATIONS = 10_000
-# Legitimate factor hashes use 10,000 (the BSR2 floor) up to a few times BSR2's
-# 120,000 default. This ceiling sits far above any real setting yet bounds the
-# work a tampered hash can demand: without it, a stored value carrying e.g.
-# iterations=100_000_000_000 makes verify_factor run the KDF for years before
-# the digest can even mismatch. An over-large count is treated as malformed.
-MAXIMUM_ITERATIONS = 1_000_000
 
-_KDF_FIELD_COUNT = 5
-_MAC_FIELD_COUNT = 4
+_DOMAIN = b"BrisartIdentityTools/factor/v2"
+_LEGACY_PURPOSE = b"BrisartIdentityTools/factor/v1"
 
 
-# --------------------------------------------------------------------------
-# Low-entropy secrets: expensive derivation
-# --------------------------------------------------------------------------
-
-def hash_factor(secret: str, iterations: int = ITERATIONS) -> str:
-    """Hash a low-entropy secret with a fresh random salt.
-
-    Use for human-chosen passphrases and spoken phrases only. Expensive by
-    design; see the module docstring for why that cost is the point here and
-    wasted elsewhere.
-    """
-    if not isinstance(secret, str) or not secret:
-        raise Bsr2IntegrationError("factor secret must be a non-empty string.")
-    if type(iterations) is not int:
-        raise Bsr2IntegrationError("iterations must be an integer.")
-    if iterations < MINIMUM_ITERATIONS:
-        raise Bsr2IntegrationError(
-            f"iteration count is below the {MINIMUM_ITERATIONS} minimum."
-        )
-    if iterations > MAXIMUM_ITERATIONS:
-        raise Bsr2IntegrationError(
-            f"iteration count is above the {MAXIMUM_ITERATIONS} maximum."
-        )
-    salt = system_entropy(SALT_BYTES)
-    digest = derive_password_key(
-        secret, salt, iterations=iterations, output_bytes=DIGEST_BYTES
-    )
-    return "$".join(
-        (
-            PREFIX,
-            KDF_ALGORITHM,
-            f"iterations={iterations}",
-            hex_encode(salt),
-            hex_encode(digest),
-        )
-    )
-
-
-def _parse_kdf(encoded: str) -> dict:
-    if not isinstance(encoded, str):
-        raise Bsr2IntegrationError("factor hash must be a string.")
-    fields = encoded.split("$")
-    if len(fields) != _KDF_FIELD_COUNT:
-        raise Bsr2IntegrationError("factor hash is malformed.")
-    prefix, algorithm, parameter_text, salt_text, digest_text = fields
-    if prefix != PREFIX:
-        raise Bsr2IntegrationError("factor hash is not a BSR2 factor hash.")
-    if algorithm != KDF_ALGORITHM:
-        raise Bsr2IntegrationError(
-            f"unsupported factor hash algorithm: {algorithm!r}"
-        )
-    if not parameter_text.startswith("iterations="):
-        raise Bsr2IntegrationError("factor hash parameters are malformed.")
-    try:
-        iterations = int(parameter_text[len("iterations="):])
-    except ValueError as exc:
-        raise Bsr2IntegrationError(
-            "factor hash iteration count is not an integer."
-        ) from exc
-    if iterations < MINIMUM_ITERATIONS:
-        # A tampered hash string could otherwise request a cheap verification.
-        raise Bsr2IntegrationError(
-            "factor hash iteration count is below the supported minimum."
-        )
-    if iterations > MAXIMUM_ITERATIONS:
-        # The opposite tamper: an astronomical count that makes verify_factor
-        # run the KDF for years before the digest can mismatch.
-        raise Bsr2IntegrationError(
-            "factor hash iteration count is above the supported maximum."
-        )
-    try:
-        salt = hex_decode(salt_text)
-        digest = hex_decode(digest_text)
-    except BrisartPrimitiveError as exc:
-        raise Bsr2IntegrationError("factor hash encoding is invalid.") from exc
-    if len(salt) != SALT_BYTES:
-        raise Bsr2IntegrationError("factor hash salt has an invalid length.")
-    if len(digest) != DIGEST_BYTES:
-        raise Bsr2IntegrationError("factor hash digest has an invalid length.")
-    return {"iterations": iterations, "salt": salt, "digest": digest}
-
-
-def verify_factor(secret, encoded: str) -> bool:
-    """Check a low-entropy secret against an encoded hash, in constant time.
-
-    Returns ``False`` for malformed input rather than raising, so a corrupted
-    stored hash reads as "does not verify" instead of crashing an auth path.
-    """
-    if not isinstance(secret, str) or not secret:
-        return False
-    try:
-        parsed = _parse_kdf(encoded)
-    except Bsr2IntegrationError:
-        return False
-    try:
-        calculated = derive_password_key(
-            secret,
-            parsed["salt"],
-            iterations=parsed["iterations"],
-            output_bytes=DIGEST_BYTES,
-        )
-    except BrisartPrimitiveError:
-        return False
-    return constant_time_equal(calculated, parsed["digest"])
-
-
-# --------------------------------------------------------------------------
-# High-entropy secrets: keyed digest under the master key
-# --------------------------------------------------------------------------
-
-def _factor_mac(master_key: bytes, factor_name: str, value: str) -> bytes:
+def _check_inputs(master_key, factor_name, value) -> None:
     if not isinstance(master_key, (bytes, bytearray)) or len(master_key) < 32:
         raise Bsr2IntegrationError("master key must be at least 32 bytes.")
     if not isinstance(factor_name, str) or not factor_name:
         raise Bsr2IntegrationError("factor name must be a non-empty string.")
     if "$" in factor_name:
-        # The encoded form is dollar-delimited, so a name containing one would
-        # make the record ambiguous to parse.
         raise Bsr2IntegrationError("factor name cannot contain '$'.")
     if not isinstance(value, str):
         raise Bsr2IntegrationError("factor value must be a string.")
-    # A distinct subkey per factor name means a template bound as "face" cannot
-    # be replayed into the "fingerprint" slot.
-    subkey = derive_subkey(
-        bytes(master_key),
-        factor_name.encode("utf-8"),
-        b"BrisartIdentityTools/factor/v1",
-        32,
+
+
+def _mac(bsr2, algorithm: str, master_key: bytes, factor_name: str, value: str) -> bytes:
+    name = factor_name.encode("utf-8")
+    data = value.encode("utf-8")
+    if algorithm == MAC_ALGORITHM:
+        return bsr2.sponge.mac64(
+            bytes(master_key), _DOMAIN, name, data, output_bytes=DIGEST_BYTES
+        )
+    primitives = bsr2.primitives
+    subkey = primitives.derive_subkey(bytes(master_key), name, _LEGACY_PURPOSE, 32)
+    return primitives.keyed_mac(
+        subkey, primitives.frame(name) + primitives.frame(data), DIGEST_BYTES
     )
-    # Framed so that the name and value cannot be shifted across the boundary
-    # between them to produce a colliding MAC input.
-    message = frame(factor_name.encode("utf-8")) + frame(value.encode("utf-8"))
-    return keyed_mac(subkey, message, DIGEST_BYTES)
 
 
 def bind_factor(master_key: bytes, factor_name: str, value: str) -> str:
-    """Bind a high-entropy factor value under the master key.
+    """Bind a high-entropy factor value under the master key."""
+    bsr2 = encryption.require()
+    _check_inputs(master_key, factor_name, value)
+    digest = _mac(bsr2, MAC_ALGORITHM, master_key, factor_name, value)
+    return "$".join(
+        (PREFIX, MAC_ALGORITHM, factor_name, bsr2.primitives.hex_encode(digest))
+    )
 
-    Use for biometric template digests, signature blobs, and device
-    identifiers. Fast, and keyed, so the stored record cannot be tested against
-    candidate values without the master key.
-    """
-    digest = _factor_mac(master_key, factor_name, value)
-    return "$".join((PREFIX, MAC_ALGORITHM, factor_name, hex_encode(digest)))
 
-
-def _parse_mac(encoded: str) -> dict:
+def verify_bound_factor(master_key: bytes, factor_name: str, value, encoded: str) -> bool:
+    """Check a high-entropy factor value against a bound record of either
+    algorithm. Returns False for anything that does not verify."""
+    bsr2 = encryption.require()
+    primitives = bsr2.primitives
     if not isinstance(encoded, str):
-        raise Bsr2IntegrationError("bound factor must be a string.")
+        return False
     fields = encoded.split("$")
-    if len(fields) != _MAC_FIELD_COUNT:
-        raise Bsr2IntegrationError("bound factor is malformed.")
-    prefix, algorithm, factor_name, digest_text = fields
-    if prefix != PREFIX:
-        raise Bsr2IntegrationError("bound factor is not a BSR2 record.")
-    if algorithm != MAC_ALGORITHM:
-        raise Bsr2IntegrationError(
-            f"unsupported bound factor algorithm: {algorithm!r}"
-        )
-    if not factor_name:
-        raise Bsr2IntegrationError("bound factor name is empty.")
-    try:
-        digest = hex_decode(digest_text)
-    except BrisartPrimitiveError as exc:
-        raise Bsr2IntegrationError("bound factor encoding is invalid.") from exc
-    if len(digest) != DIGEST_BYTES:
-        raise Bsr2IntegrationError("bound factor digest has an invalid length.")
-    return {"factor_name": factor_name, "digest": digest}
-
-
-def verify_bound_factor(
-    master_key: bytes, factor_name: str, value, encoded: str
-) -> bool:
-    """Check a high-entropy factor value against a bound record.
-
-    The stored record's factor name must match the one supplied, so a record
-    cannot be moved between factor slots even by an attacker who can edit the
-    file.
-    """
-    if not isinstance(value, str):
+    if len(fields) != 4:
+        return False
+    prefix, algorithm, stored_name, digest_text = fields
+    if prefix != PREFIX or algorithm not in (MAC_ALGORITHM, LEGACY_MAC_ALGORITHM):
         return False
     try:
-        parsed = _parse_mac(encoded)
-    except Bsr2IntegrationError:
+        _check_inputs(master_key, factor_name, value)
+        stored_digest = primitives.hex_decode(digest_text)
+        calculated = _mac(bsr2, algorithm, master_key, factor_name, value)
+    except (Bsr2IntegrationError, primitives.BrisartPrimitiveError):
         return False
-    if not constant_time_equal(
-        parsed["factor_name"].encode("utf-8"), factor_name.encode("utf-8")
-    ):
+    if len(stored_digest) != DIGEST_BYTES:
         return False
-    try:
-        calculated = _factor_mac(master_key, factor_name, value)
-    except (Bsr2IntegrationError, BrisartPrimitiveError):
-        return False
-    return constant_time_equal(calculated, parsed["digest"])
+    names_match = primitives.constant_time_equal(
+        stored_name.encode("utf-8"), factor_name.encode("utf-8")
+    )
+    digests_match = primitives.constant_time_equal(calculated, stored_digest)
+    return names_match and digests_match
 
 
-# --------------------------------------------------------------------------
-# Inspection
-# --------------------------------------------------------------------------
-
-def is_factor_hash(value) -> bool:
-    """Report whether ``value`` is a BSR2 KDF factor hash."""
-    if not isinstance(value, str):
-        return False
-    try:
-        _parse_kdf(value)
-    except Bsr2IntegrationError:
-        return False
-    return True
-
-
-def is_bound_factor(value) -> bool:
-    """Report whether ``value`` is a BSR2 keyed factor record."""
-    if not isinstance(value, str):
-        return False
-    try:
-        _parse_mac(value)
-    except Bsr2IntegrationError:
-        return False
-    return True
-
-
-def is_legacy_digest(value) -> bool:
-    """Report whether ``value`` looks like a bare legacy SHA-256 hex digest.
-
-    Used by migration code to identify records written before BSR2, which are
-    64 hex characters with no algorithm marker.
-    """
-    if not isinstance(value, str) or len(value) != 64:
-        return False
-    return all(character in "0123456789abcdefABCDEF" for character in value)
-
-
-def needs_rehash(encoded: str) -> bool:
-    """Report whether a stored KDF hash is weaker than this build now produces."""
-    try:
-        parsed = _parse_kdf(encoded)
-    except Bsr2IntegrationError:
-        return True
-    return parsed["iterations"] < ITERATIONS
+def is_legacy_binding(encoded) -> bool:
+    """Report whether ``encoded`` is a legacy keyed_mac binding."""
+    return isinstance(encoded, str) and encoded.startswith(
+        f"{PREFIX}${LEGACY_MAC_ALGORITHM}$"
+    )
 
 
 __all__ = [
     "DIGEST_BYTES",
-    "ITERATIONS",
-    "MINIMUM_ITERATIONS",
-    "MAXIMUM_ITERATIONS",
+    "LEGACY_MAC_ALGORITHM",
+    "MAC_ALGORITHM",
     "bind_factor",
-    "hash_factor",
-    "is_bound_factor",
-    "is_factor_hash",
-    "is_legacy_digest",
-    "needs_rehash",
+    "is_legacy_binding",
     "verify_bound_factor",
-    "verify_factor",
 ]
-
-
-
-

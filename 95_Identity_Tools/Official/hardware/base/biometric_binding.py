@@ -153,7 +153,3 @@ class BiometricBinding(ABC):
         len(pixels) == width * height. Raise BiometricBindingError if
         no finger is presented within the binding's own timeout, or on
         any other capture failure."""
-
-
-
-

@@ -313,7 +313,3 @@ def public_summary(record: dict) -> dict:
             for filename, entry in sorted(attachments.items())
         ],
     }
-
-
-
-

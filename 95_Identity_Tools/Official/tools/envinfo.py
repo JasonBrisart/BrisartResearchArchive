@@ -118,7 +118,3 @@ if __name__ == "__main__":
         root.destroy()
     except Exception:
         pass  # console output above is enough if a GUI popup isn't available
-
-
-
-

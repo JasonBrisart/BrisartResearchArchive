@@ -115,7 +115,3 @@ def key_slot_context(package_id, identity_id):
     return _join("ibp-key-slot", _clean("package_id", package_id), _clean("identity_id", identity_id))
 def keyring_context(wrapper):
     return _join("keyring-wrapper", _clean("wrapper", wrapper))
-
-
-
-

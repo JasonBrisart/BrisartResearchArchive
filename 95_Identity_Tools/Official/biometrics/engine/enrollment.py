@@ -206,7 +206,3 @@ def enroll_identity(
     for modality, source_path in modality_sources.items():
         record = enroll_modality(record, modality, source_path, master_key, allow_static=allow_static)
     return record
-
-
-
-

@@ -82,13 +82,9 @@ class SealedTemplateTests(unittest.TestCase):
         self.assertNotIn('"vector"', raw_text)
         parsed = json.loads(raw_text)
         envelope = parsed["record"]["templates"]["fingerprint"]
-        # NOTE: fixed 2026-08-24 -- this previously asserted "BSR2", but the
-        # real algorithm constant (crypto.vendor.ALGORITHM /
-        # vendor.brisart_security_envelope.ALGORITHM) is "BSR2-ARX-SPONGE-ETM".
-        # The old assertion always failed even though sealing itself was
-        # correct; see docs/BUGFIX_2026-08-24.md for the bug-fix entry.
-        self.assertEqual(envelope["algorithm"], "BSR2-ARX-SPONGE-ETM")
-        self.assertIn("ciphertext", envelope)
+        # New templates are sealed in Brisart Encryption's v3 format.
+        self.assertEqual(envelope["format"], "BSR2-S64-SIV/3")
+        self.assertIn("data", envelope)
 
     def test_verification_succeeds_with_correct_master_key(self):
         record = enrollment.enroll_identity(
@@ -124,7 +120,3 @@ class SealedTemplateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-

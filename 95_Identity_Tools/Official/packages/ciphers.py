@@ -9,7 +9,13 @@ Public interface:
 - class CiphersError(ValueError) -- Raised on invalid cipher inputs (not on
   authentication failure -- see :class:`crypto.errors.Bsr2IntegrationError` and
   its subclasses for that).
-- new_content_key() -- Generate a fresh random content key for one package.
+- new_content_key() -- Generate a fresh random content key for one package,
+  from Brisart Encryption's system entropy.
+- text_master_key(text) -- The 32-byte recipient master key the CLI, GUI, and
+  demo derive from typed text: a Brisart Encryption BSR2-S64 hash.
+- legacy_text_master_key(text) -- The unsalted SHA-256 the same interfaces
+  used before the encryption migration. Read-only: used to recognise and migrate recipients
+  whose key slot was sealed under it.
 - wrap_content_key(recipient_master_key, package_id, identity_id, content_key)
   -- Seal ``content_key`` into one recipient's key slot.
 - unwrap_content_key(recipient_master_key, package_id, identity_id, wrapped) --
@@ -36,6 +42,16 @@ re-encrypted, and no other recipient's slot is touched. Losing every
 recipient's master key makes the package permanently unopenable, by design;
 there is no back door.
 
+**Typed-text master keys.** The CLI, GUI, and demo let an operator type any
+text in place of a real 32-byte master key. That text becomes a key through
+text_master_key(), defined once here so every interface derives the same key.
+It is a fast unkeyed hash, not a password KDF: these prompts are demonstration
+interfaces, and a real integration supplies a master key unlocked from
+crypto.keyring.Keyring. Before the encryption migration the same text was hashed with SHA-256
+inside each interface; legacy_text_master_key() keeps that derivation only so
+packages sealed under it can still be opened and migrated
+(packages/package.py), and goes when the previous encryption is removed.
+
 Named ``ciphers.py`` rather than ``crypto.py`` specifically to avoid colliding
 with the top-level ``crypto/`` package this module imports from.
 
@@ -43,16 +59,21 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - crypto.context (crypto/context.py)
+- crypto.encryption (crypto/encryption.py) -- entropy and sponge
 - crypto.envelope (crypto/envelope.py)
 - crypto.rng (crypto/rng.py)
-Standard library: secrets.
+Standard library: hashlib (legacy_text_master_key only).
 Imported by:
+- gui/tabs/tab_packages.py
+- packages/demo.py
+- packages/main.py
 - packages/package.py
 Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
 - CONTENT_KEY_BYTES = 32
+- _TEXT_KEY_DOMAIN = b"BrisartIdentityTools/package-text-key/v1"
 
 Edge cases
 ----------
@@ -66,8 +87,10 @@ Known limitations
 - Security rests on BSR2, a custom research construction that has not been
   independently audited (see docs/SECURITY.md); do not treat it as a
   replacement for vetted, audited cryptography.
-- No test module imports this file directly; it is exercised only through its
-  callers' tests, so check changes manually.
+- Typed-text keys are only as strong as the typed text: no salt and no work
+  factor.
+- Covered through packages/tests/test_package_migration.py and the package
+  tests that call create/open.
 
 Examples
 --------
@@ -91,13 +114,15 @@ identity_id, content_key, wrapped stand for values the caller supplies.
     unwrap_content_key(recipient_master_key, package_id, identity_id, wrapped)
 """
 
-import secrets
+import hashlib
 
+from crypto import encryption
 from crypto.context import key_slot_context, package_context
 from crypto.envelope import open_bytes, open_json, seal_bytes, seal_json
 from crypto.rng import new_generator
 
 CONTENT_KEY_BYTES = 32
+_TEXT_KEY_DOMAIN = b"BrisartIdentityTools/package-text-key/v1"
 
 
 class CiphersError(ValueError):
@@ -108,7 +133,19 @@ class CiphersError(ValueError):
 
 def new_content_key() -> bytes:
     """Generate a fresh random content key for one package."""
-    return secrets.token_bytes(CONTENT_KEY_BYTES)
+    return encryption.require().entropy.system_entropy(CONTENT_KEY_BYTES)
+
+
+def text_master_key(text: str) -> bytes:
+    """Derive a recipient master key from typed text with BSR2-S64."""
+    return encryption.require().sponge.hash64(
+        text.encode("utf-8"), _TEXT_KEY_DOMAIN, CONTENT_KEY_BYTES
+    )
+
+
+def legacy_text_master_key(text: str) -> bytes:
+    """The pre-migration typed-text derivation; read-only, for migration."""
+    return hashlib.sha256(text.encode("utf-8")).digest()
 
 
 def wrap_content_key(recipient_master_key: bytes, package_id: str, identity_id: str, content_key: bytes) -> dict:
@@ -157,13 +194,11 @@ def open_payload(content_key: bytes, package_id: str, sealed_payload: dict) -> d
 __all__ = [
     "CONTENT_KEY_BYTES",
     "CiphersError",
+    "legacy_text_master_key",
     "new_content_key",
     "open_payload",
     "seal_payload",
+    "text_master_key",
     "unwrap_content_key",
     "wrap_content_key",
 ]
-
-
-
-

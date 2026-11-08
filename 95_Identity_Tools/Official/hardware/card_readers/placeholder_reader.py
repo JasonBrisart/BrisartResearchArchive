@@ -67,6 +67,3 @@ class PlaceholderReader(ReaderBase):
 
     def read_card(self):
         return None
-
-
-

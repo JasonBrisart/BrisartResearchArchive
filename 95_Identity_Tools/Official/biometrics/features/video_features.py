@@ -178,7 +178,3 @@ def compare(vector_a: list, vector_b: list) -> float:
     if len(vector_a) != len(vector_b):
         raise VideoFeatureError("feature vectors must be the same length.")
     return distance_similarity(vector_a, vector_b)
-
-
-
-

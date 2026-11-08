@@ -236,7 +236,3 @@ def summarize(chain: list) -> list:
         }
         for entry in chain
     ]
-
-
-
-

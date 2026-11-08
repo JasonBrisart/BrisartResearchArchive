@@ -3,292 +3,224 @@ File: crypto/keyring.py
 
 Purpose
 -------
-BSR2 keyring: a random master key wrapped under a passphrase and, separately,
-under an offline recovery code. Everything else in the project (vault records,
-biometric templates) is sealed under the master key, never directly under a
-passphrase-derived key.
+The keyring: a random master key wrapped twice, once under a passphrase and
+once under an offline recovery code. Everything else Identity Tools stores
+(vault records, biometric templates, attachments) is sealed under the master
+key, never directly under a passphrase-derived key.
 
 Public interface:
-- generate_recovery_code() -- Generate a fresh 40-character recovery code (200
-  bits) from a 32-symbol alphabet.
+- generate_recovery_code() -- A fresh 40-character recovery code (200 bits)
+  from a 32-symbol alphabet.
 - format_recovery_code(code) -- Normalize a recovery code and format it as
-  eight hyphen-separated groups of five for display or printing.
+  eight hyphen-separated groups of five.
 - class Keyring -- A master key wrapped under a passphrase and a recovery code.
-- Keyring(state) -- Wrap an existing keyring state dict. Checks its structure
-  only; the keyring starts locked.
-- Keyring.create(passphrase, iterations=KDF_ITERATIONS, recovery_code=None) --
-  Classmethod. Build a new keyring around a fresh random master key. Returns
-  (keyring, recovery_code); the keyring comes back already unlocked.
-- Keyring.unlock_with_passphrase(passphrase) -- Unwrap the master key, cache
-  it, and return it.
-- Keyring.unlock_with_recovery_code(recovery_code) -- Same, using the recovery
-  code.
-- Keyring.is_unlocked -- Property. True while the master key is cached.
-- Keyring.master_key -- Property. The cached master key, or KeyringLockedError.
+- Keyring(state) -- Wrap a stored state dict (format v2 or v1). Checks
+  structure only and leaves ``state`` unchanged; the keyring starts locked.
+- Keyring.create(passphrase, recovery_code=None, memory_blocks=None) --
+  Classmethod. Build a keyring around a fresh master key (memory_blocks
+  defaults to MEMORY_BLOCKS). Returns
+  (keyring, formatted recovery code); the keyring comes back unlocked.
+- Keyring.unlock_with_passphrase(passphrase) /
+  Keyring.unlock_with_recovery_code(code) -- Unwrap, cache, and return the
+  master key.
+- Keyring.is_unlocked, Keyring.master_key -- Properties.
 - Keyring.lock() -- Drop the cached master key.
-- Keyring.change_passphrase(new_passphrase) -- Re-wrap the master key under a
-  new passphrase. Requires an unlocked keyring.
-- Keyring.rotate_recovery_code() -- Issue a new recovery code and return it,
-  formatted. Requires an unlocked keyring.
-- Keyring.to_state() -- The storable, JSON-serialisable state dict.
+- Keyring.change_passphrase(new_passphrase) -- Re-wrap under a new passphrase.
+- Keyring.rotate_recovery_code() -- Issue and return a new recovery code.
+- Keyring.needs_migration -- Property. True while any wrapper or the check
+  value still uses the legacy construction.
+- Keyring.migrate(passphrase) -- Unlock with the passphrase and replace every
+  legacy part with BSR2-MHF-1 wrappers and a BSR2-S64 check. Returns the new
+  recovery code when the recovery wrapper had to be replaced, else None.
+- Keyring.to_state() -- The live, JSON-serialisable state dict.
 - Keyring.public_summary() -- Non-secret metadata for status output.
 
 Design notes:
 
-The design problem this solves: BSR2's derive_password_key is genuinely
-expensive in pure Python (its enforced minimum is 10,000 iterations and
-its upstream default is 120,000). Runtime depends on hardware and workload.
-Deriving a key from the passphrase for every operation would be unusable, and
-lowering the iteration count below BSR2's floor is not permitted by BSR2
-itself.
+**Key wrapping.** Deriving a key from the passphrase is deliberately expensive,
+so it happens once per unlock: the derived key opens the wrapped master key,
+which is held for the session, and every later seal and open is fast.
+Changing the passphrase re-wraps the master key and re-encrypts no data. The
+recovery code is a second full-strength path to the master key, shown once and
+never stored. Losing both is unrecoverable by design.
 
-The answer is standard key wrapping, which is what full-disk encryption has
-always done for the same reason:
+**KDF.** New wrappers derive their key with Brisart Encryption's memory-hard
+BSR2-MHF-1 (``kdf.derive_key``), 8,192 blocks (1 MiB) and one pass by default,
+with the parameters and a 32-byte salt stored per wrapper. Memory-hardness is
+what the legacy iterated KDF lacked, and BSR2-MHF-1 at its defaults is also
+several times faster to unlock than the legacy 10,000-iteration floor.
+Wrapped master keys are sealed with crypto/envelope.py, so new wrappers are v3
+sealed messages.
 
-- The data is encrypted under a random 32-byte **master key**, never directly
-  under a passphrase-derived key.
-- The master key is sealed twice, once under a key derived from the passphrase
-  and once under a key derived from an offline **recovery code**.
-- Unlocking derives one KDF result, unwraps the master key, and holds it for
-  the session. Every subsequent seal and open is fast.
+**Format v2 and legacy keyrings.** Each wrapper records its own KDF, so one
+keyring can hold an MHF passphrase wrapper and a legacy recovery wrapper at
+the same time. That is what happens when a pre-migration keyring changes its
+passphrase: the new wrapper is MHF and the untouched one keeps working.
 
-Consequences that follow from this, and are deliberate:
+A v1 state passed to Keyring() is read through a v2 view with both wrappers
+marked as legacy ``BSR2/derive_password_key`` wrappers, but the stored dict is
+left exactly as it was. Unlocking, failing to unlock, and saving the keyring
+back with its attempt state therefore keep it readable by the release that
+wrote it (Official 1.9.2, LTS-2028 1.3.10). The dict becomes v2 only on the first write that
+replaces a wrapper: change_passphrase(), rotate_recovery_code(), or
+migrate(). Top-level keys the keyring does not own (the attempt-limiting state
+the biometrics keyring file keeps beside it) are kept through that change.
 
-- Changing the passphrase re-wraps the master key. It does not re-encrypt any
-  data, because the master key does not change.
-- The recovery code is a second full-strength path to the master key. Anyone
-  holding it has the same access the passphrase gives. That is the price of
-  recoverability, and it is why the code is shown exactly once and never
-  stored.
-- Losing both the passphrase and the recovery code is unrecoverable. There is
-  no third path by design.
+**Migration.** migrate() is the keyring half of every store's encryption
+migration. It unlocks with the passphrase first, so a wrong passphrase can
+never re-wrap the master key under a secret nobody knows. The passphrase
+wrapper is re-derived from that passphrase. The recovery wrapper cannot be: the
+recovery code is never stored, so a legacy recovery wrapper is replaced by a
+freshly issued recovery code, returned once for display. The old recovery code
+stops working for the migrated state. The master key never changes, so no
+sealed data has to be re-encrypted because of the keyring.
 
-Cost model. Every key derivation costs the same. create() runs two (one per
-wrapper); unlocking, change_passphrase(), and rotate_recovery_code() run one
-each. At the 10,000-iteration floor that is on the order of a minute per
-derivation, so create() takes a few minutes and an unlock about one. Once the
-keyring is unlocked, sealing and opening data is fast.
+**Check value.** ``master_key_check`` is a MAC over a fixed string under the
+master key. It catches a keyring whose two wrappers hold different master keys,
+which would otherwise surface much later as unopenable data. New and rewritten
+keyrings use a BSR2-S64 MAC; converted v1 keyrings keep their legacy
+``keyed_mac`` check until a wrapper is replaced.
 
-Failed unlocks are deliberately uninformative. A wrong passphrase, a wrong but
-well-formed recovery code, and a modified keyring all raise the same
-KeyringAuthenticationError, so the caller learns that the unlock failed and
-not why. A failed unlock does not change state: a keyring that was already
-unlocked stays unlocked.
+**Failure reporting.** A wrong passphrase, a wrong recovery code, and a
+modified wrapper all raise the same KeyringAuthenticationError. A failed unlock
+does not change state.
 
-Where the state lives. A Keyring holds the state dict it is given, not a copy,
-and to_state() returns that same live dict. change_passphrase() and
-rotate_recovery_code() modify it in place and write nothing to disk, so the
-caller must persist to_state() afterwards (vault/store/vault_file.py does this
-for the vault). Until that happens, the file on disk still has the old
-passphrase or recovery code.
+**State ownership.** A Keyring holds the dict it is given; to_state() returns
+it. change_passphrase() and rotate_recovery_code() modify it in place and write
+nothing, so the caller persists to_state() afterwards (vault/store/vault_file.py
+does this for the vault).
 
-Where attempt limiting lives. This class limits nothing about how often an
-unlock may be tried. The KDF cost makes each offline guess slow, and the
-throttle in crypto/throttle.py limits online guessing; it is applied by
-biometrics/identity/keyring_access.py and vault/store/vault_service.py, not
-here. The recovery code gets no extra protection from either: it relies on
-being 200 bits long.
+**Attempt limiting** lives in crypto/throttle.py and is applied by
+biometrics/identity/keyring_access.py and vault/store/vault_service.py; the
+recovery code relies on its 200 bits.
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
 - crypto.context (crypto/context.py)
+- crypto.encryption (crypto/encryption.py) -- ``kdf`` for new wrappers,
+  ``primitives`` for legacy wrappers, hex, and constant-time comparison,
+  ``sponge`` for the check value, ``entropy`` for salts.
 - crypto.envelope (crypto/envelope.py)
 - crypto.errors (crypto/errors.py)
 - crypto.rng (crypto/rng.py)
-- crypto.vendor (crypto/vendor.py)
-Standard library: secrets, typing, unicodedata.
+Standard library: typing, unicodedata.
 Imported by:
 - biometrics/app.py
 - biometrics/identity/keyring_access.py
 - gui/tabs/tab_biometrics.py
 - vault/store/vault_file.py
 - vault/store/vault_service.py
-Covered by tests: biometrics/tests/test_keyring_access.py,
-crypto/tests/test_keyring.py.
+Covered by tests: crypto/tests/test_keyring.py,
+biometrics/tests/test_keyring_access.py.
 
 Settings / parameters
 ---------------------
-- MASTER_KEY_BYTES = 32 -- Length of the master key and of every derived
-  wrapping key (256 bits).
-- KDF_SALT_BYTES = 32 -- Length of the random salt stored with each wrapper. A
-  new salt is drawn whenever a wrapper is rebuilt.
-- KDF_ITERATIONS = 10_000 -- Default iteration count, and BSR2's enforced
-  minimum. This default does not guarantee any particular unlock duration.
-  The count is stored
-  in each keyring, so a different default would not invalidate existing ones.
-- MAXIMUM_KDF_ITERATIONS = 1_000_000 -- Ceiling, checked by create() and when a
-  state is loaded. Legitimate keyrings sit between 10,000 and 120,000; a
-  tampered header with an astronomical count would otherwise make an unlock
-  run for years before it could fail. Mirrors
-  crypto.factors.MAXIMUM_ITERATIONS.
-- RECOVERY_CODE_GROUPS = 8 -- Number of groups in a recovery code.
-- RECOVERY_CODE_GROUP_SIZE = 5 -- Characters per group: 8 x 5 = 40 characters.
-- _RECOVERY_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ" -- Crockford base32
-  without I, L, O, U: no ambiguity when transcribed by hand.
-- _CONFUSABLE_CHARACTERS = {"I": "1", "L": "1", "O": "0", "U": "V"} -- The
-  characters excluded from the alphabet, mapped to their visual equivalents, so
-  a code transcribed by hand still resolves.
-- KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v1" -- Stored in every
-  state; loading any other value raises KeyringFormatError.
-- _WRAPPER_PASSPHRASE = "passphrase" -- Name of the passphrase wrapper section
-  in the state, also bound into that wrapper's envelope via keyring_context().
-- _WRAPPER_RECOVERY = "recovery" -- The same for the recovery wrapper.
-- Keyring.create(iterations=KDF_ITERATIONS) -- Must be an exact int between
-  10,000 and MAXIMUM_KDF_ITERATIONS.
-- Keyring.create(recovery_code=None) -- Supply your own code instead of a
-  generated one. It is normalized, and the code returned is its formatted form.
+- MASTER_KEY_BYTES = 32 -- master key and every wrapping key.
+- KDF_SALT_BYTES = 32 -- salt per wrapper, redrawn whenever one is rebuilt.
+- KDF = "BSR2-MHF-1", LEGACY_KDF = "BSR2/derive_password_key".
+- MEMORY_BLOCKS = 8192, PASSES = 1 -- BSR2-MHF-1 defaults for new keyrings.
+  change_passphrase() and rotate_recovery_code() keep the replaced wrapper's
+  memory cost when it is already BSR2-MHF-1 and use MEMORY_BLOCKS when it is
+  legacy.
+- MAXIMUM_MEMORY_BLOCKS = 65536 (8 MiB), MAXIMUM_PASSES = 4 -- ceilings on
+  stored parameters, so a tampered header cannot make an unlock run for hours
+  before it can fail.
+- LEGACY_MINIMUM_ITERATIONS = 10_000, LEGACY_MAXIMUM_ITERATIONS = 1_000_000 --
+  accepted range for legacy wrappers; the floor stops a tampered header from
+  requesting a trivially cheap derivation.
+- RECOVERY_CODE_GROUPS = 8, RECOVERY_CODE_GROUP_SIZE = 5 -- 40 characters.
+- _RECOVERY_ALPHABET -- Crockford base32 without I, L, O, U.
+- _CONFUSABLE_CHARACTERS = {"I": "1", "L": "1", "O": "0", "U": "V"}.
+- KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v2";
+  LEGACY_KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v1" (read;
+  converted to v2 only when a wrapper is replaced, never written as v1).
+- Keyring.create(memory_blocks=...) -- a power of two from 64 to
+  MAXIMUM_MEMORY_BLOCKS. MEMORY_BLOCKS is read at call time, so tests can
+  lower it for speed with unittest.mock.patch.
 
 Edge cases
 ----------
 All errors derive from Bsr2IntegrationError: KeyringFormatError (bad stored
-state), KeyringAuthenticationError (unlock failed), and KeyringLockedError
-(operation needs an unlocked keyring).
+state or parameters), KeyringAuthenticationError (unlock failed), and
+KeyringLockedError (operation needs an unlocked keyring).
 
 Input handling:
 - Recovery codes are forgiving: hyphens and whitespace are stripped, case is
   folded, and I and L read as 1, O as 0, and U as V.
-- Passphrases are normalized with NFKC, so the same text typed on another
-  platform derives the same key. Surrounding whitespace is kept and counts.
-- Argument problems (empty passphrase, malformed recovery code, iteration count
-  out of range) fail immediately, before any key derivation runs.
-- Keyring.create(iterations=True) or a float such as 10000.0 raises
-  KeyringFormatError, not Bsr2IntegrationError, because the check is shared
-  with state validation and accepts only an exact int.
+- Passphrases are normalized with NFKC; surrounding whitespace counts.
+- Argument problems (empty passphrase, malformed recovery code, memory_blocks
+  out of range) fail before any key derivation runs.
 
-Errors, in the order the code raises them:
-- _normalize_recovery_code() raises Bsr2IntegrationError: "recovery code must
-  be a string."
-- _normalize_recovery_code() raises Bsr2IntegrationError: "recovery code
-  contains characters outside its alphabet."
-- _normalize_recovery_code() raises Bsr2IntegrationError: "recovery code must
-  contain {...} characters, got {...}."
-- _normalize_passphrase() raises Bsr2IntegrationError: "passphrase must be a
-  string."
-- _normalize_passphrase() raises Bsr2IntegrationError: "passphrase cannot be
-  empty."
-- _require_int() raises KeyringFormatError: "keyring {...} must be an integer."
-- Keyring.create() raises Bsr2IntegrationError: "iteration count is below the
-  BSR2 research minimum of 10,000."
-- Keyring.create() raises Bsr2IntegrationError: "iteration count is above the
-  {...} maximum."
-- Keyring._validate() raises KeyringFormatError: "keyring state must be an
-  object."
-- Keyring._validate() raises KeyringFormatError: "unsupported keyring format."
-- Keyring._validate() raises KeyringFormatError: "unsupported keyring KDF."
-- Keyring._validate() raises KeyringFormatError: "keyring iteration count is
-  below the BSR2 minimum."
-- Keyring._validate() raises KeyringFormatError: "keyring iteration count is
-  above the supported maximum."
-- Keyring._validate() raises KeyringFormatError: "keyring {...} section must be
-  an object."
-- Keyring._validate() raises KeyringFormatError: "keyring {...} salt must be
-  hexadecimal text."
-- Keyring._validate() raises KeyringFormatError: "keyring {...} salt is not
-  valid hexadecimal."
-- Keyring._validate() raises KeyringFormatError: "keyring {...} salt has an
-  invalid length."
-- Keyring._validate() raises KeyringFormatError: "keyring {...} wrapper is not
-  a BSR2 envelope."
-- Keyring._validate() raises KeyringFormatError: "keyring master key check must
-  be text."
-- Keyring._validate() raises KeyringFormatError: "keyring master key check has
-  an invalid length."
-- Keyring._validate() raises KeyringFormatError: "keyring master key check is
-  not valid hexadecimal."
-- Keyring._unwrap() raises KeyringAuthenticationError: "unlock failed:
-  incorrect secret or modified keyring."
-- Keyring._unwrap() raises KeyringFormatError: "unwrapped master key has an
-  invalid length."
-- Keyring._unwrap() raises KeyringFormatError: "unwrapped master key does not
-  match the keyring check value." This is raised after authentication has
-  succeeded, and means the two wrappers hold different master keys.
-- Keyring.master_key raises KeyringLockedError: "keyring is locked; unlock it
-  before using the master key."
-- Keyring.change_passphrase() raises KeyringLockedError: "unlock the keyring
-  before changing its passphrase."
-- Keyring.rotate_recovery_code() raises KeyringLockedError: "unlock the keyring
-  before rotating its recovery code."
+Errors:
+- Bsr2IntegrationError: "recovery code must be a string.", "recovery code
+  contains characters outside its alphabet.", "recovery code must contain {...}
+  characters, got {...}.", "passphrase must be a string.", "passphrase cannot
+  be empty."
+- KeyringFormatError from create(): "memory_blocks must be a power of two from
+  64 to {...}."
+- KeyringFormatError from Keyring(): "keyring state must be an object.",
+  "unsupported keyring format.", "keyring {wrapper} section must be an
+  object.", "keyring {wrapper} uses an unsupported KDF.", "keyring {wrapper}
+  KDF parameters are invalid.", "keyring {wrapper} iteration count is outside
+  the supported range.", "keyring {wrapper} salt is invalid.", "keyring
+  {wrapper} wrapper is not a sealed payload.", "keyring master key check is
+  invalid."
+- KeyringAuthenticationError: "unlock failed: incorrect secret or modified
+  keyring."
+- KeyringFormatError after a successful unwrap: "unwrapped master key has an
+  invalid length." or "unwrapped master key does not match the keyring check
+  value." (the two wrappers hold different master keys).
+- KeyringLockedError: "keyring is locked; unlock it before using the master
+  key.", "unlock the keyring before changing its passphrase.", "unlock the
+  keyring before rotating its recovery code."
+- EncryptionNotFoundError whenever Brisart Encryption is not linked. It is
+  never translated, so a missing link is not reported as a wrong passphrase.
 
-Translated errors:
-- Keyring._unwrap(): translates (BrisartEnvelopeError, Bsr2IntegrationError)
-  into KeyringAuthenticationError; other exceptions may still propagate.
-- Keyring._validate(): translates BrisartPrimitiveError into
-  KeyringFormatError; other exceptions may still propagate.
-
-Loading is structural only: a keyring whose envelopes were modified still
+Loading is structural only: a keyring whose wrappers were modified still
 loads, and fails with KeyringAuthenticationError only when unlocked.
 
 Known limitations
 -----------------
-- Slow by design. Each unlock performs one key derivation and create()
-  performs two. The minimum iteration count is enforced by BSR2; elapsed
-  time also depends on hardware, interpreter, and workload.
-- No way to raise the iteration count of an existing keyring. The count is
-  stored per keyring, but no method here changes it, and create() always draws
-  a new master key, so strengthening a keyring means starting a new one.
-- change_passphrase() does not ask for the old passphrase. Being unlocked is
-  the only check, so whoever holds an unlocked Keyring object can change it.
-- rotate_recovery_code() invalidates the old code only for the state it
-  modifies. Any earlier copy of the keyring (a backup, a synced file) still
-  opens with the old recovery code, and with the old passphrase after
-  change_passphrase().
-- lock() is best effort. It drops the cached reference, but Python cannot
-  guarantee the bytes leave process memory, and any copy a caller kept from
-  unlock_with_*() or master_key survives it.
-- No attempt limiting or lockout in this class (see Design notes).
-- No password strength check: any non-empty string is accepted as a passphrase.
-- public_summary() always reports recovery_code_available as True. It is a
-  constant, not read from the state.
-- Not thread-safe. The state and the cached key are plain mutable attributes
-  with no locking, so share one Keyring between threads only with your own
-  synchronization.
-- The 10,000 floor is written as a literal in both create() and _validate(),
-  not as a shared constant, so the two must be changed together.
-- Security rests on BSR2, a custom research construction that has not been
-  independently audited (see docs/SECURITY.md); do not treat it as a
-  replacement for vetted, audited cryptography.
+- Slow by design: each unlock performs one derivation, create() two.
+- Legacy wrappers are not upgraded on unlock; they move to BSR2-MHF-1 through
+  migrate(), change_passphrase(), or rotate_recovery_code().
+- migrate() replaces a legacy recovery code rather than keeping it, because
+  the code is not available to re-derive. A copy of the keyring made before
+  migration still opens with the old code.
+- change_passphrase() does not ask for the old passphrase; being unlocked is
+  the only check.
+- Earlier copies of a keyring (backups, synced files) still open with the old
+  passphrase or recovery code.
+- lock() is best effort: Python cannot guarantee the bytes leave memory.
+- No passphrase strength check, and not thread-safe.
+- BSR2 is custom research cryptography with no independent review (see
+  docs/SECURITY.md); do not treat it as a replacement for vetted, audited
+  cryptography.
 
 Examples
 --------
-Run from the repository root. The default iteration count makes create() and
-each unlock slow (see Design notes).
+Run from the repository root.
 
 ::
 
-    from crypto.keyring import (
-        Keyring,
-        format_recovery_code,
-        generate_recovery_code,
-    )
+    from crypto.keyring import Keyring
 
-    # Create: two key derivations. The recovery code is returned only here.
     keyring, recovery_code = Keyring.create("correct horse battery staple")
-    print(recovery_code)            # store it offline; it is never saved
-    state = keyring.to_state()      # JSON-serialisable; persist this
+    state = keyring.to_state()          # persist this; the code is never saved
 
-    # Reopen later: validates structure, then one derivation to unlock.
     keyring = Keyring(state)
     keyring.unlock_with_passphrase("correct horse battery staple")
-    master_key = keyring.master_key
-    keyring.lock()
-
-    # Recovery path. Case, spaces, and hyphens do not matter.
     keyring.unlock_with_recovery_code(recovery_code.lower())
 
-    # The state is changed in place and not saved for you: persist it again.
     keyring.change_passphrase("a new passphrase")
-    state = keyring.to_state()
-
-    # Generate and format a standalone code.
-    code = generate_recovery_code()
-    print(format_recovery_code(code))
+    state = keyring.to_state()          # changed in place: persist again
 """
 
-import secrets
 import unicodedata
 from typing import Optional
 
+from crypto import encryption
 from crypto.context import keyring_context
 from crypto.envelope import is_envelope, open_bytes, seal_bytes
 from crypto.errors import (
@@ -298,61 +230,44 @@ from crypto.errors import (
     KeyringLockedError,
 )
 from crypto.rng import new_generator
-from crypto.vendor import (
-    BrisartEnvelopeError,
-    BrisartPrimitiveError,
-    constant_time_equal,
-    derive_password_key,
-    hex_decode,
-    hex_encode,
-    keyed_mac,
-)
 
 MASTER_KEY_BYTES = 32
 KDF_SALT_BYTES = 32
 
-# BSR2 enforces a 10,000 floor and defaults to 120,000. At roughly 7 ms per
-# iteration in pure Python, the floor already costs about 70 seconds per
-# derivation. That is the value used here: it is the strongest setting BSR2
-# permits that still allows an unlock to complete in under a couple of minutes,
-# and because unlocking happens once per session rather than per operation, the
-# cost is paid once. Recorded per keyring so it can be raised later without
-# invalidating existing keyrings.
-KDF_ITERATIONS = 10_000
-
-# Upper bound mirroring crypto.factors.MAXIMUM_ITERATIONS. Legitimate
-# keyrings sit at 10,000..120,000; a tampered header carrying an astronomical
-# count would otherwise make an unlock derive for years before it can fail.
-MAXIMUM_KDF_ITERATIONS = 1_000_000
+KDF = "BSR2-MHF-1"
+LEGACY_KDF = "BSR2/derive_password_key"
+MEMORY_BLOCKS = 8192
+PASSES = 1
+MAXIMUM_MEMORY_BLOCKS = 65536
+MAXIMUM_PASSES = 4
+LEGACY_MINIMUM_ITERATIONS = 10_000
+LEGACY_MAXIMUM_ITERATIONS = 1_000_000
 
 RECOVERY_CODE_GROUPS = 8
 RECOVERY_CODE_GROUP_SIZE = 5
-
-# Crockford base32 without I, L, O, U: no ambiguity when transcribed by hand.
 _RECOVERY_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-# The characters excluded from the alphabet, mapped to their visual equivalents,
-# so a code transcribed by hand still resolves.
 _CONFUSABLE_CHARACTERS = {"I": "1", "L": "1", "O": "0", "U": "V"}
 
-KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v1"
+KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v2"
+LEGACY_KEYRING_FORMAT = "brisart-identity-tools/bsr2-keyring/v1"
 
 _WRAPPER_PASSPHRASE = "passphrase"
 _WRAPPER_RECOVERY = "recovery"
+_WRAPPERS = (_WRAPPER_PASSPHRASE, _WRAPPER_RECOVERY)
+
+_CHECK_MAC = "mac64"
+_LEGACY_CHECK_MAC = "keyed_mac"
+_CHECK_DOMAIN = b"BrisartIdentityTools/keyring/master-key-check/v2"
+_LEGACY_CHECK_MESSAGE = b"BrisartIdentityTools/keyring/master-key-check/v1"
 
 
 def generate_recovery_code() -> str:
-    """Generate a fresh recovery code.
-
-    Forty characters from a 32-symbol alphabet is 200 bits, drawn from
-    ``secrets.choice``. Well beyond any brute-force reach, which matters because
-    this code is a direct path to the master key and gets no attempt limiting
-    once an attacker has the keyring file.
-    """
-    characters = [
-        secrets.choice(_RECOVERY_ALPHABET)
-        for _ in range(RECOVERY_CODE_GROUPS * RECOVERY_CODE_GROUP_SIZE)
-    ]
-    return "".join(characters)
+    """Forty characters from a 32-symbol alphabet: 200 bits of Brisart
+    Encryption system entropy, five bits per character, so every character
+    is uniform."""
+    length = RECOVERY_CODE_GROUPS * RECOVERY_CODE_GROUP_SIZE
+    bits = int.from_bytes(encryption.require().entropy.system_entropy(length * 5 // 8), "big")
+    return "".join(_RECOVERY_ALPHABET[(bits >> (5 * index)) & 31] for index in range(length))
 
 
 def format_recovery_code(code: str) -> str:
@@ -365,12 +280,6 @@ def format_recovery_code(code: str) -> str:
 
 
 def _normalize_recovery_code(code: str) -> str:
-    """Normalise a typed recovery code.
-
-    Hyphens and spaces are stripped, case is folded, and the characters excluded
-    from the alphabet are mapped to their visual equivalents, so a code
-    transcribed by hand still works.
-    """
     if not isinstance(code, str):
         raise Bsr2IntegrationError("recovery code must be a string.")
     cleaned = []
@@ -398,206 +307,228 @@ def _normalize_passphrase(passphrase: str) -> str:
         raise Bsr2IntegrationError("passphrase must be a string.")
     if not passphrase:
         raise Bsr2IntegrationError("passphrase cannot be empty.")
-    # NFKC so a passphrase typed on a different platform or keyboard layout does
-    # not derive a different key purely through Unicode composition.
     return unicodedata.normalize("NFKC", passphrase)
 
 
-def _derive_wrapping_key(secret_text: str, salt: bytes, iterations: int) -> bytes:
-    """Derive a wrapping key from a passphrase or recovery code using BSR2."""
-    return derive_password_key(
+def _decode_params(bsr2, section: dict, wrapper: str):
+    try:
+        return bsr2.kdf.KdfParams.decode(
+            bsr2.primitives.hex_decode(section["params"]),
+            max_memory_blocks=MAXIMUM_MEMORY_BLOCKS,
+            max_passes=MAXIMUM_PASSES,
+        )
+    except (KeyError, TypeError, bsr2.kdf.BrisartKdfError, bsr2.primitives.BrisartPrimitiveError) as exc:
+        raise KeyringFormatError(f"keyring {wrapper} KDF parameters are invalid.") from exc
+
+
+def _derive(bsr2, section: dict, wrapper: str, secret_text: str) -> bytes:
+    if section["kdf"] == KDF:
+        return bsr2.kdf.derive_key(
+            secret_text,
+            _decode_params(bsr2, section, wrapper),
+            MASTER_KEY_BYTES,
+            max_memory_blocks=MAXIMUM_MEMORY_BLOCKS,
+            max_passes=MAXIMUM_PASSES,
+        )
+    return bsr2.primitives.derive_password_key(
         secret_text,
-        salt,
-        iterations=iterations,
+        bsr2.primitives.hex_decode(section["salt"]),
+        iterations=section["iterations"],
         output_bytes=MASTER_KEY_BYTES,
     )
 
 
-def _require_int(value, name: str) -> int:
-    if type(value) is not int:
-        raise KeyringFormatError(f"keyring {name} must be an integer.")
-    return value
+def _check_value(bsr2, mac: str, master_key: bytes) -> bytes:
+    if mac == _CHECK_MAC:
+        return bsr2.sponge.mac64(master_key, _CHECK_DOMAIN, output_bytes=32)
+    return bsr2.primitives.keyed_mac(master_key, _LEGACY_CHECK_MESSAGE, 32)
+
+
+def _converted_legacy_state(state: dict) -> dict:
+    """The v2 view of a v1 state, as a new dict; ``state`` is not touched.
+    Values the v1 shape leaves malformed are carried across and rejected by
+    _validate()."""
+    iterations = state.get("iterations")
+    owned = {"format", "kdf", "iterations", *_WRAPPERS, "master_key_check"}
+    if state.get("kdf") != LEGACY_KDF:
+        raise KeyringFormatError("keyring passphrase uses an unsupported KDF.")
+    converted = {"format": KEYRING_FORMAT}
+    for wrapper in _WRAPPERS:
+        section = state.get(wrapper)
+        if not isinstance(section, dict):
+            raise KeyringFormatError(f"keyring {wrapper} section must be an object.")
+        converted[wrapper] = {
+            "kdf": LEGACY_KDF,
+            "iterations": iterations,
+            "salt": section.get("salt"),
+            "wrapped_master_key": section.get("wrapped_master_key"),
+        }
+    converted["master_key_check"] = {
+        "mac": _LEGACY_CHECK_MAC,
+        "value": state.get("master_key_check"),
+    }
+    converted.update({key: value for key, value in state.items() if key not in owned})
+    return converted
+
+
+def _validate_wrapper(bsr2, state: dict, wrapper: str) -> None:
+    section = state.get(wrapper)
+    if not isinstance(section, dict):
+        raise KeyringFormatError(f"keyring {wrapper} section must be an object.")
+    kdf = section.get("kdf")
+    if kdf == KDF:
+        if set(section) != {"kdf", "params", "wrapped_master_key"}:
+            raise KeyringFormatError(f"keyring {wrapper} KDF parameters are invalid.")
+        _decode_params(bsr2, section, wrapper)
+    elif kdf == LEGACY_KDF:
+        iterations = section.get("iterations")
+        if (
+            type(iterations) is not int
+            or not LEGACY_MINIMUM_ITERATIONS <= iterations <= LEGACY_MAXIMUM_ITERATIONS
+        ):
+            raise KeyringFormatError(
+                f"keyring {wrapper} iteration count is outside the supported range."
+            )
+        try:
+            salt = bsr2.primitives.hex_decode(section.get("salt"))
+        except (TypeError, AttributeError, bsr2.primitives.BrisartPrimitiveError) as exc:
+            raise KeyringFormatError(f"keyring {wrapper} salt is invalid.") from exc
+        if len(salt) != KDF_SALT_BYTES:
+            raise KeyringFormatError(f"keyring {wrapper} salt is invalid.")
+    else:
+        raise KeyringFormatError(f"keyring {wrapper} uses an unsupported KDF.")
+    if not is_envelope(section.get("wrapped_master_key")):
+        raise KeyringFormatError(f"keyring {wrapper} wrapper is not a sealed payload.")
+
+
+def _validate(state) -> dict:
+    """Validate ``state`` and return its v2 view: ``state`` itself when it is
+    v2, a converted copy when it is v1. ``state`` is never modified."""
+    bsr2 = encryption.require()
+    if not isinstance(state, dict):
+        raise KeyringFormatError("keyring state must be an object.")
+    if state.get("format") == LEGACY_KEYRING_FORMAT:
+        state = _converted_legacy_state(state)
+    if state.get("format") != KEYRING_FORMAT:
+        raise KeyringFormatError("unsupported keyring format.")
+    for wrapper in _WRAPPERS:
+        _validate_wrapper(bsr2, state, wrapper)
+    check = state.get("master_key_check")
+    try:
+        valid_check = (
+            isinstance(check, dict)
+            and check.get("mac") in (_CHECK_MAC, _LEGACY_CHECK_MAC)
+            and len(bsr2.primitives.hex_decode(check.get("value"))) == 32
+        )
+    except (TypeError, AttributeError, bsr2.primitives.BrisartPrimitiveError):
+        valid_check = False
+    if not valid_check:
+        raise KeyringFormatError("keyring master key check is invalid.")
+    return state
 
 
 class Keyring:
     """A master key wrapped under a passphrase and a recovery code.
 
-    ``state`` is a plain JSON-serialisable dict, so it can live inside a vault
-    header or a standalone file. It contains no plaintext key material: only
-    salts, iteration counts, and two BSR2 envelopes.
+    ``state`` is a plain JSON-serialisable dict holding no plaintext key
+    material: KDF parameters and two sealed wrappers.
     """
 
     def __init__(self, state: dict):
-        self._state = self._validate(state)
+        # _state is the caller's stored dict, written back by to_state();
+        # _view is its v2 form, which every read uses. They are the same dict
+        # except for a v1 keyring, which stays exactly as stored -- readable by
+        # the release that wrote it -- until _wrap() replaces a wrapper.
+        self._state = state
+        self._view = _validate(state)
         self._master_key = None
 
-    # ---------------------------------------------------------------- creation
     @classmethod
     def create(
         cls,
         passphrase: str,
-        iterations: int = KDF_ITERATIONS,
         recovery_code: Optional[str] = None,
+        memory_blocks: Optional[int] = None,
     ):
-        """Build a new keyring around a fresh random master key.
+        """Build a keyring around a fresh master key.
 
-        Returns ``(keyring, recovery_code)``. The recovery code is returned only
-        here and never stored in recoverable form, so a caller that discards it
-        cannot get it back.
+        Returns ``(keyring, recovery_code)``. The recovery code is returned
+        only here and never stored.
         """
+        bsr2 = encryption.require()
+        if memory_blocks is None:
+            memory_blocks = MEMORY_BLOCKS
         passphrase_text = _normalize_passphrase(passphrase)
-        iterations = _require_int(iterations, "iterations")
-        if iterations < 10_000:
-            # Mirrors BSR2's own floor. Stated explicitly so the failure names
-            # the real constraint rather than surfacing a primitive error.
-            raise Bsr2IntegrationError(
-                "iteration count is below the BSR2 research minimum of 10,000."
-            )
-        if iterations > MAXIMUM_KDF_ITERATIONS:
-            raise Bsr2IntegrationError(
-                f"iteration count is above the {MAXIMUM_KDF_ITERATIONS} maximum."
-            )
-        if recovery_code is None:
-            recovery_text = generate_recovery_code()
-        else:
-            recovery_text = _normalize_recovery_code(recovery_code)
-        master_key = secrets.token_bytes(MASTER_KEY_BYTES)
-        rng = new_generator("keyring-create")
-        passphrase_salt = secrets.token_bytes(KDF_SALT_BYTES)
-        recovery_salt = secrets.token_bytes(KDF_SALT_BYTES)
-        passphrase_key = _derive_wrapping_key(
-            passphrase_text, passphrase_salt, iterations
+        recovery_text = (
+            generate_recovery_code()
+            if recovery_code is None
+            else _normalize_recovery_code(recovery_code)
         )
-        recovery_key = _derive_wrapping_key(
-            recovery_text, recovery_salt, iterations
-        )
-        state = {
-            "format": KEYRING_FORMAT,
-            "kdf": "BSR2/derive_password_key",
-            "iterations": iterations,
-            "passphrase": {
-                "salt": hex_encode(passphrase_salt),
-                "wrapped_master_key": seal_bytes(
-                    passphrase_key,
-                    master_key,
-                    keyring_context(_WRAPPER_PASSPHRASE),
-                    rng,
-                ),
-            },
-            "recovery": {
-                "salt": hex_encode(recovery_salt),
-                "wrapped_master_key": seal_bytes(
-                    recovery_key,
-                    master_key,
-                    keyring_context(_WRAPPER_RECOVERY),
-                    rng,
-                ),
-            },
-            "master_key_check": hex_encode(cls._check_value(master_key)),
-        }
-        keyring = cls(state)
+        if (
+            type(memory_blocks) is not int
+            or not 64 <= memory_blocks <= MAXIMUM_MEMORY_BLOCKS
+            or memory_blocks & (memory_blocks - 1)
+        ):
+            raise KeyringFormatError(
+                f"memory_blocks must be a power of two from 64 to {MAXIMUM_MEMORY_BLOCKS}."
+            )
+        master_key = bsr2.entropy.system_entropy(MASTER_KEY_BYTES)
+        keyring = cls.__new__(cls)
         keyring._master_key = master_key
+        keyring._state = keyring._view = {"format": KEYRING_FORMAT}
+        keyring._wrap(_WRAPPER_PASSPHRASE, passphrase_text, memory_blocks, "keyring-create")
+        keyring._wrap(_WRAPPER_RECOVERY, recovery_text, memory_blocks, "keyring-create")
+        _validate(keyring._state)
         return keyring, format_recovery_code(recovery_text)
 
-    # -------------------------------------------------------------- validation
-    @staticmethod
-    def _validate(state: dict) -> dict:
-        if not isinstance(state, dict):
-            raise KeyringFormatError("keyring state must be an object.")
-        if state.get("format") != KEYRING_FORMAT:
-            raise KeyringFormatError("unsupported keyring format.")
-        if state.get("kdf") != "BSR2/derive_password_key":
-            raise KeyringFormatError("unsupported keyring KDF.")
-        iterations = _require_int(state.get("iterations"), "iterations")
-        if iterations < 10_000:
-            # A tampered keyring header could otherwise request a cheap
-            # derivation and make the KDF trivially brute-forceable.
-            raise KeyringFormatError(
-                "keyring iteration count is below the BSR2 minimum."
-            )
-        if iterations > MAXIMUM_KDF_ITERATIONS:
-            # The opposite tamper: an astronomical count that turns unlock into
-            # a years-long hang before authentication can fail.
-            raise KeyringFormatError(
-                "keyring iteration count is above the supported maximum."
-            )
-        for wrapper in (_WRAPPER_PASSPHRASE, _WRAPPER_RECOVERY):
-            section = state.get(wrapper)
-            if not isinstance(section, dict):
-                raise KeyringFormatError(
-                    f"keyring {wrapper} section must be an object."
-                )
-            salt_text = section.get("salt")
-            if not isinstance(salt_text, str):
-                raise KeyringFormatError(
-                    f"keyring {wrapper} salt must be hexadecimal text."
-                )
-            try:
-                salt = hex_decode(salt_text)
-            except BrisartPrimitiveError as exc:
-                raise KeyringFormatError(
-                    f"keyring {wrapper} salt is not valid hexadecimal."
-                ) from exc
-            if len(salt) != KDF_SALT_BYTES:
-                raise KeyringFormatError(
-                    f"keyring {wrapper} salt has an invalid length."
-                )
-            if not is_envelope(section.get("wrapped_master_key")):
-                raise KeyringFormatError(
-                    f"keyring {wrapper} wrapper is not a BSR2 envelope."
-                )
-        check = state.get("master_key_check")
-        if not isinstance(check, str):
-            raise KeyringFormatError("keyring master key check must be text.")
-        try:
-            if len(hex_decode(check)) != 32:
-                raise KeyringFormatError(
-                    "keyring master key check has an invalid length."
-                )
-        except BrisartPrimitiveError as exc:
-            raise KeyringFormatError(
-                "keyring master key check is not valid hexadecimal."
-            ) from exc
-        return state
-
-    @staticmethod
-    def _check_value(master_key: bytes) -> bytes:
-        """A MAC over a fixed string, used to confirm an unwrap produced the
-        expected master key.
-
-        The BSR2 tag already authenticates each wrapper, so this is a redundancy
-        check: it catches a keyring whose two wrappers hold *different* master
-        keys, which would otherwise show up much later as unopenable data.
-        """
-        return keyed_mac(
-            master_key,
-            b"BrisartIdentityTools/keyring/master-key-check/v1",
-            32,
+    def _wrap(self, wrapper: str, secret_text: str, memory_blocks: int, purpose: str) -> None:
+        """Seal the cached master key under a fresh BSR2-MHF-1 key for
+        ``wrapper`` and refresh the check value."""
+        bsr2 = encryption.require()
+        if self._view is not self._state:
+            # First write to a v1 keyring: from here on it is stored as v2.
+            self._state.clear()
+            self._state.update(self._view)
+            self._view = self._state
+        params = bsr2.kdf.new_params(
+            memory_blocks=memory_blocks,
+            passes=PASSES,
+            salt=bsr2.entropy.system_entropy(KDF_SALT_BYTES),
         )
+        section = {
+            "kdf": KDF,
+            "params": bsr2.primitives.hex_encode(params.encode()),
+        }
+        wrapping_key = _derive(bsr2, section, wrapper, secret_text)
+        section["wrapped_master_key"] = seal_bytes(
+            wrapping_key, self._master_key, keyring_context(wrapper), new_generator(purpose)
+        )
+        self._state[wrapper] = section
+        self._state["master_key_check"] = {
+            "mac": _CHECK_MAC,
+            "value": bsr2.primitives.hex_encode(
+                _check_value(bsr2, _CHECK_MAC, self._master_key)
+            ),
+        }
 
-    # ------------------------------------------------------------------ unlock
     def _unwrap(self, wrapper: str, secret_text: str) -> bytes:
-        section = self._state[wrapper]
-        salt = hex_decode(section["salt"])
-        wrapping_key = _derive_wrapping_key(
-            secret_text, salt, self._state["iterations"]
-        )
+        bsr2 = encryption.require()
+        section = self._view[wrapper]
+        wrapping_key = _derive(bsr2, section, wrapper, secret_text)
         try:
             master_key = open_bytes(
-                wrapping_key,
-                section["wrapped_master_key"],
-                keyring_context(wrapper),
+                wrapping_key, section["wrapped_master_key"], keyring_context(wrapper)
             )
-        except (BrisartEnvelopeError, Bsr2IntegrationError) as exc:
-            # Deliberately uniform: the caller learns the unlock failed, not
-            # whether the envelope was structurally valid.
+        except Bsr2IntegrationError as exc:
             raise KeyringAuthenticationError(
                 "unlock failed: incorrect secret or modified keyring."
             ) from exc
         if len(master_key) != MASTER_KEY_BYTES:
             raise KeyringFormatError("unwrapped master key has an invalid length.")
-        if not constant_time_equal(
-            self._check_value(master_key), hex_decode(self._state["master_key_check"])
+        check = self._view["master_key_check"]
+        if not bsr2.primitives.constant_time_equal(
+            _check_value(bsr2, check["mac"], master_key),
+            bsr2.primitives.hex_decode(check["value"]),
         ):
             raise KeyringFormatError(
                 "unwrapped master key does not match the keyring check value."
@@ -606,19 +537,13 @@ class Keyring:
 
     def unlock_with_passphrase(self, passphrase: str) -> bytes:
         """Unwrap and cache the master key using the passphrase."""
-        master_key = self._unwrap(
-            _WRAPPER_PASSPHRASE, _normalize_passphrase(passphrase)
-        )
-        self._master_key = master_key
-        return master_key
+        self._master_key = self._unwrap(_WRAPPER_PASSPHRASE, _normalize_passphrase(passphrase))
+        return self._master_key
 
     def unlock_with_recovery_code(self, recovery_code: str) -> bytes:
         """Unwrap and cache the master key using the recovery code."""
-        master_key = self._unwrap(
-            _WRAPPER_RECOVERY, _normalize_recovery_code(recovery_code)
-        )
-        self._master_key = master_key
-        return master_key
+        self._master_key = self._unwrap(_WRAPPER_RECOVERY, _normalize_recovery_code(recovery_code))
+        return self._master_key
 
     @property
     def is_unlocked(self) -> bool:
@@ -627,91 +552,104 @@ class Keyring:
     @property
     def master_key(self) -> bytes:
         if self._master_key is None:
-            raise KeyringLockedError(
-                "keyring is locked; unlock it before using the master key."
-            )
+            raise KeyringLockedError("keyring is locked; unlock it before using the master key.")
         return self._master_key
 
     def lock(self) -> None:
-        """Drop the cached master key.
-
-        Python cannot guarantee the bytes leave process memory, so this reduces
-        exposure rather than eliminating it. Claiming otherwise would be false.
-        """
+        """Drop the cached master key (best effort; see Known limitations)."""
         self._master_key = None
 
-    # ----------------------------------------------------------- modification
-    def change_passphrase(self, new_passphrase: str) -> None:
-        """Re-wrap the master key under a new passphrase.
+    def _rewrap_memory_blocks(self, wrapper: str) -> int:
+        """Memory cost for a replacement wrapper: the wrapper's own when it is
+        already BSR2-MHF-1, the default when it is legacy."""
+        section = self._view[wrapper]
+        if section["kdf"] != KDF:
+            return MEMORY_BLOCKS
+        return _decode_params(encryption.require(), section, wrapper).memory_blocks
 
-        Requires the keyring to be unlocked. No stored data is re-encrypted,
-        because the master key itself does not change.
-        """
+    def change_passphrase(self, new_passphrase: str) -> None:
+        """Re-wrap the master key under a new passphrase with BSR2-MHF-1."""
         if self._master_key is None:
-            raise KeyringLockedError(
-                "unlock the keyring before changing its passphrase."
-            )
-        passphrase_text = _normalize_passphrase(new_passphrase)
-        salt = secrets.token_bytes(KDF_SALT_BYTES)
-        wrapping_key = _derive_wrapping_key(
-            passphrase_text, salt, self._state["iterations"]
+            raise KeyringLockedError("unlock the keyring before changing its passphrase.")
+        self._wrap(
+            _WRAPPER_PASSPHRASE, _normalize_passphrase(new_passphrase),
+            self._rewrap_memory_blocks(_WRAPPER_PASSPHRASE), "keyring-rewrap",
         )
-        rng = new_generator("keyring-rewrap")
-        self._state["passphrase"] = {
-            "salt": hex_encode(salt),
-            "wrapped_master_key": seal_bytes(
-                wrapping_key,
-                self._master_key,
-                keyring_context(_WRAPPER_PASSPHRASE),
-                rng,
-            ),
-        }
 
     def rotate_recovery_code(self) -> str:
-        """Issue a new recovery code, invalidating the previous one.
-
-        Returns the new code formatted for display. Requires an unlocked keyring.
-        """
+        """Issue a new recovery code, invalidating the previous one in this
+        state. Returns it formatted for display."""
         if self._master_key is None:
-            raise KeyringLockedError(
-                "unlock the keyring before rotating its recovery code."
-            )
+            raise KeyringLockedError("unlock the keyring before rotating its recovery code.")
         recovery_text = generate_recovery_code()
-        salt = secrets.token_bytes(KDF_SALT_BYTES)
-        wrapping_key = _derive_wrapping_key(
-            recovery_text, salt, self._state["iterations"]
+        self._wrap(
+            _WRAPPER_RECOVERY, recovery_text,
+            self._rewrap_memory_blocks(_WRAPPER_RECOVERY), "keyring-rotate",
         )
-        rng = new_generator("keyring-rotate")
-        self._state["recovery"] = {
-            "salt": hex_encode(salt),
-            "wrapped_master_key": seal_bytes(
-                wrapping_key,
-                self._master_key,
-                keyring_context(_WRAPPER_RECOVERY),
-                rng,
-            ),
-        }
         return format_recovery_code(recovery_text)
 
-    # ------------------------------------------------------------------ export
-    def to_state(self) -> dict:
-        """Return the storable keyring state.
+    @property
+    def needs_migration(self) -> bool:
+        """True while any part of the keyring uses the legacy construction."""
+        return (
+            any(self._view[wrapper]["kdf"] != KDF for wrapper in _WRAPPERS)
+            or self._view["master_key_check"]["mac"] != _CHECK_MAC
+        )
 
-        Contains no plaintext key material, so it is safe to write to disk
-        alongside the data it protects.
+    def migrate(self, passphrase: str) -> Optional[str]:
+        """Unlock with ``passphrase`` and replace every legacy part.
+
+        Returns the new recovery code (formatted) when the recovery wrapper
+        was legacy and had to be reissued, else None. Raises
+        KeyringAuthenticationError, without changing anything, when the
+        passphrase does not unlock the keyring.
         """
+        passphrase_text = _normalize_passphrase(passphrase)
+        self.unlock_with_passphrase(passphrase_text)
+        if self._view[_WRAPPER_PASSPHRASE]["kdf"] != KDF:
+            self._wrap(_WRAPPER_PASSPHRASE, passphrase_text, MEMORY_BLOCKS, "keyring-migrate")
+        if self._view[_WRAPPER_RECOVERY]["kdf"] != KDF:
+            return self.rotate_recovery_code()
+        if self._view["master_key_check"]["mac"] != _CHECK_MAC:
+            # Both wrappers are already current; only the check value is not.
+            self._wrap(
+                _WRAPPER_PASSPHRASE, passphrase_text,
+                self._rewrap_memory_blocks(_WRAPPER_PASSPHRASE), "keyring-migrate",
+            )
+        return None
+
+    def to_state(self) -> dict:
+        """The live storable state. Holds no plaintext key material. A v1
+        keyring is returned exactly as it was loaded until a wrapper is
+        replaced."""
         return self._state
 
     def public_summary(self) -> dict:
         """Non-secret keyring metadata, for status output."""
+        bsr2 = encryption.require()
+        kdfs = {}
+        for wrapper in _WRAPPERS:
+            section = self._view[wrapper]
+            if section["kdf"] == KDF:
+                kdfs[wrapper] = _decode_params(bsr2, section, wrapper).describe()
+            else:
+                kdfs[wrapper] = f"{LEGACY_KDF} iterations={section['iterations']}"
         return {
             "format": self._state["format"],
-            "kdf": self._state["kdf"],
-            "iterations": self._state["iterations"],
-            "recovery_code_available": True,
+            "passphrase_kdf": kdfs[_WRAPPER_PASSPHRASE],
+            "recovery_kdf": kdfs[_WRAPPER_RECOVERY],
             "unlocked": self.is_unlocked,
         }
 
 
-
-
+__all__ = [
+    "KDF",
+    "KEYRING_FORMAT",
+    "LEGACY_KDF",
+    "LEGACY_KEYRING_FORMAT",
+    "MAXIMUM_MEMORY_BLOCKS",
+    "MEMORY_BLOCKS",
+    "Keyring",
+    "format_recovery_code",
+    "generate_recovery_code",
+]

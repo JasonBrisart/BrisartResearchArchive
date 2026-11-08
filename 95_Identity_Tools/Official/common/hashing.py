@@ -83,7 +83,3 @@ def sha256_file(path: Union[str, Path]) -> str:
         for chunk in iter(lambda: handle.read(_CHUNK_BYTES), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-
-

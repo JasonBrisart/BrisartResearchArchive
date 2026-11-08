@@ -22,6 +22,9 @@ Public interface:
 - unlock_with_passphrase(keyring, path, passphrase) -- Unlock `keyring`
   (already constructed from the state stored at `path`) using `passphrase`,
   enforcing crypto.attempt_store throttling state persisted in the same file.
+- migrate_with_passphrase(keyring, path, passphrase) -- The same gate around
+  Keyring.migrate(); on success writes the migrated keyring to `path` and
+  returns the newly issued recovery code, or None.
 
 Communication / relationships
 -----------------------------
@@ -34,6 +37,7 @@ Depends on (project modules):
 Standard library: json, pathlib.
 Imported by:
 - biometrics/app.py
+- biometrics/identity/encryption_migration.py
 - gui/tabs/tab_biometrics.py
 Covered by tests: biometrics/tests/test_keyring_access.py.
 
@@ -47,6 +51,8 @@ Edge cases
 - unlock_with_passphrase() raises KeyringAccessError: "unlock refused: too many
   recent failed attempts; retry in {...} second(s)."
 - unlock_with_passphrase() raises KeyringAccessError: "unlock failed: {...}"
+- migrate_with_passphrase() raises the same two KeyringAccessError messages,
+  and on failure writes only the recorded attempt, never the keyring.
 - unlock_with_passphrase(): translates AttemptLockedOut into
   KeyringAccessError; other exceptions may still propagate.
 - unlock_with_passphrase(): translates Bsr2IntegrationError into
@@ -94,6 +100,36 @@ def _write_raw_state(path: Path, raw_state: dict) -> None:
     atomic_write_json(path, raw_state, file_mode=SENSITIVE_FILE_MODE)
 
 
+def _check_not_locked_out(raw_state: dict) -> None:
+    try:
+        attempt_store.check_and_get_state(raw_state)
+    except AttemptLockedOut as exc:
+        raise KeyringAccessError(
+            "unlock refused: too many recent failed attempts; retry in "
+            f"{exc.retry_after_seconds:.0f} second(s)."
+        ) from exc
+
+
+def migrate_with_passphrase(keyring: Keyring, path: Path, passphrase: str):
+    """Run Keyring.migrate() behind the attempt gate and persist the result.
+
+    Returns the newly issued recovery code, or None when the recovery wrapper
+    was already current.
+    """
+    raw_state = _read_raw_state(path)
+    _check_not_locked_out(raw_state)
+    try:
+        recovery_code = keyring.migrate(passphrase)
+    except Bsr2IntegrationError as exc:
+        raw_state[attempt_store.ATTEMPT_STATE_FIELD] = attempt_store.record_failure(raw_state)
+        _write_raw_state(path, raw_state)
+        raise KeyringAccessError(f"unlock failed: {exc}") from exc
+    migrated_state = dict(keyring.to_state())
+    migrated_state[attempt_store.ATTEMPT_STATE_FIELD] = attempt_store.record_success(raw_state)
+    _write_raw_state(path, migrated_state)
+    return recovery_code
+
+
 def unlock_with_passphrase(keyring: Keyring, path: Path, passphrase: str) -> bytes:
     """Unlock `keyring` (already constructed from the state stored at
     `path`) using `passphrase`, enforcing crypto.attempt_store throttling
@@ -104,13 +140,7 @@ def unlock_with_passphrase(keyring: Keyring, path: Path, passphrase: str) -> byt
     fails to unlock the keyring. Returns the unlocked master key on success.
     """
     raw_state = _read_raw_state(path)
-    try:
-        attempt_store.check_and_get_state(raw_state)
-    except AttemptLockedOut as exc:
-        raise KeyringAccessError(
-            "unlock refused: too many recent failed attempts; retry in "
-            f"{exc.retry_after_seconds:.0f} second(s)."
-        ) from exc
+    _check_not_locked_out(raw_state)
     try:
         master_key = keyring.unlock_with_passphrase(passphrase)
     except Bsr2IntegrationError as exc:
@@ -122,8 +152,4 @@ def unlock_with_passphrase(keyring: Keyring, path: Path, passphrase: str) -> byt
     return master_key
 
 
-__all__ = ["KeyringAccessError", "unlock_with_passphrase"]
-
-
-
-
+__all__ = ["KeyringAccessError", "migrate_with_passphrase", "unlock_with_passphrase"]

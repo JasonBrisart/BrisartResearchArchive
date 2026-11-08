@@ -39,8 +39,10 @@ Listing records does not require unlocking. Reading protected payloads does.
 Unlocking derives a wrapping key and opens the master-key wrapper. Subsequent
 operations within the same unlocked service session reuse the master key.
 
-KDF runtime depends on iteration count, hardware, interpreter, and system
-load. Earlier documentation contains development-machine measurements, not a
+New vaults derive wrapping keys with the memory-hard BSR2-MHF-1. Vaults not
+yet migrated keep the legacy iterated KDF until `vault migrate` (or the GUI's
+migration prompt) re-encrypts them. KDF runtime depends on parameters,
+hardware, interpreter, and system load. Earlier documentation contains development-machine measurements, not a
 fixed runtime guarantee.
 
 Separate CLI invocations do not share an unlocked in-memory session.
@@ -110,6 +112,20 @@ Replace `RECORD_ID` with an actual identifier returned by the application.
 
 Supplying `--record-id` to `upsert` targets an existing identifier. Omitting it
 creates a new identifier.
+
+Re-encrypt a vault written before the encryption migration with the current encryption (asks
+first; `--yes` skips the question):
+
+```bash
+python -m vault.app --vault data/vaults/main_vault.json migrate
+```
+
+Migration rewrites the vault file once, atomically. A recovery code that used
+the previous encryption is replaced by a new one, shown once. A record that
+does not authenticate under its stored label and kind (KI-005) is left as it
+is and listed. The migrated file cannot be opened by Official 1.9.2, LTS-2028 1.3.10, or
+earlier, so keep a copy
+if you may need to go back.
 
 The dispatcher provides the same application interface:
 

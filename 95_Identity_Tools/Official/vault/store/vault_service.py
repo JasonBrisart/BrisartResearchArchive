@@ -7,10 +7,12 @@ Vault orchestration: unlock/lock, and sealed create/read/update/delete.
 
 Public interface:
 - class VaultServiceError(ValueError)
+- needs_encryption_migration(path) -- Report, without unlocking, whether the
+  vault at ``path`` still holds anything in the previous encryption.
 - class VaultService. Public methods: create, unlock,
-  unlock_with_recovery_code, lock, is_unlocked, upsert, batch_upsert,
-  upsert_file_bytes, upsert_file, get_file_bytes, get_file, delete, get,
-  get_summary, list_records, find_by_label, change_passphrase,
+  unlock_with_recovery_code, migrate_encryption, lock, is_unlocked, upsert,
+  batch_upsert, upsert_file_bytes, upsert_file, get_file_bytes, get_file,
+  delete, get, get_summary, list_records, find_by_label, change_passphrase,
   rotate_recovery_code.
 
 Design notes:
@@ -22,6 +24,17 @@ It owns no file format details of its own: reading and writing the vault file
 is vault.store.vault_file's job, record shape/validation is
 vault.records.record_model's job, and the master-key wrapping is
 crypto.keyring's job.
+
+Encryption migration. migrate_encryption(passphrase) is the vault's half of
+the move to Brisart Encryption's current formats. It unlocks through
+Keyring.migrate() under the same attempt limiting as unlock(), reseals every
+record payload still in the legacy envelope (JSON records, file records, and
+bundle manifests and chunks alike, each under its own record context), and
+writes the whole vault file once, atomically, so an interruption leaves either
+the old file or the fully written new one. A record whose payload fails to
+authenticate under its stored context (see KI-005) is left as it is and
+reported, rather than aborting the migration. Running it again migrates
+whatever is left; on a fully migrated vault it is an ordinary unlock.
 
 Communication / relationships
 -----------------------------
@@ -62,6 +75,9 @@ Edge cases
   refused: too many recent failed attempts; retry in {...} second(s)."
 - VaultService.unlock_with_recovery_code() raises VaultServiceError: "unlock
   failed: {...}"
+- VaultService.migrate_encryption() raises VaultServiceError with the same
+  messages as unlock() for a throttled or wrong passphrase, and changes
+  nothing in that case beyond recording the failed attempt.
 - VaultService._require_unlocked() raises VaultServiceError: "vault is locked;
   unlock it before this operation."
 - VaultService.batch_upsert() raises VaultServiceError: "each batch item must
@@ -96,6 +112,10 @@ Known limitations
   supplied label/kind. Changing either context value can make later reads
   fail authentication. Keep both values unchanged for an existing record id
   until this defect is corrected (KI-005).
+- migrate_encryption() replaces a legacy recovery code with a new one (see
+  crypto/keyring.py) and re-encrypts in place; no backup of the previous file
+  is written. A migrated vault cannot be opened by
+  Official 1.9.2, LTS-2028 1.3.10, or earlier.
 - This module only sequences them, holds the unlocked master key for the
   session, and records an audit event for every mutation.
 - Security rests on BSR2, a custom research construction that has not been
@@ -119,7 +139,7 @@ from pathlib import Path
 from common.hashing import sha256_bytes
 from crypto import attempt_store
 from crypto.context import record_context
-from crypto.envelope import open_bytes, open_json, seal_bytes, seal_json
+from crypto.envelope import is_legacy, open_bytes, open_json, reseal, seal_bytes, seal_json
 from crypto.errors import Bsr2IntegrationError
 from crypto.rng import new_generator
 from crypto.throttle import AttemptLockedOut
@@ -146,6 +166,16 @@ FILE_RECORD_KIND = "file"
 
 class VaultServiceError(ValueError):
     pass
+
+
+def needs_encryption_migration(path) -> bool:
+    """Report whether the vault at ``path`` still holds anything in the
+    previous encryption: a legacy keyring part or a legacy record payload."""
+    from crypto.keyring import Keyring
+    state = load_state(path)
+    if Keyring(state["keyring"]).needs_migration:
+        return True
+    return any(is_legacy(record.get("payload")) for record in state["records"].values())
 
 
 class VaultService:
@@ -215,6 +245,52 @@ class VaultService:
         self._master_key = master_key
         self._audit("unlocked")
         return master_key
+
+    def migrate_encryption(self, passphrase: str) -> dict:
+        """Unlock with ``passphrase`` and move the whole vault to the current
+        encryption. Returns ``{"recovery_code", "records_migrated",
+        "records_not_migrated"}``; ``recovery_code`` is the newly issued code,
+        or None when the recovery wrapper was already current."""
+        state = load_state(self.path)
+        try:
+            attempt_store.check_and_get_state(state)
+        except AttemptLockedOut as exc:
+            raise VaultServiceError(
+                "unlock refused: too many recent failed attempts; retry in "
+                f"{exc.retry_after_seconds:.0f} second(s)."
+            ) from exc
+        from crypto.keyring import Keyring
+        keyring = Keyring(state["keyring"])
+        try:
+            recovery_code = keyring.migrate(passphrase)
+        except Bsr2IntegrationError as exc:
+            state[attempt_store.ATTEMPT_STATE_FIELD] = attempt_store.record_failure(state)
+            save_state(self.path, state)
+            raise VaultServiceError(f"unlock failed: {exc}") from exc
+        master_key = keyring.master_key
+        rng = new_generator("vault-migrate")
+        migrated, not_migrated = 0, []
+        for record_id, record in state["records"].items():
+            if not is_legacy(record.get("payload")):
+                continue
+            context = record_context(record_id, record["kind"], record["label"])
+            try:
+                record["payload"] = reseal(master_key, record["payload"], context, rng)
+            except Bsr2IntegrationError:
+                not_migrated.append(record_id)
+                continue
+            migrated += 1
+        state["keyring"] = keyring.to_state()
+        state[attempt_store.ATTEMPT_STATE_FIELD] = attempt_store.record_success(state)
+        save_state(self.path, state)
+        self._keyring = keyring
+        self._master_key = master_key
+        self._audit("encryption_migrated")
+        return {
+            "recovery_code": recovery_code,
+            "records_migrated": migrated,
+            "records_not_migrated": sorted(not_migrated),
+        }
 
     def lock(self) -> None:
         if self._keyring is not None:
@@ -457,7 +533,3 @@ class VaultService:
         new_code = self._keyring.rotate_recovery_code()
         save_keyring(self.path, self._keyring)
         return new_code
-
-
-
-

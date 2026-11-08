@@ -308,7 +308,3 @@ def write_video(path, width: int, height: int, frame_rate: int, frames: list) ->
     encoded = encode(width, height, frame_rate, frames)
     with open(path, "wb") as handle:
         handle.write(encoded)
-
-
-
-

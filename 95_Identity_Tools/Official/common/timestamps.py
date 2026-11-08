@@ -112,7 +112,3 @@ def filename_timestamp() -> str:
 def microsecond_timestamp() -> str:
     """Filename-safe UTC stamp with microseconds, e.g. 20260823_142530_004821Z."""
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d_%H%M%S_%fZ")
-
-
-
-

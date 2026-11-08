@@ -14,16 +14,13 @@ Public interface:
 
 Design notes:
 
-WHY THIS MODULE EXISTS: BSR2's vendored envelope hard-caps a single sealed
-payload at vendor.brisart_security_envelope.MAX_PLAINTEXT_BYTES == 16 MiB
-(crypto/envelope.py's own MAX_PAYLOAD_BYTES trims that further for its
-length-prefix + padding overhead). Calling encrypt() on anything larger raises
-BrisartEnvelopeError outright -- no silent truncation, it simply refuses. So
-"encrypt this file" only works unmodified for content under roughly 16 MiB.
-Anything bigger -- a large single file, a folder, an entire drive -- must be
-split into several separately-sealed chunks and reassembled on the way back
-out. This module is that splitting/reassembly layer, built once here so both
-Vault and Biometrics attachments can share it.
+Large content -- a big single file, a folder, an entire drive -- is stored as
+several separately sealed chunk records plus a manifest, and reassembled and
+verified on the way back out. Before the encryption migration this was forced by the legacy
+envelope's 16 MiB cap. Since the encryption migration crypto.envelope seals payloads of any
+size, so chunking is no longer required by encryption; it remains the stored
+bundle format and keeps each record's seal call and vault write a bounded
+size. vault/store and biometrics/engine/bulk_attachments.py share the model.
 
 A bundle (whether one big file or a zip of many files/folders) is first fully
 materialized as a real zip file on local disk via the stdlib `zipfile` module,
@@ -121,11 +118,8 @@ from common.hashing import sha256_bytes
 BUNDLE_MANIFEST_KIND = "bundle-manifest"
 BUNDLE_CHUNK_KIND = "bundle-chunk"
 
-# Conservative: real cap (crypto.envelope.MAX_PAYLOAD_BYTES) is ~16 MiB minus
-# 264 bytes. 8 MiB leaves comfortable headroom and keeps each individual
-# chunk's BSR2 seal/open call (and the vault's single JSON write per upsert) a
-# reasonable size to hold in memory at once, rather than pushing right up
-# against the hard ceiling.
+# Keeps each chunk's seal/open call and the vault's single JSON write per
+# upsert a reasonable size to hold in memory at once.
 DEFAULT_CHUNK_BYTES = 8 * 1024 * 1024
 
 
@@ -234,8 +228,8 @@ class BulkFileService:
 
     def upsert_large_bytes(self, label: str, data: bytes, original_filename: str = "",
                            record_id: str = None) -> dict:
-        """Seal arbitrary bytes of ANY size, transparently chunking if the
-        content exceeds a single BSR2 envelope's hard 16 MiB limit.
+        """Seal arbitrary bytes of ANY size, split into chunks of
+        self.chunk_bytes when the content is larger than one chunk.
 
         For content that fits in one envelope, this is functionally identical
         to VaultService.upsert_file_bytes (still produces a manifest wrapper
@@ -323,7 +317,7 @@ class BulkFileService:
         given path (files added directly; folders and drive roots walked
         recursively, preserving relative structure) into one temporary
         archive, then seals that archive's bytes via upsert_large_bytes,
-        transparently chunking if the resulting zip exceeds 16 MiB. `paths`
+        chunking if the resulting zip is larger than one chunk. `paths`
         may freely mix individual files, folders, and drive roots in a single
         call -- one bundle, one manifest record, one restore operation,
         regardless of how many distinct files/folders/drives contributed.
@@ -362,7 +356,3 @@ class BulkFileService:
                 archive.extractall(output_dir)
                 extracted_names = archive.namelist()
         return {"output_dir": str(output_dir), "files_restored": len(extracted_names)}
-
-
-
-

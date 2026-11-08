@@ -8,15 +8,16 @@ File extensions do not determine whether bytes can be sealed. Successful
 processing still depends on readable inputs, valid parameters, available
 resources, and the cryptographic integration's limits.
 
-## Single-envelope limit
+## Payload size
 
-A BSR2 envelope accepts at most 16 MiB of plaintext.
+Since 1.10.0 a single sealed payload has no size cap: content up to 16 MiB is
+sealed as one v3 message (`BSR2-S64-SIV/3`) and anything larger as a
+BSR-STREAM-1 payload. Before 1.10.0 the legacy envelope refused anything over
+16 MiB, which is why the bulk workflows below exist.
 
-The integration layer's length prefix and padding reduce the usable
-application payload below that raw envelope limit.
-
-Bulk workflows use multiple envelopes to store content larger than one
-envelope can hold. The default chunk size is 8 MiB.
+Bulk workflows still split content into chunks, 8 MiB by default, which keeps
+each sealed record and vault write a bounded size. Bundles written by earlier
+releases restore unchanged.
 
 ## Chunk and manifest model
 
@@ -169,6 +170,5 @@ See [BSR2 integration and threat model](BSR2_INTEGRATION.md).
 ### Direct API chunk-size limitation
 
 CLI validation is not a substitute for API validation. Direct bulk-service
-callers must provide a positive integer chunk size below the envelope payload
-limit. Zero and negative sizes are not safely rejected by a dedicated
+callers must provide a positive integer chunk size. Zero and negative sizes are not safely rejected by a dedicated
 validator; nonempty input can raise ValueError or yield no chunks. See KI-006.

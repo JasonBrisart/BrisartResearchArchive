@@ -63,6 +63,3 @@ def get(device_name: str):
 
 def list_registered():
     return sorted(_DEVICE_REGISTRY.keys())
-
-
-

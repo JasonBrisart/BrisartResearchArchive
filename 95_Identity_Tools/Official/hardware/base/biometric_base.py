@@ -77,6 +77,3 @@ class BiometricBase(DeviceBase):
     @abstractmethod
     def scan(self):
         pass
-
-
-

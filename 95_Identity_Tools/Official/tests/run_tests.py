@@ -30,9 +30,10 @@ tests/test_*.py. Run the suite in a clean environment;
 ``python -S tests/run_tests.py --fast`` helps diagnose that kind of
 site-packages interference.
 
-A handful of tests exercise BSR2's real, deliberately-slow password KDF (~1
-minute per derivation), grouped by class in SLOW_TEST_CLASSES so they can be
-run separately:
+A handful of tests derive keys at full production cost: keyrings created at
+the BSR2-MHF-1 default (several seconds per derivation) or unlocked through
+the legacy iterated KDF (about a minute per derivation). They are grouped by
+class in SLOW_TEST_CLASSES so they can be run separately:
 
     python tests/run_tests.py            run every test
     python tests/run_tests.py --fast     everything EXCEPT the slow real-KDF tests
@@ -49,19 +50,19 @@ Covered by tests: no test file imports this module directly.
 Settings / parameters
 ---------------------
 - REPOSITORY_ROOT = _find_repo_root(Path(__file__))
-- SLOW_TEST_CLASSES -- TestCase classes that run BSR2's real password KDF and
-  are slow by design, filtered at class level so --fast still runs the fast
+- SLOW_TEST_CLASSES -- TestCase classes that derive keys at production cost
+  and are slow by design, filtered at class level so --fast still runs the fast
   classes in the same module: vault.tests.test_sealed_vault.SealedVaultTests,
   vault.tests.test_sealed_vault.VaultFilePermissionTests,
   vault.tests.test_file_records.FileRecordTests,
   vault.tests.test_batch_upsert.BatchUpsertTests,
   vault.tests.test_label_normalization.VaultLookupNormalizationTests,
   vault.tests.test_unlock_throttle.VaultUnlockThrottleTests,
-  crypto.tests.test_keyring.KeyringUnlockTests,
-  crypto.tests.test_factors.FactorHashKdfRoundTripTests,
+  crypto.tests.test_keyring.LegacyKeyringTests,
+  vault.tests.test_vault_migration.LegacyKeyringVaultMigrationTests,
   biometrics.tests.test_keyring_access.KeyringAccessThrottleTests.
 - _EXCLUDED_PARTS -- Folder names skipped when discovering test files:
-  __pycache__, vendor, .git, build, dist, .venv, venv, node_modules, .idea,
+  __pycache__, .git, build, dist, .venv, venv, node_modules, .idea,
   .vscode, PROJECT_CONTEXT_EXPORTS, and data.
 - --fast: skip the slow real-KDF tests.
 - --slow: run ONLY the slow real-KDF tests.
@@ -75,9 +76,10 @@ Edge cases
 Known limitations
 -----------------
 - This file may live at the repository root OR under tests/; the repository
-  root is located by walking up to the directory that holds both version.py and
-  vendor/. Relocation works only when such an ancestor exists; namespace
-  collisions and missing project files can still break collection.
+  root is located by walking up to the directory that holds both version.py
+  and crypto/encryption.py. Relocation works only when such an ancestor
+  exists; namespace collisions and missing project files can still break
+  collection.
 - Tracked in docs/KNOWN_ISSUES.md: KI-002: GUI had no automated test coverage —
   RESOLVED
 - No test module imports this file directly; as an entry point it is verified
@@ -100,10 +102,12 @@ from pathlib import Path
 def _find_repo_root(start: Path) -> Path:
     """Return the repository root: the first ancestor of ``start`` (including
     ``start``'s own directory) that contains both ``version.py`` and
-    ``vendor/``."""
+    ``crypto/encryption.py``."""
     current = start.resolve().parent
     for candidate in (current, *current.parents):
-        if (candidate / "version.py").is_file() and (candidate / "vendor").is_dir():
+        if (candidate / "version.py").is_file() and (
+            candidate / "crypto" / "encryption.py"
+        ).is_file():
             return candidate
     return current
 
@@ -112,9 +116,9 @@ REPOSITORY_ROOT = _find_repo_root(Path(__file__))
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-# TestCase classes that run BSR2's real password KDF and are slow by design.
+# TestCase classes that derive keys at production cost and are slow by design.
 # Filtered at the class level so a module holding BOTH fast and slow classes
-# (test_keyring, test_factors, test_label_normalization) still runs its fast
+# (test_keyring, test_vault_migration, test_label_normalization) still runs its fast
 # classes under --fast.
 SLOW_TEST_CLASSES = {
     "vault.tests.test_sealed_vault.SealedVaultTests",
@@ -123,13 +127,13 @@ SLOW_TEST_CLASSES = {
     "vault.tests.test_batch_upsert.BatchUpsertTests",
     "vault.tests.test_label_normalization.VaultLookupNormalizationTests",
     "vault.tests.test_unlock_throttle.VaultUnlockThrottleTests",
-    "crypto.tests.test_keyring.KeyringUnlockTests",
-    "crypto.tests.test_factors.FactorHashKdfRoundTripTests",
+    "crypto.tests.test_keyring.LegacyKeyringTests",
+    "vault.tests.test_vault_migration.LegacyKeyringVaultMigrationTests",
     "biometrics.tests.test_keyring_access.KeyringAccessThrottleTests",
 }
 
 _EXCLUDED_PARTS = {
-    "__pycache__", "vendor", ".git", "build", "dist",
+    "__pycache__", ".git", "build", "dist",
     ".venv", "venv", "node_modules", ".idea", ".vscode",
     "PROJECT_CONTEXT_EXPORTS", "data",
 }
@@ -195,7 +199,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
-
-

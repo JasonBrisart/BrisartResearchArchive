@@ -106,7 +106,3 @@ def validate_record_id(record_id) -> str:
     if "\x00" in record_id:
         raise RecordIdError("record_id cannot contain a NUL byte.")
     return record_id
-
-
-
-

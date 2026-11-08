@@ -3,24 +3,19 @@ File: crypto/tests/test_factors.py
 
 Purpose
 -------
-Tests for crypto.factors.
+Tests for crypto.factors: new mac64 bindings verify only for the right master
+key, factor name, and value; malformed and unknown records read as "does not
+verify"; and bind_factor() rejects invalid input. Legacy keyed_mac bindings are
+covered by crypto/tests/test_encryption_link.py, which holds one written by
+1.9.2.
 
-Verifies: crypto/errors.py, crypto/factors.py.
-Contains 17 test case(s) across 3 TestCase class(es).
+Verifies: crypto/factors.py.
+Contains 8 test case(s) across 1 TestCase class(es).
 
 Design notes:
 
-Two factor families are tested:
-
-- The keyed-MAC path (bind_factor / verify_bound_factor) is exercised here
-  without password derivation; elapsed time depends on the environment.
-- The slow-KDF path (hash_factor / verify_factor) performs expensive password
-  derivation, with hardware-dependent runtime. Its parse-time validation (the iteration-count ceiling/floor
-  added in 0.8.0-beta) is tested WITHOUT running the KDF by handing
-  verify_factor a hand-built, structurally-valid hash string with an
-  out-of-range iteration count -- _parse_kdf rejects it before any derivation.
-  Exactly ONE real KDF round trip is included, in its own class, and is slow by
-  design (consistent with the vault/package suites' real-KDF tests).
+Every case uses a random 32-byte master key; bindings are a single MAC, so the
+whole module runs in well under a second.
 
 Communication / relationships
 -----------------------------
@@ -33,81 +28,74 @@ nothing imports it.
 
 Settings / parameters
 ---------------------
-- _HEX32 = "ab" * 32 -- 64 lowercase hex chars == 32 bytes, a valid salt/digest
-  field
+None.
 
 Edge cases
 ----------
 BoundFactorTests:
-- Bind then verify matches.
-- Wrong value does not verify.
-- Wrong master key does not verify.
-- A verifier is bound to its factor name.
-- Bind factor rejects short master key.
-- Bind factor rejects dollar in factor name.
-- Is bound factor predicate.
-FactorHashValidationTests:
-- Verify factor rejects above maximum iterations without kdf.
-- Verify factor rejects below minimum iterations without kdf.
-- Verify factor rejects malformed string.
-- Verify factor rejects empty secret.
-- Is factor hash predicate.
-- Is legacy digest predicate.
-- Needs rehash true for malformed.
-- Hash factor rejects below minimum iterations fast.
-- Hash factor rejects above maximum iterations fast.
-FactorHashKdfRoundTripTests:
-- Hash and verify round trip.
+- A new binding uses mac64 and verifies.
+- A wrong value, a wrong master key, and a different factor name do not verify.
+- A record whose stored name was edited does not verify under the new name.
+- Malformed records, unknown algorithms, and non-string values return False.
+- bind_factor() rejects a short master key and a name containing '$'.
 
 Known limitations
 -----------------
-- Security rests on BSR2, a custom research construction that has not been
-  independently audited (see docs/SECURITY.md); do not treat it as a
-  replacement for vetted, audited cryptography.
-- Passing proves only the 17 scenario(s) listed under Edge cases; behaviour
-  outside them is not asserted here.
+- Passing proves only the scenarios listed above.
 
 Examples
 --------
 ::
 
     python -m unittest crypto.tests.test_factors -v
-    python tests/run_tests.py
 """
 
 import secrets
 import unittest
 
-from crypto.errors import Bsr2IntegrationError
 from crypto import factors
-
-_HEX32 = "ab" * 32  # 64 lowercase hex chars == 32 bytes, a valid salt/digest field
-
-
-def _kdf_hash_string(iterations):
-    return "$".join(("bsr2", "derive_password_key", f"iterations={iterations}", _HEX32, _HEX32))
+from crypto.errors import Bsr2IntegrationError
 
 
 class BoundFactorTests(unittest.TestCase):
     def setUp(self):
         self.master_key = secrets.token_bytes(32)
 
-    def test_bind_then_verify_matches(self):
-        verifier = factors.bind_factor(self.master_key, "device", "fingerprint-value")
-        self.assertTrue(factors.verify_bound_factor(self.master_key, "device", "fingerprint-value", verifier))
+    def test_new_binding_uses_mac64_and_verifies(self):
+        record = factors.bind_factor(self.master_key, "device", "fingerprint-value")
+        self.assertTrue(record.startswith("bsr2$mac64$device$"))
+        self.assertTrue(
+            factors.verify_bound_factor(self.master_key, "device", "fingerprint-value", record)
+        )
 
     def test_wrong_value_does_not_verify(self):
-        verifier = factors.bind_factor(self.master_key, "device", "correct")
-        self.assertFalse(factors.verify_bound_factor(self.master_key, "device", "wrong", verifier))
+        record = factors.bind_factor(self.master_key, "device", "correct")
+        self.assertFalse(factors.verify_bound_factor(self.master_key, "device", "wrong", record))
 
     def test_wrong_master_key_does_not_verify(self):
-        verifier = factors.bind_factor(self.master_key, "device", "v")
-        self.assertFalse(factors.verify_bound_factor(secrets.token_bytes(32), "device", "v", verifier))
+        record = factors.bind_factor(self.master_key, "device", "v")
+        self.assertFalse(factors.verify_bound_factor(secrets.token_bytes(32), "device", "v", record))
 
-    def test_a_verifier_is_bound_to_its_factor_name(self):
-        # A verifier built as "voice" must not verify under the "fingerprint" slot.
-        verifier = factors.bind_factor(self.master_key, "voice", "v")
-        self.assertFalse(factors.verify_bound_factor(self.master_key, "fingerprint", "v", verifier))
+    def test_a_binding_is_tied_to_its_factor_name(self):
+        record = factors.bind_factor(self.master_key, "voice", "v")
+        self.assertFalse(factors.verify_bound_factor(self.master_key, "fingerprint", "v", record))
+
+    def test_editing_the_stored_name_does_not_move_a_binding(self):
+        record = factors.bind_factor(self.master_key, "voice", "v")
+        moved = record.replace("$voice$", "$fingerprint$")
+        self.assertFalse(factors.verify_bound_factor(self.master_key, "fingerprint", "v", moved))
+
+    def test_malformed_and_unknown_records_do_not_verify(self):
+        record = factors.bind_factor(self.master_key, "device", "v")
+        for bad in (
+            "not-a-record",
+            record.replace("mac64", "sha256"),
+            record[:-2],
+            record + "zz",
+            None,
+        ):
+            self.assertFalse(factors.verify_bound_factor(self.master_key, "device", "v", bad))
+        self.assertFalse(factors.verify_bound_factor(self.master_key, "device", 123, record))
 
     def test_bind_factor_rejects_short_master_key(self):
         with self.assertRaises(Bsr2IntegrationError):
@@ -117,66 +105,6 @@ class BoundFactorTests(unittest.TestCase):
         with self.assertRaises(Bsr2IntegrationError):
             factors.bind_factor(self.master_key, "bad$name", "v")
 
-    def test_is_bound_factor_predicate(self):
-        verifier = factors.bind_factor(self.master_key, "device", "v")
-        self.assertTrue(factors.is_bound_factor(verifier))
-        self.assertFalse(factors.is_bound_factor("not-a-bound-factor"))
-
-
-class FactorHashValidationTests(unittest.TestCase):
-    """Parse-time validation only -- no KDF is run in this class."""
-
-    def test_verify_factor_rejects_above_maximum_iterations_without_kdf(self):
-        # A tampered hash claiming an astronomical iteration count must be
-        # rejected at parse time, not run to completion.
-        tampered = _kdf_hash_string(99_999_999)
-        self.assertFalse(factors.verify_factor("any-secret", tampered))
-
-    def test_verify_factor_rejects_below_minimum_iterations_without_kdf(self):
-        tampered = _kdf_hash_string(5_000)
-        self.assertFalse(factors.verify_factor("any-secret", tampered))
-
-    def test_verify_factor_rejects_malformed_string(self):
-        self.assertFalse(factors.verify_factor("secret", "not$a$valid$hash"))
-
-    def test_verify_factor_rejects_empty_secret(self):
-        self.assertFalse(factors.verify_factor("", _kdf_hash_string(10_000)))
-
-    def test_is_factor_hash_predicate(self):
-        self.assertTrue(factors.is_factor_hash(_kdf_hash_string(10_000)))
-        self.assertFalse(factors.is_factor_hash("nope"))
-
-    def test_is_legacy_digest_predicate(self):
-        self.assertTrue(factors.is_legacy_digest("a" * 64))
-        self.assertFalse(factors.is_legacy_digest("a" * 63))
-        self.assertFalse(factors.is_legacy_digest("z" * 64))  # non-hex
-
-    def test_needs_rehash_true_for_malformed(self):
-        self.assertTrue(factors.needs_rehash("garbage"))
-
-    def test_hash_factor_rejects_below_minimum_iterations_fast(self):
-        # Rejected before any derivation runs.
-        with self.assertRaises(Bsr2IntegrationError):
-            factors.hash_factor("secret", iterations=5_000)
-
-    def test_hash_factor_rejects_above_maximum_iterations_fast(self):
-        with self.assertRaises(Bsr2IntegrationError):
-            factors.hash_factor("secret", iterations=99_999_999)
-
-
-class FactorHashKdfRoundTripTests(unittest.TestCase):
-    """SLOW: exercises the real password KDF (hardware-dependent runtime per derivation)."""
-
-    def test_hash_and_verify_round_trip(self):
-        encoded = factors.hash_factor("correct horse battery staple")
-        self.assertTrue(factors.is_factor_hash(encoded))
-        self.assertTrue(factors.verify_factor("correct horse battery staple", encoded))
-        self.assertFalse(factors.verify_factor("wrong passphrase", encoded))
-
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-

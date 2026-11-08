@@ -11,6 +11,8 @@ Public interface:
 - command_add_recipient(args)
 - command_remove_recipient(args)
 - command_open(args)
+- command_migrate(args) -- Move one recipient's part of a package, and the
+  payload, to the current encryption after confirmation.
 - command_list_recipients(args)
 - command_verify_custody(args)
 - command_demo(args) -- Run a full create -> add-recipient -> open cycle with
@@ -34,12 +36,15 @@ packages/demo.py's module docstring for exactly what gets written and why.
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- crypto.encryption (crypto/encryption.py) -- MIGRATION_NOTICE
+- crypto.errors (crypto/errors.py)
+- packages.ciphers (packages/ciphers.py) -- text_master_key
 - packages.demo (packages/demo.py)
 - packages.package (packages/package.py)
 - packages.custody (packages/custody.py)
 - packages.identity (packages/identity.py)
 - common.atomic_io (common/atomic_io.py)
-Standard library: argparse, getpass, hashlib, json, pathlib, sys.
+Standard library: argparse, getpass, json, pathlib, sys.
 Imported by:
 - cli.py
 Covered by tests: tests/test_cli_dispatcher.py.
@@ -84,6 +89,8 @@ Commands (each takes the options listed under it):
 
 Edge cases
 ----------
+- main() returns 3 and prints "error: Encryption not found: ..." when a
+  command needs encryption and Brisart Encryption is not linked.
 - _load_state() raises AppError: "no package file found at {...}."
 - _load_state() raises AppError: "package file could not be read: {...}"
 - _load_state() raises AppError: "package file is invalid: {...}"
@@ -93,7 +100,12 @@ Edge cases
 - command_create() raises AppError.
 - command_add_recipient() raises AppError.
 - command_remove_recipient() raises AppError.
-- command_open() raises AppError.
+- command_open() raises AppError. After opening it prints a one-line notice
+  to stderr when the recipient's part of the package still needs encryption
+  migration.
+- command_migrate() returns 1 without changing anything when the operator
+  declines, and 0 with "... already uses the current encryption." when there
+  is nothing to migrate for that recipient.
 - Run as a script, the process exit status is main()'s return value (via
   ``raise SystemExit(main())``).
 - _load_state(): translates (OSError, json.JSONDecodeError) into AppError;
@@ -115,12 +127,12 @@ Edge cases
 
 Known limitations
 -----------------
-- Master keys are typed text hashed once. _prompt_master_key() reads text with
-  getpass and turns it into a 32-byte key with a single unsalted SHA-256. The
-  source comment calls this a CLI-friendly stand-in for a real master key
-  source; it is not a password KDF, so the same text always gives the same key
-  and a guessable text gives a guessable key. The GUI Packages tab does the
-  same.
+- Master keys are typed text hashed once with packages.ciphers.text_master_key
+  (BSR2-S64), the same derivation as the GUI Packages tab and the demo. It is a
+  stand-in for a real master key source, not a password KDF: the same text
+  always gives the same key and a guessable text gives a guessable key. For a
+  recipient not yet migrated, package.recipient_key_from_text() falls back to
+  the pre-migration SHA-256 derivation.
 - _save_state() writes through common.atomic_io.atomic_write_json, so an
   interrupted save leaves the previous package file intact rather than a
   truncated one. It does not lock the file: two processes saving the same
@@ -146,7 +158,9 @@ import sys
 from pathlib import Path
 
 from common.atomic_io import atomic_write_json
-from packages import demo, package
+from crypto import encryption
+from crypto.errors import EncryptionNotFoundError
+from packages import ciphers, demo, package
 from packages.custody import CustodyError
 from packages.identity import RecipientIdentityError
 from packages.package import PackageAuthorizationError, PackageError
@@ -176,14 +190,16 @@ def _save_state(path: Path, state: dict) -> None:
     atomic_write_json(path, state)
 
 
-def _prompt_master_key(identity_id: str) -> bytes:
-    passphrase = getpass.getpass(f"master key material for {identity_id!r} (any text): ")
-    # A CLI-friendly stand-in for a real master key source: any text the
-    # operator supplies is stretched to a fixed-length key. Production
-    # integrations should supply a real 32-byte master key (for example, one
-    # unlocked from crypto.keyring.Keyring) instead of typed text.
-    import hashlib
-    return hashlib.sha256(passphrase.encode("utf-8")).digest()
+def _prompt_text(identity_id: str) -> str:
+    return getpass.getpass(f"master key material for {identity_id!r} (any text): ")
+
+
+def _prompt_new_master_key(identity_id: str) -> bytes:
+    return ciphers.text_master_key(_prompt_text(identity_id))
+
+
+def _prompt_recipient_key(state: dict, identity_id: str) -> bytes:
+    return package.recipient_key_from_text(state, identity_id, _prompt_text(identity_id))
 
 
 def command_create(args) -> int:
@@ -196,7 +212,7 @@ def command_create(args) -> int:
         raise AppError(f"--payload must be valid JSON: {exc}") from exc
     if not isinstance(payload, dict):
         raise AppError("--payload must be a JSON object.")
-    master_key = _prompt_master_key(args.identity_id)
+    master_key = _prompt_new_master_key(args.identity_id)
     recipients = {args.identity_id: (args.label, master_key)}
     try:
         state = package.create_package(
@@ -212,8 +228,8 @@ def command_create(args) -> int:
 def command_add_recipient(args) -> int:
     path = Path(args.package_file)
     state = _load_state(path)
-    opener_master_key = _prompt_master_key(args.opener_identity_id)
-    new_master_key = _prompt_master_key(args.identity_id)
+    opener_master_key = _prompt_recipient_key(state, args.opener_identity_id)
+    new_master_key = _prompt_new_master_key(args.identity_id)
     try:
         updated = package.add_recipient(
             state,
@@ -234,7 +250,7 @@ def command_add_recipient(args) -> int:
 def command_remove_recipient(args) -> int:
     path = Path(args.package_file)
     state = _load_state(path)
-    opener_master_key = _prompt_master_key(args.opener_identity_id)
+    opener_master_key = _prompt_recipient_key(state, args.opener_identity_id)
     try:
         updated = package.remove_recipient(
             state, args.identity_id, args.opener_identity_id, opener_master_key,
@@ -250,7 +266,8 @@ def command_remove_recipient(args) -> int:
 def command_open(args) -> int:
     path = Path(args.package_file)
     state = _load_state(path)
-    master_key = _prompt_master_key(args.identity_id)
+    text = _prompt_text(args.identity_id)
+    master_key = package.recipient_key_from_text(state, args.identity_id, text)
     try:
         payload, updated = package.open_package(
             state, args.identity_id, master_key, audit_dir=DEFAULT_AUDIT_DIR
@@ -259,6 +276,32 @@ def command_open(args) -> int:
         raise AppError(str(exc)) from exc
     _save_state(path, updated)
     print(json.dumps(payload, indent=2, sort_keys=True))
+    if package.needs_encryption_migration(updated, args.identity_id, text):
+        print(
+            "note: this package still uses the previous encryption for "
+            f"{args.identity_id!r}; run 'package migrate' to re-encrypt it.",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def command_migrate(args) -> int:
+    path = Path(args.package_file)
+    state = _load_state(path)
+    text = _prompt_text(args.identity_id)
+    if not package.needs_encryption_migration(state, args.identity_id, text):
+        print(f"package already uses the current encryption for {args.identity_id!r}.")
+        return 0
+    print(encryption.MIGRATION_NOTICE, file=sys.stderr)
+    if not args.yes and input("Migrate now? [y/N] ").strip().lower() not in ("y", "yes"):
+        print("migration cancelled; nothing was changed.")
+        return 1
+    try:
+        updated = package.migrate_recipient(state, args.identity_id, text, audit_dir=DEFAULT_AUDIT_DIR)
+    except PackageAuthorizationError as exc:
+        raise AppError(str(exc)) from exc
+    _save_state(path, updated)
+    print(f"migrated {args.identity_id!r}'s key slot and the payload to the current encryption.")
     return 0
 
 
@@ -327,6 +370,14 @@ def build_parser() -> argparse.ArgumentParser:
     open_command.add_argument("--identity-id", required=True)
     open_command.set_defaults(handler=command_open)
 
+    migrate = subparsers.add_parser(
+        "migrate", help="re-encrypt one recipient's part of a package with the current encryption.",
+    )
+    migrate.add_argument("package_file")
+    migrate.add_argument("--identity-id", required=True)
+    migrate.add_argument("--yes", action="store_true", help="skip the confirmation prompt.")
+    migrate.set_defaults(handler=command_migrate)
+
     list_recipients = subparsers.add_parser("list-recipients", help="list a package's recipients.")
     list_recipients.add_argument("package_file")
     list_recipients.set_defaults(handler=command_list_recipients)
@@ -359,11 +410,10 @@ def main(argv=None) -> int:
     except AppError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    except EncryptionNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-
-

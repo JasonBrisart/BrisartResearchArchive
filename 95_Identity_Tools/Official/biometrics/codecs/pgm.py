@@ -204,7 +204,3 @@ def write_pgm(path, width: int, height: int, pixels: bytes, maxval: int = MAX_MA
     encoded = encode(width, height, pixels, maxval)
     with open(path, "wb") as handle:
         handle.write(encoded)
-
-
-
-

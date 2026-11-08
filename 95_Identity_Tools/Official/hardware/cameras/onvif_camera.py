@@ -299,7 +299,3 @@ class ONVIFCamera(CameraBase):
             raise DeviceConnectionError(
                 f"snapshot fetch from {self._snapshot_uri} failed: {exc}"
             ) from exc
-
-
-
-

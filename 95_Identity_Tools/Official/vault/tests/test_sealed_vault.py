@@ -87,13 +87,9 @@ class SealedVaultTests(unittest.TestCase):
         parsed = json.loads(raw_text)
         record_id = next(iter(parsed["records"]))
         envelope = parsed["records"][record_id]["payload"]
-        # NOTE: fixed 2026-08-24 -- this previously asserted "BSR2", but the
-        # real algorithm constant (crypto.vendor.ALGORITHM /
-        # vendor.brisart_security_envelope.ALGORITHM) is "BSR2-ARX-SPONGE-ETM".
-        # The old assertion always failed even though sealing itself was
-        # correct.
-        self.assertEqual(envelope["algorithm"], "BSR2-ARX-SPONGE-ETM")
-        self.assertIn("ciphertext", envelope)
+        # New records are sealed in Brisart Encryption's v3 format.
+        self.assertEqual(envelope["format"], "BSR2-S64-SIV/3")
+        self.assertIn("data", envelope)
 
     def test_get_returns_the_original_payload(self):
         summary = self.service.upsert("Email password", "credential", {"secret": "hunter2"})
@@ -174,7 +170,3 @@ class VaultFilePermissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-

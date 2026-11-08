@@ -348,7 +348,3 @@ def list_tracked_paths(ledger_path):
     recorded in the ledger at ledger_path, sorted."""
     state = _load_state(ledger_path)
     return sorted({entry.get("target_path") for entry in state["entries"] if entry.get("target_path")})
-
-
-
-

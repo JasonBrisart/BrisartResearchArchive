@@ -231,7 +231,3 @@ def normalize_vector(values: list) -> list:
     if peak == 0:
         return list(values)
     return [value / peak for value in values]
-
-
-
-

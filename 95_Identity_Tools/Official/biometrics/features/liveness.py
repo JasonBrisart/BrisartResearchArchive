@@ -151,7 +151,3 @@ def assess_liveness(
         "threshold": threshold,
         "is_live": motion_energy >= threshold,
     }
-
-
-
-

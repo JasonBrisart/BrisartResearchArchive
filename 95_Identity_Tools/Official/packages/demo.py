@@ -23,12 +23,16 @@ Communication / relationships
 Depends on (project modules):
 - common.atomic_io (common/atomic_io.py)
 - common.timestamps (common/timestamps.py)
+- crypto.encryption (crypto/encryption.py) -- entropy for demo passphrases
+- packages.ciphers (packages/ciphers.py) -- text_master_key, the same
+  typed-text derivation the CLI and GUI use
 - packages.package (packages/package.py)
-Standard library: hashlib, pathlib, secrets.
+Standard library: pathlib, secrets (demo package id only). Demo passphrases
+come from Brisart Encryption's entropy module through crypto.encryption.
 Imported by:
 - gui/tabs/tab_packages.py
 - packages/main.py
-Covered by tests: no test file imports this module directly.
+Covered by tests: packages/tests/test_demo.py.
 
 Settings / parameters
 ---------------------
@@ -49,8 +53,8 @@ unchanged.
 
 Known limitations
 -----------------
-- No test module imports this file directly; it is exercised only through its
-  callers' tests, so check changes manually.
+- Saved demo folders hold the demo passphrases in plain text by design; they
+  are for inspection only and must not be reused for real data.
 
 Examples
 --------
@@ -60,12 +64,13 @@ Examples
     run_demo()
 """
 
-import hashlib
 import secrets
 from pathlib import Path
 
 from common.atomic_io import atomic_write_json, atomic_write_text
 from common.timestamps import filename_timestamp
+from crypto import encryption
+from packages import ciphers
 from packages import package as ibp_package
 
 DEMO_FOLDER_PREFIX = "DEMO_DO_NOT_USE_"
@@ -132,16 +137,6 @@ this folder when you are done exploring it.
 """
 
 
-def _passphrase_to_master_key(passphrase: str) -> bytes:
-    """Derive a 32-byte master key from typed text, identically to
-    packages.main._prompt_master_key and
-    gui.tabs.tab_packages.PackagesTab._derive_master_key. Kept in sync with
-    both by design: all three must agree on this derivation, or a
-    passphrase saved by one path would not open a package sealed by
-    another."""
-    return hashlib.sha256(passphrase.encode("utf-8")).digest()
-
-
 def run_demo(save_to_disk: bool = False, output_root=None) -> dict:
     """Run a full create -> add-recipient -> open -> validate-custody cycle.
 
@@ -157,10 +152,11 @@ def run_demo(save_to_disk: bool = False, output_root=None) -> dict:
                                     save_to_disk was False.
     """
     package_id = f"demo-{secrets.token_hex(4)}"
-    alice_passphrase = secrets.token_hex(16)
-    bob_passphrase = secrets.token_hex(16)
-    alice_key = _passphrase_to_master_key(alice_passphrase)
-    bob_key = _passphrase_to_master_key(bob_passphrase)
+    entropy = encryption.require().entropy
+    alice_passphrase = entropy.system_entropy(16).hex()
+    bob_passphrase = entropy.system_entropy(16).hex()
+    alice_key = ciphers.text_master_key(alice_passphrase)
+    bob_key = ciphers.text_master_key(bob_passphrase)
     transcript = [f"creating package {package_id!r} with recipient 'alice'..."]
 
     state = ibp_package.create_package(
@@ -203,7 +199,3 @@ def run_demo(save_to_disk: bool = False, output_root=None) -> dict:
         transcript.append(f"demo artifacts saved to: {folder}")
 
     return {"transcript": transcript, "package_id": package_id, "folder": folder}
-
-
-
-

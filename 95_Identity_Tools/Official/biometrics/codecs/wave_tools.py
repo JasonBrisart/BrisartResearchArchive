@@ -215,7 +215,3 @@ def write_wave(path, sample_rate: int, samples: list, sample_width: int = 2) -> 
         handle.setsampwidth(sample_width)
         handle.setframerate(sample_rate)
         handle.writeframes(raw)
-
-
-
-

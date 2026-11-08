@@ -55,6 +55,3 @@ class DeviceConnectionError(HardwareError):
 
 class UnsupportedDeviceError(HardwareError):
     pass
-
-
-

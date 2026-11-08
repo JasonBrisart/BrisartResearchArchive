@@ -178,6 +178,23 @@ Device binding records a keyed value derived from machine information. It is
 a weak additional check, not hardware-backed identity or an independent
 security boundary.
 
+## Encryption migration
+
+Data written before the encryption migration uses the previous encryption. It still opens, and
+unlocking it prints a notice in the CLI or asks first in the GUI:
+
+```bash
+python cli.py biometrics migrate
+```
+
+Migrating re-encrypts the keyring, every template and attachment, and this
+machine's device bindings, one identity file at a time, so an interrupted run
+leaves everything readable and can simply be run again. A keyring whose
+recovery code used the previous encryption gets a new code, shown once. Device
+bindings recorded on another machine stay as they are until `migrate` runs
+there. Migrated data cannot be opened by Official 1.9.2, LTS-2028 1.3.10, or
+earlier.
+
 ## Reports
 
 `biometrics/reports/report_writer.py` writes separate JSON files for enrollment
@@ -213,7 +230,8 @@ temporary-file, throughput, and restore limitations.
 - `codecs/`: supported image, audio, and BRVID decoding.
 - `features/`: extraction, similarity, and video motion checks.
 - `engine/`: enrollment, verification, modality dispatch, and attachments.
-- `identity/`: record validation, storage, device binding, and keyring access.
+- `identity/`: record validation, storage, device binding, keyring access, and
+  encryption migration.
 - `reports/`: report construction and persistence.
 - `samples/`: deterministic synthetic samples.
 - `tests/`: regression tests for the supplied application components.

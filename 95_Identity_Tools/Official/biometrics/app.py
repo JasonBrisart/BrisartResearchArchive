@@ -5,7 +5,7 @@ Purpose
 -------
 Biometrics command-line interface: enroll, verify, inspect, and manage
 identities, plus attach/extract arbitrary files -- including whole folders and
-drives, chunked past BSR2's single-envelope size limit -- on an identity,
+drives, stored as fixed-size sealed chunks -- on an identity,
 independent of the voice/fingerprint/video modality system.
 
 Public interface:
@@ -16,18 +16,20 @@ Public interface:
 - command_verify(args)
 - command_inspect(args)
 - command_list(_args)
+- command_migrate(args) -- Re-encrypt the keyring and every identity record
+  with the current Brisart Encryption formats after confirmation.
 - command_delete(args)
 - command_probe_video(args)
 - command_record_video(args)
 - command_attach(args) -- Attach an arbitrary file (any extension, or none at
   all) to an already-enrolled identity. The file's contents are never
   inspected, parsed, or assumed to be any particular format -- exactly the raw
-  bytes on disk are sealed. Files larger than BSR2's ~16 MiB single- envelope
-  limit are transparently chunked.
+  bytes on disk are sealed. Files larger than one chunk (8 MiB by default)
+  are stored as a chunked bundle.
 - command_attach_paths(args) -- Attach any combination of files, folders,
   and/or drive roots to an identity as ONE bundle, zipping them first
-  (preserving relative structure) and chunking as needed past the
-  single-envelope size limit.
+  (preserving relative structure) and storing the zip as fixed-size sealed
+  chunks.
 - command_extract_attachment(args) -- Decrypt a previously attached file
   straight back to disk, byte-for- byte identical to what was originally
   attached. Automatically detects and reassembles a chunked bundle if one
@@ -71,6 +73,10 @@ and calls :func:`main`).
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- crypto.encryption (crypto/encryption.py) -- MIGRATION_NOTICE
+- crypto.errors (crypto/errors.py)
+- biometrics.identity.encryption_migration
+  (biometrics/identity/encryption_migration.py)
 - biometrics.config.settings (biometrics/config/settings.py)
 - biometrics.engine.enrollment (biometrics/engine/enrollment.py)
 - biometrics.engine.modalities (biometrics/engine/modalities.py)
@@ -161,6 +167,15 @@ Commands (each takes the options listed under it):
 
 Edge cases
 ----------
+- _unlock_keyring() prints a one-line notice to stderr after a successful
+  unlock when the data directory still needs encryption migration; the
+  command itself carries on with the previous encryption.
+- command_migrate() returns 1 without changing anything when the operator
+  declines, and returns 0 with "biometrics data already uses the current
+  encryption." when there is nothing to migrate. Items it could not migrate are
+  printed as warnings.
+- main() returns 3 and prints "error: Encryption not found: ..." when a
+  command needs encryption and Brisart Encryption is not linked.
 - _load_or_create_keyring() raises AppError: "passphrases did not match."
 - _unlock_keyring() raises AppError.
 - command_enroll() raises AppError: "identity {...} already exists; use
@@ -235,12 +250,14 @@ from biometrics.config import settings
 from biometrics.engine import enrollment, modalities, verification
 from biometrics.engine import attachments as attachment_engine
 from biometrics.engine import bulk_attachments
-from biometrics.identity import keyring_access
+from biometrics.identity import encryption_migration, keyring_access
 from biometrics.identity.identity_record import public_summary
 from biometrics.identity.identity_store import IdentityStore, IdentityStoreError
 from biometrics.reports import report_writer
 from biometrics.samples import sample_generator
 from common.atomic_io import SENSITIVE_FILE_MODE, atomic_write_json, warn_if_permissive
+from crypto import encryption
+from crypto.errors import EncryptionNotFoundError
 from crypto.keyring import Keyring
 
 KEYRING_FILE_NAME = "keyring.json"
@@ -299,9 +316,54 @@ def _unlock_keyring(keyring: Keyring) -> bytes:
         return keyring.master_key
     passphrase = getpass.getpass("Biometrics passphrase: ")
     try:
-        return keyring_access.unlock_with_passphrase(keyring, _keyring_path(), passphrase)
+        master_key = keyring_access.unlock_with_passphrase(keyring, _keyring_path(), passphrase)
     except keyring_access.KeyringAccessError as exc:
         raise AppError(str(exc)) from exc
+    if encryption_migration.needs_migration(keyring, _store()):
+        print(
+            "note: this biometrics data still uses the previous encryption; run "
+            "'biometrics migrate' to re-encrypt it.",
+            file=sys.stderr,
+        )
+    return master_key
+
+
+def command_migrate(args) -> int:
+    path = _keyring_path()
+    if not path.is_file():
+        raise AppError(f"no biometrics keyring found at {path}.")
+    keyring = _load_or_create_keyring()
+    store = _store()
+    if not encryption_migration.needs_migration(keyring, store):
+        print("biometrics data already uses the current encryption.")
+        return 0
+    print(encryption.MIGRATION_NOTICE, file=sys.stderr)
+    print(
+        "\nIf the keyring's recovery code uses the previous encryption, a new "
+        "one is issued and shown once; the old code will stop working.",
+        file=sys.stderr,
+    )
+    if not args.yes and input("Migrate now? [y/N] ").strip().lower() not in ("y", "yes"):
+        print("migration cancelled; nothing was changed.")
+        return 1
+    passphrase = getpass.getpass("Biometrics passphrase: ")
+    try:
+        report = encryption_migration.migrate(keyring, path, store, passphrase)
+    except keyring_access.KeyringAccessError as exc:
+        raise AppError(str(exc)) from exc
+    print(
+        f"migrated {report['payloads_migrated']} sealed item(s) across "
+        f"{len(report['identities_migrated'])} identity record(s)."
+    )
+    for item in report["not_migrated"]:
+        print(f"warning: not migrated: {item}", file=sys.stderr)
+    if report["recovery_code"] is not None:
+        print(
+            "\nSAVE THIS NEW RECOVERY CODE NOW. It replaces the old one, is shown "
+            f"only once, and cannot be recovered later:\n\n    {report['recovery_code']}\n",
+            file=sys.stderr,
+        )
+    return 0
 
 
 def _store() -> IdentityStore:
@@ -481,8 +543,8 @@ def command_attach(args) -> int:
     """Attach an arbitrary file (any extension, or none at all) to an
     already-enrolled identity. The file's contents are never inspected,
     parsed, or assumed to be any particular format -- exactly the raw
-    bytes on disk are sealed. Files larger than BSR2's ~16 MiB single-
-    envelope limit are transparently chunked."""
+    bytes on disk are sealed. Files larger than one chunk are stored as a
+    chunked bundle."""
     keyring = _load_or_create_keyring()
     master_key = _unlock_keyring(keyring)
     store = _store()
@@ -512,7 +574,7 @@ def command_attach(args) -> int:
 def command_attach_paths(args) -> int:
     """Attach any combination of files, folders, and/or drive roots to an
     identity as ONE bundle, zipping them first (preserving relative
-    structure) and chunking as needed past the single-envelope size limit."""
+    structure) and storing the zip as fixed-size sealed chunks."""
     keyring = _load_or_create_keyring()
     master_key = _unlock_keyring(keyring)
     store = _store()
@@ -636,6 +698,12 @@ def build_parser() -> argparse.ArgumentParser:
     probe_video.add_argument("path")
     probe_video.set_defaults(handler=command_probe_video)
 
+    migrate = subparsers.add_parser(
+        "migrate", help="re-encrypt the keyring and identities with the current Brisart Encryption formats.",
+    )
+    migrate.add_argument("--yes", action="store_true", help="skip the confirmation prompt.")
+    migrate.set_defaults(handler=command_migrate)
+
     enroll = subparsers.add_parser("enroll", help="enroll a new identity.")
     enroll.add_argument("identity_id")
     enroll.add_argument("--label", required=True)
@@ -731,11 +799,10 @@ def main(argv=None) -> int:
     except AppError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    except EncryptionNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-
-

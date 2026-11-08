@@ -99,7 +99,7 @@ class EnrollmentOverwriteTests(unittest.TestCase):
         )
         second_envelope = record["templates"]["fingerprint"]
         self.assertNotEqual(
-            first_envelope["ciphertext"], second_envelope["ciphertext"]
+            first_envelope["data"], second_envelope["data"]
         )
         self.assertEqual(enrolled_modalities(record), ["fingerprint"])
 
@@ -136,7 +136,3 @@ class EnrollmentOverwriteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-

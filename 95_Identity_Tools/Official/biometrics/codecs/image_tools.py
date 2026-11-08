@@ -287,7 +287,3 @@ def sobel_gradient_magnitude(width: int, height: int, pixels: bytes) -> list:
             )
             magnitudes[row * width + col] = (gx * gx + gy * gy) ** 0.5
     return magnitudes
-
-
-
-

@@ -5,7 +5,7 @@ Purpose
 -------
 The Biometrics tab: create/unlock the keyring, enroll/verify/inspect/delete
 identities, and attach/extract arbitrary files, folders, or drives to/from an
-identity (chunked transparently past BSR2's single-envelope size limit).
+identity (large content stored as fixed-size sealed chunks).
 
 Public interface:
 - class BiometricsTab(ttk.Frame) -- Create/unlock the biometrics keyring,
@@ -33,9 +33,17 @@ existing keyring.json runs warn_if_permissive(), also matching the CLI. Earlier
 versions wrote the new keyring with a plain open()/json.dump(), so a
 GUI-created keyring got neither the atomic replace nor the owner-only mode.
 
+ENCRYPTION MIGRATION: unlocking when the keyring or any identity record still
+uses the previous encryption first shows gui.widgets.dialogs.migration_prompt(). OK runs
+biometrics.identity.encryption_migration.migrate() in place of the unlock and
+then shows what was re-encrypted, what was left, and any new recovery code;
+Cancel unlocks with the previous encryption.
+
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- biometrics.identity.encryption_migration
+  (biometrics/identity/encryption_migration.py)
 - gui.core.constants (gui/core/constants.py)
 - gui.core.busy (gui/core/busy.py)
 - gui.widgets.dialogs (gui/widgets/dialogs.py)
@@ -105,13 +113,16 @@ from tkinter import filedialog, messagebox, ttk
 
 from gui.core.constants import APP_TITLE
 from gui.core.busy import run_in_background
-from gui.widgets.dialogs import ModalityPathDialog, TextPromptDialog, TextViewDialog
+from gui.widgets.dialogs import (
+    ModalityPathDialog, TextPromptDialog, TextViewDialog, migration_prompt, migration_summary,
+)
 from gui.widgets.path_panel import PathSelectionPanel
 from biometrics.config import settings as biometrics_settings
 from biometrics.engine import enrollment as bio_enrollment
 from biometrics.engine import verification as bio_verification
 from biometrics.engine import attachments as bio_attachment_engine
 from biometrics.engine import bulk_attachments as bio_bulk_attachments
+from biometrics.identity import encryption_migration as bio_encryption_migration
 from biometrics.identity import keyring_access
 from biometrics.identity.identity_record import public_summary as bio_public_summary
 from biometrics.identity.identity_store import IdentityStore, IdentityStoreError
@@ -247,23 +258,39 @@ class BiometricsTab(ttk.Frame):
                 state = json.load(handle)
             warn_if_permissive(path, label="biometrics keyring")
             keyring = Keyring(state)
+            store = self._store_ref()
+            migrate = bio_encryption_migration.needs_migration(keyring, store) and messagebox.askokcancel(
+                APP_TITLE, migration_prompt(issues_recovery_code=True), parent=self,
+            )
             prompt = TextPromptDialog(self, "Unlock Biometrics", [("passphrase", "Passphrase", True)])
             if prompt.result is None:
                 return
             passphrase = prompt.result["passphrase"]
 
             def work():
+                if migrate:
+                    return keyring, bio_encryption_migration.migrate(keyring, path, store, passphrase)
                 keyring_access.unlock_with_passphrase(keyring, path, passphrase)
-                return keyring
+                return keyring, None
 
-            def on_success(unlocked_keyring):
+            def on_success(result):
+                unlocked_keyring, report = result
                 self._keyring = unlocked_keyring
                 self._status_label.configure(text="unlocked")
                 self._refresh_attachment_list()
+                if report is not None:
+                    TextViewDialog(self, "Encryption Migration Complete", migration_summary(
+                        report["payloads_migrated"], "sealed item(s)",
+                        report["not_migrated"], report["recovery_code"],
+                    ))
 
             def on_error(exc):
                 messagebox.showerror(APP_TITLE, f"Unlock failed: {exc}", parent=self)
-            run_in_background(self, work, on_success, on_error, "Unlocking (slow key derivation)...")
+            run_in_background(
+                self, work, on_success, on_error,
+                "Migrating biometrics data to the new encryption..." if migrate
+                else "Unlocking (slow key derivation)...",
+            )
         else:
             prompt = TextPromptDialog(
                 self, "Create Biometrics Keyring",
@@ -625,7 +652,3 @@ class BiometricsTab(ttk.Frame):
             updated = bio_attachment_engine.remove_identity_attachment(record, name)
         self._store_ref().save(updated)
         self._refresh_attachment_list()
-
-
-
-

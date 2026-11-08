@@ -305,7 +305,3 @@ def write_png(path, width: int, height: int, pixels: bytes) -> None:
     encoded = encode(width, height, pixels)
     with open(path, "wb") as handle:
         handle.write(encoded)
-
-
-
-

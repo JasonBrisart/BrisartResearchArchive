@@ -11,6 +11,8 @@ folders, or drives.
 Public interface:
 - class AppError(ValueError)
 - command_init(args)
+- command_migrate(args) -- Re-encrypt the vault with the current encryption
+  after confirmation.
 - command_upsert(args)
 - command_batch_upsert(args)
 - command_encrypt_file(args) -- Encrypt an arbitrary local file -- any
@@ -22,10 +24,8 @@ Public interface:
   encrypted.
 - command_encrypt_paths(args) -- Encrypt any combination of files, folders,
   and/or drive roots -- all given as separate positional arguments -- as ONE
-  bundle. Any single file over BSR2's ~16 MiB envelope cap, and the zip built
-  from folders/drives (which will almost always be over that cap), are both
-  transparently chunked and reassembled correctly; the caller never needs to
-  think about the size limit at all.
+  bundle, stored as fixed-size sealed chunks plus a manifest and reassembled
+  on restore.
 - command_restore_paths(args) -- Decrypt and unzip a bundle created by
   encrypt-paths back into a real directory tree at the given output directory.
 - command_get(args)
@@ -37,6 +37,8 @@ Public interface:
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- crypto.encryption (crypto/encryption.py) -- MIGRATION_NOTICE
+- crypto.errors (crypto/errors.py)
 - vault.config.settings (vault/config/settings.py)
 - vault.store.vault_file (vault/store/vault_file.py)
 - vault.store.vault_service (vault/store/vault_service.py)
@@ -73,7 +75,7 @@ Commands (each takes the options listed under it):
   - record_id: id of the record.
   - output_path (positional).
 - encrypt-paths -- encrypt any combination of files/folders/drive roots as one
-  bundle (transparently chunked past BSR2's ~16 MiB single-envelope limit).
+  bundle (stored as fixed-size sealed chunks).
   - paths (positional, one or more): one or more file, folder, or drive root
     paths.
   - --label: defaults to the first path's own name.
@@ -89,12 +91,23 @@ Commands (each takes the options listed under it):
   - record_id: id of the record.
 - init -- create a new vault.
   - no options of its own.
+- migrate -- re-encrypt a vault still in the previous encryption with the
+  current Brisart Encryption formats, after showing
+  crypto.encryption.MIGRATION_NOTICE and asking for confirmation.
+  - --yes: skip the confirmation prompt.
 - list -- list all records (no unlock required).
   - no options of its own.
 
 Edge cases
 ----------
-- _unlock() raises AppError.
+- main() returns 3 and prints "error: Encryption not found: ..." when a
+  command needs encryption and Brisart Encryption is not linked.
+- _unlock() raises AppError. After a successful unlock it prints a one-line
+  notice to stderr when the vault still needs encryption migration; the
+  command itself carries on with the previous encryption.
+- command_migrate() returns 1 without changing anything when the operator
+  declines, and prints "vault already uses the current encryption." and
+  returns 0 when there is nothing to migrate.
 - command_init() raises AppError: "a vault already exists at {...}."
 - command_init() raises AppError: "passphrases did not match."
 - command_upsert() raises AppError: "--payload must be valid JSON: {...}"
@@ -107,7 +120,7 @@ Edge cases
 - command_encrypt_file() raises AppError.
 - command_decrypt_file() raises AppError.
 - command_encrypt_paths() raises AppError: "--chunk-mb must be between 1 and
-  {...} (a single BSR2 envelope caps at ~16 MiB)."
+  {...}."
 - command_encrypt_paths() raises AppError.
 - command_restore_paths() raises AppError.
 - command_get() raises AppError.
@@ -150,19 +163,17 @@ import json
 import sys
 from pathlib import Path
 
+from crypto import encryption
+from crypto.errors import EncryptionNotFoundError
 from vault.config import settings
 from vault.store.vault_file import VaultFileError, vault_exists
-from vault.store.vault_service import VaultService, VaultServiceError
+from vault.store.vault_service import VaultService, VaultServiceError, needs_encryption_migration
 from vault.store.bulk_file_service import BulkFileService, BulkFileServiceError
 
 
-# The largest --chunk-mb the bulk path will accept. A single BSR2 envelope
-# hard-caps at ~16 MiB (vendor.brisart_security_envelope.MAX_PLAINTEXT_BYTES),
-# and crypto.envelope.MAX_PAYLOAD_BYTES trims that slightly further for its
-# length prefix and padding. A --chunk-mb of 16 or more produces chunks that
-# BSR2's envelope refuses to seal, so the whole operation would fail partway
-# through with a confusing envelope error rather than a clear argument error.
-# 15 MiB leaves comfortable headroom under the ceiling.
+# The largest --chunk-mb the bulk path will accept. Each chunk is sealed and
+# written as one vault record held whole in memory; 15 MiB keeps every chunk a
+# single v3 sealed message (limit 16 MiB) and bounds that per-record cost.
 MAX_CHUNK_MB = 15
 
 
@@ -185,6 +196,50 @@ def _unlock(service: VaultService) -> None:
         service.unlock(passphrase)
     except VaultServiceError as exc:
         raise AppError(str(exc)) from exc
+    if needs_encryption_migration(service.path):
+        print(
+            "note: this vault still uses the previous encryption; run "
+            "'vault migrate' to re-encrypt it.",
+            file=sys.stderr,
+        )
+
+
+def command_migrate(args) -> int:
+    path = _vault_path(args)
+    if not vault_exists(path):
+        raise AppError(f"no vault file found at {path}.")
+    if not needs_encryption_migration(path):
+        print("vault already uses the current encryption.")
+        return 0
+    print(encryption.MIGRATION_NOTICE, file=sys.stderr)
+    print(
+        "\nIf the vault's recovery code uses the previous encryption, a new one "
+        "is issued and shown once; the old code will stop working.",
+        file=sys.stderr,
+    )
+    if not args.yes and input("Migrate now? [y/N] ").strip().lower() not in ("y", "yes"):
+        print("migration cancelled; nothing was changed.")
+        return 1
+    service = _open_service(args)
+    passphrase = getpass.getpass("Vault passphrase: ")
+    try:
+        result = service.migrate_encryption(passphrase)
+    except VaultServiceError as exc:
+        raise AppError(str(exc)) from exc
+    print(f"migrated {result['records_migrated']} record(s) to the current encryption.")
+    for record_id in result["records_not_migrated"]:
+        print(
+            f"warning: record {record_id!r} failed to authenticate and was left "
+            "in the previous encryption.",
+            file=sys.stderr,
+        )
+    if result["recovery_code"] is not None:
+        print(
+            "\nSAVE THIS NEW RECOVERY CODE NOW. It replaces the old one, is shown "
+            f"only once, and cannot be recovered later:\n\n    {result['recovery_code']}\n",
+            file=sys.stderr,
+        )
+    return 0
 
 
 def command_init(args) -> int:
@@ -272,20 +327,13 @@ def command_decrypt_file(args) -> int:
 def command_encrypt_paths(args) -> int:
     """Encrypt any combination of files, folders, and/or drive roots -- all
     given as separate positional arguments -- as ONE bundle. Any single
-    file over BSR2's ~16 MiB envelope cap, and the zip built from
-    folders/drives (which will almost always be over that cap), are both
-    transparently chunked and reassembled correctly; the caller never
-    needs to think about the size limit at all."""
-    # Fix 1 (2026-09-09): reject a --chunk-mb at or above the single-envelope
-    # ceiling up front. Previously the value was passed straight through to
-    # BulkFileService with no upper bound, so a value of 16 or more produced
-    # chunks BSR2's envelope refuses to seal, failing the whole operation
-    # partway through with a confusing envelope error instead of a clear
-    # argument error before any work was done.
+    file and the zip built from folders/drives are stored as fixed-size
+    sealed chunks and reassembled on restore."""
+    # Fix 1 (2026-09-09): reject an out-of-range --chunk-mb up front, before
+    # any work is done (see MAX_CHUNK_MB).
     if args.chunk_mb < 1 or args.chunk_mb > MAX_CHUNK_MB:
         raise AppError(
-            f"--chunk-mb must be between 1 and {MAX_CHUNK_MB} (a single BSR2 "
-            "envelope caps at ~16 MiB)."
+            f"--chunk-mb must be between 1 and {MAX_CHUNK_MB}."
         )
     service = _open_service(args)
     _unlock(service)
@@ -362,6 +410,12 @@ def build_parser() -> argparse.ArgumentParser:
     init = subparsers.add_parser("init", help="create a new vault.")
     init.set_defaults(handler=command_init)
 
+    migrate = subparsers.add_parser(
+        "migrate", help="re-encrypt the vault with the current Brisart Encryption formats.",
+    )
+    migrate.add_argument("--yes", action="store_true", help="skip the confirmation prompt.")
+    migrate.set_defaults(handler=command_migrate)
+
     upsert = subparsers.add_parser("upsert", help="create or update one JSON-payload record.")
     upsert.add_argument("label")
     upsert.add_argument("--kind", required=True)
@@ -394,7 +448,7 @@ def build_parser() -> argparse.ArgumentParser:
     encrypt_paths = subparsers.add_parser(
         "encrypt-paths",
         help="encrypt any combination of files/folders/drive roots as one bundle "
-             "(transparently chunked past BSR2's ~16 MiB single-envelope limit).",
+             "(stored as fixed-size sealed chunks).",
     )
     encrypt_paths.add_argument("paths", nargs="+",
                                help="one or more file, folder, or drive root paths.")
@@ -434,11 +488,10 @@ def main(argv=None) -> int:
     except AppError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    except EncryptionNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-
-

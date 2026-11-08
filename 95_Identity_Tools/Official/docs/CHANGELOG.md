@@ -4,6 +4,370 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ---
 
+## [1.10.0] - 2026-11-08
+
+Identity Tools Official adopts Brisart Encryption as its only encryption and
+migrates existing data to it. This is Identity Tools' part of the archive-wide
+cryptography migration recorded in the root `CHANGELOG.md` (2026-10-23).
+LTS-2028 1.4.x adopts exactly the same changes in 1.4.0: it shares Official's
+architecture, and all encryption in both comes from `97_Encryption`. Official
+differs only by its non-security extras. LTS-2028 1.3.x keeps vendored BSR2 and
+does not adopt them.
+
+The release does three things. First, the four BSR2 files vendored into
+`vendor/` are gone: every module that needs encryption reaches
+`97_Encryption/Official` through one link, `crypto/encryption.py`, which links
+all thirteen Brisart Encryption modules. Second, new data is written in Brisart
+Encryption's current formats: sealed format v3 (`BSR2-S64-SIV`), BSR-STREAM-1
+above 16 MiB, BSR2-MHF-1 keyring wrappers, BSR2-S64 factor bindings, and BSR2-S64
+typed-text package keys. Third, data in the previous encryption keeps opening,
+and every tool offers to migrate it. The GUI asks with a pop-up before
+unlocking, the CLIs print a notice and provide `migrate` commands, and OK
+re-encrypts the store in place. The previous encryption is kept only as a
+reader and is removed entirely in a later release.
+
+The per-project migration record the archive policy asks for is in
+`docs/BSR2_INTEGRATION.md`, under "Encryption migration": previous and
+replacement implementation, affected formats, migration method, in-place
+behaviour, remaining compatibility, rollback limits, and tests.
+
+### Added
+
+- **`crypto/encryption.py`: the single link to Brisart Encryption.** It
+  locates `<archive root>/97_Encryption/Official` and imports all thirteen
+  library modules: `primitives`, `sponge`, `entropy`, `drbg`, `envelope`, `aead`,
+  `stream`, `kdf`, `keys`, `recovery`, `archive`, `cli`, and `version`.
+  `require()` hands them out as a namespace of modules (`bsr2.aead.seal`,
+  `bsr2.kdf.derive_key`), so every call site names the construction it uses.
+  The link is refused, and reported as `Encryption not found: <reason>`, in
+  five cases:
+  - the directory or a module is missing;
+  - a module fails to import;
+  - a `brisart_security_*` module was already loaded from somewhere else;
+  - the library lacks a format Identity Tools writes or reads (legacy
+    envelope v2, sealed format v3, stream format 1, BSR2-MHF-1).
+
+  It also holds `MIGRATION_NOTICE`, the one message every CLI and GUI shows
+  before migrating.
+
+- **`biometrics/identity/encryption_migration.py` (new).** It migrates a
+  biometrics data directory. The keyring goes first, through the throttled
+  path. Then each identity file is rewritten on its own, and only if something
+  changed. Templates and attachments are resealed under their own contexts.
+  This machine's legacy device binding is re-bound when it verifies here. An
+  interrupted run leaves everything readable and can be run again. Device
+  bindings recorded on another machine are reported. They don't count towards
+  `needs_migration()`, so the prompt doesn't return on every unlock.
+
+- **`crypto/tests/legacy_fixtures.py` (new, test support).** A real v1
+  keyring, plus writers for legacy envelopes and bindings, so migration tests
+  can build pre-1.10.0 data without the pre-1.10.0 code. It is not collected
+  as a test module.
+
+- **Migration tests:** `vault/tests/test_vault_migration.py`,
+  `biometrics/tests/test_encryption_migration.py`, and
+  `packages/tests/test_package_migration.py` (see Compatibility).
+
+- **`packages/tests/test_demo.py` (new).** `packages/demo.py` had no test of
+  its own. The new test runs the demo cycle in memory, then runs it with
+  `save_to_disk=True` and opens the saved package as Bob from his saved
+  passphrase.
+
+### Changed
+
+- **`crypto/envelope.py`: current formats, no size cap, legacy read and
+  reseal.** `seal_bytes()` writes `{"format": "BSR2-S64-SIV/3", "data":
+  <base64>}` up to 16 MiB and `{"format": "BSR-STREAM-1", ...}` above it, so
+  the old 16 MiB ceiling is gone. Length hiding uses Brisart Encryption's
+  `block` padding, the same 256-byte buckets this module used to add by hand.
+  `open_bytes()` dispatches on shape and still opens legacy v2 envelopes.
+  Failures in any format surface as `EnvelopeAuthenticationError`. Two new
+  functions:
+  - `is_legacy()` reports whether a payload is a legacy v2 envelope.
+  - `reseal()` re-encrypts a legacy payload in the current format under the
+    same key and context. Every store's migration uses it.
+
+  On the verification machine a 20 KB round trip took 1.4 s in v3, against
+  11.2 s with the legacy envelope.
+
+- **`crypto/keyring.py`: format v2, BSR2-MHF-1, and `migrate()`.**
+  - **Per-wrapper KDF:** each wrapper records its own KDF: BSR2-MHF-1 with
+    encoded parameters (8,192 blocks, 1 MiB, one pass by default) or the
+    legacy iterated KDF.
+  - **v1 keyrings:** a v1 keyring is read through a v2 view and left exactly
+    as stored until a wrapper is replaced, so unlocking it keeps it readable by
+    the release that wrote it. Keys the keyring does not own, such as the
+    biometrics attempt state, are kept through that conversion.
+  - **`needs_migration` and `migrate(passphrase)`:** `migrate()` unlocks first,
+    so a wrong passphrase changes nothing. It then re-derives the passphrase
+    wrapper with BSR2-MHF-1 and replaces a legacy recovery wrapper with a newly
+    issued recovery code, returned once. The old code can't be re-derived
+    because it is never stored.
+  - **Limits and check value:** stored MHF parameters are capped at 65,536
+    blocks and four passes. New and rewritten check values are BSR2-S64 MACs.
+  - **Randomness:** master keys and recovery codes come from Brisart
+    Encryption's entropy module, five bits per recovery-code character.
+  - **`create()` signature:** it takes `memory_blocks` (default
+    `MEMORY_BLOCKS`, read at call time) in place of `iterations`.
+  - **Unlock time:** a new keyring unlocks in seconds instead of the minute or
+    more the 10,000-iteration floor took.
+
+- **`crypto/factors.py`: BSR2-S64 bindings.** `bind_factor()` writes
+  `bsr2$mac64$...`. `verify_bound_factor()` also accepts the legacy
+  `bsr2$keyed_mac$...` form, and `is_legacy_binding()` recognises it.
+
+- **`crypto/rng.py`: Brisart Encryption DRBG seeded from its entropy module.**
+  Seeds come from `entropy.system_entropy`, which health-checks operating-system
+  output, instead of `secrets`. The DRBG is reseeded before its own lifecycle
+  limits, so long runs don't hit them.
+
+- **`vault/store/vault_service.py`: `needs_encryption_migration(path)` and
+  `VaultService.migrate_encryption(passphrase)`.** Migration runs under the
+  same attempt limiting as `unlock()`. It reseals every legacy record (JSON,
+  file, bundle manifest, bundle chunk) and writes the vault file once,
+  atomically. A record that fails to authenticate under its stored context
+  (KI-005) is left alone and reported. `vault/reports/audit_log.py` accepts the
+  new `encryption_migrated` action.
+
+- **`biometrics/identity/keyring_access.py`: `migrate_with_passphrase()`.** It
+  wraps `Keyring.migrate()` in the same attempt gate as unlocking, and writes
+  the migrated keyring with its attempt state.
+
+- **`packages/ciphers.py`: content keys and typed-text keys from Brisart
+  Encryption.** `new_content_key()` uses its entropy module.
+  `text_master_key()` is now the single typed-text derivation (a BSR2-S64 hash)
+  for the CLI, GUI, and demo. Before, three separate copies of an unsalted
+  SHA-256 lived in `packages/main.py`, `packages/demo.py`, and
+  `gui/tabs/tab_packages.py`. `legacy_text_master_key()` keeps SHA-256 only
+  for opening and migrating packages keyed before 1.10.0.
+
+- **`packages/package.py`: per-recipient migration.**
+  `recipient_key_from_text()` picks the current text key, or the legacy one
+  for a recipient not yet migrated. `needs_encryption_migration()` and
+  `migrate_recipient()` reseal the payload and re-seal that recipient's key
+  slot and verifier under the current key. They also append a
+  `payload_rewrapped` custody entry with `"reason": "encryption_migration"`.
+  The content key does not change, so recipients not yet migrated keep opening
+  the package. `packages/audit.py` accepts `encryption_migrated`.
+
+- **CLIs: migration commands and notices.**
+  - **New commands:** `vault migrate`, `biometrics migrate`, and
+    `package migrate --identity-id ID`. Each shows `MIGRATION_NOTICE`, asks
+    `Migrate now? [y/N]` (`--yes` skips the question), and reports what was
+    migrated, what was left, and any new recovery code.
+  - **Unlock notice:** an unlock or open that touches legacy data prints a
+    one-line notice pointing to the matching command.
+  - **`cli.py`:**
+    - `version` prints the encryption link.
+    - A new `encryption` tool runs Brisart Encryption's own toolkit unchanged:
+      keys, file encryption, sealed messages, hashing, archives with recovery
+      records, `kdf-bench`, and `selftest`.
+  - **Exit status 3:** `vault/app.py`, `biometrics/app.py`, `packages/main.py`,
+    and `cli.py encryption` exit 3 with `Encryption not found: ...` when the
+    link is unavailable.
+
+- **GUI: the migration pop-up.**
+  - **Vault and Biometrics tabs:** unlocking a store that holds legacy data
+    first shows `MIGRATION_NOTICE`, plus a note that a new recovery code may be
+    issued.
+    - OK migrates in place of the unlock, then shows what was re-encrypted,
+      what was left, and any new recovery code.
+    - Cancel unlocks with the previous encryption and asks again next time.
+  - **Packages tab:** opening a package asks the same question for that
+    recipient.
+  - **Shared text:** `gui/widgets/dialogs.py` holds `KEYRING_MIGRATION_NOTE`
+    and `migration_summary()`, used by both tabs.
+  - **Encryption link:** `app.py` shows the link in a status line and in
+    Help > About, as `..., from 97_Encryption/Official`. When encryption is
+    not linked, a warning pop-up at start-up gives the reason and says to
+    proceed with caution. The pop-up is Official-only; LTS-2028 keeps the
+    status line and error dialogs.
+
+- **`crypto/errors.py`: `EncryptionNotFoundError(RuntimeError)`.** It sits
+  outside the `Bsr2IntegrationError` family. That way a missing link is never
+  reported as a wrong passphrase or a non-matching factor.
+
+- **`tests/run_tests.py`: the root is found without `vendor/`, and the slow
+  list matches the new costs.** Keyring round trips now run in the fast suite.
+  Slow are `LegacyKeyringTests` and `LegacyKeyringVaultMigrationTests`, which
+  unlock a real v1 keyring through the legacy KDF.
+
+- **Documentation.**
+  - `docs/BSR2_INTEGRATION.md`:
+    - New "Encryption migration" section.
+    - A table of each Brisart Encryption module's job.
+    - The hashing that stays outside the link, none of it encryption: the
+      legacy text key, the SHA-256 integrity fingerprints in
+      `common/hashing.py`, and the ONVIF-mandated SHA-1 digest.
+  - `crypto/README.md`: a table of formats written and still read.
+  - `docs/SECURITY.md`: the revised release-line policy, identical in both
+    lines. LTS-2028 is the baseline for security changes, the lines share one
+    architecture, and all encryption comes from `97_Encryption`. It also
+    lists the features that stay Official-only, since LTS-2028 takes no new
+    features until it reaches end of life.
+  - Migration sections in `vault/README.md`, `biometrics/README.md`,
+    `packages/README.md`, and `docs/README.md`.
+  - `docs/FILE_AND_BUNDLE_ENCRYPTION.md`, `docs/KNOWN_ISSUES.md` KI-003, and
+    the headers of the bulk-file modules and GUI tabs: they no longer give a
+    16 MiB envelope cap as the reason for chunking. Chunking is unchanged and
+    remains the stored bundle format.
+
+### Removed
+
+- **`vendor/`** (four byte copies of BSR2 0.3.0-alpha and `README.md`),
+  **`crypto/vendor.py`** (its `sys.path` shim), and
+  **`tests/test_bsr2_vendor_integrity.py`** (digest pins for those copies).
+- **`crypto/factors.py`: `hash_factor()`, `verify_factor()`,
+  `is_factor_hash()`, `needs_rehash()`, `is_legacy_digest()`,
+  `is_bound_factor()`.** Nothing outside `crypto/` called them, and Identity
+  Tools stores no password-derived factor hashes.
+- **`crypto/envelope.py`: `MAX_PAYLOAD_BYTES` and `PADDING_BLOCK_BYTES`.**
+  There is no cap to report, and padding is Brisart Encryption's now.
+- **`gui/tests/test_tab_packages.py`: the four `_derive_master_key` tests.**
+  The method is gone. The derivation is tested where it now lives, in
+  `packages/tests/test_package_migration.py`.
+
+### Fixed
+
+- **The Official CI workflow targets the real tree.** Renamed from
+  `test-95-identity-tools-main.yml` to
+  `.github/workflows/test-95-identity-tools-official.yml`. It named
+  `95_Identity_Tools/main`, which does not exist. It now names `Official`,
+  changes under `97_Encryption/Official/**` also trigger it, and its
+  self-trigger path, display name, and report names say `official` instead of
+  `main`.
+- **CI for both LTS-2028 lines.** `test-95-identity-tools-lts2028.yml` named
+  `95_Identity_Tools/LTS-2028`, which no longer exists. It is replaced by
+  `test-95-identity-tools-lts2028-1.3.yml` and
+  `test-95-identity-tools-lts2028-1.4.yml`, one per LTS-2028 line.
+- **`docs/SECURITY.md` describes the three supported lines**, their end of
+  life, how security fixes reach each one, 1.3.x's known vulnerabilities, and
+  the three-month minimum for migration in 1.4.x, in place of the two-line
+  policy. All three lines carry the identical text.
+- **`docs/README.md` names the application roots `Official/`,
+  `LTS-2028 1.4.x/`, and `LTS-2028 1.3.x/`** instead of `main/` and
+  `LTS-2028/`. It and `docs/BSR2_INTEGRATION.md` now say migrated data can't
+  be read by any LTS-2028 1.3.x release, not only by 1.3.10.
+
+### Release lines
+
+Brisart Identity Tools now holds LTS-2028 as two separate lines. Together
+with Official, it maintains three lines, and all of them receive security
+updates until their designated end of life (31 December 2028 for both
+LTS-2028 lines). The policy is in `docs/SECURITY.md`, identical in all three
+lines.
+
+- **LTS-2028 1.3.x:** the original LTS-2028 line, kept on vendored BSR2
+  0.3.0-alpha and its original contract. Its encryption has known
+  vulnerabilities that it will not fix, because fixing them means changing
+  the encryption:
+  - the keyring passphrase KDF is not memory-hard (KI-008, Medium);
+  - the v2 envelope is not nonce-misuse resistant (KI-009, Low);
+  - the vendored randomness lacks Brisart Encryption 0.4.0's fork, copy, and
+    constant-sample protections (KI-010, Low).
+
+  They are recorded in 1.3.x's own `docs/KNOWN_ISSUES.md`. This release is
+  not affected: Official uses Brisart Encryption's current formats and
+  randomness for everything it writes. It uses the previous encryption only to
+  read existing data, and offers to migrate that data.
+- **LTS-2028 1.4.x:** the original LTS-2028 line, with the new encryption as
+  its only change, starting with 1.4.0. It ships the same encryption and
+  migration as this release, and keeps the migration until at least
+  8 February 2027.
+
+### Compatibility
+
+- **Brisart Encryption is required.** The `95_Identity_Tools` and
+  `97_Encryption` folders must sit together in the same folder, with Brisart
+  Encryption 0.4.0-alpha or later in `97_Encryption/Official`. Where that
+  folder is doesn't matter. Kept apart, the tools start, report
+  `Encryption not found` with that instruction, and the GUI warns with a
+  pop-up at start-up. Nothing falls back to other cryptography, and no message
+  shows the absolute location of the archive.
+- **Backward compatible for reading.** Everything Official 1.9.2, LTS-2028
+  1.3.10, and earlier write
+  still opens, unlocks, and verifies: legacy envelopes, v1 keyrings, legacy
+  bindings, and SHA-256 text-keyed packages. It stays that way until a later
+  release removes the previous encryption. Nothing is rewritten on read:
+  unlocking, reading, or answering Cancel to the pop-up leaves a store readable
+  by the release that wrote it. A v1 keyring is kept exactly as stored until a
+  wrapper is replaced, and only attempt-limiting state is written. Data changes
+  format only when it is migrated or written again.
+- **Migration is in place and one-way.** Each store is rewritten through
+  atomic replacement, with no copy of the previous files kept. Migrated or
+  newly written data cannot be read by Official 1.9.2, LTS-2028 1.3.10, or
+  earlier. LTS-2028 1.4.0 uses the same formats and reads it.
+- **Recovery codes.** A recovery code that used the previous KDF is replaced
+  during migration by a new one, shown once. The old code doesn't open the
+  migrated keyring, but still opens any earlier copy of it. Passphrases are
+  unchanged.
+- **What can stay legacy after migrating:**
+  - a vault record that fails to authenticate under its stored context
+    (KI-005);
+  - a device binding recorded on another machine;
+  - package recipients who have not migrated yet.
+
+  Each is reported. Running the migration again finishes whatever can be
+  finished.
+- **API changes, all inside `crypto/` and `packages/`:**
+  - `encryption.require()` returns modules.
+  - `Keyring.create(iterations=...)` is now `Keyring.create(memory_blocks=...)`.
+  - `KEYRING_FORMAT` is v2.
+  - The removals listed above.
+
+  The three tests that asserted the legacy envelope's field names now assert
+  the v3 shape.
+- **Test results.** The full suite passes against linked Brisart Encryption
+  0.4.0-alpha. The 43 skips are GUI tests that need Tk, which the verification
+  environment lacks.
+  - `--fast`: 469 tests passed, 43 skipped.
+  - `--slow`: 47 tests passed across all nine slow classes, including both
+    real-v1-keyring vault tests and `LegacyKeyringTests`.
+- **What the tests cover:**
+  - `crypto/tests/test_encryption_link.py`: payloads and a binding sealed by
+    1.9.2 itself open, reseal to v3 with identical content, and re-bind.
+  - `crypto/tests/test_keyring.py`: loading a v1 keyring leaves it as
+    stored. A real v1 keyring unlocks without being rewritten, then migrates;
+    its new recovery code unlocks and the old one no longer does.
+  - Vault, biometrics, and package tests, each covering:
+    - legacy data reads before migration;
+    - migration is complete, with content unchanged;
+    - a wrong passphrase or text changes nothing;
+    - partial migration is reported;
+    - a second run migrates nothing.
+  - `vault/tests/test_vault_migration.py` (slow): a vault on the real v1
+    keyring is unlocked and read without changing anything an older release
+    reads, then migrates end to end.
+- **Checked by hand on the verification machine, against data written by
+  LTS-2028's own code (vendored BSR2 0.3.0-alpha):** a vault with two JSON
+  records and a file record, a biometrics keyring and identity with a
+  fingerprint template, an attachment, and a device binding, and a package
+  with two recipients.
+  - **Before migrating:** the 1.10.0 CLIs read all of it, and each printed
+    the migration notice. `vault get` returned the records, and
+    `vault decrypt-file` and `biometrics extract-attachment` returned
+    byte-identical files. `biometrics verify` matched, and `package open`
+    worked for both recipients.
+  - **Reading without migrating:** the vault and biometrics files were
+    unchanged apart from attempt state, and LTS-2028 still opened them
+    afterwards.
+  - **Migrating:** `vault migrate`, `biometrics migrate`, and
+    `package migrate` (one recipient at a time) re-encrypted everything.
+    Keyrings became v2 with BSR2-MHF-1 wrappers, every payload became
+    `BSR2-S64-SIV/3`, and bindings became `mac64`. Contents stayed
+    byte-identical. The new recovery codes unlocked and the old ones were
+    rejected. A recipient not yet migrated still opened the package. Running
+    the migration again migrated nothing. LTS-2028 1.3.10 could not open the
+    migrated vault, biometrics data, or package, as stated above.
+  - **The pop-up:** Tk is not available in the verification environment, so
+    the Vault, Biometrics, and Packages tabs were driven with Tk stubbed out.
+    Everything else was real code on the LTS-written data. Cancel unlocked or
+    opened with the previous encryption, left the data as written, and the
+    question came back next time. OK migrated, showed the summary with the
+    new recovery code, and the question did not come back.
+
+---
+
 ## [1.9.2] - 2026-10-12
 
 A documentation-overhaul and correctness release bringing the current codebase,

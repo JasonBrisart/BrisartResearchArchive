@@ -255,7 +255,3 @@ class FingerprintScanner(BiometricBase):
                 f"binding.capture() returned {len(pixels)} pixel "
                 f"bytes; expected width*height = {width * height}."
             )
-
-
-
-

@@ -10,8 +10,8 @@ Contains 10 test case(s) across 3 TestCase class(es).
 
 Design notes:
 
-Fast: seeds from secrets.token_bytes and expands via BSR2's sponge DRBG; no KDF
-involved.
+Fast: seeds from Brisart Encryption's system entropy and expands through its
+DRBG; no KDF involved.
 
 Communication / relationships
 -----------------------------
@@ -86,7 +86,7 @@ class GenerateTests(unittest.TestCase):
         self.assertEqual(len(self.rng.generate(64, b"a")), 64)
 
     def test_generate_rejects_non_positive_length(self):
-        # crypto/rng.py does not wrap the vendored DRBG error; it surfaces as
+        # crypto/rng.py does not wrap the linked DRBG error; it surfaces as
         # BrisartDRBGError (a ValueError). Assert the shipped behavior.
         with self.assertRaises(ValueError):
             self.rng.generate(0, b"a")
@@ -117,7 +117,3 @@ class PersonalizationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-

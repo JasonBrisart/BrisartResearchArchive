@@ -5,18 +5,19 @@ Purpose
 -------
 Chunked, multi-path bulk file/folder/drive attachments on a biometrics identity
 record -- the biometrics-side counterpart to
-vault.store.bulk_file_service.BulkFileService, built for exactly the same
-reason: a single BSR2 envelope hard-caps at ~16 MiB
-(crypto.envelope.MAX_PAYLOAD_BYTES), so a large file, or a zip built from an
-entire folder/drive, must be split into several sealed chunk attachments and
-reassembled on the way back out.
+vault.store.bulk_file_service.BulkFileService. A large file, or a zip built
+from an entire folder/drive, is split into fixed-size sealed chunk attachments
+plus a manifest, and reassembled and verified on the way back out. Since the encryption migration
+crypto.envelope seals payloads of any size, so chunking is no longer forced by
+a size cap; it remains the stored bundle format and keeps each sealed
+attachment a bounded size.
 
 Public interface:
 - class BulkAttachmentError(ValueError) -- Raised when a bulk attach/restore
   operation cannot proceed.
 - attach_large_bytes(record, name, data, master_key,
   chunk_bytes=DEFAULT_CHUNK_BYTES) -- Attach bytes of ANY size under `name`,
-  transparently chunking past BSR2's single-envelope limit. Returns the updated
+  split into fixed-size sealed chunks. Returns the updated
   record (attach_bytes' same not-mutate-in-place contract).
 - restore_large_bytes(record, name, master_key) -- Reassemble a (possibly
   chunked) attach_large_bytes()/attach_paths() bundle back into the exact
@@ -240,8 +241,8 @@ def _build_zip_from_paths(paths, zip_path) -> dict:
 
 def attach_large_bytes(record: dict, name: str, data: bytes, master_key: bytes,
                        chunk_bytes: int = DEFAULT_CHUNK_BYTES) -> dict:
-    """Attach bytes of ANY size under `name`, transparently chunking past
-    BSR2's single-envelope limit. Returns the updated record (attach_bytes'
+    """Attach bytes of ANY size under `name`, split into fixed-size sealed
+    chunks. Returns the updated record (attach_bytes'
     same not-mutate-in-place contract)."""
     if not isinstance(data, (bytes, bytearray)):
         raise BulkAttachmentError("data must be bytes.")
@@ -360,7 +361,3 @@ def remove_bulk_attachment(record: dict, name: str, master_key: bytes) -> dict:
         # has become unreadable.
         pass
     return remove_identity_attachment(record, f"{name}{_MANIFEST_SUFFIX}")
-
-
-
-

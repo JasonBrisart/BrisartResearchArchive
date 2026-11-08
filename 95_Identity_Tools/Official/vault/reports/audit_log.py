@@ -46,7 +46,7 @@ Settings / parameters
 ---------------------
 - AUDIT_FORMAT = "brisart-identity-tools/vault-audit/v1"
 - _SUFFIX_BYTES = 4
-- _VALID_ACTIONS = ("created", "updated", "deleted", "unlocked", "locked")
+- _VALID_ACTIONS = ("created", "updated", "deleted", "unlocked", "locked", "encryption_migrated")
 
 Edge cases
 ----------
@@ -106,7 +106,7 @@ from common.timestamps import microsecond_timestamp, utc_now_iso
 
 AUDIT_FORMAT = "brisart-identity-tools/vault-audit/v1"
 _SUFFIX_BYTES = 4
-_VALID_ACTIONS = ("created", "updated", "deleted", "unlocked", "locked")
+_VALID_ACTIONS = ("created", "updated", "deleted", "unlocked", "locked", "encryption_migrated")
 
 
 class AuditLogError(ValueError):
@@ -173,7 +173,3 @@ def list_entries(audit_dir, record_id: str = None) -> list:
     if record_id is None:
         return paths
     return [path for path in paths if f"_{record_id}_" in path.name]
-
-
-
-

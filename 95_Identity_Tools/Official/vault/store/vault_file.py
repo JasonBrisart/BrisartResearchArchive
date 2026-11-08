@@ -212,7 +212,3 @@ def save_records(path, records: dict) -> None:
     state = load_state(path)
     state["records"] = records
     save_state(path, state)
-
-
-
-

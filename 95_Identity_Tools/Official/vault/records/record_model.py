@@ -77,8 +77,7 @@ Run from the repository root.
 
 ::
 
-    import secrets
-
+    from crypto import encryption
     from crypto.context import record_context
     from crypto.envelope import seal_json
     from crypto.rng import new_generator
@@ -89,7 +88,7 @@ Run from the repository root.
         validate_record,
     )
 
-    master_key = secrets.token_bytes(32)
+    master_key = encryption.require().entropy.system_entropy(32)
     envelope = seal_json(
         master_key,
         {"secret": "hunter2"},
@@ -205,7 +204,3 @@ def public_summary(record: dict) -> dict:
         if field in record:
             summary[field] = record[field]
     return summary
-
-
-
-

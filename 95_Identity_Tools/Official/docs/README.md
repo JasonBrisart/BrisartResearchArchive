@@ -8,9 +8,18 @@ application areas:
   sealed templates and file attachments.
 - **Packages:** symmetric, recipient-bound payload encryption with custody
   records and external audit files.
+- **Encryption toolkit:** Brisart Encryption's own key files, file
+  encryption, sealed messages, and Brisart Secure Archives with recovery
+  records, run as `python cli.py encryption`.
 
-The supplied application code uses Python's standard library and does not
-require a cloud service.
+The application code uses Python's standard library and does not require a
+cloud service. All encryption comes from Brisart Encryption
+(`97_Encryption/Official`). The only requirement is that the
+`95_Identity_Tools` and `97_Encryption` folders sit together in the same
+folder; where that folder is (a desktop folder, a drive, OneDrive) does not
+matter. Kept apart, the tools start and report `Encryption not found`, and
+nothing can be sealed or opened.
+Official also shows a warning pop-up at start-up in that case.
 
 BSR2 is custom, unreviewed research cryptography. These tools must not be
 treated as independently audited security products or as the sole protection
@@ -18,10 +27,13 @@ for high-value or irreplaceable secrets.
 
 ## Application roots
 
-The archive contains separate application trees:
+The archive contains three separate application trees, one per supported line
+(see [SECURITY.md](SECURITY.md)):
 
-- `main/`: the current development line.
-- `LTS-2028/`: the long-term-support line.
+- `Official/`: the current development line.
+- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (Brisart
+  Encryption).
+- `LTS-2028 1.3.x/`: the original LTS-2028 line, with vendored BSR2.
 
 Commands in this documentation assume the working directory is the selected
 application root: the directory containing `app.py`, `cli.py`, `version.py`,
@@ -30,16 +42,13 @@ and the application packages.
 For example, from the Identity Tools archive directory:
 
 ```bash
-cd main
+cd Official
 ```
 
-Or, for the LTS application:
+Or, for an LTS-2028 application, `cd "LTS-2028 1.4.x"` or
+`cd "LTS-2028 1.3.x"`. The folder names contain a space, so quote them.
 
-```bash
-cd LTS-2028
-```
-
-Do not combine modules from the two application trees.
+Do not combine modules from different application trees.
 
 ## Requirements
 
@@ -48,7 +57,7 @@ The documented Python minimum is 3.10.
 The desktop interface additionally requires a working Tkinter installation
 and a graphical display. No third-party Python GUI framework is used.
 
-The supplied hardware layer in `main/` contains optional integration contracts
+The supplied hardware layer in `Official/` contains optional integration contracts
 and driver logic. Real device access requires caller-supplied bindings or
 transports; it is not automatically provided by installing the application.
 
@@ -73,11 +82,12 @@ so `python -m gui.app` is not a launch command.
 
 ```bash
 python cli.py --help
-python cli.py version
+python cli.py version      # also prints the encryption link or "Encryption not found"
 
 python cli.py vault --help
 python cli.py biometrics --help
 python cli.py package --help
+python cli.py encryption --help   # Brisart Encryption's toolkit, unchanged
 ```
 
 The application-specific module entry points are also available:
@@ -105,12 +115,16 @@ docs/
 gui/
 packages/
 tests/
+tools/
 vault/
-vendor/
+hardware/
 ```
 
-The `main/` application additionally contains `hardware/` and the integrity
-checkpoint tooling.
+`hardware/`, the integrity checkpoint tooling, and the other Official-only
+features (listed in [SECURITY.md](SECURITY.md)) exist only in `Official/`;
+LTS-2028 receives security changes only.
+Encryption is not part of this tree; `crypto/encryption.py` links every
+Brisart Encryption library module from `../../97_Encryption/Official`.
 
 The GUI is split into:
 
@@ -141,8 +155,15 @@ cryptographic implementation.
 - Video motion checks are not general anti-spoofing.
 - Package CLI and GUI text-to-key prompts are demonstration interfaces, not
   slow password-KDF authentication.
-- Chunking bypasses the single-envelope size cap, but does not provide
-  unlimited memory, disk space, throughput, or full-drive backup guarantees.
+- Data written before 1.10.0 uses the previous encryption. It still opens,
+  and each tool offers to migrate it (`vault migrate`, `biometrics migrate`,
+  `package migrate`, or a prompt in the GUI); migrated data cannot be opened
+  by Official 1.9.2 and earlier or any LTS-2028 1.3.x release (LTS-2028 1.4.x
+  reads it). See
+  [BSR2 integration](BSR2_INTEGRATION.md#encryption-migration).
+- Sealing has no payload size cap and bulk workflows chunk large content,
+  but neither provides unlimited memory, disk space, throughput, or full-drive
+  backup guarantees.
 - Local reports and audit files are not independently protected,
   cryptographically authenticated evidence merely because the application
   writes a new file for each event.

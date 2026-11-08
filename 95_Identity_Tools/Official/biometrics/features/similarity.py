@@ -113,7 +113,3 @@ def distance_similarity(vector_a: list, vector_b: list) -> float:
         # match rather than dividing by zero.
         return 1.0
     return math.exp(-distance / scale)
-
-
-
-

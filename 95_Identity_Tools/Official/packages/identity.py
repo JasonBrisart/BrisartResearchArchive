@@ -142,7 +142,3 @@ def validate_recipient(recipient: dict) -> dict:
     validate_identity_id(recipient.get("identity_id"))
     validate_label(recipient.get("label"))
     return recipient
-
-
-
-

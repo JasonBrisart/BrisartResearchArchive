@@ -61,9 +61,9 @@ reflects only what is genuinely still outstanding.
   3. Observe elapsed processing, memory use, temporary storage, and skipped
      files.
   4. Restore the resulting bundle and observe the same resource requirements.
-- **Expected behavior:** Chunking permits multiple envelopes to represent
-  content larger than the single-envelope payload limit. It does not promise
-  unlimited-size or bounded-memory processing.
+- **Expected behavior:** Chunking stores large content as several sealed
+  records plus a manifest. It does not promise unlimited-size or
+  bounded-memory processing.
 - **Actual behavior:** Path bundles are materialized as plaintext temporary
   ZIP files and read completely into memory. Restore reassembles complete
   content before extraction. Earlier development documentation reports small

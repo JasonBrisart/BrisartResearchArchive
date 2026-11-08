@@ -119,7 +119,3 @@ def _rescale_to_255(decoded: dict) -> dict:
     pixels = decoded["pixels"]
     scaled = bytes(min(255, (value * 255) // maxval) for value in pixels)
     return {"width": decoded["width"], "height": decoded["height"], "pixels": scaled}
-
-
-
-

@@ -17,6 +17,11 @@ Public interface:
   file path with a Browse button for every registered modality
   (biometrics.engine.modalities), so a new modality added there appears here
   automatically without editing the GUI.
+- migration_prompt(issues_recovery_code) -- The OK/Cancel question every tab
+  shows before migrating: crypto.encryption.MIGRATION_NOTICE, the
+  recovery-code note when the store has a keyring, and what OK and Cancel do.
+- migration_summary(migrated_count, noun, not_migrated, recovery_code) -- The
+  text both tabs show in a TextViewDialog after an encryption migration.
 
 Design notes:
 
@@ -26,6 +31,7 @@ they only collect input or display text.
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- crypto.encryption (crypto/encryption.py) -- MIGRATION_NOTICE
 - gui.core.constants (gui/core/constants.py)
 - biometrics.engine.modalities (biometrics/engine/modalities.py)
 Standard library: json, tkinter.
@@ -37,8 +43,8 @@ Covered by tests: no test file imports this module directly.
 
 Settings / parameters
 ---------------------
-No module-level constants. Tunable defaults are exposed as
-keyword arguments:
+No module-level constants.
+Tunable defaults are exposed as keyword arguments:
 - RecordDialog(label="")
 - RecordDialog(kind="note")
 - RecordDialog(payload_text="{}")
@@ -72,8 +78,37 @@ import json
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
+from crypto import encryption
 from gui.core.constants import _MODALITY_FILETYPES
 from biometrics.engine import modalities as bio_modalities
+
+def migration_prompt(issues_recovery_code: bool) -> str:
+    """The text of the OK/Cancel migration question."""
+    text = encryption.MIGRATION_NOTICE
+    if issues_recovery_code:
+        text += (
+            "\n\nIf the recovery code still uses the previous encryption, a new "
+            "one is issued and shown once after migrating; the old code will "
+            "stop working."
+        )
+    return text + (
+        "\n\nPress OK to re-encrypt now with the new encryption. Press Cancel "
+        "to keep using the previous encryption for now."
+    )
+
+
+def migration_summary(migrated_count: int, noun: str, not_migrated: list, recovery_code) -> str:
+    """Describe a finished encryption migration for display."""
+    lines = [f"Re-encrypted {migrated_count} {noun} with the new encryption."]
+    if not_migrated:
+        lines.append("\nLeft in the previous encryption (could not be migrated):")
+        lines.extend(f"    {item}" for item in not_migrated)
+    if recovery_code is not None:
+        lines.append(
+            "\nSAVE THIS NEW RECOVERY CODE NOW. It replaces the old one, is shown "
+            f"only once, and cannot be recovered later:\n\n    {recovery_code}"
+        )
+    return "\n".join(lines) + "\n"
 
 
 class TextPromptDialog(tk.Toplevel):
@@ -279,7 +314,3 @@ class ModalityPathDialog(tk.Toplevel):
     def _on_cancel(self):
         self.result = None
         self.destroy()
-
-
-
-

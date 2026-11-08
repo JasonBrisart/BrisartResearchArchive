@@ -140,7 +140,3 @@ def run_in_background(parent, work, on_success, on_error=None, message="Working.
             messagebox.showerror(APP_TITLE, str(payload), parent=parent)
 
     parent.after(100, poll)
-
-
-
-

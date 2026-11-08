@@ -43,6 +43,7 @@ Supported launch commands, both run from the repository root:
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- crypto.encryption (crypto/encryption.py) -- the encryption status line
 - gui.core.constants (gui/core/constants.py)
 - gui.tabs.tab_vault (gui/tabs/tab_vault.py)
 - gui.tabs.tab_biometrics (gui/tabs/tab_biometrics.py)
@@ -55,14 +56,19 @@ Covered by tests: tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------
-No module-level constants, environment variables, or defaulted arguments:
-behaviour is controlled entirely by the values callers pass in.
+- ENCRYPTION_WARNING -- text of the start-up pop-up shown when Brisart
+  Encryption is not linked; {problem} is the link's reason, which already says
+  to keep 95_Identity_Tools and 97_Encryption together in the same folder.
 
 Edge cases
 ----------
-Defines no error paths of its own: it raises nothing and catches nothing, so
-any exception from the standard library or a dependency reaches the caller
-unchanged.
+- Without Brisart Encryption the window still opens. A warning pop-up appears
+  once at start-up (ENCRYPTION_WARNING with the reason), the status line at
+  the bottom and Help > About read "Encryption not found: ...", and any button
+  that needs encryption reports the same message through the tab's normal
+  error path. The start-up pop-up is an Official extra; LTS-2028 has the
+  status line and error dialogs only.
+- Otherwise raises nothing and catches nothing of its own.
 
 Known limitations
 -----------------
@@ -85,9 +91,16 @@ from tkinter import messagebox, ttk
 # Import core.constants first: this runs the repo-root sys.path bootstrap before
 # the tab modules below import vault/biometrics/packages.
 from gui.core.constants import APP_TITLE
+from crypto import encryption
 from gui.tabs.tab_vault import VaultTab
 from gui.tabs.tab_biometrics import BiometricsTab
 from gui.tabs.tab_packages import PackagesTab
+
+ENCRYPTION_WARNING = (
+    "Encryption isn't working.\n\n{problem}\n\n"
+    "The tools will open, but nothing can be encrypted, decrypted, unlocked, "
+    "or migrated until this is fixed. Proceed with caution."
+)
 
 
 class App(tk.Tk):
@@ -96,6 +109,9 @@ class App(tk.Tk):
         self.title(APP_TITLE)
         self.geometry("900x640")
         self.minsize(760, 520)
+        ttk.Label(
+            self, text=encryption.status().describe(), anchor="w", padding=(8, 2)
+        ).pack(side="bottom", fill="x")
         notebook = ttk.Notebook(self)
         notebook.pack(fill="both", expand=True)
         notebook.add(VaultTab(notebook), text="Vault")
@@ -109,6 +125,12 @@ class App(tk.Tk):
         help_menu.add_command(label="About", command=self._show_about)
         menu_bar.add_cascade(label="Help", menu=help_menu)
         self.configure(menu=menu_bar)
+        link = encryption.status()
+        if not link.available:
+            # after(): show it once the main window exists, not before.
+            self.after(0, lambda: messagebox.showwarning(
+                APP_TITLE, ENCRYPTION_WARNING.format(problem=link.problem), parent=self,
+            ))
 
     def _show_about(self):
         from version import __version__
@@ -119,7 +141,8 @@ class App(tk.Tk):
             "or drive, any size), local biometric verification with sealed "
             "templates and file attachments, and identity-bound packages.\n\n"
             "Standard library only. No cloud services, no third-party "
-            "dependencies.",
+            "dependencies.\n\n"
+            f"{encryption.status().describe()}",
         )
 
 
@@ -130,7 +153,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-

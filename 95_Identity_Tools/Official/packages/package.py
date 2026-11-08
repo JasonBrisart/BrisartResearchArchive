@@ -26,6 +26,14 @@ Public interface:
   and label only).
 - custody_summary(state) -- A compact, display-friendly summary of the
   package's custody history.
+- recipient_key_from_text(state, identity_id, text) -- The master key that
+  authenticates ``identity_id`` from typed text: the current text key, or the
+  legacy one for a recipient not yet migrated.
+- needs_encryption_migration(state, identity_id, text) -- Report whether this
+  recipient's part of the package still uses the previous encryption.
+- migrate_recipient(state, identity_id, text, audit_dir=None) -- Move this
+  recipient's key slot and verifier, and the payload, to the current
+  encryption. Returns the updated state.
 
 Design notes:
 
@@ -45,10 +53,25 @@ slots, and the custody chain. Nothing here performs file I/O directly --
 persistence is left to the caller (typically ``main.py``), matching the
 separation ``vault.store.vault_service`` keeps from ``vault.store.vault_file``.
 
+Encryption migration. A package has one payload but one key slot and verifier
+per recipient, each under that recipient's own master key, so it migrates one
+recipient at a time: migrate_recipient() needs that recipient's typed text. It
+recovers the content key through the slot (under the legacy text key if that is
+what verifies), reseals the payload if it is still legacy, seals the slot and
+builds the verifier under the current text key, and appends a
+``payload_rewrapped`` custody entry with ``{"identity_id", "reason":
+"encryption_migration"}``. The content key does not change, so recipients not
+yet migrated keep opening the package with their legacy slots until they
+migrate themselves.
+
 Communication / relationships
 -----------------------------
 Depends on (project modules):
+- crypto.context (crypto/context.py)
+- crypto.envelope (crypto/envelope.py) -- is_legacy, reseal
 - crypto.errors (crypto/errors.py)
+- crypto.factors (crypto/factors.py) -- is_legacy_binding
+- crypto.rng (crypto/rng.py)
 - packages.audit (packages/audit.py)
 - packages.ciphers (packages/ciphers.py)
 - packages.custody (packages/custody.py)
@@ -60,7 +83,7 @@ Imported by:
 - packages/demo.py
 - packages/main.py
 Covered by tests: gui/tests/test_tab_packages.py,
-packages/tests/test_package_integrity.py.
+packages/tests/test_package_integrity.py, packages/tests/test_package_migration.py.
 
 Settings / parameters
 ---------------------
@@ -68,6 +91,10 @@ Settings / parameters
 
 Edge cases
 ----------
+- migrate_recipient() raises PackageAuthorizationError when the text does not
+  authenticate the recipient under either text key, and changes nothing.
+- needs_encryption_migration() returns False for an identity that is not a
+  recipient, so callers fall through to the normal authorization error.
 - create_package() raises PackageError: "package_id must be a non-empty
   string."
 - create_package() raises PackageError: "at least one recipient is required."
@@ -130,7 +157,11 @@ opener_master_key stand for values the caller supplies.
     )
 """
 
+from crypto.context import package_context
+from crypto.envelope import is_legacy, reseal
 from crypto.errors import Bsr2IntegrationError
+from crypto.factors import is_legacy_binding
+from crypto.rng import new_generator
 from packages import audit, ciphers, custody
 # BUG FIX (2026-08-24): this previously also imported RecipientIdentityError
 # and validate_identity_id from packages.identity, neither of which is
@@ -360,5 +391,64 @@ def custody_summary(state: dict) -> list:
     return custody.summarize(state["custody_chain"])
 
 
+def recipient_key_from_text(state: dict, identity_id: str, text: str) -> bytes:
+    """Return the master key typed ``text`` gives ``identity_id``.
+
+    The current text key when it verifies or when nothing verifies (so the
+    caller's normal authorization error reports the mismatch), the legacy
+    text key when only that one verifies.
+    """
+    current = ciphers.text_master_key(text)
+    recipient = state["recipients"].get(identity_id)
+    if recipient is None or verify_recipient_master_key(current, identity_id, recipient["verifier"]):
+        return current
+    legacy = ciphers.legacy_text_master_key(text)
+    if verify_recipient_master_key(legacy, identity_id, recipient["verifier"]):
+        return legacy
+    return current
 
 
+def needs_encryption_migration(state: dict, identity_id: str, text: str) -> bool:
+    """Report whether ``identity_id``'s part of the package (its key, slot, or
+    verifier) or the shared payload still uses the previous encryption."""
+    state = validate_package(state)
+    if identity_id not in state["recipients"]:
+        return False
+    return (
+        recipient_key_from_text(state, identity_id, text) != ciphers.text_master_key(text)
+        or is_legacy(state["key_slots"][identity_id])
+        or is_legacy_binding(state["recipients"][identity_id]["verifier"])
+        or is_legacy(state["payload"])
+    )
+
+
+def migrate_recipient(state: dict, identity_id: str, text: str, audit_dir=None) -> dict:
+    """Move ``identity_id``'s slot and verifier, and the payload, to the
+    current encryption. Raises PackageAuthorizationError when ``text`` does
+    not authenticate ``identity_id``."""
+    state = validate_package(state)
+    old_key = recipient_key_from_text(state, identity_id, text)
+    new_key = ciphers.text_master_key(text)
+    content_key = _authorized_content_key(state, identity_id, old_key)
+    package_id = state["package_id"]
+
+    updated = dict(state)
+    updated["payload"] = reseal(
+        content_key, state["payload"], package_context(package_id),
+        new_generator("package-migrate"),
+    )
+    updated["key_slots"] = dict(state["key_slots"])
+    updated["key_slots"][identity_id] = ciphers.wrap_content_key(new_key, package_id, identity_id, content_key)
+    updated["recipients"] = dict(state["recipients"])
+    updated["recipients"][identity_id] = {
+        **state["recipients"][identity_id],
+        "verifier": build_recipient_verifier(new_key, identity_id),
+    }
+    label = state["recipients"][identity_id]["label"]
+    updated["custody_chain"] = custody.append(
+        state["custody_chain"], "payload_rewrapped", label,
+        {"identity_id": identity_id, "reason": "encryption_migration"},
+    )
+    if audit_dir is not None:
+        audit.record_event(audit_dir, "encryption_migrated", package_id, label)
+    return updated

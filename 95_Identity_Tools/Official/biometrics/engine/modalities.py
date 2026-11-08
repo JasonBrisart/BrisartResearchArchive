@@ -160,7 +160,3 @@ def default_threshold(modality: str) -> float:
     """Return the default match-acceptance threshold for ``modality``."""
     _entry(modality)  # validates the modality name
     return DEFAULT_THRESHOLDS[modality]
-
-
-
-

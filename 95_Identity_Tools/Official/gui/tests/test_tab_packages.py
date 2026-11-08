@@ -8,15 +8,16 @@ the gui/tabs/*.py coverage that closed KI-002 (now listed as resolved in
 docs/KNOWN_ISSUES.md).
 
 Verifies: gui/tabs/tab_packages.py, packages/package.py.
-Contains 8 test case(s) across 1 TestCase class(es).
+Contains 4 test case(s) across 1 TestCase class(es).
 
 Design notes:
 
-Scope is limited to the tab's own pure logic: the passphrase-text-to-master-
-key stretch (_derive_master_key), the state-presence guard used before every
-package operation (_require_state -- only its True branch is exercised here,
-since the False branch pops a blocking messagebox.showerror with no user
-present to dismiss it), and the recipient list refresh (_refresh_recipients).
+Scope is limited to the tab's own pure logic: the state-presence guard used
+before every package operation (_require_state -- only its True branch is
+exercised here, since the False branch pops a blocking messagebox.showerror
+with no user present to dismiss it), and the recipient list refresh
+(_refresh_recipients). The typed-text key derivation the tab uses is tested
+where it lives, in packages/tests/test_package_migration.py.
 Methods that pop a real modal dialog, run a background operation, or write a
 package file to disk (_create_package, _add_recipient, _remove_recipient,
 _open_package, _verify_custody, _run_demo) are intentionally NOT exercised
@@ -35,7 +36,7 @@ Communication / relationships
 Depends on (project modules):
 - gui.tabs.tab_packages (gui/tabs/tab_packages.py)
 - packages.package (packages/package.py)
-Standard library: hashlib, secrets, tkinter, unittest.
+Standard library: secrets, tkinter, unittest.
 Discovered and run by tests/run_tests.py (and by ``python -m unittest``);
 nothing imports it.
 
@@ -45,10 +46,6 @@ Settings / parameters
 
 Edge cases
 ----------
-- Derive master key is deterministic.
-- Derive master key matches plain sha256.
-- Derive master key differs for different input.
-- Derive master key is 32 bytes.
 - Require state true when state present.
 - Refresh recipients empty when state none.
 - Refresh recipients populates rows from package state.
@@ -69,7 +66,6 @@ Examples
     python tests/run_tests.py
 """
 
-import hashlib
 import secrets
 import unittest
 
@@ -102,25 +98,6 @@ class PackagesTabTests(unittest.TestCase):
 
     def tearDown(self):
         self.root.destroy()
-
-    # -- _derive_master_key ------------------------------------------------
-    def test_derive_master_key_is_deterministic(self):
-        first = self.tab._derive_master_key("correct horse battery staple")
-        second = self.tab._derive_master_key("correct horse battery staple")
-        self.assertEqual(first, second)
-
-    def test_derive_master_key_matches_plain_sha256(self):
-        text = "some passphrase text"
-        expected = hashlib.sha256(text.encode("utf-8")).digest()
-        self.assertEqual(self.tab._derive_master_key(text), expected)
-
-    def test_derive_master_key_differs_for_different_input(self):
-        first = self.tab._derive_master_key("alice's passphrase")
-        second = self.tab._derive_master_key("bob's passphrase")
-        self.assertNotEqual(first, second)
-
-    def test_derive_master_key_is_32_bytes(self):
-        self.assertEqual(len(self.tab._derive_master_key("x")), 32)
 
     # -- _require_state ------------------------------------------------------
     def test_require_state_true_when_state_present(self):
@@ -168,7 +145,3 @@ class PackagesTabTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-

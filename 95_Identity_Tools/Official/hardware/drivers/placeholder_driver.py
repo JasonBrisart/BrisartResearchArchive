@@ -36,7 +36,3 @@ Examples
 
     import hardware.drivers.placeholder_driver
 """
-
-
-
-

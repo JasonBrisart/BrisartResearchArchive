@@ -140,7 +140,3 @@ def verify_device(master_key: bytes, bound_value: str, fingerprint: str = None) 
     """Check whether the current (or supplied) device matches a stored binding."""
     fingerprint = fingerprint if fingerprint is not None else current_device_fingerprint()
     return verify_bound_factor(master_key, DEVICE_FACTOR_NAME, fingerprint, bound_value)
-
-
-
-

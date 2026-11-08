@@ -69,7 +69,8 @@ Settings / parameters
 - _SUFFIX_BYTES = 4 -- Random bytes in each file name, written as 8 hex
   characters.
 - _VALID_ACTIONS = ("created", "recipient_added", "recipient_removed",
-  "opened", "open_denied", "custody_violation_detected") -- The only actions
+  "opened", "open_denied", "custody_violation_detected",
+  "encryption_migrated") -- The only actions
   build_entry() accepts. They are also embedded in file names, so a new action
   changes what list_entries() can match (see Known limitations).
 - build_entry(actor_label="") -- Optional free-text label for who performed the
@@ -169,6 +170,7 @@ _VALID_ACTIONS = (
     "opened",
     "open_denied",
     "custody_violation_detected",
+    "encryption_migrated",
 )
 
 
@@ -226,7 +228,3 @@ def list_entries(audit_dir, package_id: str = None) -> list:
     if package_id is None:
         return paths
     return [path for path in paths if f"_{package_id}_" in path.name]
-
-
-
-
