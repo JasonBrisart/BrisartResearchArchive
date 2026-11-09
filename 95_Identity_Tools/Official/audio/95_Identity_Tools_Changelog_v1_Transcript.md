@@ -1,18 +1,17 @@
-# 95_Identity_Tools_Changelog_2026_11_09
+# 95_Identity_Tools_Changelog_v1
 
 ## Record Information
 
 - **Archive Component:** `95_Identity_Tools`
 - **Documentation Series:** Changelog Documentation
-- **Audio Documentation Version:** v0.1
 - **Record Type:** Contemporary Audio Documentation
 - **Recorded:** 2026-11-09
-- **Audio File:** `95_Identity_Tools_Changelog_2026_11_09.mp3`
-- **Transcript File:** `95_Identity_Tools_Changelog_2026_11_09_Transcript.md`
+- **Audio File:** `95_Identity_Tools_Changelog_v1.mp3`
+- **Transcript File:** `95_Identity_Tools_Changelog_v1_Transcript.md`
 
 ## About This Record
 
-This transcript accompanies the **95_Identity_Tools_Changelog_2026_11_09** audio record preserved within the Brisart Research Archive.
+This transcript accompanies the **95_Identity_Tools_Changelog_v1** audio record preserved within the Brisart Research Archive.
 
 The recording documents the conflict between the stability guarantees of the Brisart Identity Tools LTS-2028 release line and the security changes required by the transition from BSR2 alpha 3 to BSR2 alpha 4 encryption.
 

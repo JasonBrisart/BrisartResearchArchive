@@ -4,7 +4,6 @@
 
 - **Archive Component:** `97_Encryption`
 - **Documentation Series:** Architecture Documentation
-- **Audio Documentation Version:** v2
 - **Record Type:** Contemporary Audio Documentation
 - **Recorded:** 2026-10-23
 - **Audio File:** `97_Encryption_Architecture_Documentation_v1.mp3`
