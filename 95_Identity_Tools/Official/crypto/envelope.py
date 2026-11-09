@@ -5,7 +5,7 @@ Purpose
 -------
 Sealed payloads for everything Identity Tools stores: vault records, biometric
 templates, attachments, keyring wrappers, and package parts. New payloads are
-sealed with Brisart Encryption's sealed-message format v3 (``BSR2-S64-SIV``)
+sealed with BSR2's sealed-message format v3 (``BSR2-S64-SIV``)
 or, above its size limit, its chunked stream format (``BSR-STREAM-1``).
 Payloads sealed before the encryption migration with the legacy v2 JSON envelope
 (``BSR2-ARX-SPONGE-ETM``) still open so they can be migrated; nothing writes
@@ -32,7 +32,7 @@ Design notes:
 
 **Stored shape.** Payloads live inside JSON files, so a sealed payload is a
 two-field object: ``{"format": SEALED_FORMAT | STREAM_FORMAT, "data":
-<base64 of the Brisart Encryption output>}``. The legacy shape is the
+<base64 of the BSR2 output>}``. The legacy shape is the
 six-field v2 envelope (algorithm, version, salt, nonce, ciphertext, tag).
 open_bytes() dispatches on shape, so callers never ask which format they hold.
 
@@ -48,7 +48,7 @@ bytes in the current format under the same key and context. Because seal_json()
 seals canonical JSON bytes, resealing raw bytes keeps JSON payloads openable
 with open_json().
 
-**Padding.** v3 messages use Brisart Encryption's ``block`` padding (256-byte
+**Padding.** v3 messages use BSR2's ``block`` padding (256-byte
 buckets), so a short credential and a long recovery note are not told apart by
 ciphertext size. This is the same bucket size the legacy envelope was padded
 to by hand here. Stream payloads are not padded; at that size the bucket would
@@ -91,8 +91,7 @@ Settings / parameters
 
 Edge cases
 ----------
-- Every public function raises EncryptionNotFoundError when Brisart
-  Encryption is not linked, including is_envelope(): without the linked format
+- Every public function raises EncryptionNotFoundError when BSR2 is not linked, including is_envelope(): without the linked format
   constants a legacy envelope cannot be recognised, and guessing "not an
   envelope" would let callers treat ciphertext as plaintext.
 - seal_bytes() raises Bsr2IntegrationError: "plaintext must be bytes."
@@ -101,7 +100,7 @@ Edge cases
   base64." for a corrupt ``data`` field.
 - open_bytes() raises EnvelopeAuthenticationError: "sealed payload failed
   authentication: wrong key, wrong context, or modified ciphertext." for any
-  failure inside Brisart Encryption, in every format. The original error is
+  failure inside BSR2, in every format. The original error is
   kept as ``__cause__``.
 - _unpad_legacy() raises Bsr2IntegrationError for a legacy plaintext that is
   truncated or declares a length beyond its own data.
@@ -219,7 +218,7 @@ def seal_bytes(master_key: bytes, plaintext: bytes, context: str, rng) -> dict:
 def open_bytes(master_key: bytes, envelope: dict, context: str) -> bytes:
     """Verify and decrypt a sealed payload in any supported format.
 
-    Every failure inside Brisart Encryption is re-raised as
+    Every failure inside BSR2 is re-raised as
     EnvelopeAuthenticationError: wrong key, wrong context, and modified data
     are indistinguishable to the verifier and are reported as one outcome.
     """

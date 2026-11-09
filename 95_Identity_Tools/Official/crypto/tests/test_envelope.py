@@ -15,7 +15,7 @@ Contains 18 test case(s) across 5 TestCase class(es).
 Design notes:
 
 These use a random 32-byte master key and a real crypto.rng generator, not a
-passphrase, so they run the full Brisart Encryption seal/open path without any
+passphrase, so they run the full BSR2 seal/open path without any
 KDF cost. The stream-selection test lowers the linked ``aead`` limit with
 unittest.mock rather than sealing 16 MiB, which would take minutes in pure
 Python; the stream path itself is real.

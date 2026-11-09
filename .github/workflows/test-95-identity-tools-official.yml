@@ -3,7 +3,7 @@
 # Purpose
 # -------
 # Validate 95_Identity_Tools/Official source syntax and run its discovered
-# regression tests against the linked Brisart Encryption (97_Encryption/Official).
+# regression tests against the linked BSR2 (97_Encryption/Official).
 #
 # Communication / relationships
 # -----------------------------
@@ -17,8 +17,8 @@
 # Settings / parameters
 # ---------------------
 # Python 3.14 on Ubuntu; project-scoped working directory and PYTHONPATH.
-# Triggers on Identity Tools Official changes, Brisart Encryption Official
-# changes (the linked dependency), this workflow, or manual dispatch.
+# Triggers on Identity Tools Official changes, BSR2
+# (97_Encryption/Official) changes (the linked dependency), this workflow, or manual dispatch.
 #
 # Edge cases
 # ----------

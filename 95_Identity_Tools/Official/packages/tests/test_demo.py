@@ -4,7 +4,7 @@ File: packages/tests/test_demo.py
 Purpose
 -------
 Tests for packages.demo: the shared demo really creates, re-wraps, opens, and
-validates a package through the linked Brisart Encryption.
+validates a package through the linked BSR2.
 
 Verifies: packages/demo.py.
 Contains 2 test case(s) across 1 TestCase class(es).

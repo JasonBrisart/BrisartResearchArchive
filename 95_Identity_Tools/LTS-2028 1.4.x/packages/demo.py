@@ -31,7 +31,7 @@ None.
 
 Edge cases
 ----------
-- Raises EncryptionNotFoundError when Brisart Encryption is not linked; the
+- Raises EncryptionNotFoundError when BSR2 is not linked; the
   CLI reports it with exit status 3 and the GUI in an error dialog.
 - Otherwise raises nothing and catches nothing of its own.
 

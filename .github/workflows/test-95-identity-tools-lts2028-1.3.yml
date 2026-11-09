@@ -4,8 +4,7 @@
 # -------
 # Validate 95_Identity_Tools/LTS-2028 1.3.x source syntax and run its
 # discovered regression tests. 1.3.x is the original LTS-2028 line: it carries
-# its own vendored BSR2 0.3.0-alpha in vendor/ and does not use Brisart
-# Encryption (97_Encryption).
+# its own vendored BSR2 0.3.0-alpha in vendor/ and does not use BSR2 (97_Encryption).
 #
 # Communication / relationships
 # -----------------------------

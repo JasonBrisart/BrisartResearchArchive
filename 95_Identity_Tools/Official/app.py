@@ -56,13 +56,12 @@ Covered by tests: tests/test_cli_dispatcher.py.
 
 Settings / parameters
 ---------------------
-- ENCRYPTION_WARNING -- text of the start-up pop-up shown when Brisart
-  Encryption is not linked; {problem} is the link's reason, which already says
+- ENCRYPTION_WARNING -- text of the start-up pop-up shown when BSR2 is not linked; {problem} is the link's reason, which already says
   to keep 95_Identity_Tools and 97_Encryption together in the same folder.
 
 Edge cases
 ----------
-- Without Brisart Encryption the window still opens. A warning pop-up appears
+- Without BSR2 the window still opens. A warning pop-up appears
   once at start-up (ENCRYPTION_WARNING with the reason), the status line at
   the bottom and Help > About read "Encryption not found: ...", and any button
   that needs encryption reports the same message through the tab's normal

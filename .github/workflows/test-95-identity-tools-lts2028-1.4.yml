@@ -3,7 +3,7 @@
 # Purpose
 # -------
 # Validate 95_Identity_Tools/LTS-2028 1.4.x source syntax and run its
-# discovered regression tests against the linked Brisart Encryption
+# discovered regression tests against the linked BSR2
 # (97_Encryption/Official). 1.4.x is the original LTS-2028 line plus the new
 # encryption and the migration to it.
 #
@@ -19,7 +19,7 @@
 # Settings / parameters
 # ---------------------
 # Python 3.14 on Ubuntu; working directory and PYTHONPATH are the 1.4.x root.
-# Triggers on LTS-2028 1.4.x changes, Brisart Encryption Official changes
+# Triggers on LTS-2028 1.4.x changes, BSR2 (97_Encryption/Official) changes
 # (the linked dependency), this workflow, or manual dispatch.
 #
 # Edge cases

@@ -8,12 +8,12 @@ application areas:
   sealed templates and file attachments.
 - **Packages:** symmetric, recipient-bound payload encryption with custody
   records and external audit files.
-- **Encryption toolkit:** Brisart Encryption's own key files, file
+- **Encryption toolkit:** BSR2's own key files, file
   encryption, sealed messages, and Brisart Secure Archives with recovery
   records, run as `python cli.py encryption`.
 
 The application code uses Python's standard library and does not require a
-cloud service. All encryption comes from Brisart Encryption
+cloud service. All encryption comes from BSR2
 (`97_Encryption/Official`). The only requirement is that the
 `95_Identity_Tools` and `97_Encryption` folders sit together in the same
 folder; where that folder is (a desktop folder, a drive, OneDrive) does not
@@ -31,8 +31,7 @@ The archive contains three separate application trees, one per supported line
 (see [SECURITY.md](SECURITY.md)):
 
 - `Official/`: the current development line.
-- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (Brisart
-  Encryption).
+- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (BSR2).
 - `LTS-2028 1.3.x/`: the original LTS-2028 line, with vendored BSR2.
 
 Commands in this documentation assume the working directory is the selected
@@ -87,7 +86,7 @@ python cli.py version      # also prints the encryption link or "Encryption not 
 python cli.py vault --help
 python cli.py biometrics --help
 python cli.py package --help
-python cli.py encryption --help   # Brisart Encryption's toolkit, unchanged
+python cli.py encryption --help   # BSR2's toolkit, unchanged
 ```
 
 The application-specific module entry points are also available:
@@ -124,7 +123,7 @@ hardware/
 features (listed in [SECURITY.md](SECURITY.md)) exist only in `Official/`;
 LTS-2028 receives security changes only.
 Encryption is not part of this tree; `crypto/encryption.py` links every
-Brisart Encryption library module from `../../97_Encryption/Official`.
+BSR2 library module from `../../97_Encryption/Official`.
 
 The GUI is split into:
 

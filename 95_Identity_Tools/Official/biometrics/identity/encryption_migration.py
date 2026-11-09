@@ -4,7 +4,7 @@ File: biometrics/identity/encryption_migration.py
 Purpose
 -------
 Moves a biometrics data directory -- its keyring file and every identity record
-in its store -- from the previous encryption to the current Brisart Encryption
+in its store -- from the previous encryption to the current BSR2
 formats. The CLI (``biometrics migrate``) and the GUI's migration prompt both
 call this module.
 
@@ -74,7 +74,7 @@ Edge cases
   keyring_access and changes nothing but the recorded attempt.
 - An identity record the store cannot load is skipped by list_records(), so it
   is neither migrated nor reported; needs_migration() skips it the same way.
-- EncryptionNotFoundError propagates when Brisart Encryption is not linked.
+- EncryptionNotFoundError propagates when BSR2 is not linked.
 
 Known limitations
 -----------------

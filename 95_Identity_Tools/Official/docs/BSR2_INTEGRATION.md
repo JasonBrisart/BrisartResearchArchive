@@ -17,8 +17,7 @@ credentials, identity records, recovery secrets, or comparable material.
 
 ## Integration boundary
 
-Identity Tools contains no encryption of its own. BSR2 comes from Brisart
-Encryption, `97_Encryption/Official` in the Brisart Research Archive, which
+Identity Tools contains no encryption of its own. BSR2 comes from BSR2, `97_Encryption/Official` in the Brisart Research Archive, which
 `crypto/encryption.py` links to as the single point of contact:
 
 ```text
@@ -28,14 +27,14 @@ BrisartResearchArchive/
 ```
 
 The link is resolved once per process, on first use, and links every library
-module Brisart Encryption ships: `primitives`, `sponge`, `entropy`, `drbg`,
+module BSR2 ships: `primitives`, `sponge`, `entropy`, `drbg`,
 `envelope`, `aead`, `stream`, `kdf`, `keys`, `recovery`, `archive`, `cli`, and
 `version` (each `brisart_security_<name>.py`). It also checks the formats
 Identity Tools depends on: the legacy `BSR2-ARX-SPONGE-ETM` v2 envelope (data
 written before 1.10.0), sealed format v3 `BSR2-S64-SIV`, stream format 1, and
 the `BSR2-MHF-1` KDF.
 
-| Brisart Encryption module | Used for |
+| BSR2 module | Used for |
 | --- | --- |
 | `aead` | Every new sealed payload up to 16 MiB |
 | `stream` | Sealed payloads above 16 MiB |
@@ -74,12 +73,11 @@ The application integration layer handles:
 - Generator lifecycle management.
 - Unlock-attempt limiting.
 
-`crypto/tests/test_encryption_link.py` checks that every module Brisart
-Encryption ships is linked and loaded from the linked directory, that the
+`crypto/tests/test_encryption_link.py` checks that every module BSR2 ships is linked and loaded from the linked directory, that the
 application tree holds no copy of one, that `cli.py encryption` runs the linked
-toolkit, and that data sealed by 1.9.2's vendored BSR2 0.3.0-alpha still opens.
+toolkit, and that data sealed by 1.9.2's vendored BSR2 Alpha 3 (0.3.0-alpha) still opens.
 `crypto/tests/test_keyring.py` unlocks and migrates a v1 keyring.
-Brisart Encryption's own known-answer vectors and tests are run by its own
+BSR2's own known-answer vectors and tests are run by its own
 suite. Neither establishes cryptographic security or independent review.
 
 ## Encryption migration
@@ -96,13 +94,13 @@ length prefix and 256-byte padding added here; the iterated
 `derive_subkey` + `keyed_mac` binding for factors; and an unsalted SHA-256 of
 typed text for package demonstration keys.
 
-**Replacement implementation.** Brisart Encryption (`97_Encryption/Official`,
+**Replacement implementation.** BSR2 (`97_Encryption/Official`,
 0.4.0-alpha at the time of writing), linked through `crypto/encryption.py` and
 not copied. New data uses sealed format v3 `BSR2-S64-SIV` (`block` padding),
 BSR-STREAM-1 above 16 MiB, BSR2-MHF-1 keyring wrappers (8,192 blocks, one
 pass), BSR2-S64 MAC factor bindings and keyring check values, and a BSR2-S64
 hash for typed-text package keys. Master keys, salts, recovery codes, and
-package content keys come from Brisart Encryption's entropy module.
+package content keys come from BSR2's entropy module.
 
 **Affected data and formats.**
 
@@ -236,7 +234,7 @@ an operation.
 
 ## Length padding
 
-v3 sealed messages use Brisart Encryption's `block` padding (256-byte
+v3 sealed messages use BSR2's `block` padding (256-byte
 buckets) inside the authenticated payload. Stream payloads above 16 MiB are not
 padded. Legacy payloads carry the earlier length prefix and padding added by
 this layer.

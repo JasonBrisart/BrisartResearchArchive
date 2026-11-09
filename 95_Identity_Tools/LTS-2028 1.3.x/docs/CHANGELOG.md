@@ -5,10 +5,10 @@ All notable changes to BrisartIdentityTools are recorded here.
 > **LTS-2028 1.3.x: the original LTS-2028 line, kept on its original encryption by design**
 >
 > Brisart Identity Tools holds LTS-2028 as two separate lines. This folder is
-> LTS-2028 1.3.x, the original line. It keeps vendored BSR2 0.3.0-alpha and its
+> LTS-2028 1.3.x, the original line. It keeps vendored BSR2 Alpha 3 (0.3.0-alpha) and its
 > original contract: no changes to cryptographic primitives, stored formats,
 > or dependencies. LTS-2028 1.4.x is the same line with the new encryption
-> (Brisart Encryption) as its only change.
+> (BSR2) as its only change.
 >
 > - **Supported:** security updates continue on 1.3.x until its end of life on
 >   31 December 2028, as they do on 1.4.x and Official.
@@ -17,12 +17,11 @@ All notable changes to BrisartIdentityTools are recorded here.
 >   recorded in `docs/KNOWN_ISSUES.md`:
 >   - **KI-008 (Medium):** the keyring passphrase KDF is not memory-hard, so
 >     guessing the passphrase of a stolen keyring is cheaper than with
->     Brisart Encryption's BSR2-MHF-1.
+>     BSR2-MHF-1.
 >   - **KI-009 (Low):** the v2 envelope is not nonce-misuse resistant. Two
 >     messages can share a keystream if OS entropy and DRBG state fail
 >     together.
->   - **KI-010 (Low):** the vendored DRBG and entropy source lack Brisart
->     Encryption 0.4.0's fork, copy, and constant-sample protections.
+>   - **KI-010 (Low):** the vendored DRBG and entropy source lack BSR2 Alpha 4's fork, copy, and constant-sample protections.
 > - **The remedy is LTS-2028 1.4.x.** It reads everything 1.3.x writes and
 >   offers to migrate it. Migration is one-way: 1.3.x cannot read migrated
 >   data. Stay on 1.3.x only if you need its original contract.

@@ -17,7 +17,7 @@ Public interface:
 - command_inspect(args)
 - command_list(_args)
 - command_migrate(args) -- Re-encrypt the keyring and every identity record
-  with the current Brisart Encryption formats after confirmation.
+  with the current BSR2 formats after confirmation.
 - command_delete(args)
 - command_probe_video(args)
 - command_record_video(args)
@@ -175,7 +175,7 @@ Edge cases
   encryption." when there is nothing to migrate. Items it could not migrate are
   printed as warnings.
 - main() returns 3 and prints "error: Encryption not found: ..." when a
-  command needs encryption and Brisart Encryption is not linked.
+  command needs encryption and BSR2 is not linked.
 - _load_or_create_keyring() raises AppError: "passphrases did not match."
 - _unlock_keyring() raises AppError.
 - command_enroll() raises AppError: "identity {...} already exists; use
@@ -699,7 +699,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_video.set_defaults(handler=command_probe_video)
 
     migrate = subparsers.add_parser(
-        "migrate", help="re-encrypt the keyring and identities with the current Brisart Encryption formats.",
+        "migrate", help="re-encrypt the keyring and identities with the current BSR2 formats.",
     )
     migrate.add_argument("--yes", action="store_true", help="skip the confirmation prompt.")
     migrate.set_defaults(handler=command_migrate)

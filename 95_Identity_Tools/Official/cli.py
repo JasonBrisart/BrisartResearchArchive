@@ -19,7 +19,7 @@ Design notes:
 
 Each tool's main() is called in-process with a plain top-level import.
 
-The encryption tool is Brisart Encryption's own command-line toolkit
+The encryption tool is BSR2's own command-line toolkit
 (``brisart_security_cli`` in 97_Encryption/Official), run through the link in
 crypto/encryption.py rather than reimplemented: key files, file encryption
 (BSR-STREAM-1), sealed messages, hashing, Brisart Secure Archives with
@@ -57,12 +57,11 @@ Edge cases
 - biometrics, vault, and package return the tool's own exit status unchanged:
   0 on success, 1 for a negative result (for example a biometrics verify that
   does not match), 2 for an error the tool reports, and 3 when the command
-  needs encryption and Brisart Encryption is not linked.
-- encryption returns 3 with "Encryption not found: ..." on stderr when Brisart
-  Encryption is not linked; otherwise it returns the toolkit's status (0
+  needs encryption and BSR2 is not linked.
+- encryption returns 3 with "Encryption not found: ..." on stderr when BSR2 is not linked; otherwise it returns the toolkit's status (0
   success, 1 for an error it reports, 2 for a usage error).
 - version always returns 0 and prints the encryption link on its second line:
-  the linked Brisart Encryption release and its folder relative to the
+  the linked BSR2 release and its folder relative to the
   archive ("..., from 97_Encryption/Official"), or "Encryption not found: ..."
   with the reason. It never prints the archive's absolute location.
 - main(): catches SystemExit and handles it in place; it does not propagate to
@@ -108,7 +107,7 @@ Tools:
   biometrics [args...]   Local biometric enroll/verify
   vault      [args...]   Encrypted record store
   package    [args...]   Identity-bound packages
-  encryption [args...]   Brisart Encryption toolkit: keys, files, archives
+  encryption [args...]   BSR2 toolkit: keys, files, archives
   gui                    Launch the desktop GUI (Tkinter)
   version                Print the version and the encryption link
   help                   Show this message

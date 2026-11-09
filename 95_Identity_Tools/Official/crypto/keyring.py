@@ -44,7 +44,7 @@ Changing the passphrase re-wraps the master key and re-encrypts no data. The
 recovery code is a second full-strength path to the master key, shown once and
 never stored. Losing both is unrecoverable by design.
 
-**KDF.** New wrappers derive their key with Brisart Encryption's memory-hard
+**KDF.** New wrappers derive their key with BSR2's memory-hard
 BSR2-MHF-1 (``kdf.derive_key``), 8,192 blocks (1 MiB) and one pass by default,
 with the parameters and a 32-byte salt stored per wrapper. Memory-hardness is
 what the legacy iterated KDF lacked, and BSR2-MHF-1 at its defaults is also
@@ -174,7 +174,7 @@ Errors:
 - KeyringLockedError: "keyring is locked; unlock it before using the master
   key.", "unlock the keyring before changing its passphrase.", "unlock the
   keyring before rotating its recovery code."
-- EncryptionNotFoundError whenever Brisart Encryption is not linked. It is
+- EncryptionNotFoundError whenever BSR2 is not linked. It is
   never translated, so a missing link is not reported as a wrong passphrase.
 
 Loading is structural only: a keyring whose wrappers were modified still
@@ -262,8 +262,7 @@ _LEGACY_CHECK_MESSAGE = b"BrisartIdentityTools/keyring/master-key-check/v1"
 
 
 def generate_recovery_code() -> str:
-    """Forty characters from a 32-symbol alphabet: 200 bits of Brisart
-    Encryption system entropy, five bits per character, so every character
+    """Forty characters from a 32-symbol alphabet: 200 bits of BSR2 system entropy, five bits per character, so every character
     is uniform."""
     length = RECOVERY_CODE_GROUPS * RECOVERY_CODE_GROUP_SIZE
     bits = int.from_bytes(encryption.require().entropy.system_entropy(length * 5 // 8), "big")

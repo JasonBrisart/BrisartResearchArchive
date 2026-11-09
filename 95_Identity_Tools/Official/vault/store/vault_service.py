@@ -26,7 +26,7 @@ vault.records.record_model's job, and the master-key wrapping is
 crypto.keyring's job.
 
 Encryption migration. migrate_encryption(passphrase) is the vault's half of
-the move to Brisart Encryption's current formats. It unlocks through
+the move to BSR2's current formats. It unlocks through
 Keyring.migrate() under the same attempt limiting as unlock(), reseals every
 record payload still in the legacy envelope (JSON records, file records, and
 bundle manifests and chunks alike, each under its own record context), and

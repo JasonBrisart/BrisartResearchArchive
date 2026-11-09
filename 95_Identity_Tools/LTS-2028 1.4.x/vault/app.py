@@ -92,7 +92,7 @@ Commands (each takes the options listed under it):
 - init -- create a new vault.
   - no options of its own.
 - migrate -- re-encrypt a vault still in the previous encryption with the
-  current Brisart Encryption formats, after showing
+  current BSR2 formats, after showing
   crypto.encryption.MIGRATION_NOTICE and asking for confirmation.
   - --yes: skip the confirmation prompt.
 - list -- list all records (no unlock required).
@@ -101,7 +101,7 @@ Commands (each takes the options listed under it):
 Edge cases
 ----------
 - main() returns 3 and prints "error: Encryption not found: ..." when a
-  command needs encryption and Brisart Encryption is not linked.
+  command needs encryption and BSR2 is not linked.
 - _unlock() raises AppError. After a successful unlock it prints a one-line
   notice to stderr when the vault still needs encryption migration; the
   command itself carries on with the previous encryption.
@@ -411,7 +411,7 @@ def build_parser() -> argparse.ArgumentParser:
     init.set_defaults(handler=command_init)
 
     migrate = subparsers.add_parser(
-        "migrate", help="re-encrypt the vault with the current Brisart Encryption formats.",
+        "migrate", help="re-encrypt the vault with the current BSR2 formats.",
     )
     migrate.add_argument("--yes", action="store_true", help="skip the confirmation prompt.")
     migrate.set_defaults(handler=command_migrate)

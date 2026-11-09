@@ -82,7 +82,7 @@ class SealedTemplateTests(unittest.TestCase):
         self.assertNotIn('"vector"', raw_text)
         parsed = json.loads(raw_text)
         envelope = parsed["record"]["templates"]["fingerprint"]
-        # New templates are sealed in Brisart Encryption's v3 format.
+        # New templates are sealed in BSR2's v3 format.
         self.assertEqual(envelope["format"], "BSR2-S64-SIV/3")
         self.assertIn("data", envelope)
 

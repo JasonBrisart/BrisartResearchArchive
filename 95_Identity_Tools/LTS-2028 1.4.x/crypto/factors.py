@@ -18,7 +18,7 @@ Public interface:
 
 Design notes:
 
-New bindings are a Brisart Encryption BSR2-S64 MAC (``sponge.mac64``) keyed by
+New bindings are a BSR2-S64 MAC (``sponge.mac64``) keyed by
 the master key over the framed factor name and value, under a domain string of
 its own. The factor name is part of the MAC input and is checked against the
 record, so a binding made for "device" never verifies in a "fingerprint" slot.
@@ -74,7 +74,7 @@ Edge cases
   unknown algorithm, a name mismatch, a non-string value, or a bad key all
   return False, so a corrupted record reads as "does not verify" instead of
   crashing an authentication path.
-- Both raise EncryptionNotFoundError when Brisart Encryption is not linked.
+- Both raise EncryptionNotFoundError when BSR2 is not linked.
 
 Known limitations
 -----------------

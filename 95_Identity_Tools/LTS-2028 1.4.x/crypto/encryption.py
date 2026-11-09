@@ -3,22 +3,23 @@ File: crypto/encryption.py
 
 Purpose
 -------
-The one link between BrisartIdentityTools and Brisart Encryption
+The one link between BrisartIdentityTools and BSR2
 (``97_Encryption/Official`` in the Brisart Research Archive). Identity Tools
 ships no cryptography of its own: every seal, open, key derivation, MAC, random
-byte, key file, and archive comes from the linked Brisart Encryption library,
+byte, key file, and archive comes from the linked BSR2 library,
 located here and nowhere else. When that library is absent or incompatible the
 application still starts, reports "Encryption not found", and refuses every
 operation that needs encryption instead of falling back to anything weaker.
 
 Public interface:
-- ENCRYPTION_DIR -- Where Brisart Encryption is expected:
+- ENCRYPTION_DIR -- Where BSR2 is expected:
   ``<archive root>/97_Encryption/Official``.
-- REQUIRED_MODULES -- Every Brisart Encryption library module; all are linked.
+- REQUIRED_MODULES -- Every BSR2 library module; all are linked.
 - REQUIRED_FORMATS -- The formats Identity Tools writes or must still read.
 - class EncryptionLink -- Result of resolving the link: ``available``,
   ``location``, ``release``, ``problem``, and ``describe()``, a one-line
-  summary: "Encryption: Brisart Encryption <release>, from 97_Encryption/Official"
+  summary: "Encryption: <release name> (<release>), from 97_Encryption/Official",
+  for example "Encryption: BSR2 Alpha 4 (0.4.0-alpha), from 97_Encryption/Official"
   or "Encryption not found: <reason>". Paths are always shown relative to the
   archive folder, never as this machine's absolute location.
 - status() -> EncryptionLink -- Resolve the link once per process and report
@@ -33,7 +34,7 @@ Public interface:
 
 Design notes:
 
-Brisart Encryption's modules import each other by flat name
+BSR2's modules import each other by flat name
 (``from brisart_security_primitives import ...``), so its directory goes on
 ``sys.path`` exactly once, here, and every Identity Tools caller goes through
 ``require()``. Callers resolve the library at call time, never at import time,
@@ -42,7 +43,7 @@ the operation that actually needs it fails.
 
 The library is handed out as modules rather than a flat list of names: callers
 write ``bsr2.aead.seal`` or ``bsr2.kdf.derive_key``, which says which
-Brisart Encryption construction is in use at every call site.
+BSR2 construction is in use at every call site.
 
 Which module does which job in Identity Tools:
 - aead (sealed format v3, BSR2-S64-SIV) -- every new sealed payload up to its
@@ -67,13 +68,13 @@ Which module does which job in Identity Tools:
 
 Resolution is lazy and cached: the first ``status()`` or ``require()`` call
 performs it, and the result holds for the life of the process. Installing
-Brisart Encryption while the application runs requires a restart.
+BSR2 while the application runs requires a restart.
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
 - crypto.errors (crypto/errors.py)
-Links to (Brisart Encryption, 97_Encryption/Official): every module in
+Links to (BSR2, 97_Encryption/Official): every module in
 REQUIRED_MODULES.
 Standard library: dataclasses, functools, importlib, os, pathlib, sys, types.
 Imported by:
@@ -92,8 +93,7 @@ Settings / parameters
 - ENCRYPTION_DIR = ARCHIVE_ROOT / "97_Encryption" / "Official". The only
   requirement is that 95_Identity_Tools and 97_Encryption are together in the
   same folder; there is no override and no absolute path.
-- REQUIRED_MODULES -- attribute name on the require() namespace -> Brisart
-  Encryption module name, for all thirteen library modules.
+- REQUIRED_MODULES -- attribute name on the require() namespace -> BSR2 module name, for all thirteen library modules.
 - MIGRATION_NOTICE -- user-facing text, worded for both the CLI question and
   the GUI pop-up; store-specific consequences (a new recovery code for
   keyrings) and button wording are added by the caller.
@@ -124,7 +124,7 @@ Known limitations
 - The location is fixed relative to this file: 95_Identity_Tools moved away
   from 97_Encryption (for example a standalone copy of this application
   folder) always reports Encryption not found.
-- Formats are checked, release is not pinned: any Brisart Encryption release
+- Formats are checked, release is not pinned: any BSR2 release
   that still provides the formats above links.
 - BSR2 is custom research cryptography with no independent review (see
   docs/SECURITY.md); linking it does not make it audited.
@@ -160,7 +160,7 @@ _KEEP_TOGETHER = (
 )
 
 MIGRATION_NOTICE = (
-    "This update adds new encryption from Brisart Encryption "
+    "This update adds new encryption from BSR2 "
     "(97_Encryption). This data still uses the previous encryption, which "
     "this version can still read for now but which will be removed entirely "
     "in a future update.\n\n"
@@ -172,7 +172,7 @@ MIGRATION_NOTICE = (
     "will be asked again next time."
 )
 
-# require() attribute -> Brisart Encryption module. Ordered so each module's
+# require() attribute -> BSR2 module. Ordered so each module's
 # own flat imports are already resolved when it loads.
 REQUIRED_MODULES = {
     "primitives": "brisart_security_primitives",
@@ -202,7 +202,7 @@ REQUIRED_FORMATS = (
 
 @dataclass(frozen=True)
 class EncryptionLink:
-    """How the link to Brisart Encryption resolved in this process."""
+    """How the link to BSR2 resolved in this process."""
 
     available: bool
     location: Path
@@ -214,7 +214,7 @@ class EncryptionLink:
 
     def describe(self) -> str:
         if self.available:
-            return f"Encryption: Brisart Encryption {self.release}, from {_shown(self.location)}"
+            return f"Encryption: {self.release}, from {_shown(self.location)}"
         return f"Encryption not found: {self.problem}"
 
 
@@ -267,7 +267,7 @@ def _resolve(directory: Path) -> EncryptionLink:
             )
 
     version = modules["version"]
-    release = f"{version.PROJECT_RELEASE} ({version.RELEASE_NAME})"
+    release = f"{version.RELEASE_NAME} ({version.PROJECT_RELEASE})"
     return EncryptionLink(
         available=True,
         location=directory,
@@ -278,12 +278,12 @@ def _resolve(directory: Path) -> EncryptionLink:
 
 @lru_cache(maxsize=1)
 def status() -> EncryptionLink:
-    """Resolve the link to Brisart Encryption once and report the result."""
+    """Resolve the link to BSR2 once and report the result."""
     return _resolve(ENCRYPTION_DIR)
 
 
 def require() -> types.SimpleNamespace:
-    """Return the linked Brisart Encryption library or raise
+    """Return the linked BSR2 library or raise
     EncryptionNotFoundError."""
     link = status()
     if not link.available:

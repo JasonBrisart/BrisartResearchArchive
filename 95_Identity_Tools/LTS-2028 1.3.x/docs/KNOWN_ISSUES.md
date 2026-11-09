@@ -140,16 +140,17 @@ reflects only what is genuinely still outstanding.
 - **Expected behavior:** A stolen keyring file should be expensive to attack
   by passphrase guessing on parallel or custom hardware.
 - **Actual behavior:** The legacy KDF costs time but no significant memory.
-  Brisart Encryption's own design documentation lists its lack of
-  memory-hardness as a known limitation, which is why Brisart Encryption
-  0.4.0-alpha added BSR2-MHF-1. Offline guessing against a copied 1.3.x
+  BSR2's own design documentation lists its lack of
+  memory-hardness as a known limitation, which is why BSR2 Alpha 4
+  (0.4.0-alpha) added BSR2-MHF-1. Offline guessing against a copied 1.3.x
   keyring is therefore cheaper than against a BSR2-MHF-1 keyring.
 - **Tried / Ruled out:** Raising the iteration count (up to
   `MAXIMUM_KDF_ITERATIONS`, 1,000,000) increases cost linearly but does not
   make the KDF memory-hard. A memory-hard KDF would change the stored keyring
   format, which the 1.3.x contract rules out.
 - **Next step:** Not fixable within LTS-2028 1.3.x. LTS-2028 1.4.x re-wraps
-  keyrings with BSR2-MHF-1 when the operator migrates. Until then, use a long
+  keyrings with BSR2-MHF-1 when the operator migrates (1.4.0,
+  `LTS-2028-SEC-4`). Until then, use a long
   passphrase and keep keyring files off shared or untrusted storage.
 
 ---
@@ -173,18 +174,18 @@ reflects only what is genuinely still outstanding.
 - **Actual behavior:** The v2 envelope (`BSR2-ARX-SPONGE-ETM`) mixes DRBG
   output with fresh OS entropy for its salt and nonce, which covers a DRBG
   restart alone. If both are replayed, two messages can be sealed under the
-  same keystream. Brisart Encryption 0.4.0-alpha closed this for its v3
+  same keystream. BSR2 Alpha 4 (0.4.0-alpha) closed this for its v3
   formats and records it as unchanged for the v2 envelope.
 - **Tried / Ruled out:** Already reduced by the OS-entropy mixing; the
   remaining case needs two simultaneous failures. Replacing the envelope is a
   stored-format change, which the 1.3.x contract rules out.
 - **Next step:** Not fixable within LTS-2028 1.3.x. LTS-2028 1.4.x seals new
   and migrated data in sealed format v3 (`BSR2-S64-SIV`), which is nonce-misuse
-  resistant.
+  resistant (1.4.0, `LTS-2028-SEC-5`).
 
 ---
 
-## KI-010: Vendored randomness lacks Brisart Encryption 0.4.0 hardening
+## KI-010: Vendored randomness lacks BSR2 Alpha 4 hardening
 
 - **Reported date:** 2026-11-08
 - **Severity:** Low
@@ -199,15 +200,14 @@ reflects only what is genuinely still outstanding.
   `copy` or `pickle`, should refuse to produce output, and the entropy source
   should reject a constant sample.
 - **Actual behavior:** The vendored 0.3.0-alpha copies have none of the
-  hardening added in Brisart Encryption 0.4.0-alpha: no fork detection, no
+  hardening added in BSR2 Alpha 4 (0.4.0-alpha): no fork detection, no
   refusal of `copy`, `deepcopy`, or `pickle`, and no constant-sample
   rejection. A duplicated generator state would repeat its output.
 - **Tried / Ruled out:** No 1.3.x application code outside the tests forks a
   process or uses `multiprocessing` or `subprocess`, so the shipped tools do
   not reach the fork case. Code that embeds 1.3.x modules can.
 - **Next step:** Not fixable within LTS-2028 1.3.x without changing the
-  byte-pinned vendor files. LTS-2028 1.4.x takes its randomness from Brisart
-  Encryption, which has this hardening.
+  byte-pinned vendor files. LTS-2028 1.4.x takes its randomness from BSR2, which has this hardening (1.4.0, `LTS-2028-SEC-6`).
 
 ---
 

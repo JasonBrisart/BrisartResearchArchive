@@ -10,9 +10,9 @@ Public interface:
   authentication failure -- see :class:`crypto.errors.Bsr2IntegrationError` and
   its subclasses for that).
 - new_content_key() -- Generate a fresh random content key for one package,
-  from Brisart Encryption's system entropy.
+  from BSR2's system entropy.
 - text_master_key(text) -- The 32-byte recipient master key the CLI, GUI, and
-  demo derive from typed text: a Brisart Encryption BSR2-S64 hash.
+  demo derive from typed text: a BSR2-S64 hash.
 - legacy_text_master_key(text) -- The unsalted SHA-256 the same interfaces
   used before the encryption migration. Read-only: used to recognise and migrate recipients
   whose key slot was sealed under it.

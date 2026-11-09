@@ -87,7 +87,7 @@ class SealedVaultTests(unittest.TestCase):
         parsed = json.loads(raw_text)
         record_id = next(iter(parsed["records"]))
         envelope = parsed["records"][record_id]["payload"]
-        # New records are sealed in Brisart Encryption's v3 format.
+        # New records are sealed in BSR2's v3 format.
         self.assertEqual(envelope["format"], "BSR2-S64-SIV/3")
         self.assertIn("data", envelope)
 

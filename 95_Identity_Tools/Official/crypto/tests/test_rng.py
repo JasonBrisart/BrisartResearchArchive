@@ -10,7 +10,7 @@ Contains 10 test case(s) across 3 TestCase class(es).
 
 Design notes:
 
-Fast: seeds from Brisart Encryption's system entropy and expands through its
+Fast: seeds from BSR2's system entropy and expands through its
 DRBG; no KDF involved.
 
 Communication / relationships

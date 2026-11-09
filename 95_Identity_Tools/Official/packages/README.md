@@ -26,7 +26,7 @@ keys, or plaintext already obtained by that recipient.
 ## CLI key prompts
 
 The CLI prompts for text and derives a 32-byte demonstration key with one
-unsalted Brisart Encryption BSR2-S64 hash (`ciphers.text_master_key`). The
+unsalted BSR2-S64 hash (`ciphers.text_master_key`). The
 Packages GUI and the demo use the same function.
 
 Before the encryption migration the same text was hashed with SHA-256. Packages sealed under

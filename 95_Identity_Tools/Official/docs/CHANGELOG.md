@@ -6,7 +6,7 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ## [1.10.0] - 2026-11-08
 
-Identity Tools Official adopts Brisart Encryption as its only encryption and
+Identity Tools Official adopts BSR2 as its only encryption and
 migrates existing data to it. This is Identity Tools' part of the archive-wide
 cryptography migration recorded in the root `CHANGELOG.md` (2026-10-23).
 LTS-2028 1.4.x adopts exactly the same changes in 1.4.0: it shares Official's
@@ -17,8 +17,7 @@ does not adopt them.
 The release does three things. First, the four BSR2 files vendored into
 `vendor/` are gone: every module that needs encryption reaches
 `97_Encryption/Official` through one link, `crypto/encryption.py`, which links
-all thirteen Brisart Encryption modules. Second, new data is written in Brisart
-Encryption's current formats: sealed format v3 (`BSR2-S64-SIV`), BSR-STREAM-1
+all thirteen BSR2 modules. Second, new data is written in BSR2's current formats: sealed format v3 (`BSR2-S64-SIV`), BSR-STREAM-1
 above 16 MiB, BSR2-MHF-1 keyring wrappers, BSR2-S64 factor bindings, and BSR2-S64
 typed-text package keys. Third, data in the previous encryption keeps opening,
 and every tool offers to migrate it. The GUI asks with a pop-up before
@@ -33,7 +32,7 @@ behaviour, remaining compatibility, rollback limits, and tests.
 
 ### Added
 
-- **`crypto/encryption.py`: the single link to Brisart Encryption.** It
+- **`crypto/encryption.py`: the single link to BSR2.** It
   locates `<archive root>/97_Encryption/Official` and imports all thirteen
   library modules: `primitives`, `sponge`, `entropy`, `drbg`, `envelope`, `aead`,
   `stream`, `kdf`, `keys`, `recovery`, `archive`, `cli`, and `version`.
@@ -78,7 +77,7 @@ behaviour, remaining compatibility, rollback limits, and tests.
 - **`crypto/envelope.py`: current formats, no size cap, legacy read and
   reseal.** `seal_bytes()` writes `{"format": "BSR2-S64-SIV/3", "data":
   <base64>}` up to 16 MiB and `{"format": "BSR-STREAM-1", ...}` above it, so
-  the old 16 MiB ceiling is gone. Length hiding uses Brisart Encryption's
+  the old 16 MiB ceiling is gone. Length hiding uses BSR2's
   `block` padding, the same 256-byte buckets this module used to add by hand.
   `open_bytes()` dispatches on shape and still opens legacy v2 envelopes.
   Failures in any format surface as `EnvelopeAuthenticationError`. Two new
@@ -105,8 +104,7 @@ behaviour, remaining compatibility, rollback limits, and tests.
     because it is never stored.
   - **Limits and check value:** stored MHF parameters are capped at 65,536
     blocks and four passes. New and rewritten check values are BSR2-S64 MACs.
-  - **Randomness:** master keys and recovery codes come from Brisart
-    Encryption's entropy module, five bits per recovery-code character.
+  - **Randomness:** master keys and recovery codes come from BSR2's entropy module, five bits per recovery-code character.
   - **`create()` signature:** it takes `memory_blocks` (default
     `MEMORY_BLOCKS`, read at call time) in place of `iterations`.
   - **Unlock time:** a new keyring unlocks in seconds instead of the minute or
@@ -116,7 +114,7 @@ behaviour, remaining compatibility, rollback limits, and tests.
   `bsr2$mac64$...`. `verify_bound_factor()` also accepts the legacy
   `bsr2$keyed_mac$...` form, and `is_legacy_binding()` recognises it.
 
-- **`crypto/rng.py`: Brisart Encryption DRBG seeded from its entropy module.**
+- **`crypto/rng.py`: BSR2 DRBG seeded from its entropy module.**
   Seeds come from `entropy.system_entropy`, which health-checks operating-system
   output, instead of `secrets`. The DRBG is reseeded before its own lifecycle
   limits, so long runs don't hit them.
@@ -133,8 +131,7 @@ behaviour, remaining compatibility, rollback limits, and tests.
   wraps `Keyring.migrate()` in the same attempt gate as unlocking, and writes
   the migrated keyring with its attempt state.
 
-- **`packages/ciphers.py`: content keys and typed-text keys from Brisart
-  Encryption.** `new_content_key()` uses its entropy module.
+- **`packages/ciphers.py`: content keys and typed-text keys from BSR2.** `new_content_key()` uses its entropy module.
   `text_master_key()` is now the single typed-text derivation (a BSR2-S64 hash)
   for the CLI, GUI, and demo. Before, three separate copies of an unsalted
   SHA-256 lived in `packages/main.py`, `packages/demo.py`, and
@@ -159,7 +156,7 @@ behaviour, remaining compatibility, rollback limits, and tests.
     one-line notice pointing to the matching command.
   - **`cli.py`:**
     - `version` prints the encryption link.
-    - A new `encryption` tool runs Brisart Encryption's own toolkit unchanged:
+    - A new `encryption` tool runs BSR2's own toolkit unchanged:
       keys, file encryption, sealed messages, hashing, archives with recovery
       records, `kdf-bench`, and `selftest`.
   - **Exit status 3:** `vault/app.py`, `biometrics/app.py`, `packages/main.py`,
@@ -195,7 +192,7 @@ behaviour, remaining compatibility, rollback limits, and tests.
 - **Documentation.**
   - `docs/BSR2_INTEGRATION.md`:
     - New "Encryption migration" section.
-    - A table of each Brisart Encryption module's job.
+    - A table of each BSR2 module's job.
     - The hashing that stays outside the link, none of it encryption: the
       legacy text key, the SHA-256 integrity fingerprints in
       `common/hashing.py`, and the ONVIF-mandated SHA-1 digest.
@@ -222,7 +219,7 @@ behaviour, remaining compatibility, rollback limits, and tests.
   `is_bound_factor()`.** Nothing outside `crypto/` called them, and Identity
   Tools stores no password-derived factor hashes.
 - **`crypto/envelope.py`: `MAX_PAYLOAD_BYTES` and `PADDING_BLOCK_BYTES`.**
-  There is no cap to report, and padding is Brisart Encryption's now.
+  There is no cap to report, and padding is BSR2's now.
 - **`gui/tests/test_tab_packages.py`: the four `_derive_master_key` tests.**
   The method is gone. The derivation is tested where it now lives, in
   `packages/tests/test_package_migration.py`.
@@ -263,11 +260,11 @@ lines.
   the encryption:
   - the keyring passphrase KDF is not memory-hard (KI-008, Medium);
   - the v2 envelope is not nonce-misuse resistant (KI-009, Low);
-  - the vendored randomness lacks Brisart Encryption 0.4.0's fork, copy, and
+  - the vendored randomness lacks BSR2 Alpha 4's fork, copy, and
     constant-sample protections (KI-010, Low).
 
   They are recorded in 1.3.x's own `docs/KNOWN_ISSUES.md`. This release is
-  not affected: Official uses Brisart Encryption's current formats and
+  not affected: Official uses BSR2's current formats and
   randomness for everything it writes. It uses the previous encryption only to
   read existing data, and offers to migrate that data.
 - **LTS-2028 1.4.x:** the original LTS-2028 line, with the new encryption as
@@ -277,9 +274,8 @@ lines.
 
 ### Compatibility
 
-- **Brisart Encryption is required.** The `95_Identity_Tools` and
-  `97_Encryption` folders must sit together in the same folder, with Brisart
-  Encryption 0.4.0-alpha or later in `97_Encryption/Official`. Where that
+- **BSR2 is required.** The `95_Identity_Tools` and
+  `97_Encryption` folders must sit together in the same folder, with BSR2 Alpha 4 (0.4.0-alpha) or later in `97_Encryption/Official`. Where that
   folder is doesn't matter. Kept apart, the tools start, report
   `Encryption not found` with that instruction, and the GUI warns with a
   pop-up at start-up. Nothing falls back to other cryptography, and no message
@@ -317,8 +313,8 @@ lines.
 
   The three tests that asserted the legacy envelope's field names now assert
   the v3 shape.
-- **Test results.** The full suite passes against linked Brisart Encryption
-  0.4.0-alpha. The 43 skips are GUI tests that need Tk, which the verification
+- **Test results.** The full suite passes against linked BSR2 Alpha 4
+  (0.4.0-alpha). The 43 skips are GUI tests that need Tk, which the verification
   environment lacks.
   - `--fast`: 469 tests passed, 43 skipped.
   - `--slow`: 47 tests passed across all nine slow classes, including both
@@ -339,7 +335,7 @@ lines.
     keyring is unlocked and read without changing anything an older release
     reads, then migrates end to end.
 - **Checked by hand on the verification machine, against data written by
-  LTS-2028's own code (vendored BSR2 0.3.0-alpha):** a vault with two JSON
+  LTS-2028's own code (vendored BSR2 Alpha 3, 0.3.0-alpha):** a vault with two JSON
   records and a file record, a biometrics keyring and identity with a
   fingerprint template, an attachment, and a device binding, and a package
   with two recipients.

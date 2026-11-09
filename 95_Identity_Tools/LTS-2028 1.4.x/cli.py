@@ -48,7 +48,7 @@ Edge cases
 - biometrics, vault, and package return the tool's own exit status unchanged:
   0 on success, 1 for a negative result (for example a biometrics verify that
   does not match), 2 for an error the tool reports, and 3 when the command
-  needs encryption and Brisart Encryption is not linked (the tools'
+  needs encryption and BSR2 is not linked (the tools'
   "Encryption not found" error). Earlier versions always returned 0 for
   these three tools.
 - main(): catches SystemExit and handles it in place; it does not propagate to

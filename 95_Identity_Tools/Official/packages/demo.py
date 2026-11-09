@@ -28,7 +28,7 @@ Depends on (project modules):
   typed-text derivation the CLI and GUI use
 - packages.package (packages/package.py)
 Standard library: pathlib, secrets (demo package id only). Demo passphrases
-come from Brisart Encryption's entropy module through crypto.encryption.
+come from BSR2's entropy module through crypto.encryption.
 Imported by:
 - gui/tabs/tab_packages.py
 - packages/main.py

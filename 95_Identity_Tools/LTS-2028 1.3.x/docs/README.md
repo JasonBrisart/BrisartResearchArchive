@@ -22,8 +22,7 @@ The archive contains three separate application trees, one per supported line
 (see [SECURITY.md](SECURITY.md)):
 
 - `Official/`: the current development line.
-- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (Brisart
-  Encryption).
+- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (BSR2).
 - `LTS-2028 1.3.x/`: the original LTS-2028 line, with vendored BSR2.
 
 Commands in this documentation assume the working directory is the selected

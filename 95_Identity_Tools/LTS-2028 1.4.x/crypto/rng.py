@@ -3,12 +3,12 @@ File: crypto/rng.py
 
 Purpose
 -------
-The generator Identity Tools passes to every Brisart Encryption seal: a
-Brisart Encryption DRBG, seeded from Brisart Encryption's health-checked
+The generator Identity Tools passes to every BSR2 seal: a
+BSR2 DRBG, seeded from BSR2's health-checked
 operating-system entropy and reseeded before its own lifecycle limits.
 
 Public interface:
-- class ManagedGenerator -- A Brisart Encryption DRBG that reseeds before its
+- class ManagedGenerator -- A BSR2 DRBG that reseeds before its
   limits. Public methods: generate, destroy.
 - new_generator(purpose) -- Build a managed generator for a named purpose.
 
@@ -51,7 +51,7 @@ Settings / parameters
 Edge cases
 ----------
 - new_generator() and ManagedGenerator() raise EncryptionNotFoundError when
-  Brisart Encryption is not linked. A generator already built keeps the
+  BSR2 is not linked. A generator already built keeps the
   library it was built with.
 - ManagedGenerator.__init__() raises Bsr2IntegrationError: "personalization
   must be bytes." / "personalization must contain at least {...} bytes."
@@ -90,10 +90,9 @@ BYTES_BEFORE_RESEED = 8 * 1024 * 1024
 
 
 class ManagedGenerator:
-    """A Brisart Encryption DRBG that reseeds before its limits.
+    """A BSR2 DRBG that reseeds before its limits.
 
-    Exposes ``generate(length, additional_input)``, the interface Brisart
-    Encryption's seal functions accept as ``rng``.
+    Exposes ``generate(length, additional_input)``, the interface BSR2's seal functions accept as ``rng``.
     """
 
     def __init__(self, personalization: bytes):

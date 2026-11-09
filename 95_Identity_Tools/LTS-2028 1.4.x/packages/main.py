@@ -82,7 +82,7 @@ Commands (each takes the options listed under it):
 Edge cases
 ----------
 - main() returns 3 and prints "error: Encryption not found: ..." when a
-  command needs encryption and Brisart Encryption is not linked.
+  command needs encryption and BSR2 is not linked.
 - _load_state() raises AppError: "no package file found at {...}."
 - _load_state() raises AppError: "package file could not be read: {...}"
 - _load_state() raises AppError: "package file is invalid: {...}"

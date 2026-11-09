@@ -2,7 +2,7 @@
 
 Application integration between BSR2 and Vault, Biometrics, and Packages.
 
-This directory composes BSR2 primitives from the linked Brisart Encryption
+This directory composes BSR2 primitives from the linked BSR2
 (`97_Encryption/Official`) into application operations. It does not independently validate the security of those
 primitives.
 
@@ -10,20 +10,20 @@ primitives.
 
 | Module | Responsibility |
 | --- | --- |
-| `encryption.py` | The one link to Brisart Encryption: locates `97_Encryption/Official`, links every library module, reports `Encryption not found` when it is absent or incompatible, and hands out the library per call |
+| `encryption.py` | The one link to BSR2: locates `97_Encryption/Official`, links every library module, reports `Encryption not found` when it is absent or incompatible, and hands out the library per call |
 | `errors.py` | Application-facing integration exception types |
 | `context.py` | Context strings for records, templates, packages, key slots, and keyring wrappers |
 | `envelope.py` | Byte and JSON sealing/opening: v3 sealed messages, BSR-STREAM-1 above 16 MiB, legacy v2 envelopes read-only |
 | `keyring.py` | Master-key creation, BSR2-MHF-1 passphrase and recovery wrapping, unlocking, rewrapping, legacy v1 keyrings |
 | `factors.py` | Master-key-bound factor records (BSR2-S64 MAC; legacy keyed MAC read-only) |
-| `rng.py` | Brisart Encryption DRBG seeded from its health-checked entropy, with lifecycle handling |
+| `rng.py` | BSR2 DRBG seeded from its health-checked entropy, with lifecycle handling |
 | `throttle.py` | Retry delays and lockout decisions |
 | `attempt_store.py` | Persisted attempt-state integration for Vault and Biometrics |
 
 ## Encryption link
 
 Every module here calls `encryption.require()` when an operation runs, never
-at import time. Without Brisart Encryption the whole application still
+at import time. Without BSR2 the whole application still
 imports and starts; each operation that needs encryption raises
 `EncryptionNotFoundError` instead. See
 [BSR2 integration](../docs/BSR2_INTEGRATION.md#integration-boundary).
@@ -59,7 +59,7 @@ previous encryption; see
 
 ## Padding
 
-v3 sealed messages use Brisart Encryption's `block` padding, 256-byte buckets,
+v3 sealed messages use BSR2's `block` padding, 256-byte buckets,
 inside the authenticated payload. Stream payloads are not padded.
 
 Ciphertext length still reveals a bucket and other surrounding metadata.
@@ -95,7 +95,7 @@ predictable input unpredictable.
 
 ## Generator management
 
-`rng.py` seeds the Brisart Encryption DRBG from its health-checked
+`rng.py` seeds the BSR2 DRBG from its health-checked
 operating-system entropy and manages request and byte lifecycle limits. v3 and
 stream seals XOR its output with fresh system entropy.
 

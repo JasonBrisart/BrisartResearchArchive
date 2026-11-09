@@ -31,7 +31,7 @@ current keyring whose master_key_check is rewritten to the legacy keyed_mac
 form with legacy_keyring_state(): Keyring.needs_migration is then True, but
 migrate() needs no legacy KDF derivation.
 
-The legacy writers call Brisart Encryption's legacy modules directly, the same
+The legacy writers call BSR2's legacy modules directly, the same
 constructions the pre-migration code used; crypto/tests/test_encryption_link.py
 checks that payloads sealed by 1.9.2 itself open and migrate.
 
@@ -54,7 +54,7 @@ Settings / parameters
 
 Edge cases
 ----------
-None of its own; errors from Brisart Encryption propagate.
+None of its own; errors from BSR2 propagate.
 
 Known limitations
 -----------------

@@ -17,7 +17,7 @@ Public interface:
 - class EnvelopeAuthenticationError(Bsr2IntegrationError) -- Raised when a
   sealed payload fails authentication.
 - class EncryptionNotFoundError(RuntimeError) -- Raised when an operation needs
-  encryption and Brisart Encryption is not linked.
+  encryption and BSR2 is not linked.
 
 Design notes:
 
@@ -104,10 +104,10 @@ class KeyringLockedError(Bsr2IntegrationError):
 class EnvelopeAuthenticationError(Bsr2IntegrationError):
     """Raised when a sealed payload fails authentication.
 
-    Wraps Brisart Encryption's ``BrisartSealError`` (v3 sealed messages),
+    Wraps BSR2's ``BrisartSealError`` (v3 sealed messages),
     ``BrisartStreamError`` (BSR-STREAM-1), and ``BrisartEnvelopeError`` (legacy
     v2 envelopes) so callers catch a single exception family instead of
-    importing Brisart Encryption exception types. It
+    importing BSR2 exception types. It
     covers a modified ciphertext, the wrong key, and the wrong context alike:
     all three are indistinguishable to the verifier, and treating them as one
     outcome avoids leaking which one occurred.

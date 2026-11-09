@@ -9,7 +9,7 @@ application areas:
 - **Packages:** symmetric, recipient-bound payload encryption with custody
   records and external audit files.
 The application code uses Python's standard library and does not require a
-cloud service. All encryption comes from Brisart Encryption
+cloud service. All encryption comes from BSR2
 (`97_Encryption/Official`). The only requirement is that the
 `95_Identity_Tools` and `97_Encryption` folders sit together in the same
 folder; where that folder is (a desktop folder, a drive, OneDrive) does not
@@ -26,8 +26,7 @@ The archive contains three separate application trees, one per supported line
 (see [SECURITY.md](SECURITY.md)):
 
 - `Official/`: the current development line.
-- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (Brisart
-  Encryption).
+- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (BSR2).
 - `LTS-2028 1.3.x/`: the original LTS-2028 line, with vendored BSR2.
 
 Commands in this documentation assume the working directory is the selected
@@ -118,7 +117,7 @@ life (see [SECURITY.md](SECURITY.md)). Official's extras (`hardware/`, the
 Integrity Ledger, the demo's save-to-disk option, the encryption status line
 and start-up warning, the version line, and `python cli.py encryption`) are not
 here. Encryption is not part of this tree; `crypto/encryption.py`
-links every Brisart Encryption library module from
+links every BSR2 library module from
 `../../97_Encryption/Official`, exactly as in `Official/`.
 
 The GUI is split into:

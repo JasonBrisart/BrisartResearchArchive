@@ -3,10 +3,10 @@ File: crypto/tests/test_encryption_link.py
 
 Purpose
 -------
-Tests for the link between Identity Tools and Brisart Encryption
-(crypto/encryption.py): that every Brisart Encryption library module is linked
+Tests for the link between Identity Tools and BSR2
+(crypto/encryption.py): that every BSR2 library module is linked
 from 97_Encryption/Official, that legacy data sealed by Identity Tools 1.9.2
-still opens through the link, and that without Brisart Encryption the
+still opens through the link, and that without BSR2 the
 program starts and reports
 "Encryption not found" instead of encrypting anything.
 
@@ -62,7 +62,7 @@ CompatibilityTests:
 EncryptionNotFoundTests:
 - Resolving a directory that does not exist reports Encryption not found,
   says to keep the two folders together, and does not quote the path.
-- Resolving a copy of Brisart Encryption outside the linked directory is
+- Resolving a copy of BSR2 outside the linked directory is
   refused.
 - Without 97_Encryption the CLI starts (version exits 0), and package demo
   exits 3 with "Encryption not found".
