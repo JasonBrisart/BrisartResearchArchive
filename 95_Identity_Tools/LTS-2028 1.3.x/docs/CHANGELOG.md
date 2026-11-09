@@ -12,16 +12,22 @@ All notable changes to BrisartIdentityTools are recorded here.
 >
 > - **Supported:** security updates continue on 1.3.x until its end of life on
 >   31 December 2028, as they do on 1.4.x and Official.
-> - **Known vulnerabilities this line will not fix:** fixing them means
->   changing the encryption, which the 1.3.x contract rules out. Each is
->   recorded in `docs/KNOWN_ISSUES.md`:
->   - **KI-008 (Medium):** the keyring passphrase KDF is not memory-hard, so
->     guessing the passphrase of a stolen keyring is cheaper than with
->     BSR2-MHF-1.
->   - **KI-009 (Low):** the v2 envelope is not nonce-misuse resistant. Two
->     messages can share a keystream if OS entropy and DRBG state fail
->     together.
->   - **KI-010 (Low):** the vendored DRBG and entropy source lack BSR2 Alpha 4's fork, copy, and constant-sample protections.
+> - **What LTS-2028 1.4.x fixes that 1.3.x does not.** Every 1.3.x release
+>   has these three weaknesses, and no 1.3.x release will fix them: each fix
+>   replaces the encryption, which the 1.3.x contract rules out. LTS-2028 1.4.0
+>   fixed all three. Full entries are in `docs/KNOWN_ISSUES.md`.
+>
+>   | 1.3.x issue | Severity | Weakness in 1.3.x | Fix in 1.4.x |
+>   | --- | --- | --- | --- |
+>   | KI-008 | Medium | Keyring passphrases are wrapped with BSR2 Alpha 3's iterated KDF (10,000 iterations). It costs time but almost no memory, so someone who copies a keyring file can guess passphrases cheaply on GPUs or custom hardware. | Keyrings are re-wrapped with BSR2-MHF-1, a memory-hard KDF, when you migrate (`LTS-2028-SEC-4`). |
+>   | KI-009 | Low | Every sealed payload uses the v2 envelope (`BSR2-ARX-SPONGE-ETM`). If an attacker can roll back the whole machine, both the generator's state and the operating system's randomness, two messages can be sealed with the same keystream, which exposes their contents. | New and migrated data uses sealed format v3 (`BSR2-S64-SIV`), which stays safe even when a nonce repeats (`LTS-2028-SEC-5`). |
+>   | KI-010 | Low | The vendored random generator has no fork detection, does not refuse `copy`, `deepcopy`, or `pickle`, and does not reject a constant entropy sample, so a duplicated generator repeats its output. The shipped tools never fork; code that embeds 1.3.x modules can. | Randomness comes from BSR2 Alpha 4, which has all three protections (`LTS-2028-SEC-6`). |
+>
+>   **Who should move.** KI-009 and KI-010 need a duplicated or rolled-back
+>   machine state, which is realistic mainly in virtual machines restored from
+>   snapshots. A lab running 1.3.x in snapshotted or cloned VMs is exposed to
+>   them; a lab on bare metal with no snapshots largely is not. KI-008 applies
+>   to anyone whose keyring files could be copied.
 > - **The remedy is LTS-2028 1.4.x.** It reads everything 1.3.x writes and
 >   offers to migrate it. Migration is one-way: 1.3.x cannot read migrated
 >   data. Stay on 1.3.x only if you need its original contract.
@@ -38,9 +44,10 @@ LTS-2028 release-line decision in this line's documentation; the decision and
 its consequences for 1.3.x are summarized at the top of this changelog. It
 also replaces the threat model's closing list of protection limits with a
 section that explains each limit and what you can do about it, corrects
-KI-006, points readers to LTS-2028 1.4.x's new migration document, and
-rewrites the security policy's vague reporting and response sections with
-named channels, a severity scale, response targets, and a disclosure policy.
+KI-006, points readers to LTS-2028 1.4.x's new migration document, spells
+out exactly what 1.4.x fixes that 1.3.x does not, and rewrites the security
+policy's vague reporting and response sections with named channels, a
+severity scale, response targets, and a disclosure policy.
 Official 1.10.1 and LTS-2028 1.4.1 receive the same pass.
 
 ### Documentation
@@ -222,6 +229,21 @@ Official 1.10.1 and LTS-2028 1.4.1 receive the same pass.
   versions, files, and the gap closed; won't-fix issues go to
   `docs/KNOWN_ISSUES.md`. Credit is opt-in.
 - The text is identical in all three lines.
+
+### Documentation: what 1.4.x fixes that 1.3.x does not
+
+- **Release-line notice at the top of this changelog.**
+  - **Before:** it listed KI-008 to KI-010 in one line each, and KI-009 said
+    only that two messages "can share a keystream if OS entropy and DRBG state
+    fail together", without saying what that exposes or who is realistically
+    at risk.
+  - **Now:** a table gives, for each issue, its severity, the weakness in
+    1.3.x in plain terms, and the 1.4.x fix with its security identifier
+    (`LTS-2028-SEC-4` to `-6`). KI-009 states the consequence: a full-machine
+    rollback can make two messages share a keystream, which exposes their
+    contents. A short "Who should move" note says that KI-009 and KI-010
+    mainly matter for VMs restored from snapshots or cloned, not bare metal,
+    and that KI-008 applies to anyone whose keyring files could be copied.
 
 ### CI
 

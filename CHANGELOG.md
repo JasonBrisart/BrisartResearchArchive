@@ -9,6 +9,45 @@ multiple projects within the archive.
 
 ---
 
+## Cryptography migration status
+
+*Kept current. Last updated 2026-11-08.*
+
+### Why BSR2 was updated
+
+The previous encryption, BSR2 Alpha 3 (0.3.0-alpha), is weakest in virtual
+machines. If a VM is restored from a snapshot, or cloned, both the random
+generator's state and the operating system's randomness can be rolled back to
+an earlier point. The BSR2 Alpha 3 v2 envelope can then seal two different
+messages with the same keystream, and anyone holding both can recover
+information about their contents. On bare metal with no snapshots or clones,
+this is very unlikely; in snapshotted or cloned VMs, it is a realistic risk.
+
+BSR2 Alpha 4 (0.4.0-alpha, `97_Encryption/Official`) closes that gap and two
+related ones:
+
+| Weakness in BSR2 Alpha 3 | Who it affects | BSR2 Alpha 4 |
+| --- | --- | --- |
+| A rolled-back or cloned machine can make the v2 envelope reuse a keystream | VMs restored from snapshots or cloned | Sealed format v3 (`BSR2-S64-SIV`) stays safe even when a nonce repeats |
+| The random generator has no fork detection, does not refuse being copied, and accepts a constant entropy sample, so a duplicated generator repeats its output | Cloned VMs; code that forks or copies a generator | Fork, copy, and constant-sample protections |
+| The passphrase KDF is not memory-hard, so a copied keyring is cheap to attack with GPUs or custom hardware | Anyone whose keyring files could be copied | Memory-hard KDF (`BSR2-MHF-1`) |
+
+Moving data to the new encryption is a one-way re-encryption, which is why
+each project migrates separately, as set out in the 2026-10-23 entry.
+
+### Adoption status
+
+| Project | Status |
+| --- | --- |
+| Identity Tools Official (`95_Identity_Tools/Official`) | **Migrated** in 1.10.0 (2026-11-08). Linked to `97_Encryption/Official` with no local copy; migrates existing data in place. Migration record: its `docs/ENCRYPTION_MIGRATION.md`; details in its `docs/CHANGELOG.md`. |
+| Identity Tools LTS-2028 1.4.x (`95_Identity_Tools/LTS-2028 1.4.x`) | **Migrated** in 1.4.0 (2026-11-08), with the same code as Official 1.10.0. 1.4.x is the LTS-2028 line that adopts the shared implementation and shares Official's architecture. It keeps reading the previous encryption, and keeps its migration path, until at least 8 February 2027. Migration record: its `docs/ENCRYPTION_MIGRATION.md`; details in its `docs/CHANGELOG.md`. |
+| Identity Tools LTS-2028 1.3.x (`95_Identity_Tools/LTS-2028 1.3.x`) | **Not migrating**, by designation, under the LTS rule in the 2026-10-23 entry. 1.3.x keeps its original LTS contract and vendored BSR2 Alpha 3 until its end of life on 31 December 2028, and still receives security updates. It keeps all three weaknesses above (KI-008 to KI-010 in its `docs/KNOWN_ISSUES.md`). Labs running 1.3.x in snapshotted or cloned VMs should move to LTS-2028 1.4.x. |
+
+Every other applicable project remains pending migration until it is listed
+here as migrated.
+
+---
+
 ## 2026-11-08 — Identity Tools LTS-2028 Held as Two Lines
 
 ### Overview
@@ -371,11 +410,5 @@ and is appropriate for adoption by a future LTS baseline.
 
 ### Adoption Status
 
-| Project | Status |
-| --- | --- |
-| Identity Tools Official (`95_Identity_Tools/Official`) | Migrated in 1.10.0 (2026-11-08). Linked to `97_Encryption/Official` with no local copy; migrates existing data in place. Integration and migration record: `docs/BSR2_INTEGRATION.md`, "Encryption migration"; details in its `docs/CHANGELOG.md`. |
-| Identity Tools LTS-2028 1.4.x (`95_Identity_Tools/LTS-2028 1.4.x`) | Migrated in 1.4.0 (2026-11-08), with the same code as Official 1.10.0. 1.4.x is the LTS-2028 line that adopts the shared implementation; it shares Official's architecture. It keeps reading the previous encryption and keeps its migration path until at least 8 February 2027. Record: its `docs/BSR2_INTEGRATION.md`, "Encryption migration"; details in its `docs/CHANGELOG.md`. |
-| Identity Tools LTS-2028 1.3.x (`95_Identity_Tools/LTS-2028 1.3.x`) | Not migrating, by designation, under this entry's LTS rule. 1.3.x keeps its original LTS contract and vendored BSR2 Alpha 3 (0.3.0-alpha) until its end of life on 31 December 2028, and still receives security updates. Its encryption has known vulnerabilities it will not fix (KI-008 to KI-010 in its `docs/KNOWN_ISSUES.md`); the migration, and the remedy, is LTS-2028 1.4.x (2026-11-08 entry). |
-
-Every other applicable project remains pending migration until it is listed
-here as migrated.
+Current adoption status is kept at the top of this changelog, under
+[Cryptography migration status](#cryptography-migration-status).
