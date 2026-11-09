@@ -30,6 +30,8 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - version (version.py)
+- crypto.errors (crypto/errors.py) -- EncryptionNotFoundError, reported
+  by the encryption tool
 - crypto.encryption (crypto/encryption.py) -- link status for version, and
   the linked toolkit for the encryption tool
 - app (app.py) -- the root-level GUI shell, imported only by the gui command

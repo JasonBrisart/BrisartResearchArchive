@@ -3,7 +3,8 @@
 Local identity tooling within Brisart Research Archive, organized into three
 application areas:
 
-- **Vault:** local JSON records with sealed payloads, plus file and bundle storage.
+- **Vault:** local JSON records with sealed payloads, plus file and bundle
+  storage.
 - **Biometrics:** research-grade voice, fingerprint, and video matching with
   sealed templates and file attachments.
 - **Packages:** symmetric, recipient-bound payload encryption with custody
@@ -26,8 +27,10 @@ The archive contains three separate application trees, one per supported line
 (see [SECURITY.md](SECURITY.md)):
 
 - `Official/`: the current development line.
-- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (BSR2).
-- `LTS-2028 1.3.x/`: the original LTS-2028 line, with vendored BSR2.
+- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption, BSR2 Alpha 4,
+  linked from `97_Encryption/Official`.
+- `LTS-2028 1.3.x/`: the original LTS-2028 line, with BSR2 Alpha 3 vendored
+  in its own `vendor/`.
 
 Commands in this documentation assume the working directory is the selected
 application root: the directory containing `app.py`, `cli.py`, `version.py`,
@@ -149,12 +152,11 @@ cryptographic implementation.
 - Video motion checks are not general anti-spoofing.
 - Package CLI and GUI text-to-key prompts are demonstration interfaces, not
   slow password-KDF authentication.
-- Data written by LTS-2028 1.3.x uses the previous encryption. It
-  still opens, and each tool offers to migrate it (`vault migrate`,
-  `biometrics migrate`, `package migrate`, or a prompt in the GUI); migrated
-  data cannot be opened by any LTS-2028 1.3.x release, or by Official 1.9.2
-  and earlier. See
-  [BSR2 integration](BSR2_INTEGRATION.md#encryption-migration).
+- Data written by LTS-2028 1.3.x uses the previous encryption. It still opens,
+  and each tool offers to migrate it (`vault migrate`, `biometrics migrate`,
+  `package migrate`, or a prompt in the GUI); migrated data cannot be opened by
+  any LTS-2028 1.3.x release, or by Official 1.9.2 and earlier. See [BSR2
+  integration](BSR2_INTEGRATION.md#encryption-migration).
 - Sealing has no payload size cap and bulk workflows chunk large content,
   but neither provides unlimited memory, disk space, throughput, or full-drive
   backup guarantees.

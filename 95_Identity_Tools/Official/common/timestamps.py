@@ -16,16 +16,14 @@ Public interface:
 
 Design notes:
 
-Three formats were previously redefined across three files; all three are kept
-here because they serve different needs:
-- utc_now ISO-8601 to the second. Was in vault time_tools and LabID
-  identity_record.
-- filename_timestamp filename-safe stamp to the second. Was vault utc_stamp.
-- microsecond_timestamp filename-safe stamp with microseconds. Was LabID
-  report_timestamp; the extra precision stops two reports written in the same
-  second from colliding on filename.
+Three formats, each for a different need:
+- utc_now -- ISO-8601 to the second, for timestamps stored in records.
+- filename_timestamp -- filename-safe stamp to the second.
+- microsecond_timestamp -- filename-safe stamp with microseconds; the extra
+  precision stops two reports written in the same second from colliding on
+  filename.
 
-All timezone-aware UTC. The old naive-local helper is intentionally dropped.
+All timezone-aware UTC; there is no naive local-time helper.
 
 ``utc_now_iso`` is an alias of ``utc_now``: every consumer in this repository
 (vault, biometrics, and packages timestamp call sites) imports ``utc_now_iso``,

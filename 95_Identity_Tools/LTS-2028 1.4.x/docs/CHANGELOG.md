@@ -223,6 +223,43 @@ BSR2's own suite, where it lives.
     cap as the reason for chunking.
   - `packages/audit.py` no longer points to an Integrity Ledger, which
     LTS-2028 does not have.
+  - **How migration decrypts and re-encrypts, step by step.** The
+    "Encryption migration" record in `docs/BSR2_INTEGRATION.md` explains how
+    old data is recognized, how it is read without being changed, the three
+    steps of `crypto.envelope.reseal()`, the four steps of
+    `Keyring.migrate()`, how device bindings and package verifiers are
+    replaced, and when each store writes its files. The vault, biometrics,
+    and packages READMEs link to it. The packages README now says the
+    verifier is rebuilt, not sealed, and the biometrics README says device
+    bindings are re-bound.
+  - **Migration pop-up text.** `crypto.encryption.MIGRATION_NOTICE` names the
+    previous encryption as BSR2 Alpha 3, and says migrated data can't be opened
+    by any LTS-2028 1.3.x release, or by Official 1.9.2 and earlier. The same
+    wording replaces "1.3.10, or earlier" in `vault/store/vault_service.py`,
+    `biometrics/identity/encryption_migration.py`, and the vault, biometrics,
+    and packages READMEs.
+  - **Documentation audit.** Every file's documentation was checked against
+    the code. Each Python header was checked for its `File:` path, the six
+    sections in order, its "Depends on" and "Imported by" lists against the
+    real imports, 252 documented constants against their values, and 1,193
+    documented error messages against the code. All of those now match.
+    Corrected along the way:
+    - "Imported by" lists in `crypto/context.py`, `crypto/envelope.py`,
+      `crypto/errors.py`, `crypto/rng.py`, `crypto/encryption.py`,
+      `biometrics/identity/device_key.py`, and
+      `biometrics/identity/identity_store.py` now include
+      `biometrics/identity/encryption_migration.py`, `packages/package.py`,
+      and `packages/demo.py` where those import them.
+    - `vault/tests/test_vault_migration.py` states its real test count (7).
+    - References to a "Residual Risks" section now name "Protection limits",
+      and references to `main` name the real line.
+    - The package typed-text key is described as one BSR2-S64 hash in
+      `docs/BSR2_INTEGRATION.md` and `gui/README.md`, not SHA-256.
+    - Headers that told project history instead of current behavior
+      (`biometrics/features/liveness.py`, `biometrics/engine/enrollment.py`,
+      `biometrics/engine/verification.py`, `common/hashing.py`,
+      `common/timestamps.py`, `version.py`) now describe what the code does.
+    - Overlong Markdown lines are re-wrapped. No wording changed by that.
 - **CI: `.github/workflows/test-95-identity-tools-lts2028-1.4.yml` (new, at
   the archive root).** It runs this line's syntax check and full suite when
   this tree or `97_Encryption/Official` changes. It replaces

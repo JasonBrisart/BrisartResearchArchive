@@ -56,7 +56,7 @@ Known limitations
 
 Examples
 --------
-Run from the relevant LTS-2028 or main project root.
+Run from the LTS-2028 1.3.x application root.
 
 ::
 

@@ -114,8 +114,8 @@ Known limitations
   until this defect is corrected (KI-005).
 - migrate_encryption() replaces a legacy recovery code with a new one (see
   crypto/keyring.py) and re-encrypts in place; no backup of the previous file
-  is written. A migrated vault cannot be opened by
-  Official 1.9.2, LTS-2028 1.3.10, or earlier.
+  is written. A migrated vault cannot be opened by any LTS-2028 1.3.x
+  release, or by Official 1.9.2 and earlier.
 - This module only sequences them, holds the unlocked master key for the
   session, and records an audit event for every mutation.
 - Security rests on BSR2, a custom research construction that has not been

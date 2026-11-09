@@ -245,6 +245,33 @@ behaviour, remaining compatibility, rollback limits, and tests.
   `LTS-2028 1.4.x/`, and `LTS-2028 1.3.x/`** instead of `main/` and
   `LTS-2028/`. It and `docs/BSR2_INTEGRATION.md` now say migrated data can't
   be read by any LTS-2028 1.3.x release, not only by 1.3.10.
+- **How migration decrypts and re-encrypts, step by step.** The "Encryption
+  migration" record in `docs/BSR2_INTEGRATION.md` explains how old data is
+  recognized, how it is read without being changed, the three steps of
+  `crypto.envelope.reseal()`, the four steps of `Keyring.migrate()`, how
+  device bindings and package verifiers are replaced, and when each store
+  writes its files. The vault, biometrics, and packages READMEs link to it.
+- **Migration pop-up text.** `crypto.encryption.MIGRATION_NOTICE` names the
+  previous encryption as BSR2 Alpha 3, and says migrated data can't be opened
+  by any LTS-2028 1.3.x release, or by Official 1.9.2 and earlier. The same
+  wording replaces "1.3.10, or earlier" in the module headers and READMEs that
+  said it.
+- **Documentation audit.** Every file's documentation was checked against the
+  code: each Python header's `File:` path, its six sections in order, its
+  "Depends on" and "Imported by" lists against the real imports, 252 documented
+  constants, and 1,193 documented error messages. All of them now match.
+  Corrected along the way: the "Imported by" lists of the `crypto/` modules and
+  `biometrics/identity/` modules that the migration code imports; `cli.py`'s
+  "Depends on" list (`crypto.errors`); the test count in
+  `vault/tests/test_vault_migration.py`; "Residual Risks" references, which now
+  name "Protection limits"; the remaining `main` references in
+  `docs/KNOWN_ISSUES.md`, `docs/INTEGRITY_LEDGER.md`, `version.py`, and
+  `biometrics/app.py`; the package typed-text key, which
+  `docs/BSR2_INTEGRATION.md` and `gui/README.md` described as SHA-256; and
+  headers that told project history instead of current behavior (`liveness.py`,
+  `enrollment.py`, `verification.py`, `hashing.py`, `timestamps.py`, and the
+  collapsed bullet lists in `common/integrity_ledger.py`). Overlong Markdown
+  lines are re-wrapped without changing their wording.
 
 ### Release lines
 

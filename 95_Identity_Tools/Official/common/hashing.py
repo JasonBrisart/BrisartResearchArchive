@@ -12,10 +12,9 @@ Public interface:
 
 Design notes:
 
-Replaces the byte-identical sha256_bytes/sha256_file that were pasted into five
-LabID feature modules. These are integrity fingerprints over non-secret
-content; secret material goes through the BSR2 factor and envelope layers
-instead.
+The one owner of plain SHA-256 helpers for the whole tree. These are integrity
+fingerprints over non-secret content; secret material goes through the BSR2
+factor and envelope layers instead.
 
 Communication / relationships
 -----------------------------

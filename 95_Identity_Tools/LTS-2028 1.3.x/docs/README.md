@@ -3,7 +3,8 @@
 Local identity tooling within Brisart Research Archive, organized into three
 application areas:
 
-- **Vault:** local JSON records with sealed payloads, plus file and bundle storage.
+- **Vault:** local JSON records with sealed payloads, plus file and bundle
+  storage.
 - **Biometrics:** research-grade voice, fingerprint, and video matching with
   sealed templates and file attachments.
 - **Packages:** symmetric, recipient-bound payload encryption with custody
@@ -22,8 +23,10 @@ The archive contains three separate application trees, one per supported line
 (see [SECURITY.md](SECURITY.md)):
 
 - `Official/`: the current development line.
-- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption (BSR2).
-- `LTS-2028 1.3.x/`: the original LTS-2028 line, with vendored BSR2.
+- `LTS-2028 1.4.x/`: the LTS-2028 line with the new encryption, BSR2 Alpha 4,
+  linked from `97_Encryption/Official`.
+- `LTS-2028 1.3.x/`: the original LTS-2028 line, with BSR2 Alpha 3 vendored
+  in its own `vendor/`.
 
 Commands in this documentation assume the working directory is the selected
 application root: the directory containing `app.py`, `cli.py`, `version.py`,
@@ -145,6 +148,28 @@ cryptographic implementation.
 - Local reports and audit files are not independently protected,
   cryptographically authenticated evidence merely because the application
   writes a new file for each event.
+
+## Moving to LTS-2028 1.4.x
+
+This line keeps BSR2 Alpha 3 and will not change its encryption (see
+[SECURITY.md](SECURITY.md) and KI-008 to KI-010 in
+[KNOWN_ISSUES.md](KNOWN_ISSUES.md)). LTS-2028 1.4.x is this line with BSR2
+Alpha 4 as its only change, and it reads everything 1.3.x writes. Nothing in
+1.3.x converts data; the conversion happens in 1.4.x:
+
+1. Keep a copy of the vault, biometrics data directory, and package files if
+   you may need 1.3.x to open them again.
+2. Point LTS-2028 1.4.x at the same files. It opens them with the previous
+   encryption and changes nothing until you agree.
+3. Accept the migration prompt, or run `vault migrate`, `biometrics migrate`,
+   and `package migrate --identity-id <id>` for each recipient. 1.4.x
+   decrypts each item with BSR2 Alpha 3 and encrypts the same plaintext again
+   with BSR2 Alpha 4, under the same master key. A keyring whose recovery code
+   used BSR2 Alpha 3 gets a new recovery code, shown once; the passphrase is
+   unchanged.
+
+Migrated data cannot be opened by any 1.3.x release. LTS-2028 1.4.x's
+`docs/BSR2_INTEGRATION.md`, "Encryption migration", describes every step.
 
 ## Documentation
 

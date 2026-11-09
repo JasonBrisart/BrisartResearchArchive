@@ -3,9 +3,9 @@ File: vault/tests/test_bulk_file_service.py
 
 Purpose
 -------
-Tests for BulkFileService: chunked encryption of content past BSR2's
-single-envelope ~16 MiB limit, and multi-path (files + folders + drive roots)
-bundling into one encrypted archive.
+Tests for BulkFileService: chunked encryption of large content as separately
+sealed chunk records plus a manifest, and multi-path (files + folders + drive
+roots) bundling into one encrypted archive.
 
 Verifies: vault/store/vault_file.py, vault/store/vault_service.py,
 vault/store/bulk_file_service.py.

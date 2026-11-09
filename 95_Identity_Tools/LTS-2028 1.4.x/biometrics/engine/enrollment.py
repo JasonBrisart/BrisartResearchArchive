@@ -26,10 +26,8 @@ identity record. Persisting the record is the caller's responsibility
 without touching the filesystem.
 
 LIVENESS GATE (video modality only): a static clip is refused at enrollment
-time by default, exactly as it was in the project's 0.6.0-beta release
-("Static-recording enrollment is refused by default, so a photograph cannot be
-baked into a template and make the verification-time gate meaningless").
-Re-implemented here against the current BRVID-based video pipeline via
+time by default, so a photograph cannot be baked into a template and make the
+verification-time gate meaningless. The check is
 biometrics.features.liveness.assess_liveness(). Pass allow_static=True (wired
 to the CLI's --allow-static flag) to override this and enroll a static clip
 anyway.

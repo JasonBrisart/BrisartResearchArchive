@@ -39,55 +39,49 @@ Public interface:
 
 Design notes:
 
-What it adds is a way to record a file's SHA-256 at a point in time, external
-to the file itself, so that if a checkpoint happens to fall *inside* a
-tamper-then-revert window, that checkpoint's recorded hash will disagree with
-its neighbors and expose the gap. The narrower the time between checkpoints,
-the smaller the window a tamper-then-revert can hide in -- this is a mitigation
-whose effectiveness is a direct function of checkpoint frequency, not a
-guarantee. This is intentionally a general-purpose, target-path-agnostic ledger
-(not folded into vault/, biometrics/, or packages/ specifically) since every
-one of those tools stores its master-key-wrapped state in a single file
-(vault.json, biometrics/data/keyring.json, a package's .json file) that is
-exactly the kind of file this concern applies to, and duplicating this logic
-three times would only invite the three copies to drift. What this DOES do: -
-Records a SHA-256 + size of a target file, chained to the previous entry's hash
-(the same hash-chain construction packages.custody already uses), so the LEDGER
-ITSELF is tamper-evident: deleting, reordering, or editing a past checkpoint
-entry is detectable via verify_ledger(), exactly the way
-packages.custody.verify_chain detects tampering with a custody chain. - Lets a
-lab compare a file's *current* hash against its most recent recorded checkpoint
-(current_status()), and inspect the full checkpoint history for a given path
-(history_for_path()). - Is meant to be run on a schedule external to this
-application (a cron job, a Windows Scheduled Task, or simply a habit of running
-it before/after sensitive operations) -- see tools/integrity_checkpoint.py.
-This module intentionally contains no scheduling, daemon, or background-thread
-logic of its own; adding one would mean either a persistent background process
-(which this project's tools do not run) or a third-party scheduling dependency
-(which this project does not take on). What this does NOT do (stated plainly,
-the same way liveness.py and KNOWN_ISSUES.md's KI-003 state their own scope
-limits rather than implying more than they deliver): - It cannot detect a file
-that was tampered with and reverted to its exact original bytes ENTIRELY
-BETWEEN two checkpoints. If checkpoint N records hash H, an attacker edits the
-file and restores it to exactly H, and checkpoint N+1 also records H, nothing
-here or anywhere else in this repository can tell that anything happened in
-between. This is a mathematical property of comparing snapshots in time, not a
-defect in this implementation -- see this project's docs/BSR2_INTEGRATION.md
-Residual Risks list, to which this limitation is an explicit addition. - It
-does not protect the ledger file's own directory from an attacker who can also
-edit files there. Recording checkpoints in the same directory as the data they
-protect defeats the purpose. Per-entry hash chaining means an attacker who
-edits or deletes a past entry is caught by verify_ledger() -- but an attacker
-able to overwrite the ENTIRE ledger file with a new, internally-consistent,
-wholly fabricated chain (with no prior entries at all) cannot be distinguished
-from a legitimately short ledger. As with every other file in this project, the
-ledger's own protection is "keep it somewhere the people you don't trust cannot
-write to," not a cryptographic property of this module. - It does not seal,
-encrypt, or otherwise protect the CONTENTS of the files it checkpoints. It only
-records their SHA-256 and size, exactly the same non-secret
-integrity-fingerprint role common.hashing.sha256_bytes/sha256_file already
-plays everywhere else in this codebase (vault file records, biometrics
-attachments).
+The ledger records a file's SHA-256 at a point in time, outside the file
+itself. If a checkpoint falls inside a tamper-then-revert window, its recorded
+hash disagrees with its neighbours and exposes the change. The shorter the
+time between checkpoints, the smaller the window a tamper-then-revert can hide
+in, so this is a mitigation that depends on checkpoint frequency, not a
+guarantee.
+
+It is general-purpose and target-path-agnostic rather than part of vault/,
+biometrics/, or packages/. Each of those tools keeps its master-key-wrapped
+state in a single file (vault.json, biometrics/data/keyring.json, a package's
+.json file), which is exactly the kind of file this applies to, so one ledger
+serves all three.
+
+What it does:
+- Records the SHA-256 and size of a target file, chained to the previous
+  entry's hash with the same construction packages.custody uses. The ledger
+  itself is therefore tamper-evident: deleting, reordering, or editing a past
+  entry is detected by verify_ledger().
+- Compares a file's current hash with its most recent checkpoint
+  (current_status()) and lists the full checkpoint history for a path
+  (history_for_path()).
+- Runs on a schedule outside the application: a cron job, a Windows
+  Scheduled Task, or a habit of running it before and after sensitive
+  operations (see tools/integrity_checkpoint.py). It has no scheduler, daemon,
+  or background thread of its own, because the tools run no persistent
+  background process and take no third-party dependency.
+
+What it does not do:
+- It cannot detect a file that was changed and restored to exactly its
+  original bytes entirely between two checkpoints. If checkpoint N and
+  checkpoint N+1 both record hash H, nothing can tell that the file differed
+  in between. This follows from comparing snapshots in time; it is listed in
+  docs/BSR2_INTEGRATION.md under "Custody chains and audit files".
+- It does not protect its own directory from someone who can also write
+  there. Keeping checkpoints next to the data they protect defeats the
+  purpose. Hash chaining catches an edited or deleted past entry, but a whole
+  ledger replaced by a new, internally consistent chain cannot be told apart
+  from a legitimately short ledger. The ledger's protection is keeping it where
+  untrusted people cannot write, not a cryptographic property of this module.
+- It does not seal, encrypt, or otherwise protect the contents of the files
+  it checkpoints. It records only their SHA-256 and size, the same non-secret
+  fingerprint role common.hashing plays for vault file records and biometrics
+  attachments.
 
 Communication / relationships
 -----------------------------

@@ -101,8 +101,8 @@ Known limitations
 - "Append-only" describes what this module does, not what is enforced. It
   never edits or deletes an entry, but nothing stops another process or person
   from doing so, and entries are not hashed, chained, or signed. A deleted or
-  altered file leaves no trace. Pair it with packages.custody and the
-  Integrity Ledger if tamper-evidence matters.
+  altered file leaves no trace. Pair it with packages.custody if
+  tamper-evidence matters.
 - package_id is checked only for being a non-empty string, and it becomes part
   of the file name. An id containing a path separator creates a nested folder
   inside the audit directory; an id such as "x/../../y" writes one level above

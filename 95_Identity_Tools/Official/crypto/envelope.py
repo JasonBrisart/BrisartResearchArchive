@@ -72,12 +72,12 @@ Imported by:
 - biometrics/engine/enrollment.py
 - biometrics/engine/verification.py
 - biometrics/identity/identity_record.py
+- biometrics/identity/encryption_migration.py (reseal)
 - crypto/keyring.py
 - packages/ciphers.py
+- packages/package.py (reseal)
 - vault/records/record_model.py
 - vault/store/vault_service.py
-Also called for reseal() by vault/store/vault_service.py,
-biometrics/identity/encryption_migration.py, and packages/package.py.
 Covered by tests: crypto/tests/test_envelope.py,
 crypto/tests/test_encryption_link.py (legacy payloads sealed by 1.9.2).
 

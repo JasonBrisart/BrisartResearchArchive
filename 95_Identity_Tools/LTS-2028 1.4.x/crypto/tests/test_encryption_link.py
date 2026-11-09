@@ -21,15 +21,14 @@ application tree placed where no 97_Encryption sibling exists, because the
 link is resolved once per process and this test process is already linked.
 
 The compatibility fixtures were sealed by Identity Tools 1.9.2 using its last
-vendored copy of BSR2 (0.3.0-alpha), with a deterministic test generator so
-the bytes are reproducible.
+vendored copy of BSR2 Alpha 3 (0.3.0-alpha), with a deterministic test
+generator so the bytes are reproducible.
 
 Communication / relationships
 -----------------------------
 Depends on (project modules):
 - crypto.encryption (crypto/encryption.py)
 - crypto.envelope (crypto/envelope.py)
-- crypto.errors (crypto/errors.py)
 - crypto.factors (crypto/factors.py)
 - crypto.rng (crypto/rng.py)
 Standard library: os, pathlib, shutil, subprocess, sys,

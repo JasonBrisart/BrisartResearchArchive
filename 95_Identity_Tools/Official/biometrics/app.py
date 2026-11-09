@@ -57,7 +57,7 @@ enrolling or verifying a --video source that shows no genuine frame-to-frame
 motion (a static photograph, or a hand-built all-identical- frame clip) is
 refused/reported as a non-match.
 
-UNLOCK THROTTLING (since 1.3.7 on LTS-2028, 1.9.0 on main): keyring unlock
+UNLOCK THROTTLING (since 1.3.7 on LTS-2028, 1.9.0 on Official): keyring unlock
 (the passphrase prompt in
 _unlock_keyring()) is enforced through biometrics.identity.keyring_access,
 which persists crypto.throttle.AttemptLimiter state directly inside

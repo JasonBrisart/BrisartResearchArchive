@@ -34,8 +34,10 @@ Imported by:
 - biometrics/engine/attachments.py
 - biometrics/engine/enrollment.py
 - biometrics/engine/verification.py
+- biometrics/identity/encryption_migration.py
 - crypto/keyring.py
 - packages/ciphers.py
+- packages/package.py
 - vault/store/vault_service.py
 Covered by tests: crypto/tests/test_context.py.
 

@@ -204,8 +204,8 @@ can alter or remove reports.
 Arbitrary file bytes can be attached to an identity. Bulk attachments use
 chunks and a manifest.
 
-See [file and bundle encryption](../docs/FILE_AND_BUNDLE_ENCRYPTION.md) for memory,
-temporary-file, throughput, and restore limitations.
+See [file and bundle encryption](../docs/FILE_AND_BUNDLE_ENCRYPTION.md) for
+memory, temporary-file, throughput, and restore limitations.
 
 ## Module map
 

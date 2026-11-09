@@ -38,8 +38,9 @@ unchanged.
 Known limitations
 -----------------
 - The version is a plain string edited by hand. Nothing checks it against
-  docs/CHANGELOG.md, the README files, or what actually shipped. LTS-2028 and
-  main each carry their own copy of this file with their own value.
+  docs/CHANGELOG.md, the README files, or what actually shipped. Each
+  application tree (LTS-2028 1.3.x, LTS-2028 1.4.x, Official) carries its own
+  copy of this file with its own value.
 - It versions the tools, not stored data. Each stored format carries its own
   format string (for example "brisart-identity-tools/vault-record/v1"), so
   changing this value never migrates or invalidates existing files.

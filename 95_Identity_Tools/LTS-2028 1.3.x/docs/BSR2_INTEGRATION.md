@@ -229,7 +229,7 @@ consistent live-filesystem snapshots, or secure-erasure mechanisms.
 Unreadable files can be skipped. Restore can leave partial output if
 interrupted.
 
-## Residual risks
+## Protection limits
 
 - Unreviewed cryptographic constructions.
 - Python execution without whole-program constant-time guarantees.

@@ -29,9 +29,9 @@ The CLI prompts for text and derives a 32-byte demonstration key with one
 unsalted BSR2-S64 hash (`ciphers.text_master_key`). The
 Packages GUI and the demo use the same function.
 
-Before the encryption migration the same text was hashed with SHA-256. Packages sealed under
-those keys still open: the CLI and GUI fall back to the old derivation for a
-recipient whose verifier only matches it.
+Before the encryption migration the same text was hashed with SHA-256. Packages
+sealed under those keys still open: the CLI and GUI fall back to the old
+derivation for a recipient whose verifier only matches it.
 
 This is not a slow password KDF. Guessable input text produces guessable key
 material, and repeated text produces the same key.
@@ -49,12 +49,17 @@ each key slot is sealed under that recipient's own key:
 python cli.py package migrate pkg.json --identity-id alice
 ```
 
-Opening such a package in the GUI asks first. Migrating a recipient reseals
-the shared payload, re-seals that recipient's key slot and verifier under the
-current text key, and appends a `payload_rewrapped` custody entry. Recipients
-not yet migrated keep opening the package through their legacy slots. A
-migrated package cannot be opened by Official 1.9.2, LTS-2028 1.3.10, or
-earlier.
+Opening such a package in the GUI asks first. Migrating a recipient decrypts
+the content key from that recipient's legacy key slot, re-encrypts the shared
+payload if it is still legacy, seals a new key slot and builds a new verifier
+under the current text key, and appends a `payload_rewrapped` custody entry.
+Recipients not yet migrated keep opening the package through their legacy
+slots. A migrated package cannot be opened by any LTS-2028 1.3.x release, or by
+Official 1.9.2 and earlier.
+
+Each step, including what is decrypted, what is re-encrypted, and when
+each file is written, is in
+[BSR2 integration](../docs/BSR2_INTEGRATION.md#encryption-migration).
 
 ## CLI usage
 

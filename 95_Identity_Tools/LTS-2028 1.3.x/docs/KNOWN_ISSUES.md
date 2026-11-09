@@ -7,7 +7,7 @@ and easy to scan.
 
 For the deeper, ongoing research-cryptography caveats that apply to the whole
 project by design (BSR2 being unreviewed research crypto, no forward secrecy,
-vault labels readable while locked, etc.), see the **Residual Risks** section
+vault labels readable while locked, etc.), see the **Protection limits** section
 of [`BSR2_INTEGRATION.md`](BSR2_INTEGRATION.md) instead — those are
 documented, accepted design tradeoffs, not open bugs.
 
@@ -22,7 +22,8 @@ reflects only what is genuinely still outstanding.
 - **Reported date:** 2026-09-03
 - **Severity:** Medium
 - **Environment:** All platforms; affects the `video` biometric modality only.
-- **Component:** `biometrics/features/liveness.py`, `biometrics/engine/enrollment.py`, `biometrics/engine/verification.py`
+- **Component:** `biometrics/features/liveness.py`,
+  `biometrics/engine/enrollment.py`, `biometrics/engine/verification.py`
 - **Steps to Reproduce:**
   1. Enroll or verify a `video` modality probe recorded from a real camera
      rather than the project's synthetic sample generator.
@@ -31,10 +32,11 @@ reflects only what is genuinely still outstanding.
   separate a genuinely static clip from a live capture across real hardware,
   lighting, and sensor noise conditions.
 - **Actual behavior:** The threshold has only been validated against this
-  project's own synthetic sample generator (`biometrics/samples/sample_generator.py`),
-  which is a much cleaner signal than a real camera. It is unknown whether
-  0.75 produces false rejections (genuine live captures with low sensor
-  noise) or false acceptances (a wobbled photo) on real hardware.
+  project's own synthetic sample generator
+  (`biometrics/samples/sample_generator.py`), which is a much cleaner signal
+  than a real camera. It is unknown whether 0.75 produces false rejections
+  (genuine live captures with low sensor noise) or false acceptances (a wobbled
+  photo) on real hardware.
 - **Tried / Ruled out:** The gate itself (motion-presence detection via
   mean absolute frame-to-frame pixel difference) is unit-tested and correct
   against hand-built static and moving frame sequences — see
@@ -87,13 +89,18 @@ reflects only what is genuinely still outstanding.
 
 - **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
-- **Environment:** LTS-2028 and main; platform-independent source behavior.
+- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
+  platform-independent source behavior.
 - **Component:** `vault/store/vault_service.py`
-- **Steps to Reproduce:** Create a record; update its id with a different label or kind; read it again.
+- **Steps to Reproduce:** Create a record; update its id with a different label
+  or kind; read it again.
 - **Expected behavior:** The updated payload and stored context remain consistent.
-- **Actual behavior:** The payload is sealed with new context while old metadata is retained; read can fail authentication.
-- **Tried/Ruled out:** Reproduced with a temporary vault and an injected test key; no real user data was used.
-- **Next step:** Keep label/kind unchanged for an existing id; correct the update implementation in a separate code patch.
+- **Actual behavior:** The payload is sealed with new context while old
+  metadata is retained; read can fail authentication.
+- **Tried/Ruled out:** Reproduced with a temporary vault and an injected test
+  key; no real user data was used.
+- **Next step:** Keep label/kind unchanged for an existing id; correct the
+  update implementation in a separate code patch.
 
 ---
 
@@ -101,13 +108,20 @@ reflects only what is genuinely still outstanding.
 
 - **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
-- **Environment:** LTS-2028 and main; platform-independent source behavior.
-- **Component:** `vault/store/bulk_file_service.py; biometrics/engine/bulk_attachments.py`
-- **Steps to Reproduce:** Pass nonempty bytes with chunk_bytes=0 or a negative value through the chunk iterator.
-- **Expected behavior:** Invalid chunk sizes are rejected explicitly before processing.
-- **Actual behavior:** Zero raises ValueError from range; a negative step produces no chunks.
-- **Tried/Ruled out:** Iterator behavior reproduced; constructor and API validation inspected. CLI guards do not cover direct callers.
-- **Next step:** Validate positive integer sizes below the payload limit in a separate code patch; direct callers must validate meanwhile.
+- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
+  platform-independent source behavior.
+- **Component:** `vault/store/bulk_file_service.py;
+  biometrics/engine/bulk_attachments.py`
+- **Steps to Reproduce:** Pass nonempty bytes with chunk_bytes=0 or a negative
+  value through the chunk iterator.
+- **Expected behavior:** Invalid chunk sizes are rejected explicitly before
+  processing.
+- **Actual behavior:** Zero raises ValueError from range; a negative step
+  produces no chunks.
+- **Tried/Ruled out:** Iterator behavior reproduced; constructor and API
+  validation inspected. CLI guards do not cover direct callers.
+- **Next step:** Validate positive integer sizes below the payload limit in a
+  separate code patch; direct callers must validate meanwhile.
 
 ---
 
@@ -115,13 +129,18 @@ reflects only what is genuinely still outstanding.
 
 - **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
-- **Environment:** LTS-2028 and main; platform-independent source behavior.
+- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
+  platform-independent source behavior.
 - **Component:** `gui/tabs/tab_biometrics.py`
-- **Steps to Reproduce:** Store an attachment whose name contains .chunk; refresh the attachment list.
+- **Steps to Reproduce:** Store an attachment whose name contains .chunk;
+  refresh the attachment list.
 - **Expected behavior:** Only internal chunk entries are hidden.
-- **Actual behavior:** The substring filter also excludes legitimate attachment names.
-- **Tried/Ruled out:** Confirmed by inspection of the filename filter; physical GUI interaction was not tested.
-- **Next step:** Avoid .chunk in ordinary attachment names; refine the filter in a separate code patch.
+- **Actual behavior:** The substring filter also excludes legitimate attachment
+  names.
+- **Tried/Ruled out:** Confirmed by inspection of the filename filter; physical
+  GUI interaction was not tested.
+- **Next step:** Avoid .chunk in ordinary attachment names; refine the filter
+  in a separate code patch.
 
 ---
 
@@ -194,12 +213,12 @@ reflects only what is genuinely still outstanding.
 - **Component:** `crypto/rng.py`; vendored `vendor/brisart_security_drbg.py`,
   `vendor/brisart_security_entropy.py`
 - **Steps to Reproduce:**
-  1. Compare the vendored 0.3.0-alpha `brisart_security_drbg.py` and
-     `brisart_security_entropy.py` with `97_Encryption/Official`.
+  1. Compare the vendored BSR2 Alpha 3 (0.3.0-alpha) `brisart_security_drbg.py`
+     and `brisart_security_entropy.py` with `97_Encryption/Official`.
 - **Expected behavior:** A DRBG copied into a forked child, or duplicated by
   `copy` or `pickle`, should refuse to produce output, and the entropy source
   should reject a constant sample.
-- **Actual behavior:** The vendored 0.3.0-alpha copies have none of the
+- **Actual behavior:** The vendored BSR2 Alpha 3 copies have none of the
   hardening added in BSR2 Alpha 4 (0.4.0-alpha): no fork detection, no
   refusal of `copy`, `deepcopy`, or `pickle`, and no constant-sample
   rejection. A duplicated generator state would repeat its output.
@@ -207,7 +226,8 @@ reflects only what is genuinely still outstanding.
   process or uses `multiprocessing` or `subprocess`, so the shipped tools do
   not reach the fork case. Code that embeds 1.3.x modules can.
 - **Next step:** Not fixable within LTS-2028 1.3.x without changing the
-  byte-pinned vendor files. LTS-2028 1.4.x takes its randomness from BSR2, which has this hardening (1.4.0, `LTS-2028-SEC-6`).
+  byte-pinned vendor files. LTS-2028 1.4.x takes its randomness from BSR2
+  Alpha 4, which has this hardening (1.4.0, `LTS-2028-SEC-6`).
 
 ---
 

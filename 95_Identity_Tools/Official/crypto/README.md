@@ -3,8 +3,8 @@
 Application integration between BSR2 and Vault, Biometrics, and Packages.
 
 This directory composes BSR2 primitives from the linked BSR2
-(`97_Encryption/Official`) into application operations. It does not independently validate the security of those
-primitives.
+(`97_Encryption/Official`) into application operations. It does not
+independently validate the security of those primitives.
 
 ## Module map
 

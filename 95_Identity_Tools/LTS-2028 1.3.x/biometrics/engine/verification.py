@@ -28,9 +28,7 @@ module reports matched by comparing the score to the selected threshold
 For video only, a motion-presence gate runs before similarity comparison. A
 static clip with insufficient frame-to-frame change fails this gate and is
 reported as a non-match with a populated "liveness" field, before its
-similarity score is ever computed against the stored template -- mirroring the
-enforced pass/fail gate design from the project's 0.6.0-beta release,
-re-implemented here against the current BRVID-based video pipeline. Pass
+similarity score is ever computed against the stored template. Pass
 allow_static=True (wired to the CLI's --allow-static flag) to skip this gate
 entirely, for example to inspect a raw similarity score during debugging.
 

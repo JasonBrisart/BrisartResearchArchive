@@ -33,6 +33,7 @@ Depends on (project modules):
 Standard library: json, pathlib.
 Imported by:
 - biometrics/app.py
+- biometrics/identity/encryption_migration.py
 - gui/tabs/tab_biometrics.py
 Covered by tests: biometrics/tests/test_enrollment_overwrite.py,
 biometrics/tests/test_identity_id_validation.py,

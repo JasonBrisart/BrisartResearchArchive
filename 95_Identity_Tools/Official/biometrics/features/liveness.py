@@ -3,15 +3,10 @@ File: biometrics/features/liveness.py
 
 Purpose
 -------
-Reintroduces a liveness/anti-spoofing GATE for the video modality, filling the
-gap explicitly documented in biometrics/README.md's Status section ("there is
-currently no liveness or anti-spoofing check for any modality -- a recording or
-synthetic sample that reproduces the feature vector closely enough will
-verify") and in docs/BSR2_INTEGRATION.md's Residual Risks item 7. This is NOT a
-resurrection of the old 0.6.0-beta LabID_Beta/core/video.py liveness code --
-that code parsed real AVI files and no longer exists; this repository's current
-video pipeline stores frames in the from-scratch BRVID container
-(biometrics/codecs/video.py), which never had liveness logic.
+Motion-presence gate for the video modality. It measures how much a decoded
+BRVID clip changes from frame to frame and reports whether that change reaches
+a threshold, so a still photograph or a clip built from one repeated frame can
+be refused at enrollment and verification.
 
 Public interface:
 - class LivenessError(ValueError) -- Raised when liveness cannot be assessed
@@ -23,23 +18,22 @@ Public interface:
 
 Design notes:
 
-This module is a new implementation built against BRVID's actual frame data.
-WHAT IT DETECTS A still photograph (or any perfectly static scene) held in
-front of a camera, or a synthetic clip built from a single repeated frame,
-produces near-zero frame-to-frame pixel change. A live capture -- even someone
-sitting still -- always has some non-zero change from sensor noise,
-micro-movement, and lighting flicker. This module measures exactly that: mean
-absolute pixel difference between consecutive frames, averaged across the whole
-clip. WHAT IT DOES NOT DETECT This is a MOTION-PRESENCE check, not a
-liveness/anti-spoofing check in the research sense. It will NOT catch: - A
-video replay attack (playing a real recorded video of the enrolled person back
-at the camera) -- that has real motion and passes this gate. - A high-quality
-3D mask or deepfake with natural micro-motion. - A photo that is itself
-physically wobbled/panned in front of the camera to fake motion. This is stated
-plainly rather than left implied, matching this project's existing
-"Research-grade" framing (biometrics/README.md's Status section): this closes
-the specific "one repeated still frame" gap, not the general
-liveness/anti-spoofing problem.
+What it detects. A still photograph, or any perfectly static scene, held in
+front of a camera produces near-zero frame-to-frame pixel change, as does a
+synthetic clip built from a single repeated frame. A live capture, even of
+someone sitting still, has some change from sensor noise, micro-movement, and
+lighting flicker. The module measures the mean absolute pixel difference
+between consecutive frames, averaged across the whole clip.
+
+What it does not detect. This is a motion-presence check, not liveness or
+anti-spoofing in the research sense. It does not catch:
+- a replayed recording of the enrolled person, which has real motion;
+- a high-quality 3D mask or deepfake with natural micro-motion;
+- a photo physically moved in front of the camera to fake motion.
+
+The same limit is stated in biometrics/README.md ("Video features and motion
+checks") and in docs/BSR2_INTEGRATION.md ("Biometrics protection and
+disclosure").
 
 Communication / relationships
 -----------------------------

@@ -77,7 +77,7 @@ separate lines, and Official is the development line:
 
 | Line | Folder | What it is | Encryption | End of life |
 | --- | --- | --- | --- | --- |
-| LTS-2028 1.3.x | `LTS-2028 1.3.x/` | The original LTS-2028 line | BSR2 0.3.0-alpha, vendored in its own `vendor/` | 31 December 2028 |
+| LTS-2028 1.3.x | `LTS-2028 1.3.x/` | The original LTS-2028 line | BSR2 Alpha 3 (0.3.0-alpha), vendored in its own `vendor/` | 31 December 2028 |
 | LTS-2028 1.4.x | `LTS-2028 1.4.x/` | The original LTS-2028 line; its only change is the new encryption | BSR2 (`97_Encryption/Official`) | 31 December 2028 |
 | Official | `Official/` | Active development line: the 1.4.x architecture plus non-security extras | BSR2 (`97_Encryption/Official`) | None designated while it is the development line |
 | Pre-1.3.0 and superseded releases | | | | Ended |

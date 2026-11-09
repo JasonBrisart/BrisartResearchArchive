@@ -57,7 +57,7 @@ integrity matters.
 
 ## CLI usage
 
-Run from the `main/` application root.
+Run from the `Official/` application root.
 
 `--ledger` is a global option and belongs before the subcommand.
 

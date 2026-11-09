@@ -180,20 +180,25 @@ security boundary.
 
 ## Encryption migration
 
-Data written before the encryption migration uses the previous encryption. It still opens, and
-unlocking it prints a notice in the CLI or asks first in the GUI:
+Data written before the encryption migration uses the previous encryption. It
+still opens, and unlocking it prints a notice in the CLI or asks first in the
+GUI:
 
 ```bash
 python cli.py biometrics migrate
 ```
 
-Migrating re-encrypts the keyring, every template and attachment, and this
-machine's device bindings, one identity file at a time, so an interrupted run
-leaves everything readable and can simply be run again. A keyring whose
-recovery code used the previous encryption gets a new code, shown once. Device
-bindings recorded on another machine stay as they are until `migrate` runs
-there. Migrated data cannot be opened by Official 1.9.2, LTS-2028 1.3.10, or
-earlier.
+Migrating re-encrypts the keyring, then every template and attachment, and
+re-binds this machine's device bindings, one identity file at a time, so an
+interrupted run leaves everything readable and can simply be run again. A
+keyring whose recovery code used the previous encryption gets a new code, shown
+once. Device bindings recorded on another machine stay as they are until
+`migrate` runs there. Migrated data cannot be opened by any LTS-2028 1.3.x
+release, or by Official 1.9.2 and earlier.
+
+Each step, including what is decrypted, what is re-encrypted, and when
+each file is written, is in
+[BSR2 integration](../docs/BSR2_INTEGRATION.md#encryption-migration).
 
 ## Reports
 
@@ -221,8 +226,8 @@ can alter or remove reports.
 Arbitrary file bytes can be attached to an identity. Bulk attachments use
 chunks and a manifest.
 
-See [file and bundle encryption](../docs/FILE_AND_BUNDLE_ENCRYPTION.md) for memory,
-temporary-file, throughput, and restore limitations.
+See [file and bundle encryption](../docs/FILE_AND_BUNDLE_ENCRYPTION.md) for
+memory, temporary-file, throughput, and restore limitations.
 
 ## Module map
 

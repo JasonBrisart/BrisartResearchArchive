@@ -39,6 +39,7 @@ Depends on (project modules):
 Standard library: platform, socket, uuid.
 Imported by:
 - biometrics/engine/enrollment.py
+- biometrics/identity/encryption_migration.py
 Covered by tests: biometrics/tests/test_device_key.py.
 
 Settings / parameters

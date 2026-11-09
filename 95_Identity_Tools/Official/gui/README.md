@@ -95,7 +95,7 @@ does not create a sector-level image or preserve every filesystem attribute.
 - Biometric results are research matching results, not validated identity
   probabilities.
 - Video motion checks are not general anti-spoofing.
-- Package text-to-key prompts use demonstration SHA-256 key derivation, not a
+- Package text-to-key prompts use a single demonstration BSR2-S64 hash, not a
   slow password KDF.
 - Bulk operations remain constrained by memory, temporary disk space, storage
   space, and throughput.

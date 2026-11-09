@@ -10,7 +10,7 @@ keyring, and writes the file once.
 
 Verifies: vault/store/vault_service.py (needs_encryption_migration,
 VaultService.migrate_encryption), crypto/envelope.py, crypto/keyring.py.
-Contains 8 test case(s) across 2 TestCase class(es).
+Contains 7 test case(s) across 2 TestCase class(es).
 
 Design notes:
 

@@ -78,10 +78,9 @@ Links to (BSR2, 97_Encryption/Official): every module in
 REQUIRED_MODULES.
 Standard library: dataclasses, functools, importlib, os, pathlib, sys, types.
 Imported by:
-- cli.py, app.py (Official only: status line, start-up warning, version
-  line, the encryption command)
 - crypto/envelope.py, crypto/factors.py, crypto/keyring.py, crypto/rng.py
 - packages/ciphers.py (content keys and text-derived master keys)
+- packages/demo.py (demo passphrases)
 - vault/app.py, biometrics/app.py, packages/main.py, gui/widgets/dialogs.py
   (MIGRATION_NOTICE)
 Covered by tests: crypto/tests/test_encryption_link.py.
@@ -160,14 +159,14 @@ _KEEP_TOGETHER = (
 )
 
 MIGRATION_NOTICE = (
-    "This update adds new encryption from BSR2 "
-    "(97_Encryption). This data still uses the previous encryption, which "
+    "This update moves to the current BSR2 encryption from 97_Encryption. "
+    "This data still uses the previous encryption (BSR2 Alpha 3), which "
     "this version can still read for now but which will be removed entirely "
     "in a future update.\n\n"
     "Migrating re-encrypts every encrypted item with the new encryption and "
-    "saves it in place. Migrated data cannot be opened by older versions, "
-    "(Official 1.9.2, LTS-2028 1.3.10, or earlier), so keep a backup if you "
-    "may need them.\n\n"
+    "saves it in place. Migrated data cannot be opened by older versions "
+    "(any LTS-2028 1.3.x release, or Official 1.9.2 and earlier), so keep a "
+    "backup if you may need them.\n\n"
     "If you do not migrate now, the previous encryption keeps working and you "
     "will be asked again next time."
 )

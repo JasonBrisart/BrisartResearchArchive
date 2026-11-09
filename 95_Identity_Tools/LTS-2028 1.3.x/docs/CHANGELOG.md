@@ -56,6 +56,25 @@ changelog.
   pointing to LTS-2028 1.4.x as the remedy.
 - **This changelog.** A notice at the top states the line's designation, its
   support window, and those known vulnerabilities.
+- **`docs/README.md`: "Moving to LTS-2028 1.4.x".** A new section explains
+  what moving involves: keep a copy, point 1.4.x at the same files, and accept
+  the migration, which decrypts each item with BSR2 Alpha 3 and encrypts the
+  same plaintext again with BSR2 Alpha 4 under the same master key. 1.3.x
+  itself converts nothing.
+- **Documentation audit.** Every file's documentation was checked against the
+  code: each Python header's `File:` path, its six sections in order, its
+  "Depends on" and "Imported by" lists against the real imports, documented
+  constants, and documented error messages. All of them match. Corrected
+  along the way: `docs/BSR2_INTEGRATION.md`'s "Residual risks" heading is now
+  "Protection limits", and `docs/KNOWN_ISSUES.md` and
+  `biometrics/features/liveness.py` refer to it by that name; KI-005 to KI-007
+  name the three lines instead of "LTS-2028 and main"; `packages/audit.py` no
+  longer points to an Integrity Ledger, which LTS-2028 does not have; and
+  headers that told project history instead of current behavior
+  (`liveness.py`, `enrollment.py`, `verification.py`, `hashing.py`,
+  `timestamps.py`, `version.py`, `tests/test_bsr2_vendor_integrity.py`) now
+  describe what the code does. The pinned `vendor/` files are unchanged.
+  Overlong Markdown lines are re-wrapped without changing their wording.
 
 ### CI
 

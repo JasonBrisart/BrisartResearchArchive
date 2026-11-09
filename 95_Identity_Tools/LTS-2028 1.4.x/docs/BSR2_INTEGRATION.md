@@ -17,7 +17,8 @@ credentials, identity records, recovery secrets, or comparable material.
 
 ## Integration boundary
 
-Identity Tools contains no encryption of its own. BSR2 comes from BSR2, `97_Encryption/Official` in the Brisart Research Archive, which
+Identity Tools contains no encryption of its own. BSR2 comes from BSR2,
+`97_Encryption/Official` in the Brisart Research Archive, which
 `crypto/encryption.py` links to as the single point of contact:
 
 ```text
@@ -71,12 +72,13 @@ The application integration layer handles:
 - Generator lifecycle management.
 - Unlock-attempt limiting.
 
-`crypto/tests/test_encryption_link.py` checks that every module BSR2 ships is linked and loaded from the linked directory, that the
-application tree holds no copy of one, and that data sealed by vendored BSR2 Alpha 3 (0.3.0-alpha), the release LTS-2028
-shipped through 1.3.10, still opens.
-`crypto/tests/test_keyring.py` unlocks and migrates a v1 keyring.
-BSR2's own known-answer vectors and tests are run by its own
-suite. Neither establishes cryptographic security or independent review.
+`crypto/tests/test_encryption_link.py` checks that every module BSR2 ships is
+linked and loaded from the linked directory, that the application tree holds no
+copy of one, and that data sealed by vendored BSR2 Alpha 3 (0.3.0-alpha), the
+release LTS-2028 shipped through 1.3.10, still opens.
+`crypto/tests/test_keyring.py` unlocks and migrates a v1 keyring. BSR2's own
+known-answer vectors and tests are run by its own suite. Neither establishes
+cryptographic security or independent review.
 
 ## Encryption migration
 
@@ -85,15 +87,15 @@ cryptography migration (root `CHANGELOG.md`, 2026-10-23), in the order that
 entry asks for. LTS-2028 1.3.x does not take part in the migration and keeps
 vendored BSR2 Alpha 3 (0.3.0-alpha); see `SECURITY.md`.
 
-**Previous implementation.** Through 1.3.10, BSR2 0.3.0-alpha vendored as four
-byte-pinned copies in `vendor/`. Identity Tools used only its legacy
-constructions: the `BSR2-ARX-SPONGE-ETM` v2 JSON envelope with an 8-byte
+**Previous implementation.** Through 1.3.10, BSR2 Alpha 3 (0.3.0-alpha),
+vendored as four byte-pinned copies in `vendor/`. Identity Tools used only its
+legacy constructions: the `BSR2-ARX-SPONGE-ETM` v2 JSON envelope with an 8-byte
 length prefix and 256-byte padding added here; the iterated
 `derive_password_key` (10,000 iterations) for keyring wrappers; a
 `derive_subkey` + `keyed_mac` binding for factors; and an unsalted SHA-256 of
 typed text for package demonstration keys.
 
-**Replacement implementation.** BSR2 (`97_Encryption/Official`,
+**Replacement implementation.** BSR2 Alpha 4 (`97_Encryption/Official`,
 0.4.0-alpha at the time of writing), linked through `crypto/encryption.py` and
 not copied. New data uses sealed format v3 `BSR2-S64-SIV` (`block` padding),
 BSR-STREAM-1 above 16 MiB, BSR2-MHF-1 keyring wrappers (8,192 blocks, one
@@ -110,33 +112,103 @@ package content keys come from BSR2's entropy module.
 | Biometrics identity files | templates, attachments (including bulk manifests and chunks), device binding |
 | Package file | payload, each recipient's key slot and verifier |
 
-**How existing data is migrated.** Every store keeps opening legacy data. When
-it holds any, the CLI prints a notice after unlocking and the GUI shows
-`crypto.encryption.MIGRATION_NOTICE` before unlocking; OK, or `vault migrate`,
-`biometrics migrate`, `package migrate`, migrates. Each payload is opened in
-its legacy format and sealed again, byte-identical, in the current one under
-the same key and context (`crypto.envelope.reseal`). Keyrings go through
-`Keyring.migrate()`, which unlocks first so a wrong passphrase changes nothing.
-Device bindings are re-bound when they verify on the current machine. Packages
-migrate per recipient from that recipient's typed text.
+**How existing data is migrated.** Migration decrypts each item that still
+uses the previous encryption, BSR2 Alpha 3, and encrypts the same plaintext
+again with the current one, BSR2 Alpha 4. It changes the encryption only: the
+master key, every context string, and every decrypted byte stay the same.
 
-**In place or replacement.** In place, through atomic replacement of each file:
-the vault file once, the biometrics keyring file and then each identity file
-that changed, and the package file. No copy of the previous files is written.
-The master key and package content keys do not change.
+*How old data is recognized.* Every sealed value records its own format.
+`crypto/envelope.py` recognizes the previous v2 JSON envelope by its six
+fields (`algorithm` = `BSR2-ARX-SPONGE-ETM`, `version`, `salt`, `nonce`,
+`ciphertext`, `tag`), and the current formats by
+`{"format": "BSR2-S64-SIV/3" | "BSR-STREAM-1", "data": ...}`. `open_bytes()`
+chooses the decryptor from that shape, so no caller has to know which
+encryption a value uses. Keyrings record, per wrapper, which KDF derived it
+(`BSR2/derive_password_key` or `BSR2-MHF-1`), and which MAC produced the check
+value.
+
+*Reading without migrating.* A legacy value is decrypted in memory with the
+legacy envelope module that BSR2 Alpha 4 still ships in
+`97_Encryption/Official`, and this layer's 8-byte length prefix and padding are
+removed. Nothing is written back.
+
+*Re-encrypting one payload: `crypto.envelope.reseal()`.*
+1. A value already in a current format is returned unchanged, so running a
+   migration twice does nothing the second time.
+2. A legacy value is decrypted with the same master key and the same context
+   it was sealed under. If it does not authenticate, reseal raises and
+   produces nothing; the caller leaves the value as it is and reports it.
+3. The recovered plaintext is sealed again under the same master key and
+   context, as sealed format v3 (`BSR2-S64-SIV`) up to 16 MiB or
+   `BSR-STREAM-1` above that, with fresh randomness.
+
+*Re-encrypting a keyring: `Keyring.migrate(passphrase)`.*
+1. The keyring is unlocked with the passphrase through the legacy KDF. A
+   wrong passphrase raises before anything changes, and counts as a failed
+   attempt.
+2. The master key is wrapped again under a BSR2-MHF-1 key derived from the
+   same passphrase.
+3. The recovery code is never stored, so its legacy wrapper cannot be
+   re-derived. A new recovery code is generated, its wrapper is written with
+   BSR2-MHF-1, and the code is returned to be shown once.
+4. The check value is replaced with a BSR2-S64 MAC.
+
+The master key itself never changes, so every payload sealed under it opens at
+every point during and after the migration.
+
+*Device bindings and package verifiers.* These are keyed MACs, not sealed
+payloads, so they cannot be decrypted and re-encrypted. A legacy biometrics
+device binding is checked against this machine's fingerprint and, if it
+matches, replaced with a BSR2-S64 MAC binding. A binding recorded on another
+machine is left as it is and reported. Package verifiers are rebuilt from each
+recipient's typed text when that recipient migrates.
+
+*What each store does, and when it writes.*
+- **Vault** (`vault migrate`, or OK in the Vault tab): checks the attempt
+  limit, migrates the keyring in memory, reseals every legacy record payload
+  in memory (JSON records, file records, and bundle manifests and chunks), then
+  writes the whole vault file once by atomic replacement. Any failure before
+  that write leaves the file exactly as it was.
+- **Biometrics** (`biometrics migrate`, or OK in the Biometrics tab): migrates
+  the keyring and writes the keyring file first, then goes through each
+  identity file. It reseals the file's templates and attachments, re-binds a
+  legacy device binding that matches this machine, and writes that file by
+  atomic replacement only if something changed. If the run is interrupted,
+  migrated and legacy identity files coexist and all of them still open;
+  running the migration again finishes the rest.
+- **Packages** (`package migrate --identity-id <id>`, or OK in the Packages
+  tab): one recipient at a time, from that recipient's typed text. Both text
+  keys are derived, the legacy SHA-256 one and the current BSR2-S64 one, and
+  whichever the recipient's verifier accepts is used to open that recipient's
+  key slot and recover the package content key. The payload is resealed under
+  the content key if it is still legacy. The content key is then wrapped in a
+  new key slot under the current text key, the verifier is rebuilt, and a
+  `payload_rewrapped` custody entry is added. The package file is written by
+  atomic replacement. The content key never changes, so recipients who have
+  not migrated keep opening the package through their legacy key slots.
+
+*When it runs.* After a store is unlocked, the CLI prints a note if any part
+of it still uses the previous encryption. The GUI shows
+`crypto.encryption.MIGRATION_NOTICE` before unlocking or opening such data: OK
+migrates, and Cancel opens it with the previous encryption and asks again next
+time. The `migrate` commands ask first; `--yes` skips the question.
+
+**In place or replacement.** In place. Each file is rewritten by atomic
+replacement, and no copy of the previous files is written. The master key and
+package content keys do not change.
 
 **Remaining compatibility with historical data.** Full read compatibility with
-everything LTS-2028 1.3.x and Official 1.9.2 and earlier write, until a
-later release removes the previous encryption. That release comes no earlier
-than 8 February 2027: the read path and the migration stay in 1.4.x for at
-least three months after 1.4.0. Reading does not rewrite:
-unlocking a store, or declining the migration, leaves it readable by the
-release that wrote it (a v1 keyring is kept as stored until a wrapper is
-replaced; only attempt-limiting state is written). Migration is resumable:
-legacy and migrated items can coexist in one store, and running the migration again finishes the rest. What
-can stay legacy after a migration: a vault record that fails to authenticate
-under its stored context (KI-005), a device binding recorded on another
-machine, and package recipients who have not migrated yet. Each is reported.
+everything LTS-2028 1.3.x and Official 1.9.2 and earlier write, until a later
+release removes the previous encryption. That release comes no earlier than 8
+February 2027: the read path and the migration stay in 1.4.x for at least three
+months after 1.4.0. Reading does not rewrite: unlocking a store, or declining
+the migration, leaves it readable by the release that wrote it (a v1 keyring is
+kept as stored until a wrapper is replaced; only attempt-limiting state is
+written). Migration is resumable: legacy and migrated items can coexist in one
+store, and running the migration again finishes the rest. What can stay legacy
+after a migration: a vault record that fails to authenticate under its stored
+context (KI-005), a device binding recorded on another machine, and package
+recipients who have not migrated yet. Each is reported.
 
 **Recovery and rollback limits.** There is no rollback. Migrated data cannot be
 read by any LTS-2028 1.3.x release; keep a copy of the files beforehand if that
@@ -201,8 +273,9 @@ Rejecting out-of-range counts reduces parameter-abuse opportunities. It does
 not establish that every accepted parameter is appropriate for every
 deployment.
 
-KDF runtime depends on parameters, hardware, interpreter, and system load. Earlier development-machine measurements are historical observations,
-not fixed latency guarantees.
+KDF runtime depends on parameters, hardware, interpreter, and system load.
+Earlier development-machine measurements are historical observations, not fixed
+latency guarantees.
 
 Separate CLI invocations do not share an unlocked in-memory session.
 
@@ -312,8 +385,10 @@ key distribution, not public-key encryption.
 Removing a recipient does not revoke old package copies, previously obtained
 content keys, or previously recovered plaintext.
 
-The CLI and GUI demonstration prompts hash typed text once with unsalted
-SHA-256. This is not a slow password KDF.
+The CLI and GUI demonstration prompts turn typed text into a key with one
+unsalted BSR2-S64 hash (`packages.ciphers.text_master_key`). This is not a slow
+password KDF. Packages written before the encryption migration used one
+unsalted SHA-256; that key still opens them until each recipient migrates.
 
 Package saves from the CLI and GUI use atomic replacement, so an interrupted
 save does not truncate package state. Concurrent saves can still lose an

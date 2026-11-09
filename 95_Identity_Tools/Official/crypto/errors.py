@@ -38,7 +38,9 @@ Imported by:
 - biometrics/app.py
 - biometrics/engine/attachments.py
 - biometrics/engine/verification.py
+- biometrics/identity/encryption_migration.py
 - biometrics/identity/keyring_access.py
+- cli.py
 - crypto/context.py
 - crypto/encryption.py
 - crypto/envelope.py

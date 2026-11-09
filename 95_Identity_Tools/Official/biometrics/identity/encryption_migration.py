@@ -79,8 +79,8 @@ Edge cases
 Known limitations
 -----------------
 - Records are rewritten in place; no copy of the previous files is kept.
-  Migrated records cannot be opened by Official 1.9.2, LTS-2028 1.3.10, or
-  earlier.
+  Migrated records cannot be opened by any LTS-2028 1.3.x release, or by
+  Official 1.9.2 and earlier.
 - A device binding recorded on another machine stays legacy until migrate()
   runs on that machine, so the legacy verifier cannot be removed while such
   bindings exist.
