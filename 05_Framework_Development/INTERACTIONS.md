@@ -1,7 +1,9 @@
 # INTERACTIONS.md
 ## Brisart Cognitive Architecture – System Interaction Map
 
-This file consolidates all published frameworks from the Brisart Research Archive and defines how they interact as a unified system.
+This file consolidates the published cognitive frameworks represented in the current architecture and defines their proposed high-level interactions.
+
+**The Brisart Format** and the **Cascade Module** are development infrastructure, not cognitive frameworks. They govern documentation and optional implementation mapping and therefore do not appear as processing nodes in this interaction map.
 
 ---
 
@@ -19,6 +21,7 @@ The architecture is organized into three layers:
 - IRE — Intention arbitration
 - VRIF — Coherence and resonance modulation
 - RIET — Identity-echo reactivation
+- ARPE — Structural update eligibility and restabilization
 
 ## 3. Cross-Agent Layer
 - PCT — Predictive alignment between interacting agents
@@ -160,6 +163,21 @@ The architecture is organized into three layers:
 
 ---
 
+## ARPE — Affective Reconsolidation and Plasticity Engine
+**Role:** Models eligibility for durable structural updating and subsequent restabilization.
+
+**Key Function:**
+- Distinguishes activation from durable update
+- Opens an update-eligible state when affective charge and resonance error jointly meet the proposed threshold
+- Requires integration, coherence recovery, and later re-entry when evaluating whether change endured
+
+**Current Interaction Status:**
+- ARPE belongs in the internal systems layer because it governs change to an already active cognitive-emotional structure within a single system
+- It is conceptually adjacent to frameworks involving interpretation, memory reactivation, identity, intention, and coherence
+- The current ARPE specification does not formally declare directed dependencies on PFT, TFL, SST, IRE, VRIF, RIET, or PCT; future links must be defined and verified before being represented as system connections
+
+---
+
 ## PCT — Predictive Convergence Theory
 **Role:** Cross-agent predictive alignment.
 
@@ -203,6 +221,7 @@ The architecture is organized into three layers:
 - TCRF → Keeps time continuous  
 - VRIF → Controls coherence  
 - RIET → Reactivates identity echoes  
+- ARPE → Governs update eligibility and restabilization  
 - PCT → Aligns minds across agents  
 
 ---
@@ -210,4 +229,4 @@ The architecture is organized into three layers:
 # NOTE
 
 This document is a system interaction map, not a full framework specification.  
-Each framework is defined in detail in its respective Zenodo publication.
+Each framework is defined by its own full specification. This interaction map records proposed conceptual relationships and does not establish strict implementation dependencies, reduction between frameworks, or empirical validation of the combined architecture.

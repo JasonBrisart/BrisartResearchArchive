@@ -153,6 +153,8 @@ The purpose is not to provide a complete implementation, but to ensure that:
 
 Implementation-specific details remain outside the scope of the public specification.
 
+Where the framework contains activation, expansion, constraint, scoring, refinement, and commitment stages, the **Cascade Module** may be used as a reference execution pattern. Cascade is optional. The framework must not be distorted or extended merely to satisfy the module's adapter contract.
+
 ---
 
 ## 9. Completion Criteria
@@ -178,6 +180,7 @@ Prior to release, each framework is formatted to match archive-wide standards.
 
 This includes:
 
+- Conformity with **The Brisart Format**  
 - Consistent structural organization  
 - Standardized terminology  
 - Clearly defined sections  

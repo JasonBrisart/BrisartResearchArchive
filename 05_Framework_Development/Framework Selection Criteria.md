@@ -5,6 +5,18 @@ This document defines the criteria used to determine whether a candidate mechani
 
 The purpose of these criteria is to ensure that only mechanisms with sufficient explanatory value, structural clarity, and empirical potential are promoted into the framework layer.
 
+## Classification Before Selection
+
+Before applying the framework criteria, classify the candidate as either:
+
+- a proposed explanatory framework;
+- framework-development infrastructure;
+- an implementation or adapter module;
+- a protocol, dataset, or measurement instrument; or
+- general archive governance.
+
+Only proposed explanatory frameworks proceed through the selection gates below. Authoring standards such as **The Brisart Format** and implementation infrastructure such as the **Cascade Module** belong in framework development but must not be promoted as research frameworks merely because they are structured or reusable.
+
 ---
 
 ## 1. Non-Trivial Mechanism Requirement

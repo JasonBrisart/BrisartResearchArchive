@@ -74,3 +74,20 @@ function Cascade_Run(signal, seed_input, host_context):
 | `theta_continue` | refinement loop | early-exit score; breaks the loop when met |
 | `theta_bind` | commit check | minimum score for `CommitAdapter` to be invoked |
 | `Rmax` | refinement loop | maximum refinement rounds |
+
+## Integration Requirements
+
+A Cascade mapping must document how each adapter corresponds to an element already defined by the host framework. The mapping must identify the source definition for the seed, constraints, score, thresholds, refinement process, and commit behavior.
+
+The mapping fails verification when it introduces hidden state, changes the framework's declared mechanism, uses parameters that cannot be interpreted, or treats a successful software execution as empirical validation of the framework itself.
+
+## Relationship to Other Development Files
+
+- **The Brisart Format** governs how the public framework specification is written.
+- **Framework Construction Method** determines whether an abstract implementation mapping is structurally justified.
+- **Framework Verification Protocol** checks whether the Cascade mapping preserves the framework's declared behavior and boundaries.
+- **Framework Completion Criteria** permits, but does not universally require, a Cascade mapping as evidence of abstract implementation readiness.
+
+## Scope and Limitations
+
+Cascade specifies an execution pattern, not domain meaning. Host frameworks remain responsible for defining their own observables, parameters, thresholds, constraints, evidence, and failure conditions. The module does not supply missing theory, choose scientifically valid measurements, or convert conceptual compatibility into implementation validity.

@@ -173,6 +173,24 @@ Failure condition:
 
 ---
 
+## 9. Documentation and Implementation-Mapping Consistency
+
+The public specification must conform to **The Brisart Format**, and any abstract implementation mapping must remain traceable to the framework's declared mechanism.
+
+When the **Cascade Module** is used, verification must confirm that:
+
+- every adapter maps to a defined framework element;
+- thresholds and scores remain interpretable;
+- no hidden mechanism is introduced by the mapping;
+- commit and no-commit outcomes preserve the framework's declared boundaries; and
+- executable behavior is not presented as empirical validation.
+
+Failure condition:
+
+- The document format, implementation map, or Cascade adapter layer changes the framework's claims, scope, variables, or causal logic.
+
+---
+
 ## Verification Outcome
 
 A framework or system passes verification when:

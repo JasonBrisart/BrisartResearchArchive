@@ -138,7 +138,8 @@ This includes:
 
 - Mapping components to functional roles (e.g., modules or interfaces)  
 - Defining input/output relationships  
-- Supporting iterative or loop-based execution models  
+- Supporting iterative or loop-based execution models where the mechanism requires them
+- Documenting a **Cascade Module** mapping only when the framework naturally fits Cascade's activation, refinement, and commitment structure  
 
 This requirement ensures that:
 
@@ -168,7 +169,8 @@ This includes:
 
 - Consistent section organization  
 - Standardized terminology  
-- Alignment with the Brisart Format  
+- Conformity with **The Brisart Format**
+- Correct classification of supporting modules and infrastructure as distinct from research frameworks  
 
 This ensures interpretability across the archive as a unified system.
 
@@ -218,4 +220,3 @@ Completion criteria within the Brisart Research Archive ensure that all released
 - Implementation-ready at an abstract level  
 
 These criteria maintain consistency across the archive while preserving separation between public specification and institutional operation.
-``
