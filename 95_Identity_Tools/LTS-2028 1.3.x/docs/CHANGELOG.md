@@ -34,7 +34,10 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 Records the LTS-2028 release-line decision in this line's documentation. The
 decision and its consequences for 1.3.x are summarized at the top of this
-changelog.
+changelog. A second documentation pass (2026-11-09) replaces the threat model's
+closing list of protection limits with a section that explains each limit and
+what you can do about it, and corrects KI-006. Official and LTS-2028 1.4.x
+received the same pass.
 
 ### Documentation
 
@@ -97,6 +100,71 @@ changelog.
     split word in `biometrics/app.py`, and stray spaces inside file paths in
     `crypto/attempt_store.py`.
 
+### Documentation: what these tools do not protect against (2026-11-09)
+
+- **`docs/BSR2_INTEGRATION.md`: "What these tools do not protect against"
+  replaces "Protection limits".**
+  - **Before:** the last section was a list of short phrases ("Master keys in
+    process memory", "Keyrings co-located with protected data"), with no
+    explanation and nothing a reader could act on. In this line it also listed
+    optional hardware, which 1.3.x doesn't have.
+  - **Now:** the section sits directly after "Primary caveat", so it is the
+    second thing a reader sees. Each limit says in plain words what is
+    exposed, and ends with *What you can do*. It is grouped by where the limit
+    applies: the encryption itself, while the tools are running, files on
+    disk, biometrics, and packages and records.
+    1.3.x's copy adds this line's own weaknesses (KI-008 to KI-010) as one
+    item pointing to LTS-2028 1.4.x, and leaves out the migration and the
+    hardware, which this line doesn't have.
+  - Facts were checked against the code, not copied from the old list:
+    which fields stay readable without a passphrase (vault records, biometric
+    identities and attachments, packages), where each keyring lives, the
+    `unlock_attempts` field, and that the GUI keeps a store unlocked until
+    Lock or the window closes. Only comparisons of secret values (keyring
+    check values, factor bindings) are described as constant-time.
+  - Restoring a bundle writes the rebuilt ZIP to a temporary directory
+    before extracting it. The old list didn't say so; the new section does.
+- **`docs/KNOWN_ISSUES.md`.**
+  - The introduction says what is tracked here (defects, and limitations that
+    still have a next step) and links to the new section for design limits,
+    in place of the "Protection limits" link.
+  - KI-005, KI-006, and KI-007 use the full template: numbered steps, an
+    expected and an actual behavior that say what happens, and a next step
+    with a workaround. "Tried/Ruled out" is spelled "Tried / Ruled out"
+    everywhere, as in the template.
+  - **KI-006 is wider than it said.** It described direct API callers only.
+    `biometrics attach-paths --chunk-mb` also passes its value through
+    unchecked, so `--chunk-mb 0` reaches the same fault; only
+    `vault encrypt-paths` checks the range (1 to 15). The title is now
+    "Biometrics bulk CLI and direct bulk APIs do not validate chunk size", and
+    the environment, steps, and workaround include the CLI. The code is
+    unchanged; the fix is still a separate code change.
+- **`docs/FILE_AND_BUNDLE_ENCRYPTION.md`.** "Direct API chunk-size limitation"
+  becomes "Chunk-size validation" and states which commands check the size and
+  which don't (KI-006).
+- **`docs/README.md`.** The opening caveat links to the new section, and
+  "Important boundaries" says that it is a short list and links to the full
+  one.
+- **`docs/SECURITY.md`.** "Assurance boundaries" links to the new section for
+  each item, and marks physical-device validation as Official only. The text
+  stays identical in all three lines.
+- **Component READMEs.** `vault/`, `biometrics/`, `packages/`, and `crypto/`
+  link their security sections to the new section. `biometrics/README.md`
+  adds that each attachment's filename, size, and SHA-256 are readable without
+  unlocking.
+- **`docs/BSR2_INTEGRATION.md`, other sections.** "Integration boundary" names
+  the four vendored BSR2 Alpha 3 files and says this line uses nothing outside
+  its folder. "KDF parameters and runtime" gives the real values: 10,000
+  iterations, validated against 10,000 to 1,000,000, not memory-hard
+  (KI-008). "Factor protection" no longer implies that password-derived
+  factors are stored: `hash_factor()` exists, but no tool calls it. The
+  paragraph about an integrity ledger, which this line doesn't have, is
+  removed.
+- **`crypto/README.md`.** Names the vendored release, gives the keyring KDF
+  and its iteration count, and says `hash_factor()` is unused.
+- **Python headers.** `biometrics/app.py` notes that `--chunk-mb` is not
+  range-checked (KI-006).
+
 ### CI
 
 - **`.github/workflows/test-95-identity-tools-lts2028-1.3.yml` (new, at the
@@ -110,7 +178,9 @@ changelog.
 
 ### Compatibility
 
-No code, stored-format, or dependency change. `version.py` stays at 1.3.10.
+No code, stored-format, or dependency change. Python edits are limited to
+module docstrings. `version.py` stays at 1.3.10. Every Markdown link and
+heading anchor in the line resolves.
 
 ---
 

@@ -174,7 +174,8 @@ Support status does not change:
 - Editable local attempt state.
 - Unauthenticated local audit history.
 - Bulk-processing resource and temporary-file limitations.
-- Physical-device validation requirements.
+- Physical-device validation requirements (Official only).
 
-See [Known issues](KNOWN_ISSUES.md) and
-[file and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md).
+Each of these is explained, with what you can do about it, in
+[What these tools do not protect against](BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against).
+Open defects are in [Known issues](KNOWN_ISSUES.md).

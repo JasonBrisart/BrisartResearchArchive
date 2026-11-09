@@ -24,7 +24,8 @@ reports `Encryption not found`, and nothing can be sealed or opened.
 
 BSR2 is custom, unreviewed research cryptography. These tools must not be
 treated as independently audited security products or as the sole protection
-for high-value or irreplaceable secrets.
+for high-value or irreplaceable secrets. Before relying on them, read
+[What these tools do not protect against](BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against).
 
 ## Application roots
 
@@ -178,6 +179,10 @@ The GUI calls application services rather than providing a separate
 cryptographic implementation.
 
 ## Important boundaries
+
+These are the limits most likely to matter day to day. The full list, with
+what you can do about each one, is in
+[What these tools do not protect against](BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against).
 
 - Vault record labels and other record-shell metadata remain readable while
   locked.

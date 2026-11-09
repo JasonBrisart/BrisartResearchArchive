@@ -157,4 +157,5 @@ constant-time.
 BSR2 remains unreviewed research cryptography. Recipient binding, custody
 records, and passing tests do not remove that limitation.
 
-See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).
+See [What these tools do not protect against](../docs/BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against)
+and the rest of [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).

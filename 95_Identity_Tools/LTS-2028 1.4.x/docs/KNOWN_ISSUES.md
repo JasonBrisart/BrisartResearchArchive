@@ -1,20 +1,18 @@
 # Known Issues
 
-This file tracks open, non-trivial issues in BrisartIdentityTools that are not
-yet resolved. Each entry follows a standardized bug-report template (modeled
-on GitHub Issues / Jira) so severity, scope, and next steps stay consistent
-and easy to scan.
+This file tracks open issues in BrisartIdentityTools: defects, and limitations
+that still have a next step. Each entry uses the same bug-report template,
+modeled on GitHub Issues and Jira, so severity, scope, and next steps are easy
+to compare.
 
-For the deeper, ongoing research-cryptography caveats that apply to the whole
-project by design (BSR2 being unreviewed research crypto, no forward secrecy,
-vault labels readable while locked, etc.), see the
-[Protection limits](BSR2_INTEGRATION.md#protection-limits) section of
-`BSR2_INTEGRATION.md` instead — those are
-documented, accepted design tradeoffs, not open bugs.
+Limits of the design itself are not tracked here: BSR2 being unreviewed,
+metadata that stays readable while a store is locked, a leaked master key that
+can't be taken back, and similar. They are listed, each with what you can do
+about it, in
+[What these tools do not protect against](BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against).
 
-Fully fixed issues are moved to the **Resolved** section at the bottom of this
-file rather than edited in place, so the open-issues list above always
-reflects only what is genuinely still outstanding.
+Fixed issues move to **Resolved** at the bottom of this file, so the open list
+shows only what is still outstanding.
 
 ---
 
@@ -25,7 +23,7 @@ reflects only what is genuinely still outstanding.
 | [KI-001](#ki-001-video-liveness-threshold-is-uncalibrated-against-real-camera-hardware) | Video liveness threshold is uncalibrated against real camera hardware | Medium | Open: needs real-camera samples |
 | [KI-003](#ki-003-bulk-processing-is-constrained-by-throughput-memory-and-temporary-storage) | Bulk processing is constrained by throughput, memory, and temporary storage | Low | Documented limitation |
 | [KI-005](#ki-005-existing-record-metadata-changes-can-break-payload-authentication) | Existing-record metadata changes can break payload authentication | Medium | Open |
-| [KI-006](#ki-006-direct-bulk-apis-do-not-validate-chunk-size) | Direct bulk APIs do not validate chunk size | Medium | Open |
+| [KI-006](#ki-006-biometrics-bulk-cli-and-direct-bulk-apis-do-not-validate-chunk-size) | Biometrics bulk CLI and direct bulk APIs do not validate chunk size | Medium | Open |
 | [KI-007](#ki-007-biometrics-gui-can-hide-legitimate-attachment-names) | Biometrics GUI can hide legitimate attachment names | Medium | Open |
 
 Resolved issues are listed at the end of this file.
@@ -91,7 +89,7 @@ are reported privately instead; see [SECURITY.md](SECURITY.md).
   sample rates around 1.4 KB/s, but those measurements are not guaranteed
   sustained throughput on another machine. Large operations can exhaust
   memory or disk space, and unreadable source files can be skipped.
-- **Tried/Ruled out:** Regression tests exist for file and bundle round trips
+- **Tried / Ruled out:** Regression tests exist for file and bundle round trips
   in `vault/tests/test_bulk_file_service.py`,
   `vault/tests/test_file_records.py`,
   `biometrics/tests/test_bulk_attachments.py`, and
@@ -107,59 +105,77 @@ are reported privately instead; see [SECURITY.md](SECURITY.md).
 ## KI-005: Existing-record metadata changes can break payload authentication
 
 - **Reported date:** 2026-11-08
-- **Severity:** Medium (correctness limitation).
-- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
-  platform-independent source behavior.
+- **Severity:** Medium (correctness)
+- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official; all
+  platforms.
 - **Component:** `vault/store/vault_service.py`
-- **Steps to Reproduce:** Create a record; update its id with a different label
-  or kind; read it again.
-- **Expected behavior:** The updated payload and stored context remain consistent.
-- **Actual behavior:** The payload is sealed with new context while old
-  metadata is retained; read can fail authentication.
-- **Tried/Ruled out:** Reproduced with a temporary vault and an injected test
+- **Steps to Reproduce:**
+  1. Create a record with `vault upsert`.
+  2. Run `vault upsert` again with `--record-id` set to that record's id and a
+     different label or `--kind`.
+  3. Read the record with `vault get`.
+- **Expected behavior:** The update stores the new payload, label, and kind
+  together, and the record reads back.
+- **Actual behavior:** The payload is sealed under a context built from the
+  new label and kind, but the record keeps its old label and kind. Reading it
+  rebuilds the context from the stored, old values, so the payload fails
+  authentication.
+- **Tried / Ruled out:** Reproduced with a temporary vault and an injected test
   key; no real user data was used.
-- **Next step:** Keep label/kind unchanged for an existing id; correct the
-  update implementation in a separate code patch.
+- **Next step:** Fix the update path in a code change. Until then, keep a
+  record's label and kind unchanged when reusing its id. Encryption migration
+  leaves a record in this state as it is and reports it.
 
 ---
 
-## KI-006: Direct bulk APIs do not validate chunk size
+## KI-006: Biometrics bulk CLI and direct bulk APIs do not validate chunk size
 
 - **Reported date:** 2026-11-08
-- **Severity:** Medium (correctness limitation).
-- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
-  platform-independent source behavior.
-- **Component:** `vault/store/bulk_file_service.py;
-  biometrics/engine/bulk_attachments.py`
-- **Steps to Reproduce:** Pass nonempty bytes with chunk_bytes=0 or a negative
-  value through the chunk iterator.
-- **Expected behavior:** Invalid chunk sizes are rejected explicitly before
-  processing.
-- **Actual behavior:** Zero raises ValueError from range; a negative step
-  produces no chunks.
-- **Tried/Ruled out:** Iterator behavior reproduced; constructor and API
-  validation inspected. CLI guards do not cover direct callers.
-- **Next step:** Validate positive integer sizes below the payload limit in a
-  separate code patch; direct callers must validate meanwhile.
+- **Severity:** Medium (correctness)
+- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official; all
+  platforms. Direct API callers, and `biometrics attach-paths --chunk-mb`,
+  which passes its value through unchecked. `vault encrypt-paths` accepts
+  only 1 to 15.
+- **Component:** `vault/store/bulk_file_service.py`,
+  `biometrics/engine/bulk_attachments.py`
+- **Steps to Reproduce:**
+  1. Construct `BulkFileService` with `chunk_bytes=0`, or call
+     `attach_large_bytes()` with `chunk_bytes=0`, or run
+     `python cli.py biometrics attach-paths <id> <name> <path> --chunk-mb 0`.
+  2. Store nonempty bytes.
+  3. Repeat with a negative size.
+- **Expected behavior:** An invalid chunk size is rejected with a clear error
+  before anything is processed.
+- **Actual behavior:** Zero raises a bare `ValueError` from `range()`. A
+  negative size produces no chunks at all.
+- **Tried / Ruled out:** Reproduced through the chunk iterator. The
+  constructor, the API functions, and the biometrics CLI were inspected and do
+  not validate the size.
+- **Next step:** Validate the size in a code change. Until then, use the
+  default `--chunk-mb`, and direct callers must pass a positive integer.
 
 ---
 
 ## KI-007: Biometrics GUI can hide legitimate attachment names
 
 - **Reported date:** 2026-11-08
-- **Severity:** Medium (correctness limitation).
-- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
-  platform-independent source behavior.
+- **Severity:** Medium (correctness)
+- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official; all
+  platforms. Desktop interface only; `biometrics inspect` lists every
+  attachment entry.
 - **Component:** `gui/tabs/tab_biometrics.py`
-- **Steps to Reproduce:** Store an attachment whose name contains .chunk;
-  refresh the attachment list.
-- **Expected behavior:** Only internal chunk entries are hidden.
-- **Actual behavior:** The substring filter also excludes legitimate attachment
-  names.
-- **Tried/Ruled out:** Confirmed by inspection of the filename filter; physical
-  GUI interaction was not tested.
-- **Next step:** Avoid .chunk in ordinary attachment names; refine the filter
-  in a separate code patch.
+- **Steps to Reproduce:**
+  1. Attach a file whose name contains `.chunk`, for example
+     `notes.chunked.txt`.
+  2. Refresh the attachment list in the Biometrics tab.
+- **Expected behavior:** Only the internal `<name>.chunkN` entries of bulk
+  attachments are hidden.
+- **Actual behavior:** The list hides every name containing `.chunk`, so the
+  attachment is missing from the list. It is still stored.
+- **Tried / Ruled out:** Confirmed by reading the filename filter; not
+  reproduced by clicking through a real display.
+- **Next step:** Match only the internal chunk-name pattern in a code change.
+  Until then, avoid `.chunk` in attachment names.
 
 ---
 

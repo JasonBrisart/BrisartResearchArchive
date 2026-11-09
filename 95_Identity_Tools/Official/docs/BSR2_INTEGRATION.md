@@ -8,6 +8,7 @@ It is not an independent cryptographic assessment.
 ## Contents
 
 - [Primary caveat](#primary-caveat)
+- [What these tools do not protect against](#what-these-tools-do-not-protect-against)
 - [Integration boundary](#integration-boundary)
 - [Encryption migration](#encryption-migration)
 - [Master keys and wrapping](#master-keys-and-wrapping)
@@ -23,7 +24,6 @@ It is not an independent cryptographic assessment.
 - [Custody chains and audit files](#custody-chains-and-audit-files)
 - [Filesystem hardening](#filesystem-hardening)
 - [Bulk-file boundaries](#bulk-file-boundaries)
-- [Protection limits](#protection-limits)
 
 ## Primary caveat
 
@@ -34,6 +34,140 @@ the security of its original constructions.
 
 BSR2 must not be treated as the sole protection for high-value or irreplaceable
 credentials, identity records, recovery secrets, or comparable material.
+
+## What these tools do not protect against
+
+These are limits of the design, not bugs. Each one stays true however
+carefully the tools are used. Open bugs are tracked separately in
+[Known issues](KNOWN_ISSUES.md).
+
+### The encryption itself
+
+**BSR2 is unreviewed research cryptography.** No one outside this project has
+analysed it, and the constructions new in BSR2 Alpha 4 (sealed format v3,
+BSR-STREAM-1, and BSR2-MHF-1) have had no analysis at all. Tests show that the
+code does what it was written to do, not that the construction is secure.
+
+*What you can do:* don't make these tools the only protection for anything you
+can't afford to lose or expose.
+
+**Timing is not guaranteed constant.** Checks that compare a secret value,
+such as keyring check values and factor bindings, use a constant-time
+comparison. Everything else, including BSR2 itself, runs as ordinary Python,
+whose timing depends on the values it handles. Someone who can measure timing
+precisely on the same machine may learn something about keys.
+
+*What you can do:* don't run the tools on a machine shared with people you
+don't trust.
+
+### While the tools are running
+
+**An unlocked master key sits in memory.** While a vault or biometrics
+keyring is unlocked, its master key is held in the process. Locking drops the
+tools' reference to it, but Python cannot wipe memory, so copies can remain
+until the memory is reused, and can reach swap files or crash dumps. In the
+GUI, a store stays unlocked until you press Lock or close the window. Each CLI
+command unlocks, runs, and exits.
+
+*What you can do:* lock when you finish, and treat a machine where someone can
+read process memory as one where the key is exposed.
+
+### Files on disk
+
+**Some information is readable without a passphrase.** Only payloads are
+encrypted. Without unlocking, anyone with the files can read:
+
+- **Vault:** every record's id, label, kind, and created and updated times.
+  File records also show the original filename, its size, and the SHA-256 of
+  its contents, so anyone holding a copy of a file can confirm it is in the
+  vault.
+- **Biometrics:** each identity's id and label, which modalities are enrolled,
+  and each attachment's filename, size, and SHA-256.
+- **Packages:** the package id, each recipient's id and label, and the custody
+  chain.
+
+*What you can do:* use labels and filenames that reveal nothing you'd mind
+being read.
+
+**The lock and what it protects are stored together.** A vault keeps its
+keyring inside the same `vault.json` as its records. Biometrics keeps
+`data/keyring.json` next to `data/identities/`. Anyone who copies those files
+has everything needed to try passphrases offline, at their own speed, with
+nothing but the passphrase in the way.
+
+*What you can do:* use a long passphrase, and keep the files on encrypted,
+access-controlled storage.
+
+**A leaked master key can't be taken back.** Changing the passphrase or
+issuing a new recovery code re-wraps the same master key; it does not replace
+it. The encryption migration also keeps the master key. If a master key is
+ever exposed, everything sealed under it can be opened, including data written
+before the exposure and after a migration.
+
+*What you can do:* if you suspect exposure, create a new vault or keyring and
+move your data into it.
+
+**Attempt limits only slow down guessing through these tools.** Failed
+unlocks are counted inside the same file they protect (`unlock_attempts`).
+Anyone who can edit the file can reset the count, and someone working on a
+copy is never limited at all.
+
+*What you can do:* rely on passphrase strength, not on the lockout.
+
+**Two programs writing the same file can lose an update.** Writes are atomic,
+so a file is never left half-written, but there is no locking between
+processes. If two run at once, the last write wins.
+
+*What you can do:* use one program at a time on any given vault, keyring, or
+package.
+
+**Bundles pass through plaintext on disk.** Bundling files, folders, or
+drives (`encrypt-paths`, `attach-paths`) first writes an unencrypted ZIP to a
+temporary directory, and the whole bundle is held in memory. Restoring writes
+the rebuilt ZIP to a temporary directory again before extracting it. The
+temporary directory is deleted afterwards, but deletion is not secure erasure,
+and an interrupted restore can leave partial output. See KI-003.
+
+*What you can do:* make sure the temporary directory is on storage you trust,
+and check restored output if a restore was interrupted.
+
+### Biometrics
+
+**Matching is research-grade.** Similarity scores are measurements, not
+probabilities that the right person was identified. The video check detects
+motion only: it rejects a still photo, but not a replayed recording, a mask,
+or a photo moved in front of the camera. Its threshold has only been checked
+against synthetic samples, not real cameras (KI-001). Voice and fingerprint
+have no liveness check at all.
+
+*What you can do:* don't use biometric verification as the only gate to
+anything.
+
+### Packages and records
+
+**The package demo key is not a real password key.** The CLI and GUI turn
+typed text into a key with one fast, unsalted hash. Guessable text gives a
+guessable key, and the same text always gives the same key.
+
+*What you can do:* use the demo to see how packages work, not to protect real
+data.
+
+**Custody chains, audit files, and the integrity ledger can be rewritten.**
+The custody chain links entries with unkeyed hashes, so anyone who can edit a
+package can rewrite its whole chain consistently, or cut off its newest
+entries. Actor labels are free text that no one verifies. Audit and report
+files are ordinary files. The integrity ledger has the same limits, and misses
+any change made and undone between two checkpoints (KI-004).
+
+*What you can do:* keep copies somewhere the people you're checking can't
+write to.
+
+### Hardware
+
+**Device support is unvalidated.** The ONVIF camera, PC/SC card, and
+fingerprint-scanner code has not been tested against physical devices, and
+real device access needs bindings you supply. See
+[Hardware](../hardware/README.md).
 
 ## Integration boundary
 
@@ -445,9 +579,9 @@ External audit and report files use append-style application behavior.
 Filesystem permissions do not make them inherently append-only, immutable,
 or authenticated.
 
-Where the current application supplies an integrity ledger, the same
-unkeyed-chain limitations apply. Checkpoints also miss changes and exact
-reversions occurring entirely between observations.
+The Official-only [integrity ledger](INTEGRITY_LEDGER.md) has the same
+unkeyed-chain limitations. Its checkpoints also miss changes and exact
+reversions occurring entirely between observations (KI-004).
 
 ## Filesystem hardening
 
@@ -478,21 +612,6 @@ consistent live-filesystem snapshots, or secure-erasure mechanisms.
 
 Unreadable files can be skipped. Restore can leave partial output if
 interrupted.
-
-## Protection limits
-
-- Unreviewed cryptographic constructions.
-- Python execution without whole-program constant-time guarantees.
-- Master keys in process memory.
-- Readable metadata and plaintext fingerprints.
-- Keyrings co-located with protected data.
-- No forward secrecy for data protected by a compromised master key.
-- Research-grade biometric matching and limited motion checks.
-- Editable attempt counters and concurrent-writer limitations.
-- Demonstration package text-to-key derivation.
-- Unauthenticated custody labels and rewritable local audit history.
-- Memory, temporary-storage, throughput, and partial-restore limits.
-- Optional hardware logic without physical-device validation.
 
 ## Related documentation
 

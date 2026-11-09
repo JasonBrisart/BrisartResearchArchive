@@ -141,7 +141,8 @@ Commands (each takes the options listed under it):
   - name (positional): bundle name to store it under.
   - paths (positional, one or more): one or more file, folder, or drive root
     paths.
-  - --chunk-mb: integer, MiB per chunk; default 8.
+  - --chunk-mb: integer, MiB per chunk; default 8. Not range-checked: zero or
+    a negative value reaches the bulk layer unchanged (KI-006).
 - extract-attachment -- decrypt an attached file (or bundle) back to disk.
   - identity_id: the identity's id.
   - name (positional).

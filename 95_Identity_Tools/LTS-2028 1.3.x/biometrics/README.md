@@ -154,8 +154,10 @@ it is not an in-place template update.
 
 ## Storage and keyring
 
-Identity records contain readable metadata such as the identity identifier,
-label, and enrolled modalities.
+Identity records keep some metadata readable without unlocking: the identity
+identifier, label, enrolled modalities, and each attachment's filename, size,
+and SHA-256. A SHA-256 can reveal that an attachment matches a file someone
+already has.
 
 Template payloads are sealed under a local master key. A keyring wraps that
 master key under a passphrase-derived key and an offline recovery-code-derived
@@ -225,5 +227,6 @@ This is a research implementation, not production biometric authentication.
 BSR2 is unreviewed research cryptography. Matching thresholds and motion
 checks are not substitutes for independently validated authentication controls.
 
-See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md) and
-[known issues](../docs/KNOWN_ISSUES.md).
+See [What these tools do not protect against](../docs/BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against),
+the rest of [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md),
+and [known issues](../docs/KNOWN_ISSUES.md).

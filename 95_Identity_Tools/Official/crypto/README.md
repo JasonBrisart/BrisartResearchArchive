@@ -129,4 +129,5 @@ cryptographic security or constant-time behavior throughout Python execution.
 BSR2 is custom, unreviewed research cryptography and must not be the sole
 protection for high-value or irreplaceable secrets.
 
-See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).
+See [What these tools do not protect against](../docs/BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against)
+and the rest of [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).

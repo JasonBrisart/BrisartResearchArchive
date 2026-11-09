@@ -114,10 +114,9 @@ Edge cases
 
 Known limitations
 -----------------
-- Direct API callers must supply a positive integer chunk_bytes below the
-  envelope payload limit. No dedicated validation enforces this: zero
-  raises ValueError for nonempty data, and a negative value can produce no
-  chunks (KI-006).
+- Direct API callers must supply a positive integer chunk_bytes. No
+  dedicated validation enforces this: zero raises ValueError for nonempty
+  data, and a negative value can produce no chunks (KI-006).
 - Tracked in docs/KNOWN_ISSUES.md: KI-003: Bulk processing is constrained by
   throughput, memory, and temporary storage
 

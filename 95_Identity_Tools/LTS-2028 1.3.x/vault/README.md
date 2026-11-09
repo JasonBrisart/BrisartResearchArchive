@@ -172,7 +172,8 @@ Local audit files are not an independently protected evidence store.
 Concurrent writers and filesystem-level attackers require controls beyond
 these application helpers.
 
-See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).
+See [What these tools do not protect against](../docs/BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against)
+and the rest of [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md).
 
 ### Existing-record update limitation
 

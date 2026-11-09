@@ -167,9 +167,10 @@ do not establish independent security assurance.
 
 See [BSR2 integration and threat model](BSR2_INTEGRATION.md).
 
-### Direct API chunk-size limitation
+### Chunk-size validation
 
-CLI validation is not a substitute for API validation. Direct bulk-service
-callers must provide a positive integer chunk size. Zero and negative sizes are
-not safely rejected by a dedicated validator; nonempty input can raise
-ValueError or yield no chunks. See KI-006.
+`vault encrypt-paths` accepts `--chunk-mb` from 1 to 15 only.
+`biometrics attach-paths --chunk-mb` and the bulk APIs do not check the size:
+zero raises `ValueError` for nonempty input, and a negative size produces no
+chunks. Use the default chunk size, and have direct callers pass a positive
+integer. See KI-006.

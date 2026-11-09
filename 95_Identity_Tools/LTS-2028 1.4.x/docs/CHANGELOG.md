@@ -4,6 +4,78 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ---
 
+## [Unreleased] - 2026-11-09 — LTS-2028 Protection-Limits Documentation
+
+A documentation-only pass. The threat model's closing list of protection
+limits becomes a section that explains each limit and what you can do about
+it, and the rest of the documentation points to it. The pass also corrects
+KI-006, which understated where the chunk-size fault can be reached.
+Official and LTS-2028 1.3.x received the same pass.
+
+### Documentation
+
+- **`docs/BSR2_INTEGRATION.md`: "What these tools do not protect against"
+  replaces "Protection limits".**
+  - **Before:** the last section was a list of short phrases ("Master keys in
+    process memory", "Keyrings co-located with protected data"), with no
+    explanation and nothing a reader could act on.
+  - **Now:** the section sits directly after "Primary caveat", so it is the
+    second thing a reader sees. Each limit says in plain words what is
+    exposed, and ends with *What you can do*. It is grouped by where the limit
+    applies: the encryption itself, while the tools are running, files on
+    disk, biometrics, and packages and records.
+    1.4.x's copy leaves out the integrity ledger and hardware, which this
+    line doesn't have.
+  - Facts were checked against the code, not copied from the old list:
+    which fields stay readable without a passphrase (vault records, biometric
+    identities and attachments, packages), where each keyring lives, the
+    `unlock_attempts` field, and that the GUI keeps a store unlocked until
+    Lock or the window closes. Only comparisons of secret values (keyring
+    check values, factor bindings) are described as constant-time.
+  - Restoring a bundle writes the rebuilt ZIP to a temporary directory
+    before extracting it. The old list didn't say so; the new section does.
+- **`docs/KNOWN_ISSUES.md`.**
+  - The introduction says what is tracked here (defects, and limitations that
+    still have a next step) and links to the new section for design limits,
+    in place of the "Protection limits" link.
+  - KI-005, KI-006, and KI-007 use the full template: numbered steps, an
+    expected and an actual behavior that say what happens, and a next step
+    with a workaround. "Tried/Ruled out" is spelled "Tried / Ruled out"
+    everywhere, as in the template.
+  - **KI-006 is wider than it said.** It described direct API callers only.
+    `biometrics attach-paths --chunk-mb` also passes its value through
+    unchecked, so `--chunk-mb 0` reaches the same fault; only
+    `vault encrypt-paths` checks the range (1 to 15). The title is now
+    "Biometrics bulk CLI and direct bulk APIs do not validate chunk size", and
+    the environment, steps, and workaround include the CLI. The code is
+    unchanged; the fix is still a separate code change.
+- **`docs/FILE_AND_BUNDLE_ENCRYPTION.md`.** "Direct API chunk-size limitation"
+  becomes "Chunk-size validation" and states which commands check the size and
+  which don't (KI-006). It no longer mentions an envelope payload limit,
+  which sealing has not had since 1.4.0.
+- **`docs/README.md`.** The opening caveat links to the new section, and
+  "Important boundaries" says that it is a short list and links to the full
+  one.
+- **`docs/SECURITY.md`.** "Assurance boundaries" links to the new section for
+  each item, and marks physical-device validation as Official only. The text
+  stays identical in all three lines.
+- **Component READMEs.** `vault/`, `biometrics/`, `packages/`, and `crypto/`
+  link their security sections to the new section. `biometrics/README.md`
+  adds that each attachment's filename, size, and SHA-256 are readable without
+  unlocking.
+- **Python headers.** `vault/store/bulk_file_service.py` and
+  `biometrics/engine/bulk_attachments.py` no longer tell callers to stay
+  "below the envelope payload limit", which no longer exists.
+  `biometrics/app.py` notes that `--chunk-mb` is not range-checked (KI-006).
+
+### Compatibility
+
+No code, stored-format, or dependency change. The only Python edits are
+in module docstrings. `version.py` stays at 1.4.0. Every Markdown link and
+heading anchor in the line resolves.
+
+---
+
 ## [1.4.0] - 2026-11-08 — LTS-2028 Shared Encryption and Migration
 
 LTS-2028 1.4.x replaces vendored BSR2 Alpha 3 (0.3.0-alpha) with BSR2 Alpha 4
