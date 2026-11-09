@@ -38,7 +38,9 @@ LTS-2028 release-line decision in this line's documentation; the decision and
 its consequences for 1.3.x are summarized at the top of this changelog. It
 also replaces the threat model's closing list of protection limits with a
 section that explains each limit and what you can do about it, corrects
-KI-006, and points readers to LTS-2028 1.4.x's new migration document.
+KI-006, points readers to LTS-2028 1.4.x's new migration document, and
+rewrites the security policy's vague reporting and response sections with
+named channels, a severity scale, response targets, and a disclosure policy.
 Official 1.10.1 and LTS-2028 1.4.1 receive the same pass.
 
 ### Documentation
@@ -179,6 +181,48 @@ Official 1.10.1 and LTS-2028 1.4.1 receive the same pass.
   copy never contained. It says this line has no migration and links to
   "Moving to LTS-2028 1.4.x".
 
+### Documentation: security reporting and response policy
+
+- **`docs/SECURITY.md`, "Reporting".**
+  - **Before:** reports were to use "a private reporting channel": GitHub
+    Private Vulnerability Reporting where enabled, otherwise "a private contact
+    channel published by the maintainer". Neither was named. GitHub releases
+    have been discontinued, but the repository's private advisory route still
+    applies, so it stays. Nothing said what counts as a security issue.
+  - **Now:** two named private channels, handled the same way. GitHub
+    Private Vulnerability Reporting is preferred. Email to
+    Jason@brisartresearcharchive.com, with a fixed subject format, takes the
+    full report for anyone who would rather not use GitHub. Public reports
+    before disclosure are ruled out. New subsections define what is a security issue, list what is handled
+    as an ordinary known issue instead (documented design limits, open KIs,
+    1.3.x's KI-008 to KI-010, ended releases, an attacker already controlling
+    an unlocked session), and limit testing to data the reporter owns.
+  - The report fields now follow the `docs/KNOWN_ISSUES.md` template, plus
+    **Impact** and **Disclosure**, and ask for `python cli.py version` and
+    `python tools/envinfo.py` output from the affected line's folder. Reports
+    containing real secrets are deleted once a reproduction is rebuilt.
+- **`docs/SECURITY.md`, "Severity" (new).** Critical, High, Medium, and Low
+  are defined against the protections the tools claim, not the limits they
+  already document. The maintainer's assessment is final and explained when it
+  differs from the reporter's.
+- **`docs/SECURITY.md`, "Response expectations".**
+  - **Before:** acknowledgement "within a few days", an assessment "within
+    roughly two weeks", and no fix targets.
+  - **Now:** a table: acknowledgement within 3 days, triage within 14 days,
+    status updates at least every 14 days, and fix targets by severity
+    (Critical 14 days, High 30, Medium 90, Low next scheduled release). They
+    remain targets for a solo maintainer, not service levels, but a missed
+    target is announced in advance with a new date. "Fix shipped" means on
+    every affected supported line. Every report closes with a stated outcome:
+    fixed, won't fix, not reproduced, duplicate, or not a security issue.
+- **`docs/SECURITY.md`, "Disclosure" (new).** Coordinated disclosure: no
+  publication until the fix ships on every affected line, or 90 days after
+  triage, whichever comes first, unless agreed otherwise. Fixes are recorded
+  as changelog **Security** entries with an identifier, severity, affected
+  versions, files, and the gap closed; won't-fix issues go to
+  `docs/KNOWN_ISSUES.md`. Credit is opt-in.
+- The text is identical in all three lines.
+
 ### CI
 
 - **`.github/workflows/test-95-identity-tools-lts2028-1.3.yml` (new, at the
@@ -195,8 +239,7 @@ Official 1.10.1 and LTS-2028 1.4.1 receive the same pass.
 No code, stored-format, cryptographic, or dependency change. Python edits are
 limited to module docstrings and the version string: `version.py` moves from
 1.3.10 to 1.3.11. The pinned `vendor/` files are byte-for-byte unchanged, and
-data written by 1.3.10 and 1.3.11 is identical. Every Markdown link and
-heading anchor in the line resolves.
+data written by 1.3.10 and 1.3.11 is identical. Every Markdown link and heading anchor in the line resolves.
 
 ---
 

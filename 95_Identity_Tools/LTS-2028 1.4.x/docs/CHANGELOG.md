@@ -7,13 +7,15 @@ All notable changes to BrisartIdentityTools are recorded here.
 ## [1.4.1] - 2026-11-08 — LTS-2028 Protection-Limits and Migration Documentation
 
 A documentation release; no code, stored-format, or dependency change, so it
-stays inside the LTS-2028 contract. Three things change. The threat model's
+stays inside the LTS-2028 contract. Four things change. The threat model's
 closing list of protection limits becomes a section that explains each limit
 and what you can do about it, and the rest of the documentation points to it.
 The encryption migration record moves out of `docs/BSR2_INTEGRATION.md` into
 its own document, `docs/ENCRYPTION_MIGRATION.md`. KI-006 is corrected: it
-understated where the chunk-size fault can be reached. Official 1.10.1 and
-LTS-2028 1.3.11 receive the same pass.
+understated where the chunk-size fault can be reached. The security policy's
+reporting and response sections, which were vague, are rewritten with named
+channels, a severity scale, response targets, and a disclosure policy.
+Official 1.10.1 and LTS-2028 1.3.11 receive the same pass.
 
 ### Documentation: what these tools do not protect against
 
@@ -95,6 +97,48 @@ LTS-2028 1.3.11 receive the same pass.
   `docs/ENCRYPTION_MIGRATION.md` instead of
   `BSR2_INTEGRATION.md#encryption-migration`. `docs/README.md`'s
   Documentation list gives the migration document its own entry.
+
+### Documentation: security reporting and response policy
+
+- **`docs/SECURITY.md`, "Reporting".**
+  - **Before:** reports were to use "a private reporting channel": GitHub
+    Private Vulnerability Reporting where enabled, otherwise "a private contact
+    channel published by the maintainer". Neither was named. GitHub releases
+    have been discontinued, but the repository's private advisory route still
+    applies, so it stays. Nothing said what counts as a security issue.
+  - **Now:** two named private channels, handled the same way. GitHub
+    Private Vulnerability Reporting is preferred. Email to
+    Jason@brisartresearcharchive.com, with a fixed subject format, takes the
+    full report for anyone who would rather not use GitHub. Public reports
+    before disclosure are ruled out. New subsections define what is a security issue, list what is handled
+    as an ordinary known issue instead (documented design limits, open KIs,
+    1.3.x's KI-008 to KI-010, ended releases, an attacker already controlling
+    an unlocked session), and limit testing to data the reporter owns.
+  - The report fields now follow the `docs/KNOWN_ISSUES.md` template, plus
+    **Impact** and **Disclosure**, and ask for `python cli.py version` and
+    `python tools/envinfo.py` output from the affected line's folder. Reports
+    containing real secrets are deleted once a reproduction is rebuilt.
+- **`docs/SECURITY.md`, "Severity" (new).** Critical, High, Medium, and Low
+  are defined against the protections the tools claim, not the limits they
+  already document. The maintainer's assessment is final and explained when it
+  differs from the reporter's.
+- **`docs/SECURITY.md`, "Response expectations".**
+  - **Before:** acknowledgement "within a few days", an assessment "within
+    roughly two weeks", and no fix targets.
+  - **Now:** a table: acknowledgement within 3 days, triage within 14 days,
+    status updates at least every 14 days, and fix targets by severity
+    (Critical 14 days, High 30, Medium 90, Low next scheduled release). They
+    remain targets for a solo maintainer, not service levels, but a missed
+    target is announced in advance with a new date. "Fix shipped" means on
+    every affected supported line. Every report closes with a stated outcome:
+    fixed, won't fix, not reproduced, duplicate, or not a security issue.
+- **`docs/SECURITY.md`, "Disclosure" (new).** Coordinated disclosure: no
+  publication until the fix ships on every affected line, or 90 days after
+  triage, whichever comes first, unless agreed otherwise. Fixes are recorded
+  as changelog **Security** entries with an identifier, severity, affected
+  versions, files, and the gap closed; won't-fix issues go to
+  `docs/KNOWN_ISSUES.md`. Credit is opt-in.
+- The text is identical in all three lines.
 
 ### Compatibility
 

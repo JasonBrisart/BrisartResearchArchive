@@ -8,40 +8,164 @@ certification.
 
 ## Reporting
 
-Security reports should use a private reporting channel.
+### Where to report
 
-Where GitHub Private Vulnerability Reporting is enabled, the repository's
-Security tab provides a private advisory route. Availability depends on the
-repository's configuration.
+Use either channel. Both are private and both are handled the same way.
 
-If that route is unavailable, use a private contact channel published by the
-maintainer.
+**1. GitHub Private Vulnerability Reporting (preferred).** Open the
+BrisartIdentityTools repository's **Security** tab and choose **Report a
+vulnerability**. This creates a private advisory that only the reporter and the
+maintainer can see. Put the full report there, including any reproduction
+material, using [What to send](#what-to-send).
 
-Useful report information includes:
+**2. Email.** Send the full report to **Jason@brisartresearcharchive.com**
+instead, if you would rather not use GitHub or can't. Use a subject line in
+this form:
 
-- Affected release line and version (`python cli.py version`).
-- Affected component.
-- Operating system and Python version (`python tools/envinfo.py` prints
-  both).
-- Reproduction steps or a minimal example.
-- Observed and expected behavior.
-- Potential impact.
-- Whether the issue appears to involve application integration or BSR2 itself.
+```text
+[SECURITY] Identity Tools <line> <version>: <short title>
+```
 
-Avoid including live credentials, recovery codes, private biometric samples,
-or unrelated personal information.
+For example: `[SECURITY] Identity Tools LTS-2028 1.4.1: keyring check value
+accepts a truncated MAC`. The body follows [What to send](#what-to-send).
+
+These are the only reporting channels. Do not report a suspected vulnerability
+in a public issue, a pull request, a discussion forum, or
+`docs/KNOWN_ISSUES.md` until it has been disclosed under
+[Disclosure](#disclosure).
+
+### What is a security issue
+
+Report it here if a defect lets someone do any of the following through the
+tools, beyond what
+[What these tools do not protect against](BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against)
+already states:
+
+- read sealed data, a master key, a recovery code, a passphrase, or a
+  biometric template without the required secret;
+- change sealed data, a keyring, a package, or a custody chain without the
+  change being detected where the tools say it is detected;
+- unlock a store, match an identity, or open a package that should have been
+  refused;
+- get around attempt limiting;
+- make the tools write secret material, unencrypted, somewhere the
+  documentation does not say it goes;
+- make the tools fall back to weaker or local cryptography, or accept data from
+  a BSR2 copy other than the linked one;
+- corrupt or destroy stored data through ordinary use of a documented command,
+  including migration.
+
+A flaw in a BSR2 construction itself is also in scope. It is fixed in
+`97_Encryption/Official`, not in Identity Tools (see
+[Supported release lines](#supported-release-lines)).
+
+### Not handled as security reports
+
+These go to `docs/KNOWN_ISSUES.md` as ordinary issues, or are already
+recorded:
+
+- the limits listed in
+  [What these tools do not protect against](BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against),
+  unless the report shows the tools do worse than that section states;
+- issues already open in [Known issues](KNOWN_ISSUES.md), unless the report
+  shows a new way to reach them or a higher impact than recorded;
+- LTS-2028 1.3.x's KI-008, KI-009, and KI-010, which that line will not fix
+  by design (the remedy is LTS-2028 1.4.x);
+- releases whose support has ended (see
+  [Supported release lines](#supported-release-lines));
+- attacks that need an attacker who already controls the machine while a store
+  is unlocked;
+- crashes, wrong output, and performance problems with no effect listed under
+  [What is a security issue](#what-is-a-security-issue).
+
+### What to send
+
+Use the same fields as the [Known issues](KNOWN_ISSUES.md#template) template,
+plus impact:
+
+- **Title:** one line, naming the line, version, and fault.
+- **Reported date:** YYYY-MM-DD.
+- **Severity:** your assessment, using [Severity](#severity).
+- **Environment:** the output of `python cli.py version` and
+  `python tools/envinfo.py`, run in the affected line's folder.
+- **Component:** the file(s) or module(s), and whether the fault is in Identity
+  Tools or in BSR2 itself, if known.
+- **Steps to Reproduce:** numbered, from a fresh store where possible, using
+  test data only.
+- **Expected behavior** and **Actual behavior.**
+- **Impact:** what an attacker gains, and what access they need first.
+- **Tried / Ruled out:** anything that narrows the cause.
+- **Disclosure:** any date by which you intend to publish.
+
+Never send live credentials, real passphrases, real recovery codes, real
+biometric samples, or personal information about anyone. Reproduce with
+throwaway stores and synthetic or demo data. A report that contains real
+secrets is deleted after the reproduction is rebuilt, and the reporter is
+asked to rotate those secrets.
+
+### Testing
+
+Test only against stores, files, and machines you own or are authorized to
+use. Do not test against anyone else's data.
+
+## Severity
+
+Severity is assessed against the protections these tools claim, not against
+the limits they already document.
+
+| Severity | Meaning |
+| --- | --- |
+| **Critical** | Recovers plaintext, a master key, a passphrase, or a recovery code from stored data without the secret, or forges data the tools accept as authentic, with no prior access beyond a copy of the files. |
+| **High** | The same outcome under a realistic precondition (a specific input, a specific command, local access while the tools are closed), or bypasses attempt limiting, or destroys stored data through a documented command. |
+| **Medium** | Weakens a protection without defeating it: leaks information the documentation says is protected, makes guessing measurably cheaper, or causes recoverable corruption. |
+| **Low** | Hard to exploit, or exploitable only with access that already exposes the same data. |
+
+The maintainer's assessment sets the final severity and is explained to the
+reporter when it differs from theirs.
 
 ## Response expectations
 
-The maintainer aims to acknowledge a report within a few days and to give an
-initial assessment within roughly two weeks.
+BrisartIdentityTools has one maintainer. The targets below are commitments to
+aim for, not guaranteed service levels. When one will be missed, the reporter
+is told before it passes, with a new date.
 
-These are maintenance targets, not guaranteed service levels.
+| Stage | Target |
+| --- | --- |
+| Acknowledgement | Within 3 days of receipt |
+| Triage: reproduced or not, severity, affected lines | Within 14 days of receipt |
+| Status updates | At least every 14 days until the report is closed |
+| Fix shipped, Critical | Within 14 days of triage |
+| Fix shipped, High | Within 30 days of triage |
+| Fix shipped, Medium | Within 90 days of triage |
+| Fix shipped, Low | In the next scheduled release of each affected line |
 
-A confirmed issue's mitigation or fix plan is communicated through the private
-reporting channel.
+"Fix shipped" means released on every supported line the defect affects, in
+the order given under [Supported release lines](#supported-release-lines).
+If a defect can't be fixed within a line's contract, the reporter is told
+which line carries the remedy (see [Lifecycle](#lifecycle)).
 
-The documented policy does not provide a bug bounty.
+A report is closed as one of: **fixed** (with the release on each line),
+**won't fix** (with the reason, recorded in `docs/KNOWN_ISSUES.md`),
+**not reproduced**, **duplicate**, or **not a security issue** (with where it
+was moved). The reporter is told which, and why.
+
+There is no bug bounty.
+
+## Disclosure
+
+Disclosure is coordinated. The reporter is asked not to publish details until
+the fix has shipped on every affected supported line, or 90 days after triage,
+whichever comes first. The maintainer can agree an earlier or later date with
+the reporter, for example when a fix is ready sooner or needs a BSR2 change.
+
+When the fix ships, each affected line's `docs/CHANGELOG.md` records it in a
+**Security** entry with an identifier (for example `LTS-2028-SEC-4`),
+severity, affected versions, the files changed, and the gap it closes. An
+issue that will not be fixed on a line is recorded in that line's
+`docs/KNOWN_ISSUES.md` instead.
+
+Reporters are credited by name in the changelog entry if they want to be, and
+not otherwise.
 
 ## Scope
 
