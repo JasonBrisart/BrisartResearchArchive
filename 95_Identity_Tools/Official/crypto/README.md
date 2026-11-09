@@ -55,7 +55,7 @@ through each store's migration (`vault migrate`, `biometrics migrate`,
 `package migrate`, or the GUI prompt), all built on `envelope.reseal()` and
 `Keyring.migrate()`. The legacy readers stay until a later release removes the
 previous encryption; see
-[BSR2 integration](../docs/BSR2_INTEGRATION.md#encryption-migration).
+[Encryption migration](../docs/ENCRYPTION_MIGRATION.md).
 
 ## Padding
 

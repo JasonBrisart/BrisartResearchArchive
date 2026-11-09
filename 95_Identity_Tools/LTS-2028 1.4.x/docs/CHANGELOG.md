@@ -4,15 +4,18 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ---
 
-## [Unreleased] - 2026-11-09 — LTS-2028 Protection-Limits Documentation
+## [1.4.1] - 2026-11-08 — LTS-2028 Protection-Limits and Migration Documentation
 
-A documentation-only pass. The threat model's closing list of protection
-limits becomes a section that explains each limit and what you can do about
-it, and the rest of the documentation points to it. The pass also corrects
-KI-006, which understated where the chunk-size fault can be reached.
-Official and LTS-2028 1.3.x received the same pass.
+A documentation release; no code, stored-format, or dependency change, so it
+stays inside the LTS-2028 contract. Three things change. The threat model's
+closing list of protection limits becomes a section that explains each limit
+and what you can do about it, and the rest of the documentation points to it.
+The encryption migration record moves out of `docs/BSR2_INTEGRATION.md` into
+its own document, `docs/ENCRYPTION_MIGRATION.md`. KI-006 is corrected: it
+understated where the chunk-size fault can be reached. Official 1.10.1 and
+LTS-2028 1.3.11 receive the same pass.
 
-### Documentation
+### Documentation: what these tools do not protect against
 
 - **`docs/BSR2_INTEGRATION.md`: "What these tools do not protect against"
   replaces "Protection limits".**
@@ -68,11 +71,39 @@ Official and LTS-2028 1.3.x received the same pass.
   "below the envelope payload limit", which no longer exists.
   `biometrics/app.py` notes that `--chunk-mb` is not range-checked (KI-006).
 
+### Documentation: encryption migration gets its own document
+
+- **`docs/ENCRYPTION_MIGRATION.md` (new).**
+  - **Before:** the migration record was one long section of
+    `docs/BSR2_INTEGRATION.md`, between the integration boundary and master
+    keys, and five other documents linked into the middle of it. How to
+    actually migrate was spread across the Vault, Biometrics, and Packages
+    READMEs.
+  - **Now:** the record has its own file, unchanged in substance, with its
+    headings promoted one level. It opens with "Before you migrate" (keep a
+    copy, nothing changes until you agree, the passphrase stays and the
+    recovery code is replaced) and "Migrating each store", one table with the
+    CLI command and GUI prompt for Vault, Biometrics, and Packages. It also
+    states this line's migration window: the previous encryption and the
+    `migrate` commands stay until at least 8 February 2027.
+- **`docs/BSR2_INTEGRATION.md`.** "Encryption migration" is now a short
+  pointer to the new document, so the existing anchor still resolves. The
+  file goes back to one subject: how BSR2 is linked and what it protects.
+  "Related documentation" lists the new document.
+- **Links.** `docs/README.md`, `crypto/README.md`, `vault/README.md`,
+  `biometrics/README.md`, and `packages/README.md` link to
+  `docs/ENCRYPTION_MIGRATION.md` instead of
+  `BSR2_INTEGRATION.md#encryption-migration`. `docs/README.md`'s
+  Documentation list gives the migration document its own entry.
+
 ### Compatibility
 
-No code, stored-format, or dependency change. The only Python edits are
-in module docstrings. `version.py` stays at 1.4.0. Every Markdown link and
-heading anchor in the line resolves.
+No code, stored-format, or dependency change. Python edits are limited to
+module docstrings and the version string: `version.py` moves from 1.4.0 to
+1.4.1. Data written by 1.4.0 and 1.4.1 is identical, and the migration window
+(no removal of the previous encryption before 8 February 2027) is unchanged.
+Every Markdown link and heading anchor in the line resolves, checked by
+resolving each link's file and heading after the split.
 
 ---
 

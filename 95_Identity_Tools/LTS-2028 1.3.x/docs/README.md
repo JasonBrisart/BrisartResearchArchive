@@ -212,7 +212,7 @@ Alpha 4 as its only change, and it reads everything 1.3.x writes. Nothing in
    unchanged.
 
 Migrated data cannot be opened by any 1.3.x release. LTS-2028 1.4.x's
-`docs/BSR2_INTEGRATION.md`, "Encryption migration", describes every step.
+`docs/ENCRYPTION_MIGRATION.md` describes every step.
 
 ## Documentation
 
@@ -222,7 +222,8 @@ Start here:
   report a problem.
 - [Known issues](KNOWN_ISSUES.md): open problems, with severity and status.
 - [BSR2 integration and threat model](BSR2_INTEGRATION.md): what is protected,
-  what is not, and how the encryption migration works.
+  and what is not. This line has no encryption migration; see
+  [Moving to LTS-2028 1.4.x](#moving-to-lts-2028-14x).
 
 Each tool:
 

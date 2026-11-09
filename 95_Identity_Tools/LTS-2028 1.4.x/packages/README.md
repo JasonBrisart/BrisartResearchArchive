@@ -59,7 +59,7 @@ Official 1.9.2 and earlier.
 
 Each step, including what is decrypted, what is re-encrypted, and when
 each file is written, is in
-[BSR2 integration](../docs/BSR2_INTEGRATION.md#encryption-migration).
+[Encryption migration](../docs/ENCRYPTION_MIGRATION.md).
 
 ## CLI usage
 

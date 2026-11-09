@@ -127,7 +127,7 @@ and listed. The migrated file cannot be opened by any LTS-2028 1.3.x release,
 or by Official 1.9.2 and earlier, so keep a copy if you may need to go back.
 Each step, including what is decrypted, what is re-encrypted, and when
 the file is written, is in
-[BSR2 integration](../docs/BSR2_INTEGRATION.md#encryption-migration).
+[Encryption migration](../docs/ENCRYPTION_MIGRATION.md).
 
 The dispatcher provides the same application interface:
 

@@ -30,14 +30,16 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ---
 
-## [Unreleased] - 2026-11-08 — LTS-2028 Release-Line Notice
+## [1.3.11] - 2026-11-08 — LTS-2028 Release-Line and Protection-Limits Documentation
 
-Records the LTS-2028 release-line decision in this line's documentation. The
-decision and its consequences for 1.3.x are summarized at the top of this
-changelog. A second documentation pass (2026-11-09) replaces the threat model's
-closing list of protection limits with a section that explains each limit and
-what you can do about it, and corrects KI-006. Official and LTS-2028 1.4.x
-received the same pass.
+A documentation release; no code, stored-format, cryptographic, or dependency
+change, so it stays inside this line's original contract. It records the
+LTS-2028 release-line decision in this line's documentation; the decision and
+its consequences for 1.3.x are summarized at the top of this changelog. It
+also replaces the threat model's closing list of protection limits with a
+section that explains each limit and what you can do about it, corrects
+KI-006, and points readers to LTS-2028 1.4.x's new migration document.
+Official 1.10.1 and LTS-2028 1.4.1 receive the same pass.
 
 ### Documentation
 
@@ -100,7 +102,7 @@ received the same pass.
     split word in `biometrics/app.py`, and stray spaces inside file paths in
     `crypto/attempt_store.py`.
 
-### Documentation: what these tools do not protect against (2026-11-09)
+### Documentation: what these tools do not protect against
 
 - **`docs/BSR2_INTEGRATION.md`: "What these tools do not protect against"
   replaces "Protection limits".**
@@ -165,6 +167,18 @@ received the same pass.
 - **Python headers.** `biometrics/app.py` notes that `--chunk-mb` is not
   range-checked (KI-006).
 
+### Documentation: pointers to the encryption migration
+
+- **`docs/README.md`, "Moving to LTS-2028 1.4.x".**
+  - **Before:** it sent readers to LTS-2028 1.4.x's
+    `docs/BSR2_INTEGRATION.md`, "Encryption migration".
+  - **Now:** it names `docs/ENCRYPTION_MIGRATION.md`, where 1.4.1 moves that
+    record.
+- **`docs/README.md`, Documentation.** The BSR2 integration entry no longer
+  says it explains "how the encryption migration works", which this line's
+  copy never contained. It says this line has no migration and links to
+  "Moving to LTS-2028 1.4.x".
+
 ### CI
 
 - **`.github/workflows/test-95-identity-tools-lts2028-1.3.yml` (new, at the
@@ -178,8 +192,10 @@ received the same pass.
 
 ### Compatibility
 
-No code, stored-format, or dependency change. Python edits are limited to
-module docstrings. `version.py` stays at 1.3.10. Every Markdown link and
+No code, stored-format, cryptographic, or dependency change. Python edits are
+limited to module docstrings and the version string: `version.py` moves from
+1.3.10 to 1.3.11. The pinned `vendor/` files are byte-for-byte unchanged, and
+data written by 1.3.10 and 1.3.11 is identical. Every Markdown link and
 heading anchor in the line resolves.
 
 ---

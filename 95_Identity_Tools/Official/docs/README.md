@@ -200,8 +200,8 @@ what you can do about each one, is in
   uses the previous encryption. It still opens, and each tool offers to migrate
   it (`vault migrate`, `biometrics migrate`, `package migrate`, or a prompt in
   the GUI); migrated data cannot be opened by Official 1.9.2 and earlier or any
-  LTS-2028 1.3.x release (LTS-2028 1.4.x reads it). See [BSR2
-  integration](BSR2_INTEGRATION.md#encryption-migration).
+  LTS-2028 1.3.x release (LTS-2028 1.4.x reads it). See [Encryption
+  migration](ENCRYPTION_MIGRATION.md).
 - Sealing has no payload size cap and bulk workflows chunk large content,
   but neither provides unlimited memory, disk space, throughput, or full-drive
   backup guarantees.
@@ -216,8 +216,10 @@ Start here:
 - [Security policy](SECURITY.md): supported lines, end-of-life dates, how to
   report a problem.
 - [Known issues](KNOWN_ISSUES.md): open problems, with severity and status.
-- [BSR2 integration and threat model](BSR2_INTEGRATION.md): what is protected,
-  what is not, and how the encryption migration works.
+- [BSR2 integration and threat model](BSR2_INTEGRATION.md): how BSR2 is
+  linked, what is protected, and what is not.
+- [Encryption migration](ENCRYPTION_MIGRATION.md): moving data from the
+  previous encryption to the current one, and what can't be undone.
 
 Each tool:
 
