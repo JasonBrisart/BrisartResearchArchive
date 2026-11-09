@@ -85,7 +85,7 @@ reflects only what is genuinely still outstanding.
 
 ## KI-005: Existing-record metadata changes can break payload authentication
 
-- **Reported date:** Not recorded; identified during this source audit.
+- **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
 - **Environment:** LTS-2028 and main; platform-independent source behavior.
 - **Component:** `vault/store/vault_service.py`
@@ -99,7 +99,7 @@ reflects only what is genuinely still outstanding.
 
 ## KI-006: Direct bulk APIs do not validate chunk size
 
-- **Reported date:** Not recorded; identified during this source audit.
+- **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
 - **Environment:** LTS-2028 and main; platform-independent source behavior.
 - **Component:** `vault/store/bulk_file_service.py; biometrics/engine/bulk_attachments.py`
@@ -113,7 +113,7 @@ reflects only what is genuinely still outstanding.
 
 ## KI-007: Biometrics GUI can hide legitimate attachment names
 
-- **Reported date:** Not recorded; identified during this source audit.
+- **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
 - **Environment:** LTS-2028 and main; platform-independent source behavior.
 - **Component:** `gui/tabs/tab_biometrics.py`
