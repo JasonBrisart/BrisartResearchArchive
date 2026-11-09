@@ -65,7 +65,7 @@ boundary as the monitored files.
 The module does not schedule itself. The standalone interface is
 `tools/integrity_checkpoint.py`.
 
-See ../docs/INTEGRITY_LEDGER.md.
+See [Integrity ledger](../docs/INTEGRITY_LEDGER.md).
 
 ## UTC timestamps
 

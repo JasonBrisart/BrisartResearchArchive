@@ -22,7 +22,7 @@ Public interface:
 - command_attach(args) -- Attach an arbitrary file (any extension, or none at
   all) to an already-enrolled identity. The file's contents are never
   inspected, parsed, or assumed to be any particular format -- exactly the raw
-  bytes on disk are sealed. Files larger than BSR2's ~16 MiB single- envelope
+  bytes on disk are sealed. Files larger than BSR2's ~16 MiB single-envelope
   limit are transparently chunked.
 - command_attach_paths(args) -- Attach any combination of files, folders,
   and/or drive roots to an identity as ONE bundle, zipping them first

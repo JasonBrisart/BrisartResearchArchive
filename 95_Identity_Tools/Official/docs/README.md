@@ -1,6 +1,9 @@
 # BrisartIdentityTools
 
-Local identity tooling within Brisart Research Archive, organized into three
+> This copy documents **Official**, the development line. LTS-2028 1.4.x and
+> 1.3.x have their own copies in their own folders.
+
+Local identity tooling within Brisart Research Archive, organized into four
 application areas:
 
 - **Vault:** local JSON records with sealed payloads, plus file and bundle
@@ -18,9 +21,9 @@ cloud service. All encryption comes from BSR2
 (`97_Encryption/Official`). The only requirement is that the
 `95_Identity_Tools` and `97_Encryption` folders sit together in the same
 folder; where that folder is (a desktop folder, a drive, OneDrive) does not
-matter. Kept apart, the tools start and report `Encryption not found`, and
-nothing can be sealed or opened.
-Official also shows a warning pop-up at start-up in that case.
+matter. Kept apart, the tools start and report `Encryption not found`, nothing
+can be sealed or opened, and the desktop interface shows a warning pop-up at
+start-up.
 
 BSR2 is custom, unreviewed research cryptography. These tools must not be
 treated as independently audited security products or as the sole protection
@@ -52,16 +55,45 @@ Or, for an LTS-2028 application, `cd "LTS-2028 1.4.x"` or
 
 Do not combine modules from different application trees.
 
+## Quick start
+
+A first vault, from the Identity Tools archive directory:
+
+```bash
+cd Official
+python cli.py version      # tools version and the BSR2 release it links
+
+python cli.py vault init
+python cli.py vault upsert "Lab door code" --kind credential --payload '{"value": "4512"}'
+python cli.py vault list
+python cli.py vault get RECORD_ID
+```
+
+- `init` asks for a new passphrase twice and prints a recovery code once. Store
+  the recovery code somewhere separate; it cannot be shown again. `init`
+  derives two keys with BSR2-MHF-1, so it takes a few seconds.
+- `upsert` and `get` ask for the passphrase. `list` does not: record labels and
+  kinds are readable while the vault is locked, and only payloads are sealed.
+- Replace `RECORD_ID` with the id `upsert` or `list` printed.
+- Without `--vault`, the vault is `data/vault/vault.json` and audit events go
+  to `data/vault/audit/`, both relative to the application root.
+
+Biometrics and Packages work the same way. Start from
+`python cli.py biometrics --help` and `python cli.py package --help`, or see
+their READMEs under Documentation. `python cli.py package demo` runs a
+complete package cycle without any setup.
+
 ## Requirements
 
 The documented Python minimum is 3.10.
 
-The desktop interface additionally requires a working Tkinter installation
-and a graphical display. No third-party Python GUI framework is used.
+The desktop interface additionally requires a working Tkinter installation and
+a graphical display. No third-party Python GUI framework is used.
 
-The supplied hardware layer in `Official/` contains optional integration contracts
-and driver logic. Real device access requires caller-supplied bindings or
-transports; it is not automatically provided by installing the application.
+The supplied hardware layer in `Official/` contains optional integration
+contracts and driver logic. Real device access requires caller-supplied
+bindings or transports; it is not automatically provided by installing the
+application.
 
 ## Launch the desktop interface
 
@@ -107,26 +139,28 @@ operation has completed successfully.
 ## Layout
 
 ```text
-app.py
-cli.py
-version.py
-biometrics/
-common/
-crypto/
-docs/
-gui/
-packages/
-tests/
-tools/
-vault/
-hardware/
+app.py        desktop shell (Tkinter)
+cli.py        command dispatcher: vault, biometrics, package, encryption, gui
+version.py    release version of this tree
+biometrics/   enrollment, verification, templates, attachments
+common/       atomic writes, file modes, SHA-256 fingerprints, timestamps,
+              integrity ledger
+crypto/       the link to BSR2 and everything built on it: keyrings,
+              sealing, contexts, factors, attempt limiting
+docs/         this documentation
+gui/          desktop tabs and shared widgets
+hardware/     optional device contracts and drivers (Official only)
+packages/     recipient-bound packages, custody chain, audit files
+tests/        dispatcher tests and the test runner (tests/run_tests.py)
+tools/        envinfo.py (environment report for bug reports) and
+              integrity_checkpoint.py (Official only)
+vault/        record store, file records, bundles
 ```
 
 `hardware/`, the integrity checkpoint tooling, and the other Official-only
-features (listed in [SECURITY.md](SECURITY.md)) exist only in `Official/`;
-LTS-2028 receives security changes only.
-Encryption is not part of this tree; `crypto/encryption.py` links every
-BSR2 library module from `../../97_Encryption/Official`.
+features (listed in [SECURITY.md](SECURITY.md)) exist only in `Official/`.
+Encryption is not part of this tree: `crypto/encryption.py` links every BSR2
+library module from `../../97_Encryption/Official`.
 
 The GUI is split into:
 
@@ -172,16 +206,33 @@ cryptographic implementation.
 
 ## Documentation
 
-- ../vault/README.md
-- ../biometrics/README.md
-- ../packages/README.md
-- ../gui/README.md
-- ../common/README.md
-- ../crypto/README.md
-- [BSR2 integration and threat model](BSR2_INTEGRATION.md)
-- [File and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md)
-- KNOWN_ISSUES.md
-- [Security policy](SECURITY.md)
+Start here:
+
+- [Security policy](SECURITY.md): supported lines, end-of-life dates, how to
+  report a problem.
+- [Known issues](KNOWN_ISSUES.md): open problems, with severity and status.
+- [BSR2 integration and threat model](BSR2_INTEGRATION.md): what is protected,
+  what is not, and how the encryption migration works.
+
+Each tool:
+
+- [Vault](../vault/README.md)
+- [Biometrics](../biometrics/README.md)
+- [Packages](../packages/README.md)
+- [GUI](../gui/README.md)
+- [Hardware](../hardware/README.md): optional device contracts and drivers.
+
+Shared code and deeper topics:
+
+- [Crypto integration layer](../crypto/README.md)
+- [Common utilities](../common/README.md)
+- [File and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md): large files,
+  folders, and drive roots.
+- [Integrity ledger](INTEGRITY_LEDGER.md): Official-only checkpoints of
+  file hashes.
+
+History:
+
 - [Release history](CHANGELOG.md)
 
 Release-history entries describe their named releases. Old command examples,

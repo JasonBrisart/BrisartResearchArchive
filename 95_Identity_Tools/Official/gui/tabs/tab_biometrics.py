@@ -11,8 +11,8 @@ Public interface:
 - class BiometricsTab(ttk.Frame) -- Create/unlock the biometrics keyring,
   enroll/verify/inspect/delete identities, and attach/extract arbitrary
   files, folders, or drives to/from an identity -- independent of the
-  voice/fingerprint/ video modality system, chunked transparently past BSR2's
-  single- envelope size limit.
+  voice/fingerprint/video modality system. Large content is stored as
+  chunks plus a manifest.
 
 Design notes:
 
@@ -139,10 +139,10 @@ def _save_new_keyring(path: Path, keyring) -> None:
 
 class BiometricsTab(ttk.Frame):
     """Create/unlock the biometrics keyring, enroll/verify/inspect/delete
-    identities, and (new) attach/extract arbitrary files, folders, or
+    identities, and attach/extract arbitrary files, folders, or
     drives to/from an identity -- independent of the voice/fingerprint/
-    video modality system, chunked transparently past BSR2's single-
-    envelope size limit."""
+    video modality system. Large content is stored as chunks plus a
+    manifest."""
 
     KEYRING_FILE_NAME = "keyring.json"
 

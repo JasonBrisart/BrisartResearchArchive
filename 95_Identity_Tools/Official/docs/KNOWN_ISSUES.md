@@ -7,13 +7,33 @@ and easy to scan.
 
 For the deeper, ongoing research-cryptography caveats that apply to the whole
 project by design (BSR2 being unreviewed research crypto, no forward secrecy,
-vault labels readable while locked, etc.), see the **Protection limits** section
-of [`BSR2_INTEGRATION.md`](BSR2_INTEGRATION.md) instead — those are
+vault labels readable while locked, etc.), see the
+[Protection limits](BSR2_INTEGRATION.md#protection-limits) section of
+`BSR2_INTEGRATION.md` instead — those are
 documented, accepted design tradeoffs, not open bugs.
 
 Fully fixed issues are moved to the **Resolved** section at the bottom of this
 file rather than edited in place, so the open-issues list above always
 reflects only what is genuinely still outstanding.
+
+---
+
+## Open issues at a glance
+
+| ID | Issue | Severity | Status |
+| --- | --- | --- | --- |
+| [KI-001](#ki-001-video-liveness-threshold-is-uncalibrated-against-real-camera-hardware) | Video liveness threshold is uncalibrated against real camera hardware | Medium | Open: needs real-camera samples |
+| [KI-003](#ki-003-bulk-processing-is-constrained-by-throughput-memory-and-temporary-storage) | Bulk processing is constrained by throughput, memory, and temporary storage | Low | Documented limitation |
+| [KI-004](#ki-004-integrity-checkpoints-have-observation-gaps-and-unkeyed-history-limitations) | Integrity checkpoints have observation gaps and unkeyed-history limitations | Low | Documented limitation |
+| [KI-005](#ki-005-existing-record-metadata-changes-can-break-payload-authentication) | Existing-record metadata changes can break payload authentication | Medium | Open |
+| [KI-006](#ki-006-direct-bulk-apis-do-not-validate-chunk-size) | Direct bulk APIs do not validate chunk size | Medium | Open |
+| [KI-007](#ki-007-biometrics-gui-can-hide-legitimate-attachment-names) | Biometrics GUI can hide legitimate attachment names | Medium | Open |
+
+Resolved issues are listed at the end of this file.
+
+To report a new problem, use the [template](#template) and paste the output
+of `python tools/envinfo.py` into its **Environment** field. Security problems
+are reported privately instead; see [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -114,13 +134,13 @@ reflects only what is genuinely still outstanding.
 - **Next step:** Use independently protected ledger copies or trusted
   checkpoints where historical integrity matters. Increase checkpoint
   frequency only with the understanding that observation gaps remain.
-  See INTEGRITY_LEDGER.md.
+  See [Integrity ledger](INTEGRITY_LEDGER.md).
 
 ---
 
 ## KI-005: Existing-record metadata changes can break payload authentication
 
-- **Reported date:** Not recorded; identified during this source audit.
+- **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
 - **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
   platform-independent source behavior.
@@ -139,7 +159,7 @@ reflects only what is genuinely still outstanding.
 
 ## KI-006: Direct bulk APIs do not validate chunk size
 
-- **Reported date:** Not recorded; identified during this source audit.
+- **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
 - **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
   platform-independent source behavior.
@@ -160,7 +180,7 @@ reflects only what is genuinely still outstanding.
 
 ## KI-007: Biometrics GUI can hide legitimate attachment names
 
-- **Reported date:** Not recorded; identified during this source audit.
+- **Reported date:** 2026-11-08
 - **Severity:** Medium (correctness limitation).
 - **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official;
   platform-independent source behavior.
@@ -186,7 +206,8 @@ Use this template for new entries:
 
 - **Reported date:** YYYY-MM-DD
 - **Severity:** Critical / High / Medium / Low
-- **Environment:** <OS / Python version / affected modality or tool>
+- **Environment:** <output of `python tools/envinfo.py`, plus the affected
+  line, tool, and modality>
 - **Component:** <file(s) or module(s)>
 - **Steps to Reproduce:**
   1. ...

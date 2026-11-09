@@ -75,6 +75,27 @@ changelog.
   `timestamps.py`, `version.py`, `tests/test_bsr2_vendor_integrity.py`) now
   describe what the code does. The pinned `vendor/` files are unchanged.
   Overlong Markdown lines are re-wrapped without changing their wording.
+- **Readability pass.**
+  - `docs/README.md` gains a "Quick start": a first vault in five
+    commands, run end to end before writing it down, including how long the
+    legacy KDF takes.
+  - `docs/README.md` opens with a note naming the line it documents, its
+    Layout lists what each folder is for, and its Documentation section is now
+    links grouped as Start here, Each tool, Shared code, and History.
+  - `docs/KNOWN_ISSUES.md` opens with an "Open issues at a glance" table
+    linking each entry, and says how to report a new problem. Its template's
+    **Environment** field points to `python tools/envinfo.py`.
+  - `docs/BSR2_INTEGRATION.md` opens with a list of contents.
+  - `docs/SECURITY.md` says which commands print the version and environment
+    for a report, and states response targets directly. The text is identical in
+    all three lines.
+  - Plain-text references to other documents are now links, and every link and
+    heading anchor in the documentation resolves. All 160-plus commands shown in
+    the documentation were checked against each tool's `--help`: every
+    subcommand and option exists.
+  - Leftovers from earlier edits are gone: "(new)" in two GUI docstrings, a
+    split word in `biometrics/app.py`, and stray spaces inside file paths in
+    `crypto/attempt_store.py`.
 
 ### CI
 

@@ -1,5 +1,9 @@
 # BrisartIdentityTools
 
+> This copy documents **LTS-2028 1.3.x**, the original LTS-2028 line, kept on
+> BSR2 Alpha 3. Official and LTS-2028 1.4.x have their own copies in their own
+> folders.
+
 Local identity tooling within Brisart Research Archive, organized into three
 application areas:
 
@@ -43,16 +47,46 @@ Or, for an LTS-2028 application, `cd "LTS-2028 1.4.x"` or
 
 Do not combine modules from different application trees.
 
+## Quick start
+
+A first vault, from the Identity Tools archive directory:
+
+```bash
+cd "LTS-2028 1.3.x"
+python cli.py version      # tools version
+
+python cli.py vault init
+python cli.py vault upsert "Lab door code" --kind credential --payload '{"value": "4512"}'
+python cli.py vault list
+python cli.py vault get RECORD_ID
+```
+
+- `init` asks for a new passphrase twice and prints a recovery code once. Store
+  the recovery code somewhere separate; it cannot be shown again. `init`
+  derives two keys with the legacy iterated KDF, which is slow by design;
+  expect it to take minutes, and each unlock about half as long.
+- `upsert` and `get` ask for the passphrase. `list` does not: record labels and
+  kinds are readable while the vault is locked, and only payloads are sealed.
+- Replace `RECORD_ID` with the id `upsert` or `list` printed.
+- Without `--vault`, the vault is `data/vault/vault.json` and audit events go
+  to `data/vault/audit/`, both relative to the application root.
+
+Biometrics and Packages work the same way. Start from
+`python cli.py biometrics --help` and `python cli.py package --help`, or see
+their READMEs under Documentation. `python cli.py package demo` runs a
+complete package cycle without any setup.
+
 ## Requirements
 
 The documented Python minimum is 3.10.
 
-The desktop interface additionally requires a working Tkinter installation
-and a graphical display. No third-party Python GUI framework is used.
+The desktop interface additionally requires a working Tkinter installation and
+a graphical display. No third-party Python GUI framework is used.
 
-The supplied hardware layer in `Official/` contains optional integration contracts
-and driver logic. Real device access requires caller-supplied bindings or
-transports; it is not automatically provided by installing the application.
+The supplied hardware layer in `Official/` contains optional integration
+contracts and driver logic. Real device access requires caller-supplied
+bindings or transports; it is not automatically provided by installing the
+application.
 
 ## Launch the desktop interface
 
@@ -97,22 +131,26 @@ operation has completed successfully.
 ## Layout
 
 ```text
-app.py
-cli.py
-version.py
-biometrics/
-common/
-crypto/
-docs/
-gui/
-packages/
-tests/
-vault/
-vendor/
+app.py        desktop shell (Tkinter)
+cli.py        command dispatcher: vault, biometrics, package, gui
+version.py    release version of this tree
+biometrics/   enrollment, verification, templates, attachments
+common/       atomic writes, file modes, SHA-256 fingerprints, timestamps
+crypto/       the integration layer over vendored BSR2: keyrings, sealing,
+              contexts, factors, attempt limiting
+docs/         this documentation
+gui/          desktop tabs and shared widgets
+packages/     recipient-bound packages, custody chain, audit files
+tests/        dispatcher tests, the vendor integrity test, and the test
+              runner (tests/run_tests.py)
+tools/        envinfo.py, an environment report for bug reports
+vault/        record store, file records, bundles
+vendor/       BSR2 Alpha 3 (0.3.0-alpha), byte-pinned; do not edit
 ```
 
-The `Official/` application additionally contains `hardware/` and the integrity
-checkpoint tooling.
+1.3.x has no dependency outside its own folder. Its encryption is the
+vendored copy in `vendor/`, which `tests/test_bsr2_vendor_integrity.py` pins
+byte for byte.
 
 The GUI is split into:
 
@@ -173,16 +211,30 @@ Migrated data cannot be opened by any 1.3.x release. LTS-2028 1.4.x's
 
 ## Documentation
 
-- ../vault/README.md
-- ../biometrics/README.md
-- ../packages/README.md
-- ../gui/README.md
-- ../common/README.md
-- ../crypto/README.md
-- [BSR2 integration and threat model](BSR2_INTEGRATION.md)
-- [File and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md)
-- KNOWN_ISSUES.md
-- [Security policy](SECURITY.md)
+Start here:
+
+- [Security policy](SECURITY.md): supported lines, end-of-life dates, how to
+  report a problem.
+- [Known issues](KNOWN_ISSUES.md): open problems, with severity and status.
+- [BSR2 integration and threat model](BSR2_INTEGRATION.md): what is protected,
+  what is not, and how the encryption migration works.
+
+Each tool:
+
+- [Vault](../vault/README.md)
+- [Biometrics](../biometrics/README.md)
+- [Packages](../packages/README.md)
+- [GUI](../gui/README.md)
+
+Shared code and deeper topics:
+
+- [Crypto integration layer](../crypto/README.md)
+- [Common utilities](../common/README.md)
+- [File and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md): large files,
+  folders, and drive roots.
+
+History:
+
 - [Release history](CHANGELOG.md)
 
 Release-history entries describe their named releases. Old command examples,

@@ -7,13 +7,35 @@ and easy to scan.
 
 For the deeper, ongoing research-cryptography caveats that apply to the whole
 project by design (BSR2 being unreviewed research crypto, no forward secrecy,
-vault labels readable while locked, etc.), see the **Protection limits** section
-of [`BSR2_INTEGRATION.md`](BSR2_INTEGRATION.md) instead — those are
+vault labels readable while locked, etc.), see the
+[Protection limits](BSR2_INTEGRATION.md#protection-limits) section of
+`BSR2_INTEGRATION.md` instead — those are
 documented, accepted design tradeoffs, not open bugs.
 
 Fully fixed issues are moved to the **Resolved** section at the bottom of this
 file rather than edited in place, so the open-issues list above always
 reflects only what is genuinely still outstanding.
+
+---
+
+## Open issues at a glance
+
+| ID | Issue | Severity | Status |
+| --- | --- | --- | --- |
+| [KI-001](#ki-001-video-liveness-threshold-is-uncalibrated-against-real-camera-hardware) | Video liveness threshold is uncalibrated against real camera hardware | Medium | Open: needs real-camera samples |
+| [KI-003](#ki-003-bulk-processing-is-constrained-by-throughput-memory-and-temporary-storage) | Bulk processing is constrained by throughput, memory, and temporary storage | Low | Documented limitation |
+| [KI-005](#ki-005-existing-record-metadata-changes-can-break-payload-authentication) | Existing-record metadata changes can break payload authentication | Medium | Open |
+| [KI-006](#ki-006-direct-bulk-apis-do-not-validate-chunk-size) | Direct bulk APIs do not validate chunk size | Medium | Open |
+| [KI-007](#ki-007-biometrics-gui-can-hide-legitimate-attachment-names) | Biometrics GUI can hide legitimate attachment names | Medium | Open |
+| [KI-008](#ki-008-keyring-passphrase-kdf-is-not-memory-hard) | Keyring passphrase KDF is not memory-hard | Medium | Won't fix in 1.3.x; fixed in 1.4.x |
+| [KI-009](#ki-009-legacy-v2-envelope-is-not-nonce-misuse-resistant) | Legacy v2 envelope is not nonce-misuse resistant | Low | Won't fix in 1.3.x; fixed in 1.4.x |
+| [KI-010](#ki-010-vendored-randomness-lacks-bsr2-alpha-4-hardening) | Vendored randomness lacks BSR2 Alpha 4 hardening | Low | Won't fix in 1.3.x; fixed in 1.4.x |
+
+Resolved issues are listed at the end of this file.
+
+To report a new problem, use the [template](#template) and paste the output
+of `python tools/envinfo.py` into its **Environment** field. Security problems
+are reported privately instead; see [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -240,7 +262,8 @@ Use this template for new entries:
 
 - **Reported date:** YYYY-MM-DD
 - **Severity:** Critical / High / Medium / Low
-- **Environment:** <OS / Python version / affected modality or tool>
+- **Environment:** <output of `python tools/envinfo.py`, plus the affected
+  line, tool, and modality>
 - **Component:** <file(s) or module(s)>
 - **Steps to Reproduce:**
   1. ...

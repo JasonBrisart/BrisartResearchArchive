@@ -272,6 +272,34 @@ behaviour, remaining compatibility, rollback limits, and tests.
   `enrollment.py`, `verification.py`, `hashing.py`, `timestamps.py`, and the
   collapsed bullet lists in `common/integrity_ledger.py`). Overlong Markdown
   lines are re-wrapped without changing their wording.
+- **Readability pass.**
+  - `docs/README.md` gains a "Quick start": a first vault in five
+    commands, run end to end before writing it down, and what each step asks
+    for.
+  - `docs/README.md` opens with a note naming the line it documents, its
+    Layout lists what each folder is for, and its Documentation section is now
+    links grouped as Start here, Each tool, Shared code, and History.
+  - `docs/KNOWN_ISSUES.md` opens with an "Open issues at a glance" table
+    linking each entry, and says how to report a new problem. Its template's
+    **Environment** field points to `python tools/envinfo.py`.
+  - `docs/BSR2_INTEGRATION.md` opens with a list of contents. Its
+    "Encryption migration" record uses subheadings for each policy item and each
+    step.
+  - `docs/SECURITY.md` says which commands print the version and environment
+    for a report, and states response targets directly. The text is identical in
+    all three lines.
+  - Plain-text references to other documents are now links, and every link and
+    heading anchor in the documentation resolves. All 160-plus commands shown in
+    the documentation were checked against each tool's `--help`: every
+    subcommand and option exists.
+  - `docs/KNOWN_ISSUES.md`: KI-005 to KI-007 give their reported date,
+    2026-11-08, matching the LTS-2028 lines.
+  - Headers no longer describe a single-envelope size limit that sealing no
+    longer has (`gui/tabs/tab_biometrics.py`, `vault/README.md`,
+    `vault/store/bulk_file_service.py`).
+  - Leftovers from earlier edits are gone: "BSR2 comes from BSR2", "(new)" in
+    two GUI docstrings, and stray spaces inside file paths in
+    `crypto/attempt_store.py`.
 
 ### Release lines
 

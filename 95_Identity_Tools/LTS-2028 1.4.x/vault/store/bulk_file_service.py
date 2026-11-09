@@ -16,10 +16,10 @@ Design notes:
 
 Large content -- a big single file, a folder, an entire drive -- is stored as
 several separately sealed chunk records plus a manifest, and reassembled and
-verified on the way back out. Before the encryption migration this was forced by the legacy
-envelope's 16 MiB cap. Since the encryption migration crypto.envelope seals payloads of any
-size, so chunking is no longer required by encryption; it remains the stored
-bundle format and keeps each record's seal call and vault write a bounded
+verified on the way back out. Chunking was first needed for the legacy
+envelope's 16 MiB cap. crypto.envelope now seals payloads of any size, so
+encryption no longer requires it; it remains the stored bundle format and
+keeps each record's seal call and vault write a bounded
 size. vault/store and biometrics/engine/bulk_attachments.py share the model.
 
 A bundle (whether one big file or a zip of many files/folders) is first fully

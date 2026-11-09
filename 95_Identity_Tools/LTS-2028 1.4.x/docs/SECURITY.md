@@ -19,9 +19,10 @@ maintainer.
 
 Useful report information includes:
 
-- Affected release line and version.
+- Affected release line and version (`python cli.py version`).
 - Affected component.
-- Operating system and Python version.
+- Operating system and Python version (`python tools/envinfo.py` prints
+  both).
 - Reproduction steps or a minimal example.
 - Observed and expected behavior.
 - Potential impact.
@@ -32,8 +33,8 @@ or unrelated personal information.
 
 ## Response expectations
 
-The existing project policy describes best-effort acknowledgement within a few
-days and an initial assessment within roughly two weeks.
+The maintainer aims to acknowledge a report within a few days and to give an
+initial assessment within roughly two weeks.
 
 These are maintenance targets, not guaranteed service levels.
 
@@ -175,5 +176,5 @@ Support status does not change:
 - Bulk-processing resource and temporary-file limitations.
 - Physical-device validation requirements.
 
-See KNOWN_ISSUES.md and
+See [Known issues](KNOWN_ISSUES.md) and
 [file and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md).

@@ -260,6 +260,31 @@ BSR2's own suite, where it lives.
       `biometrics/engine/verification.py`, `common/hashing.py`,
       `common/timestamps.py`, `version.py`) now describe what the code does.
     - Overlong Markdown lines are re-wrapped. No wording changed by that.
+  - **Readability pass.**
+    - `docs/README.md` gains a "Quick start": a first vault in five
+      commands, and what each step asks for.
+    - `docs/README.md` opens with a note naming the line it documents, its
+      Layout lists what each folder is for, and its Documentation section is now
+      links grouped as Start here, Each tool, Shared code, and History.
+    - `docs/KNOWN_ISSUES.md` opens with an "Open issues at a glance" table
+      linking each entry, and says how to report a new problem. Its template's
+      **Environment** field points to `python tools/envinfo.py`.
+    - `docs/BSR2_INTEGRATION.md` opens with a list of contents. Its
+      "Encryption migration" record uses subheadings for each policy item and each
+      step.
+    - `docs/SECURITY.md` says which commands print the version and environment
+      for a report, and states response targets directly. The text is identical in
+      all three lines.
+    - Plain-text references to other documents are now links, and every link and
+      heading anchor in the documentation resolves. All 160-plus commands shown in
+      the documentation were checked against each tool's `--help`: every
+      subcommand and option exists.
+    - Headers no longer describe a single-envelope size limit that sealing no
+      longer has (`gui/tabs/tab_biometrics.py`, `vault/README.md`,
+      `vault/store/bulk_file_service.py`).
+    - Leftovers from earlier edits are gone: "BSR2 comes from BSR2", "(new)" in
+      two GUI docstrings, and stray spaces inside file paths in
+      `crypto/attempt_store.py`.
 - **CI: `.github/workflows/test-95-identity-tools-lts2028-1.4.yml` (new, at
   the archive root).** It runs this line's syntax check and full suite when
   this tree or `97_Encryption/Official` changes. It replaces

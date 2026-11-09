@@ -150,7 +150,7 @@ python -m vault.app --vault data/vaults/main_vault.json restore-paths \
   RECORD_ID restored-output
 ```
 
-Chunking bypasses the single-envelope payload limit. It does not provide
+Chunking bounds the size of each sealed record. It does not provide
 unlimited-size processing: the implementation still requires memory, temporary
 disk space, storage space, and substantial processing time.
 

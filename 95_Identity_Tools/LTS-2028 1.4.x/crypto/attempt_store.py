@@ -5,8 +5,8 @@ Purpose
 -------
 Shared persistence adapter between crypto.throttle.AttemptLimiter (pure
 in-memory backoff/lockout math) and the on-disk JSON containers that actually
-hold unlock state for this ecosystem: vault.json (vault/store/ vault_file.py)
-and the biometrics keyring.json (biometrics/identity/ keyring_access.py).
+hold unlock state for this ecosystem: vault.json (vault/store/vault_file.py)
+and the biometrics keyring.json (biometrics/identity/keyring_access.py).
 AttemptLimiter itself has no opinion about where its state lives -- its own
 docstring says state is "caller-persisted, not held in memory" -- and until
 this module existed, no caller in this repository actually persisted it

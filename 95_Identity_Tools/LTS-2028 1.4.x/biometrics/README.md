@@ -249,4 +249,4 @@ BSR2 is unreviewed research cryptography. Matching thresholds and motion
 checks are not substitutes for independently validated authentication controls.
 
 See [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md) and
-../docs/KNOWN_ISSUES.md.
+[known issues](../docs/KNOWN_ISSUES.md).

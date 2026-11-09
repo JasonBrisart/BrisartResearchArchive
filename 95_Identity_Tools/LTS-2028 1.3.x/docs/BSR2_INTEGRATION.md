@@ -5,6 +5,25 @@ of the protections implemented by BrisartIdentityTools.
 
 It is not an independent cryptographic assessment.
 
+## Contents
+
+- [Primary caveat](#primary-caveat)
+- [Integration boundary](#integration-boundary)
+- [Master keys and wrapping](#master-keys-and-wrapping)
+- [KDF parameters and runtime](#kdf-parameters-and-runtime)
+- [Factor protection](#factor-protection)
+- [Context binding](#context-binding)
+- [Length padding](#length-padding)
+- [Random-generator lifecycle](#random-generator-lifecycle)
+- [Attempt limiting](#attempt-limiting)
+- [Vault protection and disclosure](#vault-protection-and-disclosure)
+- [Biometrics protection and disclosure](#biometrics-protection-and-disclosure)
+- [Packages protection and disclosure](#packages-protection-and-disclosure)
+- [Custody chains and audit files](#custody-chains-and-audit-files)
+- [Filesystem hardening](#filesystem-hardening)
+- [Bulk-file boundaries](#bulk-file-boundaries)
+- [Protection limits](#protection-limits)
+
 ## Primary caveat
 
 BSR2 is custom, unreviewed research cryptography.
@@ -246,9 +265,9 @@ interrupted.
 
 ## Related documentation
 
-- KNOWN_ISSUES.md
+- [Known issues](KNOWN_ISSUES.md)
 - [Security policy](SECURITY.md)
 - [File and bundle encryption](FILE_AND_BUNDLE_ENCRYPTION.md)
-- ../vault/README.md
-- ../biometrics/README.md
-- ../packages/README.md
+- [Vault](../vault/README.md)
+- [Biometrics](../biometrics/README.md)
+- [Packages](../packages/README.md)

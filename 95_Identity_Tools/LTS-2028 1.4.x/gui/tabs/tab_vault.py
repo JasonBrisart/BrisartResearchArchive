@@ -95,7 +95,7 @@ from vault.store.bulk_file_service import BulkFileService
 
 
 class VaultTab(ttk.Frame):
-    """Init/unlock/lock a vault, create/view/delete JSON records, and (new)
+    """Init/unlock/lock a vault, create/view/delete JSON records, and
     encrypt/decrypt arbitrary files, folders, or drives -- any combination,
     any size, large content stored as fixed-size sealed chunks."""
 
