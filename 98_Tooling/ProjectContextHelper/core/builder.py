@@ -9,8 +9,8 @@ Orchestrate root and settings validation, optional Git inspection, scanning with
 
 Implemented responsibilities:
 - validate_settings: Deep-copy settings and reject unsupported profiles, nonpositive size
-  limits, worker counts outside 1-MAX_WORKERS, and empty output folder names; the caller's
-  object is never mutated.
+  limits, workers values other than 'auto' or 1-MAX_WORKERS, and empty output folder names; the
+  caller's object is never mutated.
 - resolve_output_dir: Reject absolute, drive-qualified, or parent-traversing output folder
   names and any name that resolves outside the project root or to the root itself.
 - reserve_export_dir: Choose project_context_<timestamp>, adding _2, _3, ... when that name is
@@ -25,9 +25,9 @@ Implemented responsibilities:
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
-- core.constants: CONTEXT_FILENAME, DEFAULT_PROFILE, INTERNAL_NAME_PREFIX, MANIFEST_FILENAME,
-  MAX_WORKERS, SETTINGS_FILENAME, SNAPSHOT_FILENAME, SUMMARY_FILENAME, VALID_PROFILES,
-  settings_for_profile.
+- core.constants: AUTO_WORKERS, CONTEXT_FILENAME, DEFAULT_PROFILE, INTERNAL_NAME_PREFIX,
+  MANIFEST_FILENAME, MAX_WORKERS, SETTINGS_FILENAME, SNAPSHOT_FILENAME, SUMMARY_FILENAME,
+  VALID_PROFILES, settings_for_profile.
 - core.events: Progress, checkpoint.
 - core.exporters: build_manifest, build_context_markdown, build_summary_text,
   create_snapshot_zip.
@@ -86,7 +86,7 @@ Usage from the directory containing run.py:
 
     settings = settings_for_profile("archive")
     settings.include_snapshot_zip = False
-    settings.workers = 8
+    settings.workers = 8          # or "auto" (the default): every detected CPU core
     result = create_context(Path("/path/to/project"), settings)
     print(result.context_path, result.included_count)
 """
@@ -101,6 +101,7 @@ import shutil
 import tempfile
 
 from core.constants import (
+    AUTO_WORKERS,
     CONTEXT_FILENAME,
     DEFAULT_PROFILE,
     INTERNAL_NAME_PREFIX,
@@ -147,8 +148,9 @@ def validate_settings(settings: ScanSettings) -> ScanSettings:
         value = getattr(settings, name)
         if type(value) is not int or value <= 0:
             raise ValueError(f"{name} must be a positive integer (got {value!r}).")
-    if type(settings.workers) is not int or not 1 <= settings.workers <= MAX_WORKERS:
-        raise ValueError(f"workers must be a whole number from 1 to {MAX_WORKERS} (got {settings.workers!r}).")
+    workers = settings.workers
+    if workers != AUTO_WORKERS and (type(workers) is not int or not 1 <= workers <= MAX_WORKERS):
+        raise ValueError(f"workers must be 'auto' or a whole number from 1 to {MAX_WORKERS} (got {workers!r}).")
     if not isinstance(settings.output_dir_name, str) or not settings.output_dir_name.strip():
         raise ValueError("Output folder name cannot be empty.")
     settings.output_dir_name = settings.output_dir_name.strip()

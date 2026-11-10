@@ -13,6 +13,8 @@ Implemented responsibilities:
 - settings_from_args: Start from the requested built-in preset, replace it with remembered/named
   settings when available, then apply explicit overrides; return the resulting ScanSettings
   without exporting.
+- parse_workers_arg: Convert the --workers text to 'auto' (any case) or an int; anything else
+  raises ValueError so the build fails with the normal one-line message and exit status 1.
 - run_update_check: Print release status; return when no update/asset exists; optionally open
   the release page, or download and apply a source/EXE update. Installation failures print a
   message and exit 1; successful EXE replacement exits 0.
@@ -29,7 +31,8 @@ Implemented responsibilities:
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
-- core.constants: APP_NAME, APP_VERSION, DEFAULT_PROFILE, VALID_PROFILES, settings_for_profile.
+- core.constants: APP_NAME, APP_VERSION, AUTO_WORKERS, DEFAULT_PROFILE, MAX_WORKERS,
+  VALID_PROFILES, settings_for_profile.
 - core.builder: create_context.
 - core.utils: normalize_extension.
 - core.events: Progress.
@@ -45,12 +48,14 @@ Settings / parameters
 ---------------------
 Built-in profile defaults are followed by optional last-used settings, a named custom profile,
   and explicit CLI overrides. Size limits must be positive; negative detail/history limits are
-  clamped to zero. --workers sets the capture thread count (1-32, validated by the builder).
+  clamped to zero. --workers sets the capture thread count: 'auto' (one per detected CPU core)
+  or 1-32 (range validated by the builder; counts above the detected cores are clamped).
   --progress prints pipeline phases to stderr so stdout stays unchanged.
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - build_parser() -> argparse.ArgumentParser
 - settings_from_args(args)
+- parse_workers_arg(value: str) -> int | str
 - run_update_check(open_page_when_available: bool=False, install: bool=False) -> None
 - run_profile_list() -> None
 - run_profile_delete(name: str) -> None
@@ -86,6 +91,7 @@ Usage from the directory containing run.py:
     python run.py "/path/to/project" --profile archive --no-zip
     python run.py "/path/to/project" --max-file-bytes 4000000 --max-total-bytes 150000000
     python run.py "/path/to/project" --workers 8 --progress
+    python run.py "/path/to/project" --workers auto
     python run.py "/path/to/project" --save-profile "Review"
     python run.py "/path/to/project" --load-profile "Review" --no-redact
     python run.py --list-profiles
@@ -103,7 +109,9 @@ import sys
 from core.constants import (
     APP_NAME,
     APP_VERSION,
+    AUTO_WORKERS,
     DEFAULT_PROFILE,
+    MAX_WORKERS,
     VALID_PROFILES,
     settings_for_profile,
 )
@@ -150,7 +158,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--delete-profile", metavar="NAME", default=None)
     parser.add_argument("--list-profiles", action="store_true")
     parser.add_argument("--flat-output", action="store_true")
-    parser.add_argument("--workers", type=int, default=None, help="Capture threads (1-32, default 4).")
+    parser.add_argument(
+        "--workers", default=None, metavar="auto|N",
+        help=f"Capture threads: 'auto' (default, every detected CPU core) or 1-{MAX_WORKERS}.",
+    )
     parser.add_argument("--progress", action="store_true", help="Print build phases to stderr.")
     parser.add_argument("--check-updates", action="store_true")
     parser.add_argument("--install-updates", action="store_true")
@@ -213,8 +224,18 @@ def settings_from_args(args):
     if args.flat_output:
         settings.timestamped_export_folder = False
     if args.workers is not None:
-        settings.workers = args.workers
+        settings.workers = parse_workers_arg(args.workers)
     return settings
+
+
+def parse_workers_arg(value: str) -> int | str:
+    text = value.strip().lower()
+    if text == AUTO_WORKERS:
+        return AUTO_WORKERS
+    try:
+        return int(text)
+    except ValueError:
+        raise ValueError(f"--workers must be 'auto' or a whole number from 1 to {MAX_WORKERS} (got {value!r}).") from None
 
 
 def run_update_check(open_page_when_available: bool = False, install: bool = False) -> None:

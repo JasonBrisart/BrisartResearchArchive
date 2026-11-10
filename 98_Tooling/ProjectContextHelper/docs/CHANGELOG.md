@@ -4,6 +4,42 @@ All notable changes to Project Context Helper are documented here.
 
 ---
 
+## [4.1.0] - 2026-11-10
+
+Capture threads now match the computer. By default an export uses one thread per logical CPU core the operating system reports (up to 32), and the Options tab has a new **Performance** section where the count can be set from Auto down to 1. The selector only lists counts the current machine can run, so a 4-core laptop offers Auto and 1–4, while a 32-core workstation offers Auto and 1–32. The fixed default of 4 threads from v4.0.x is gone. Which files are included never depends on the thread count, only how quickly they are read.
+
+### Added
+- **CPU core detection** (`core/utils.py`). `detect_cpu_cores()` returns the logical cores available to this process. It uses `os.process_cpu_count()` on Python 3.13+, which respects CPU affinity, then `os.sched_getaffinity()` on Linux, then the machine-wide `os.cpu_count()`. It always returns at least 1, including on platforms that report no count. `worker_limit()` caps that at `MAX_WORKERS` (32), and `resolve_workers()` turns a setting into the thread count to run: `auto` becomes the limit, and an explicit count is clamped to 1 through the limit. These live in `core/utils.py` because the scanner (which runs the threads) and the GUI (which lists the choices) both need the same answer, so both use one rule.
+- **Performance section on the Options tab** (`gui/options_tab.py`). It has a read-only **CPU Cores** selector (Auto first, then `1 core`, `2 cores`, … up to this machine's limit) and a row of core cells that fill in to show how many cores the next build will use. A bold readout shows *Using all 8 cores* or *Using 3 of 8 cores*, and a short note gives the detected count and what the setting does. On a machine reporting more than 32 cores, the note says only 32 are used. The meter and readout redraw whenever the selection changes, including when a built-in or custom profile is applied.
+- **Selector plumbing** (`gui/builders.py`). `GuiState` gains `workers_var` (the visible selector text) and `cpu_cores` (detected once when the window opens). `worker_choices()`, `workers_to_label()`, `label_to_workers()`, and `core_label()` convert between selector text and `ScanSettings.workers`. Applying settings or a profile updates the selector, and building settings reads it.
+- **`--workers auto`** (`cli/cli.py`). `--workers` now accepts `auto` in any case, or a whole number. New `parse_workers_arg()` turns any other value (for example `--workers fast`) into the same one-line `Build failed: …` message and exit status 1 that other bad input already uses.
+- **Reported thread count.** `ScanResult.workers_used` (`core/models.py`) carries the count the scanner actually ran with. `core/exporters.py` writes it to the manifest as `summary.capture_workers` and to `PROJECT_CONTEXT.md` and `PROJECT_SUMMARY.txt` through a new `describe_workers()`, as `8 (auto)`, `4 (requested 4)`, or `4 (requested 16, limited to available CPU cores)`. `PROJECT_SUMMARY.txt` had no thread line before.
+
+### Changed
+- **The default is `auto` instead of 4** (`core/models.py`, `core/constants.py`). `AUTO_WORKERS = "auto"` is defined in `core/models.py` because `core/constants.py` imports that module, and `core/constants.py` re-exports it for every other consumer. `ScanSettings.workers` is `int | str`, `DEFAULT_WORKERS` is `AUTO_WORKERS`, and both presets set it.
+- **Validation accepts `auto`** (`core/builder.py`). `validate_settings()` accepts `"auto"` or a whole number from 1 to 32. It still rejects `0`, `33`, booleans, floats, and number-like strings, which keeps type problems out of the scanner.
+- **Explicit counts are limited to the detected cores** (`core/scanner.py`). The scanner previously ran exactly the requested count, so `--workers 16` started 16 threads on a 4-core machine. It now calls `resolve_workers()`, so a profile saved on a large machine runs at the smaller machine's core count. The requested value stays in the settings file unchanged, and the count actually used is reported separately as above.
+- **Settings loading** (`core/models.py`). `workers` moved out of the plain integer fields into a new `_parse_workers()`. It accepts `auto` (any case, surrounding spaces ignored), integers, integral floats, and integer strings, and discards anything else, which then falls back to `auto`. Settings saved before v4.0.0, which have no `workers` key, now load as `auto` instead of 4.
+- **`workers` is no longer a hidden GUI setting.** The README and ARCHITECTURE no longer list it among the values the GUI keeps but does not show. Selecting a built-in profile resets CPU Cores to Auto, just as it resets every other preset value.
+- `APP_VERSION` is now `4.1.0`.
+
+### Removed
+- **`gui/builders.run_project_build()`.** Its docstring said it was kept for callers outside the Build tab, but no module called it. The Build tab has used `prepare_build()` + `execute_build()` since v4.0.0.
+- **`core/utils.count_lines()` and `core/utils.sha256_file()`.** Since v4.0.0 the scanner computes line counts and hashes from its single captured read. The only remaining caller was `sha256_file`'s own two tests in `tests/test_export_safety_utilities.py`, which are removed with it. End-to-end hash correctness is still covered by `test_v4_engine.test_zip_hashes_match_manifest`, which compares every ZIP member against the manifest hash.
+
+### Fixed
+- **Stale header facts in `core/constants.py`.** The header said `APP_VERSION is 4.0.0` while the code said `4.0.1`, and it credited v4.0.0 with removing the GitHub link (v4.0.1 did). Both are corrected.
+
+### Notes
+- **Saved settings and profiles.** `last_export_settings.json` and custom profiles written by v4.0.x contain `"workers": 4`, the old automatic default. That number is kept as an explicit choice, because it cannot be told apart from a deliberate `--workers 4`. After upgrading, the selector shows **4 cores** until **Auto** or a built-in profile is selected once. Files written by v4.1.0 store `"workers": "auto"` or a number. v4.0.x reads a number normally, but it discards `"auto"` (not an integer) and falls back to 4.
+- **Manifest consumers.** `PROJECT_MANIFEST.json` keeps its v4.0.1 shape and gains `summary.capture_workers`. `settings.workers` can now be the string `"auto"`.
+- **Core counts are logical processors** as reported by the operating system, so hyper-threads count individually. On Windows and macOS before Python 3.13, the count is machine-wide and ignores CPU affinity.
+- **Test coverage.** 54 tests pass on Python 3.12 (Linux). Two utility tests were removed with `sha256_file`, eight were added, and six existing tests were extended. New coverage: core detection never reports 0; `auto`/explicit/clamped/capped resolution; auto using a simulated 6-core count end to end (manifest, context, summary); 16 requested on a simulated 4-core machine running 4 and labelled as limited; settings validation and loading for `auto`; `--workers AUTO` succeeding; `--workers fast` exiting 1; and the GUI selector on simulated 1-, 4-, and 64-core machines (exact choice lists, readout text, reset to Auto on a built-in profile, custom-profile round trip, the selection reaching the exported manifest, and a 48-core profile shown as 32 on a 64-core machine). The parallel-parity test now simulates 8 cores so it still runs 8 threads on a single-core test host.
+- **The GUI was not checked on a real display.** The GUI tests use the recording tkinter stand-in, so the Performance section's layout, colors, and meter rendering need a manual look on Windows.
+- No new external dependencies were introduced.
+
+---
+
 ## [4.0.1] - 2026-10-15
 
 Attribution update. Everything the application shows or exports now credits Jason Brisart and Brisart Research Archive, and the GitHub repository link has been removed. No export, scanning, or GUI behavior changed otherwise.

@@ -8,7 +8,8 @@ Centralize application metadata, output filenames, exclusion rules, and the stan
 
 Implemented responsibilities:
 - apply_common_defaults: Replace exclusion sets with fresh copies of shared defaults and set the
-  Git history limit and capture worker count; mutate and return the supplied settings object.
+  Git history limit and capture worker count (auto); mutate and return the supplied settings
+  object.
 - apply_standard_preset: Mutate the settings to standard extension/size limits and a compact
   output selection, with ZIP/redaction enabled and completeness/Git disabled.
 - apply_archive_preset: Mutate the settings to expanded extensions and larger limits, enable
@@ -20,20 +21,21 @@ Implemented responsibilities:
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
-- core.models: ScanSettings.
+- core.models: AUTO_WORKERS, ScanSettings (AUTO_WORKERS is re-exported from here).
 
 Consumers in the supplied source:
-- cli/cli.py imports APP_NAME, APP_VERSION, DEFAULT_PROFILE, VALID_PROFILES,
+- cli/cli.py imports APP_NAME, APP_VERSION, AUTO_WORKERS, DEFAULT_PROFILE, VALID_PROFILES,
   settings_for_profile.
-- core/builder.py imports CONTEXT_FILENAME, DEFAULT_PROFILE, INTERNAL_NAME_PREFIX,
+- core/builder.py imports AUTO_WORKERS, CONTEXT_FILENAME, DEFAULT_PROFILE, INTERNAL_NAME_PREFIX,
   MANIFEST_FILENAME, MAX_WORKERS, SETTINGS_FILENAME, SNAPSHOT_FILENAME, SUMMARY_FILENAME,
   VALID_PROFILES, settings_for_profile.
-- core/exporters.py imports AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
+- core/exporters.py imports AFFILIATION, APP_NAME, APP_VERSION, AUTHOR, AUTO_WORKERS.
+- core/utils.py imports AUTO_WORKERS, MAX_WORKERS.
 - gui/about_tab.py imports AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
 - core/scanner.py imports INTERNAL_NAME_PREFIX.
 - gui/build_tab.py imports VALID_PROFILES.
-- gui/builders.py imports DEFAULT_PROFILE, EXPORTS_DIRNAME, PROFILE_ARCHIVE, PROFILE_STANDARD,
-  settings_for_profile.
+- gui/builders.py imports AUTO_WORKERS, DEFAULT_PROFILE, EXPORTS_DIRNAME, PROFILE_ARCHIVE,
+  PROFILE_STANDARD, settings_for_profile.
 - gui/main_gui.py imports AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
 - gui/profiles_section.py imports PROFILE_ARCHIVE, PROFILE_STANDARD.
 - services/storage.py imports APP_SETTINGS_FILENAME, BUILD_HISTORY_FILENAME,
@@ -44,10 +46,11 @@ Consumers in the supplied source:
 
 Settings / parameters
 ---------------------
-APP_VERSION is 4.0.0. The interface default is archive. Standard limits are 350000/5000000
+APP_VERSION is 4.1.0. The interface default is archive. Standard limits are 350000/5000000
   bytes; archive limits are 2000000/100000000 bytes. Both presets enable redaction and ZIP
-  creation and disable Git State. Both presets capture with DEFAULT_WORKERS (4) threads;
-  validated worker counts range from 1 to MAX_WORKERS (32).
+  creation and disable Git State. Both presets capture with DEFAULT_WORKERS ('auto': one
+  thread per detected CPU core, capped at MAX_WORKERS); an explicit count ranges from 1 to
+  MAX_WORKERS (32).
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - apply_common_defaults(settings: ScanSettings) -> ScanSettings
@@ -57,7 +60,7 @@ Function signatures (nested callbacks are scoped to their enclosing function):
 
 Module constants and expressions:
 - APP_NAME = 'Project Context Helper'
-- APP_VERSION = '4.0.0'
+- APP_VERSION = '4.1.0'
 - AUTHOR = 'Jason Brisart'
 - AFFILIATION = 'Brisart Research Archive'
 - RELEASES_URL = 'https://github.com/JasonBrisart/BrisartDevTools/releases'
@@ -76,7 +79,8 @@ Module constants and expressions:
 - CUSTOM_PROFILES_FILENAME = 'custom_profiles.json'
 - STAGED_EXE_FILENAME = 'staged_update.exe'
 - DEFAULT_GIT_STATE_COMMIT_LIMIT = 5
-- DEFAULT_WORKERS = 4
+- AUTO_WORKERS = 'auto' (imported from core.models)
+- DEFAULT_WORKERS = AUTO_WORKERS
 - MAX_WORKERS = 32
 - INTERNAL_NAME_PREFIX = '.pch-'
 - PROFILE_STANDARD = 'standard'
@@ -118,7 +122,7 @@ Every preset receives fresh set copies rather than sharing the constant sets.
 Known limitations
 -----------------
 AUTHOR and AFFILIATION are the attribution shown in the GUI and written into every export;
-  v4.0.0 removed the GitHub repository link from that attribution. The RELEASES_* constants are
+  v4.0.1 removed the GitHub repository link from that attribution. The RELEASES_* constants are
   used only by the legacy updater (services/updater.py) and still point to the BrisartDevTools
   GitHub releases; they are not shown as attribution.
 
@@ -136,13 +140,13 @@ Usage from the directory containing run.py:
     assert settings.max_file_bytes == 2000000
     assert settings.require_complete_source is True
     assert settings.include_git_state is False
-    assert settings.workers == 4
+    assert settings.workers == "auto"
 """
 
-from core.models import ScanSettings
+from core.models import AUTO_WORKERS, ScanSettings
 
 APP_NAME = "Project Context Helper"
-APP_VERSION = "4.0.1"
+APP_VERSION = "4.1.0"
 AUTHOR = "Jason Brisart"
 AFFILIATION = "Brisart Research Archive"
 
@@ -168,7 +172,8 @@ CUSTOM_PROFILES_FILENAME = "custom_profiles.json"
 STAGED_EXE_FILENAME = "staged_update.exe"
 
 DEFAULT_GIT_STATE_COMMIT_LIMIT = 5
-DEFAULT_WORKERS = 4
+# Capture threads: AUTO_WORKERS uses every detected CPU core; explicit counts are 1-MAX_WORKERS.
+DEFAULT_WORKERS = AUTO_WORKERS
 MAX_WORKERS = 32
 
 # Prefix for this tool's own hidden staging folders and state temp/lock files.

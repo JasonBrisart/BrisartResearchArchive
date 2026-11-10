@@ -13,6 +13,8 @@ Implemented responsibilities:
 - source_completeness_report: Filter scan skips to the six configured failure reasons and
   return required/status/counts/failure records; PASS depends on those skips, not all repository
   files.
+- describe_workers: Return the capture-thread count actually used plus how it was chosen
+  ("8 (auto)", "4 (requested 4)", or "4 (requested 16, limited to available CPU cores)").
 - git_state_report: Return None for absent Git metadata or dataclasses.asdict for an existing
   GitState.
 - append_git_state_markdown: Append the Git section to a caller-owned chunk list; render
@@ -27,7 +29,8 @@ Implemented responsibilities:
 - build_context_markdown: Assemble the Markdown export from enabled sections; compute skip
   counts, render tree/index, and read each file's single captured copy through safe_read when
   contents are enabled.
-- build_summary_text: Return a plaintext overview of settings, optional Git state, counts,
+- build_summary_text: Return a plaintext overview of settings (including capture workers),
+  optional Git state, counts,
   completeness, extension totals, and skip-reason totals.
 - create_snapshot_zip: Open a ZIP in overwrite mode with deflate compression, add four generated
   outputs at its root, and add each included file's captured bytes under
@@ -36,7 +39,7 @@ Implemented responsibilities:
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
-- core.constants: AFFILIATION, APP_NAME, APP_VERSION, AUTHOR.
+- core.constants: AFFILIATION, APP_NAME, APP_VERSION, AUTHOR, AUTO_WORKERS.
 - core.git_state: GitState.
 - core.models: ScanResult, ScanSettings.
 - core.scanner: SOURCE_COMPLETENESS_FAILURE_REASONS, build_tree.
@@ -51,11 +54,14 @@ Settings / parameters
 Receives the root, ScanResult, ScanSettings, creation timestamp, and optional GitState. Output
   sections follow the supplied toggles. When ScanResult.captured_paths is populated, contents
   and ZIP members come from those captured copies; otherwise original paths are read (the
-  v3.1.4 behavior). output_dir lets the folder tree omit a custom export folder.
+  v3.1.4 behavior). output_dir lets the folder tree omit a custom export folder. The manifest
+  keeps settings.workers as requested ('auto' or a number) and records the resolved count as
+  summary.capture_workers.
 
 Function signatures (nested callbacks are scoped to their enclosing function):
 - escape_table_cell(value: str) -> str
 - source_completeness_report(scan: ScanResult, settings: ScanSettings) -> dict
+- describe_workers(scan: ScanResult, settings: ScanSettings) -> str
 - git_state_report(git_state: GitState | None) -> dict | None
 - append_git_state_markdown(chunks: list[str], git_state: GitState | None) -> None
 - build_manifest(root: Path, scan: ScanResult, settings: ScanSettings, created: str, git_state:
@@ -116,6 +122,7 @@ from core.constants import (
     APP_NAME,
     APP_VERSION,
     AUTHOR,
+    AUTO_WORKERS,
 )
 from core.git_state import GitState
 from core.models import (
@@ -176,6 +183,15 @@ def source_completeness_report(scan: ScanResult, settings: ScanSettings) -> dict
         "failure_reasons": sorted(SOURCE_COMPLETENESS_FAILURE_REASONS),
         "failures": [asdict(r) for r in failures],
     }
+
+
+def describe_workers(scan: ScanResult, settings: ScanSettings) -> str:
+    used = scan.workers_used
+    if settings.workers == AUTO_WORKERS:
+        return f"{used} (auto)"
+    if settings.workers != used:
+        return f"{used} (requested {settings.workers}, limited to available CPU cores)"
+    return f"{used} (requested {used})"
 
 
 def git_state_report(git_state: GitState | None) -> dict | None:
@@ -250,7 +266,10 @@ def build_manifest(root: Path, scan: ScanResult, settings: ScanSettings, created
         "created": created, "app_name": APP_NAME, "version": APP_VERSION, "author": AUTHOR,
         "affiliation": AFFILIATION, "root": str(root),
         "settings": settings.to_jsonable(),
-        "summary": {"included_count": len(scan.included_records), "skipped_count": len(scan.skipped_records), "included_bytes": scan.total_included_bytes},
+        "summary": {
+            "included_count": len(scan.included_records), "skipped_count": len(scan.skipped_records),
+            "included_bytes": scan.total_included_bytes, "capture_workers": scan.workers_used,
+        },
         "source_completeness": source_completeness_report(scan, settings),
         "git_state": git_state_report(git_state),
         "included_files": [asdict(r) for r in scan.included_records],
@@ -324,7 +343,7 @@ def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings,
     chunks.append(f"- Hashes enabled: **{settings.include_hashes}**")
     chunks.append(f"- Line counts enabled: **{settings.include_line_counts}**")
     chunks.append(f"- Complete source required: **{settings.require_complete_source}**")
-    chunks.append(f"- Capture workers: **{settings.workers}**")
+    chunks.append(f"- Capture workers: **{describe_workers(scan, settings)}**")
     chunks.append("")
     if settings.include_git_state:
         append_git_state_markdown(chunks, git_state)
@@ -422,6 +441,7 @@ def build_summary_text(root: Path, scan: ScanResult, settings: ScanSettings, cre
     lines.append(f"File index: {settings.include_file_index}")
     lines.append(f"File contents: {settings.include_file_contents}")
     lines.append(f"Complete source required: {settings.require_complete_source}")
+    lines.append(f"Capture workers: {describe_workers(scan, settings)}")
     lines.append("")
     if settings.include_git_state:
         lines.append("Git State")

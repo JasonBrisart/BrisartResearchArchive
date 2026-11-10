@@ -1,6 +1,6 @@
 # Architecture
 
-Project Context Helper is a standard-library Python application within Brisart Research Archive. This document describes v4.0.0, including its current coupling and limitations. v4.0.0 keeps the v3.1.4 folder layout, file names, and desktop interface, and rebuilds the export engine underneath (background builds, single-read parallel capture, staged publication, locked persistence). It does not certify runtime behavior.
+Project Context Helper is a standard-library Python application within Brisart Research Archive. This document describes v4.1.0, including its current coupling and limitations. v4.0.0 rebuilt the export engine (background builds, single-read parallel capture, staged publication, locked persistence); v4.1.0 sizes capture to the computer's CPU cores and adds a CPU Cores selector to the Options tab. It does not certify runtime behavior.
 
 ## Project layout
 
@@ -76,14 +76,15 @@ This is a modular application with shared orchestration, not a strictly layered 
 | `core/models.py` | Mutable `ScanSettings`, JSON conversion, and frozen file/skip/scan/build records. |
 | `core/scanner.py` | Pruned discovery, file eligibility, skip records, byte budgets, single-read parallel capture, completeness enforcement, and separate tree rendering. |
 | `core/events.py` | Progress records and cooperative cancellation checkpoints. |
-| `core/utils.py` | Root validation, timestamps, extension normalization, heuristic redaction, hashing, line counts, and language hints. |
+| `core/utils.py` | Root validation, timestamps, extension normalization, heuristic redaction, CPU core detection and worker resolution, and language hints. |
 | `core/git_state.py` | Optional local Git metadata inspection without invoking Git. |
 | `core/exporters.py` | Markdown, manifest, summary, completeness reports, and ZIP rendering from captured bytes. |
 | `core/builder.py` | Settings/output validation, export orchestration, staging and publication, and best-effort history recording. |
 | `services/storage.py` | Preferences, last-used settings, named profiles, and history persistence with locking. |
 | `services/updater.py` | Legacy release lookup, staging, backup, source copying, and Windows executable replacement. |
 | `cli/cli.py` | Argument parsing, settings precedence, management actions, and export dispatch. |
-| `gui/builders.py` | Shared tkinter state, validation, settings conversion with hidden-field retention, and worker-safe export invocation. |
+| `gui/builders.py` | Shared tkinter state, validation, settings conversion with hidden-field retention, CPU Cores selector labels, and worker-safe export invocation. |
+| `gui/options_tab.py` | Export-size/output controls, the Performance section (CPU Cores selector and core meter), and output-section checkboxes. |
 | `gui/jobs.py` | One background build thread and the event queue the Tk thread polls. |
 | Other GUI modules | Window/tab construction, profile controls, dialogs, history/update controls, and scrolling. |
 
@@ -92,12 +93,12 @@ This is a modular application with shared orchestration, not a strictly layered 
 `create_context()` performs these operations in order:
 
 1. Resolve and validate the selected project root.
-2. Use supplied settings, or the archive preset when omitted; validate a deep copy (profile, positive size limits, `workers` 1-32, non-empty output name). The caller's settings object is never changed.
+2. Use supplied settings, or the archive preset when omitted; validate a deep copy (profile, positive size limits, `workers` either `auto` or 1-32, non-empty output name). The caller's settings object is never changed.
 3. Reject an output folder name that is absolute, drive-qualified, contains `..`, or resolves outside the project or to the project root.
 4. Inspect Git metadata when requested (the output folder's name is added to the Git walk's exclusions).
 5. Create the output folder and a hidden `.pch-build-*` staging folder inside it.
 6. Discover files with a pruned depth-first walk: excluded folders, the output folder, `.pch-*` entries, and symlinks are recorded once and never entered. Apply per-file and total byte budgets in sorted path order (the same order v3.1.4 used).
-7. Enforce completeness on discovery results, then capture the selected files with a thread pool of `workers` threads in batches of `2 x workers`. Each file is read once; its hash and line count come from those bytes, which are written to a spool inside the staging folder. A file whose size changed since discovery is skipped as `source_changed`. Enforce completeness again.
+7. Enforce completeness on discovery results, resolve the thread count (`auto` becomes the detected logical CPU cores; an explicit count is limited to them; never more than 32), then capture the selected files with that many threads in batches of twice that count. The count used is returned in `ScanResult.workers_used`. Each file is read once; its hash and line count come from those bytes, which are written to a spool inside the staging folder. A file whose size changed since discovery is skipped as `source_changed`. Enforce completeness again.
 8. Write Markdown context, JSON manifest, plaintext summary, and settings JSON into staging, reading file contents from the spool.
 9. Optionally create a ZIP of those outputs plus the spooled bytes under `project_files/`.
 10. Delete the spool and publish: rename staging to `project_context_<timestamp>` (adding `_2`, `_3`, ... if taken), or for flat output replace the generated files in the output folder.
@@ -121,7 +122,7 @@ Any failure, completeness stop, or cancellation before publication deletes the s
 | Required eligible-source completeness | Disabled | Enabled |
 | Markdown skipped-detail limit | 100 | 1000 |
 
-Both presets use 4 capture workers. The interface default is `archive`, and `create_context(root)` without settings now uses it too. Raw `ScanSettings()` is still not an archive preset: its extension and exclusion sets are empty.
+Both presets use `auto` capture workers (one per detected CPU core, up to 32). The interface default is `archive`, and `create_context(root)` without settings now uses it too. Raw `ScanSettings()` is still not an archive preset: its extension and exclusion sets are empty.
 
 ### CLI precedence
 
@@ -140,7 +141,7 @@ The GUI loads saved preferences and last-used export settings at startup. Succes
 
 Changing the built-in profile applies preset defaults. Named-profile loading sets the base profile first and reapplies exposed values afterward so those values survive the preset callback.
 
-The GUI does not expose every `ScanSettings` field. `GuiState.base_settings` holds the last fully loaded settings (startup memory, a custom profile, or a preset). Building settings starts from a copy of it when its profile matches the dropdown and overlays the exposed controls, so hidden values such as custom extension/exclusion sets, `workers`, and the Git history limit survive builds and profile saves. Selecting a different built-in profile replaces them with that preset. GUI sizes use decimal MB: 1000000 bytes per MB.
+The GUI does not expose every `ScanSettings` field. `GuiState.base_settings` holds the last fully loaded settings (startup memory, a custom profile, or a preset). Building settings starts from a copy of it when its profile matches the dropdown and overlays the exposed controls, so hidden values such as custom extension/exclusion sets and the Git history limit survive builds and profile saves. Selecting a different built-in profile replaces them with that preset. `workers` is an exposed control (Options > Performance > CPU Cores): the core count is detected once when the window opens, and the selector offers Auto plus 1 to that count (capped at 32). GUI sizes use decimal MB: 1000000 bytes per MB.
 
 ## Persistence and design rationale
 
@@ -203,7 +204,7 @@ Closing the window during a build asks for confirmation, sets the cancellation e
 
 ## Validation and maintainer handoff
 
-The included unittest suite covers the original utility tests, the full export pipeline (outputs, ZIP/manifest hash agreement, sequential vs parallel parity, cancellation and failure cleanup, output-path safety, pruning, symlinks, fences, settings parsing), locked persistence (thread and process concurrency, corrupt files, stale locks), CLI behavior, slash-branch Git State, and GUI wiring through a recording tkinter stand-in. It does not cover the updater, a real Tk display, or large-project performance.
+The included unittest suite covers the utility tests (including CPU core detection and worker resolution), the full export pipeline (outputs, ZIP/manifest hash agreement, sequential vs parallel parity, auto and explicit worker counts, cancellation and failure cleanup, output-path safety, pruning, symlinks, fences, settings parsing), locked persistence (thread and process concurrency, corrupt files, stale locks), CLI behavior (including `--workers auto`), slash-branch Git State, and GUI wiring through a recording tkinter stand-in (including the CPU Cores selector on simulated 1-, 4-, and 64-core machines). It does not cover the updater, a real Tk display, or large-project performance.
 
 ```bash
 python -m unittest discover -s tests -v

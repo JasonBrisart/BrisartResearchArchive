@@ -29,8 +29,9 @@ Implemented responsibilities:
   a candidate or a SkipRecord.
 - capture_file: Worker-thread function: open one candidate, read at most max_file_bytes + 1
   bytes, reject a size change since discovery, and compute SHA256/line count from those bytes.
-- collect_included_files: Discover, apply the total-byte budget in sorted path order, capture in
-  parallel batches, optionally spool captured bytes, enforce completeness, and return ScanResult.
+- collect_included_files: Discover, apply the total-byte budget in sorted path order, resolve the
+  thread count, capture in parallel batches, optionally spool captured bytes, enforce
+  completeness, and return ScanResult (including the thread count actually used).
 - build_tree: Render a directory-first, case-insensitive-name-sorted folder tree using exclusion
   rules, skipping the export output directory and internal entries; mark ancestor symlink loops.
 - walk: Nested tree-rendering callback: track resolved ancestor directories, filter entries,
@@ -42,6 +43,7 @@ Internal imports and exchanged symbols:
 - core.constants: INTERNAL_NAME_PREFIX.
 - core.events: Progress, checkpoint.
 - core.models: FileRecord, ScanResult, ScanSettings, SkipRecord.
+- core.utils: resolve_workers.
 
 Consumers in the supplied source:
 - core/builder.py imports collect_included_files.
@@ -50,7 +52,8 @@ Consumers in the supplied source:
 Settings / parameters
 ---------------------
 Uses ScanSettings extension/name matching, exclusions, byte limits, hash/line toggles,
-  require_complete_source, and workers (thread count, 1-32). Six reasons count toward
+  require_complete_source, and workers ('auto' = one thread per detected CPU core, or an
+  explicit count clamped to the detected cores; never more than 32). Six reasons count toward
   completeness: file_too_large, total_size_limit, size_unavailable, read_unavailable,
   source_changed, directory_unavailable.
 
@@ -158,6 +161,7 @@ from core.models import (
     ScanSettings,
     SkipRecord,
 )
+from core.utils import resolve_workers
 
 SKIP_OUTSIDE_ROOT = "outside_root"
 SKIP_EXTENSION_NOT_INCLUDED = "extension_not_included"
@@ -405,7 +409,7 @@ def collect_included_files(
     included_paths: list[Path] = []
     included_records: list[FileRecord] = []
     captured_paths: list[Path] = []
-    workers = max(1, settings.workers)
+    workers = resolve_workers(settings.workers)
     batch_size = workers * 2
     done = 0
     with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="pch-capture") as pool:
@@ -437,6 +441,7 @@ def collect_included_files(
         skipped_records=tuple(skipped_records),
         total_included_bytes=sum(r.size_bytes for r in included_records),
         captured_paths=tuple(captured_paths),
+        workers_used=workers,
     )
 
 

@@ -3,8 +3,8 @@ File: tests/test_export_safety_utilities.py
 
 Purpose
 -------
-Run focused regression tests for extension normalization, text redaction, file hashing, and root
-  validation.
+Run focused regression tests for extension normalization, text redaction, root validation, CPU
+  core detection, and capture-worker resolution.
 
 Implemented responsibilities:
 - setUp: Create a fresh TemporaryDirectory fixture, register cleanup, and store its Path for
@@ -16,20 +16,21 @@ Implemented responsibilities:
   benign values.
 - test_explicit_unredacted_read_preserves_original: Assert that disabling redaction returns the
   exact fixture text including its trailing newline.
-- test_file_hash_matches_independent_sha256: Hash a fixture containing all 256 byte values and
-  compare the result with an independent hashlib.sha256 calculation.
-- test_missing_file_hash_returns_none: Assert that hashing a nonexistent path returns None
-  rather than raising.
 - test_valid_root_is_resolved: Assert that a valid temporary directory is returned as its
   resolved path.
 - test_missing_root_is_rejected: Assert FileNotFoundError for a nonexistent root.
 - test_file_instead_of_root_is_rejected: Create a regular file and assert NotADirectoryError
   when used as a root.
+- test_cpu_core_detection_never_reports_zero: Assert at least one core is reported, including
+  when the platform reports no count.
+- test_worker_resolution: Assert auto uses the detected cores, explicit counts are kept or
+  clamped to the detected cores, and nothing exceeds 32.
 
 Communication / relationships
 -----------------------------
 Internal imports and exchanged symbols:
-- core.utils: normalize_extension, safe_read, sha256_file, validate_root.
+- core.utils: detect_cpu_cores, normalize_extension, resolve_workers, safe_read, validate_root,
+  worker_limit.
 
 Consumers in the supplied source:
 No direct application-module importer is present in the supplied source; entry points/tests may
@@ -44,24 +45,26 @@ Function signatures (nested callbacks are scoped to their enclosing function):
 - test_extension_normalization_handles_whitespace_and_case(self)
 - test_redaction_removes_secret_lines_but_preserves_other_lines(self)
 - test_explicit_unredacted_read_preserves_original(self)
-- test_file_hash_matches_independent_sha256(self)
-- test_missing_file_hash_returns_none(self)
 - test_valid_root_is_resolved(self)
 - test_missing_root_is_rejected(self)
 - test_file_instead_of_root_is_rejected(self)
+- test_cpu_core_detection_never_reports_zero(self)
+- test_worker_resolution(self)
 
 Edge cases
 ----------
-Tests unredacted reads, missing-file hashes, missing roots, and file-instead-of-directory roots
-  alongside normal cases. TemporaryDirectory cleanup is registered for each test.
+Tests unredacted reads, missing roots, file-instead-of-directory roots, and a platform that
+  reports no CPU count alongside normal cases. TemporaryDirectory cleanup is registered for each test.
 
-The binary hash fixture is not passed through text decoding. The unredacted fixture explicitly
-  checks trailing-newline preservation.
+The unredacted fixture explicitly checks trailing-newline preservation. Worker resolution is
+  tested with explicit core counts so results do not depend on the test machine. (v4.1.0
+  removed the two sha256_file tests with the helper; hash correctness is covered end to end by
+  test_v4_engine.test_zip_hashes_match_manifest.)
 
 Known limitations
 -----------------
 Does not cover the complete export pipeline, GUI, updater, persistence, Git parsing, or all
-  security edge cases.
+  security edge cases. Real affinity-restricted core detection is not simulated.
 
 The tests use fixture-only values and do not test secret discovery across arbitrary formats, ZIP
   redaction, or live application settings.
@@ -78,11 +81,11 @@ Usage from the directory containing run.py:
     through unittest cleanup.
 """
 
-import hashlib
 import tempfile
 import unittest
 from pathlib import Path
-from core.utils import normalize_extension, safe_read, sha256_file, validate_root
+from unittest import mock
+from core.utils import detect_cpu_cores, normalize_extension, resolve_workers, safe_read, validate_root, worker_limit
 
 class ExportSafetyUtilityTests(unittest.TestCase):
     def setUp(self):
@@ -110,15 +113,6 @@ class ExportSafetyUtilityTests(unittest.TestCase):
         path.write_text(value, encoding='utf-8')
         self.assertEqual(safe_read(path, False), value)
 
-    def test_file_hash_matches_independent_sha256(self):
-        path = self.root / 'data.bin'
-        value = bytes(range(256))
-        path.write_bytes(value)
-        self.assertEqual(sha256_file(path), hashlib.sha256(value).hexdigest())
-
-    def test_missing_file_hash_returns_none(self):
-        self.assertIsNone(sha256_file(self.root / 'missing'))
-
     def test_valid_root_is_resolved(self):
         self.assertEqual(validate_root(self.root), self.root.resolve())
 
@@ -132,3 +126,14 @@ class ExportSafetyUtilityTests(unittest.TestCase):
         with self.assertRaises(NotADirectoryError):
             validate_root(path)
 
+    def test_cpu_core_detection_never_reports_zero(self):
+        self.assertGreaterEqual(detect_cpu_cores(), 1)
+        with mock.patch("core.utils.os.process_cpu_count", create=True, return_value=None):
+            self.assertEqual(detect_cpu_cores(), 1)
+
+    def test_worker_resolution(self):
+        self.assertEqual(resolve_workers("auto", cores=8), 8)
+        self.assertEqual(resolve_workers(3, cores=8), 3)
+        self.assertEqual(resolve_workers(16, cores=4), 4)
+        self.assertEqual(resolve_workers("auto", cores=64), 32)
+        self.assertEqual(worker_limit(1), 1)

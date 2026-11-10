@@ -11,7 +11,10 @@ Implemented responsibilities:
   project, and PCH_STATE_DIR pointing at a temporary state folder.
 - test_*: Check that every v3.1.4 control is built, that Build runs on the worker and shows the
   original dialogs, that Recent Exports refreshes, that hidden settings survive, that profiles
-  round-trip through the Extras controls, and that closing mid-build cancels and cleans up.
+  round-trip through the Extras controls, that closing mid-build cancels and cleans up, and that
+  the CPU Cores selector lists Auto plus only this machine's counts (1, 4, and 64-core
+  machines), updates its readout, resets with built-in profiles, round-trips through custom
+  profiles, and reaches the export.
 
 Communication / relationships
 -----------------------------
@@ -26,10 +29,12 @@ No application module imports this file; it is run by unittest discovery.
 
 Settings / parameters
 ---------------------
-Each scenario has a 120 second subprocess timeout.
+Each scenario has a 120 second subprocess timeout. cores, when given, replaces
+  gui.builders.detect_cpu_cores inside the subprocess so selector tests do not depend on the
+  test machine.
 
 Function signatures (nested callbacks are scoped to their enclosing function):
-- run_scenario(self, body: str, files: dict[str, str] | None=None) -> None
+- run_scenario(self, body: str, files: dict[str, str] | None=None, cores: int | None=None) -> None
 
 Edge cases
 ----------
@@ -66,6 +71,8 @@ PRELUDE = textwrap.dedent('''
     from pathlib import Path
     from services import storage
     import tkinter as tk
+    import gui.builders
+    {cores_patch}
     from gui.builders import make_gui_state, build_settings_from_state
     from gui.build_tab import create_build_tab
     from gui.options_tab import create_options_tab
@@ -82,7 +89,7 @@ PRELUDE = textwrap.dedent('''
 
 
 class GuiWiringTests(unittest.TestCase):
-    def run_scenario(self, body, files=None):
+    def run_scenario(self, body, files=None, cores=None):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             project = base / "project"
@@ -91,7 +98,8 @@ class GuiWiringTests(unittest.TestCase):
                 path = project / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text, encoding="utf-8")
-            code = PRELUDE.format(root=str(APP_ROOT), tests=str(APP_ROOT / "tests"))
+            cores_patch = f"gui.builders.detect_cpu_cores = lambda: {cores}" if cores else ""
+            code = PRELUDE.format(root=str(APP_ROOT), tests=str(APP_ROOT / "tests"), cores_patch=cores_patch)
             code += f"project = Path({str(project)!r})\n" + textwrap.dedent(body)
             env = dict(os.environ, PCH_STATE_DIR=str(base / "state"))
             result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120, env=env)
@@ -140,13 +148,56 @@ class GuiWiringTests(unittest.TestCase):
     def test_hidden_settings_survive_and_preset_resets(self):
         self.run_scenario('''
             state.base_settings.include_extensions.add('.custom')
-            state.base_settings.workers = 2
+            state.workers_var.set('2 cores')
             settings = build_settings_from_state(state)
             assert '.custom' in settings.include_extensions and settings.workers == 2
             state.profile_var.set('standard')
             settings = build_settings_from_state(state)
             assert '.custom' not in settings.include_extensions and settings.profile == 'standard'
-        ''')
+            assert settings.workers == 'auto', settings.workers
+        ''', cores=4)
+
+    def test_cpu_selector_lists_only_this_machines_cores(self):
+        self.run_scenario('''
+            combo = [w for w in fake_tk.REGISTRY if w.kind == 'Combobox' and w.options.get('textvariable') is state.workers_var][0]
+            assert list(combo.options['values']) == ['Auto (4 cores)', '1 core', '2 cores', '3 cores', '4 cores'], combo.options['values']
+            assert state.workers_var.get() == 'Auto (4 cores)'
+            usage = [w for w in fake_tk.REGISTRY if w.kind == 'Label' and w.options.get('fg') == '#2f6fde'][0].options['textvariable']
+            assert usage.get() == 'Using all 4 cores', usage.get()
+            state.workers_var.set('3 cores')
+            assert usage.get() == 'Using 3 of 4 cores', usage.get()
+            assert build_settings_from_state(state).workers == 3
+            state.custom_profile_var.set('Three')
+            fake_tk.buttons('Save Current As')[0].invoke()
+            state.profile_var.set('archive')
+            assert state.workers_var.get() == 'Auto (4 cores)'
+            fake_tk.buttons('Load Selected')[0].invoke()
+            assert state.workers_var.get() == '3 cores'
+            state.selected_folder.set(str(project))
+            build_button.invoke()
+            window.run_pending()
+            manifest = (state.last_export_dir / 'PROJECT_MANIFEST.json').read_text(encoding='utf-8')
+            assert '"workers": 3' in manifest, manifest[:400]
+        ''', cores=4)
+
+    def test_cpu_selector_caps_large_machines(self):
+        self.run_scenario('''
+            combo = [w for w in fake_tk.REGISTRY if w.kind == 'Combobox' and w.options.get('textvariable') is state.workers_var][0]
+            values = list(combo.options['values'])
+            assert values[0] == 'Auto (32 cores)' and values[-1] == '32 cores' and len(values) == 33, values
+            notes = [w.options.get('text') or '' for w in fake_tk.REGISTRY if w.kind == 'Label']
+            assert any('reports 64 cores' in t and 'up to 32' in t for t in notes)
+            state.base_settings.workers = 48
+            from gui.builders import apply_settings_to_state
+            apply_settings_to_state(state, state.base_settings)
+            assert state.workers_var.get() == '32 cores'
+        ''', cores=64)
+
+    def test_single_core_machine(self):
+        self.run_scenario('''
+            combo = [w for w in fake_tk.REGISTRY if w.kind == 'Combobox' and w.options.get('textvariable') is state.workers_var][0]
+            assert list(combo.options['values']) == ['Auto (1 core)', '1 core'], combo.options['values']
+        ''', cores=1)
 
     def test_custom_profile_round_trip_keeps_hidden_settings(self):
         self.run_scenario('''

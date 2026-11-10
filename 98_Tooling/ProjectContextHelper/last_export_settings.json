@@ -105,8 +105,8 @@
     ".webp",
     ".zip"
   ],
-  "max_file_bytes": 2000000,
-  "max_total_bytes": 100000000,
+  "max_file_bytes": 200000000,
+  "max_total_bytes": 10000000000,
   "include_snapshot_zip": true,
   "redact_sensitive_lines": false,
   "include_hashes": true,

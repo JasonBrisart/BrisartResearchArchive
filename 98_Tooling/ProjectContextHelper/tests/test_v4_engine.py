@@ -3,8 +3,8 @@ File: tests/test_v4_engine.py
 
 Purpose
 -------
-Regression tests for the v4.0.0 export engine, persistence, and CLI changes: single-read
-  capture, parallel/sequential parity, staging cleanup, cancellation, output-path safety,
+Regression tests for the v4.x export engine, persistence, and CLI changes: single-read
+  capture, parallel/sequential parity, auto/explicit capture-worker resolution, staging cleanup, cancellation, output-path safety,
   pruning, symlink policy, adaptive fences, settings fixes, locked persistence, and full Git
   State.
 
@@ -119,7 +119,8 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
             self.assertTrue(path.is_file(), path)
         manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(manifest["source_completeness"]["status"], "PASS")
-        self.assertEqual(manifest["settings"]["workers"], 4)
+        self.assertEqual(manifest["settings"]["workers"], "auto")
+        self.assertGreaterEqual(manifest["summary"]["capture_workers"], 1)
         self.assertEqual(manifest["author"], "Jason Brisart")
         self.assertEqual(manifest["affiliation"], "Brisart Research Archive")
         self.assertNotIn("repository_url", manifest)
@@ -141,10 +142,30 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         for index in range(25):
             (self.project / f"file_{index:02}.txt").write_text(f"line {index}\n" * index, encoding="utf-8")
         self.settings.workers = 1
-        one = json.loads(self.build().manifest_path.read_text(encoding="utf-8"))["included_files"]
+        one = json.loads(self.build().manifest_path.read_text(encoding="utf-8"))
         self.settings.workers = 8
-        eight = json.loads(self.build().manifest_path.read_text(encoding="utf-8"))["included_files"]
-        self.assertEqual(one, eight)
+        with mock.patch("core.utils.detect_cpu_cores", return_value=8):
+            eight = json.loads(self.build().manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(eight["summary"]["capture_workers"], 8)
+        self.assertEqual(one["included_files"], eight["included_files"])
+
+    def test_auto_workers_use_every_detected_core(self):
+        with mock.patch("core.utils.detect_cpu_cores", return_value=6):
+            result = self.build()
+        manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["settings"]["workers"], "auto")
+        self.assertEqual(manifest["summary"]["capture_workers"], 6)
+        self.assertIn("Capture workers: **6 (auto)**", result.context_path.read_text(encoding="utf-8"))
+        self.assertIn("Capture workers: 6 (auto)", result.summary_path.read_text(encoding="utf-8"))
+
+    def test_explicit_workers_are_limited_to_detected_cores(self):
+        self.settings.workers = 16
+        with mock.patch("core.utils.detect_cpu_cores", return_value=4):
+            result = self.build()
+        manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["settings"]["workers"], 16)
+        self.assertEqual(manifest["summary"]["capture_workers"], 4)
+        self.assertIn("4 (requested 16, limited to available CPU cores)", result.context_path.read_text(encoding="utf-8"))
 
     def test_source_changed_after_capture_does_not_change_outputs(self):
         def progress(event):
@@ -261,10 +282,13 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         self.assertEqual(json.loads(result.settings_path.read_text(encoding="utf-8"))["profile"], "archive")
 
     def test_settings_validation(self):
-        for workers in (0, 33, True):
+        for workers in (0, 33, True, "fast", "4", 2.0):
             self.settings.workers = workers
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValueError, msg=repr(workers)):
                 validate_settings(self.settings)
+        for workers in ("auto", 1, 32):
+            self.settings.workers = workers
+            self.assertEqual(validate_settings(self.settings).workers, workers)
         self.settings.workers = 4
         copy = validate_settings(self.settings)
         copy.include_extensions.add(".new")
@@ -274,8 +298,12 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         self.assertEqual(ScanSettings.from_jsonable({"max_file_bytes": "--5"}).max_file_bytes, 350000)
         legacy = settings_for_profile("archive").to_jsonable()
         legacy.pop("workers")
-        self.assertEqual(ScanSettings.from_jsonable(legacy).workers, 4)
-        self.assertEqual(ScanSettings.from_jsonable({"workers": True}).workers, 4)
+        self.assertEqual(ScanSettings.from_jsonable(legacy).workers, "auto")
+        self.assertEqual(ScanSettings.from_jsonable({"workers": True}).workers, "auto")
+        self.assertEqual(ScanSettings.from_jsonable({"workers": [4]}).workers, "auto")
+        self.assertEqual(ScanSettings.from_jsonable({"workers": " AUTO "}).workers, "auto")
+        self.assertEqual(ScanSettings.from_jsonable({"workers": 4}).workers, 4)
+        self.assertEqual(ScanSettings.from_jsonable({"workers": "6"}).workers, 6)
 
     def test_git_state_slash_branch_and_output_exclusion(self):
         git = self.project / ".git"
@@ -377,8 +405,18 @@ class CliTests(IsolatedStateMixin, unittest.TestCase):
         self.assertIn("Build completed", completed.stdout)
         self.assertIn("[capturing]", completed.stderr)
 
+    def test_cli_accepts_auto_workers(self):
+        completed = self.run_cli(str(self.project), "--workers", "AUTO", "--no-zip")
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        export = next((self.project / "PROJECT_CONTEXT_EXPORTS").iterdir())
+        settings = json.loads((export / "PROJECT_CONTEXT_SETTINGS.json").read_text(encoding="utf-8"))
+        self.assertEqual(settings["workers"], "auto")
+
     def test_cli_rejects_bad_workers_and_outside_output(self):
         self.assertEqual(self.run_cli(str(self.project), "--workers", "0").returncode, 1)
+        bad = self.run_cli(str(self.project), "--workers", "fast")
+        self.assertEqual(bad.returncode, 1)
+        self.assertIn("--workers must be 'auto'", bad.stdout)
         self.assertEqual(self.run_cli(str(self.project), "--output-dir", "../escape").returncode, 1)
         self.assertFalse((self.base / "escape").exists())
 

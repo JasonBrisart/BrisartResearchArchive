@@ -2,14 +2,14 @@
 
 Project Context Helper is a standard-library Python utility within Brisart Research Archive. It packages a project folder into readable context, a machine-readable manifest, a summary, a settings record, and an optional ZIP containing included source files.
 
-This README describes v4.0.0. The desktop interface is unchanged from v3.1.4; the export engine underneath was rebuilt to run in the background, read each file once with a configurable number of threads, and publish an export only when it is complete. Local exports work offline; optional legacy release checks and downloads require network access.
+This README describes v4.1.0. Exports run in the background, read each file once using as many threads as the computer has CPU cores (or a count you choose), and are published only when complete. Local exports work offline; optional legacy release checks and downloads require network access.
 
 ## Important boundaries
 
 - **ZIP snapshots are not redacted.** Redaction affects rendered text only; included ZIP source files retain their original bytes.
 - **Completeness is scoped.** PASS means no configured blocking skips were recorded for eligible source/text files. It does not mean every project file was preserved or the program was validated.
 - **Exports are not immutable filesystem snapshots.** Each included file is read exactly once, so its hash, Markdown text, and ZIP copy always agree, but different files are read at slightly different moments.
-- **Choosing a built-in profile resets hidden settings.** Settings the GUI does not display (custom extension/exclusion sets, worker count, Git history limit) are kept across builds and profile saves, until a different built-in profile is selected.
+- **Choosing a built-in profile resets hidden settings.** Settings the GUI does not display (custom extension/exclusion sets, Git history limit) are kept across builds and profile saves, until a different built-in profile is selected. Selecting a built-in profile also sets CPU Cores back to Auto.
 - **Legacy updater verification is conditional.** Missing or unsupported digests skip verification, despite stronger wording in some interface messages.
 
 Review exports before sharing them, especially when source folders contain credentials or confidential material.
@@ -45,7 +45,7 @@ Export without creating a ZIP:
 python run.py "/path/to/project" --profile archive --no-zip
 ```
 
-Use more capture threads and print progress to stderr:
+Limit capture to 8 threads and print progress to stderr (the default, `--workers auto`, uses every CPU core):
 
 ```bash
 python run.py "/path/to/project" --workers 8 --progress
@@ -98,7 +98,7 @@ The manifest retains all skip records even when Markdown skipped details are cap
 | Embedded contents, hashes, line counts, skipped details | Disabled | Enabled |
 | Required eligible-source completeness | Disabled | Enabled |
 | Git inspection | Disabled | Disabled |
-| Capture threads (`workers`) | 4 | 4 |
+| Capture threads (`workers`) | auto | auto |
 
 Intentional exclusions, unsupported extensions, and symlinks (which are never followed) do not fail completeness. Archive mode stops when eligible files hit configured blocking size/read failures, or when a file changes size between discovery and capture (`source_changed`).
 
@@ -108,16 +108,24 @@ To increase limits:
 python run.py "/path/to/project" --profile archive --max-file-bytes 4000000 --max-total-bytes 150000000
 ```
 
-CLI limits are bytes; GUI limits use decimal MB, where 1 MB is 1000000 bytes. `--workers` accepts 1 to 32; the worker count does not change which files are included, only how quickly they are read.
+CLI limits are bytes; GUI limits use decimal MB, where 1 MB is 1000000 bytes.
+
+### CPU cores
+
+`workers` controls how many threads read project files at once. `auto` (the default) uses one thread per logical CPU core the operating system reports, up to 32. An explicit count (`--workers 1` to `--workers 32`, or the Options tab) is limited to the cores the current computer has, so a profile saved on a 16-core desktop runs with 4 threads on a 4-core laptop. The worker count never changes which files are included, only how quickly they are read.
+
+The settings file records what was requested (`"workers": "auto"` or a number). `PROJECT_MANIFEST.json` records the count actually used as `summary.capture_workers`, and `PROJECT_CONTEXT.md` / `PROJECT_SUMMARY.txt` show both, for example `Capture workers: 8 (auto)`.
 
 ## Desktop interface
 
 - **Build:** project selection, built-in profile selection, export execution, and last successful session export.
-- **Options:** output folder, size limits, output sections, and folder-opening preference.
+- **Options:** output folder, size limits, CPU cores, output sections, and folder-opening preference.
 - **Extras:** optional Git inspection and named custom profiles.
 - **About:** application information, recent export history, and legacy update preferences.
 
-Options and Extras are scrollable. The tabs, controls, and dialogs are the same as v3.1.4.
+Options and Extras are scrollable.
+
+The Options tab's **Performance** section holds the **CPU Cores** selector. It lists **Auto** followed by only the counts this computer can use: a 4-core machine shows Auto and 1 to 4, a 32-core machine shows Auto and 1 to 32. A row of core cells fills in to show how many cores the next build will use, with a readout such as *Using all 8 cores* or *Using 3 of 8 cores*. The choice is saved with last-used settings and custom profiles.
 
 Builds run in the background: the window stays responsive, the status bar shows the current phase and file count, and **Build Project Context** is disabled until the build finishes. Recent Exports on the About tab refreshes automatically after each successful build. There is no separate Cancel button; closing the window during a build asks for confirmation, cancels the build, and closes once cleanup is done. Update checks and downloads still run on the interface thread.
 
@@ -207,9 +215,9 @@ python -m unittest discover -s tests -v
 
 The suite has three parts:
 
-- `test_export_safety_utilities.py`: the original v3.1.4 utility tests.
-- `test_v4_engine.py`: full exports, ZIP/manifest hash agreement, sequential vs parallel capture, cancellation and failure cleanup, output-folder safety, pruning, symlinks, Markdown fences, settings parsing, locked persistence, CLI behavior, and Git State.
-- `test_gui_wiring.py`: drives the real GUI modules against a recording tkinter stand-in (`fake_tk.py`) to check controls, background builds, dialogs, history refresh, hidden-setting retention, profiles, and closing mid-build.
+- `test_export_safety_utilities.py`: utility tests (extension normalization, redaction, root validation, CPU core detection, and worker resolution).
+- `test_v4_engine.py`: full exports, ZIP/manifest hash agreement, sequential vs parallel capture, auto and explicit worker counts, cancellation and failure cleanup, output-folder safety, pruning, symlinks, Markdown fences, settings parsing, locked persistence, CLI behavior, and Git State.
+- `test_gui_wiring.py`: drives the real GUI modules against a recording tkinter stand-in (`fake_tk.py`) to check controls, background builds, dialogs, history refresh, hidden-setting retention, profiles, closing mid-build, and the CPU Cores selector on simulated 1-, 4-, and 64-core machines.
 
 The GUI tests do not open a real window; check the interface manually on your platform. The updater is not covered.
 

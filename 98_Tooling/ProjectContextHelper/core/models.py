@@ -11,6 +11,8 @@ Implemented responsibilities:
   lists suitable for JSON serialization.
 - from_jsonable: Copy a settings dictionary, filter/convert known field types, discard unknown
   keys, and instantiate ScanSettings with remaining values and dataclass defaults.
+- _parse_workers: Convert a saved workers value to AUTO_WORKERS or an int; return None for
+  anything else so the field falls back to its default.
 
 Communication / relationships
 -----------------------------
@@ -34,12 +36,14 @@ ScanSettings is mutable; record dataclasses are frozen. JSON conversion sorts se
 Function signatures (nested callbacks are scoped to their enclosing function):
 - to_jsonable(self) -> dict[str, Any]
 - from_jsonable(cls, data: dict[str, Any]) -> 'ScanSettings'
+- _parse_workers(value: Any) -> int | str | None
 
 Module constants and expressions:
 - _SETTINGS_SET_FIELDS = ('include_extensions', 'exclude_dirs', 'exclude_files',
   'exclude_suffixes')
+- AUTO_WORKERS = 'auto'
 - _SETTINGS_INT_FIELDS = ('max_file_bytes', 'max_total_bytes', 'skipped_details_limit',
-  'git_state_commit_limit', 'workers')
+  'git_state_commit_limit')
 - _SETTINGS_BOOL_FIELDS = ('include_snapshot_zip', 'redact_sensitive_lines', 'include_hashes',
   'include_line_counts', 'include_folder_tree', 'include_file_index', 'include_file_contents',
   'include_skipped_details', 'timestamped_export_folder', 'require_complete_source',
@@ -67,7 +71,7 @@ ScanSettings record fields:
 - require_complete_source: bool = False
 - include_git_state: bool = False
 - git_state_commit_limit: int = 5
-- workers: int = 4
+- workers: int | str = AUTO_WORKERS
 
 FileRecord record fields:
 - relative_path: str (required constructor field)
@@ -87,6 +91,7 @@ ScanResult record fields:
 - skipped_records: tuple[SkipRecord, ...] (required constructor field)
 - total_included_bytes: int (required constructor field)
 - captured_paths: tuple[Path, ...] = ()
+- workers_used: int = 1
 
 BuildResult record fields:
 - export_dir: Path (required constructor field)
@@ -109,16 +114,20 @@ from_jsonable filters invalid field types and converts compatible integer string
 
 Boolean values are explicitly rejected for integer fields. Set fields keep only strings. Unknown
   keys are discarded. Strings resembling negative integers are converted; malformed strings such
-  as '--5' are discarded (v4.0.0 fix; v3.1.4 raised ValueError during int conversion). Settings
-  saved before v4.0.0 have no workers key and load with the default of 4.
+  as '--5' are discarded (v4.0.0 fix; v3.1.4 raised ValueError during int conversion). workers
+  accepts 'auto' (any case) or a whole number; settings saved before v4.0.0 have no workers key
+  and load as 'auto'. A whole number saved by v4.0.x (normally the old default of 4) is kept as
+  an explicit choice.
 
 ScanResult.captured_paths is empty when a scan was run without a capture spool; otherwise it is
   index-aligned with included_paths and points at the single captured copy of each file.
+  ScanResult.workers_used is the resolved thread count the scanner actually ran with.
 
 Known limitations
 -----------------
 Deserialization validates types, not all semantics: it does not ensure positive limits, a
-  supported profile, normalized extensions, or a safe output path.
+  supported profile, normalized extensions, an in-range worker count, or a safe output path
+  (core.builder.validate_settings checks those).
 
 from_jsonable does not merge built-in presets. Discarded fields fall back to raw dataclass
   defaults. Mutable settings can be changed after construction, and type annotations do not
@@ -168,7 +177,6 @@ _SETTINGS_INT_FIELDS = (
     "max_total_bytes",
     "skipped_details_limit",
     "git_state_commit_limit",
-    "workers",
 )
 _SETTINGS_BOOL_FIELDS = (
     "include_snapshot_zip",
@@ -198,6 +206,26 @@ def _is_int_text(value: str) -> bool:
     return text.isdigit()
 
 
+# Sentinel for ScanSettings.workers: use every detected CPU core (up to MAX_WORKERS).
+# Defined here because core.constants imports this module; consumers import it from there.
+AUTO_WORKERS = "auto"
+
+
+def _parse_workers(value: Any) -> int | str | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        if value.strip().lower() == AUTO_WORKERS:
+            return AUTO_WORKERS
+        if _is_int_text(value):
+            return int(value.strip())
+    return None
+
+
 @dataclass(slots=True)
 class ScanSettings:
     """
@@ -224,7 +252,7 @@ class ScanSettings:
     require_complete_source: bool = False
     include_git_state: bool = False
     git_state_commit_limit: int = 5
-    workers: int = 4
+    workers: int | str = AUTO_WORKERS
 
     def to_jsonable(self) -> dict[str, Any]:
         data = asdict(self)
@@ -262,6 +290,12 @@ class ScanSettings:
                     data[field_name] = int(raw_value.strip())
                 else:
                     del data[field_name]
+        if "workers" in data:
+            workers = _parse_workers(data["workers"])
+            if workers is None:
+                del data["workers"]
+            else:
+                data["workers"] = workers
         for field_name in _SETTINGS_BOOL_FIELDS:
             if field_name in data and not isinstance(data[field_name], bool):
                 del data[field_name]
@@ -299,6 +333,7 @@ class ScanResult:
     skipped_records: tuple[SkipRecord, ...]
     total_included_bytes: int
     captured_paths: tuple[Path, ...] = ()
+    workers_used: int = 1
 
 
 @dataclass(frozen=True, slots=True)
