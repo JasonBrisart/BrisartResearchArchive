@@ -1,125 +1,47 @@
 """
-File: core/git_state.py
+File: export/git_state.py
 
 Purpose
 -------
-Inspect local Git metadata using standard-library parsing without invoking a Git executable;
-  provide optional branch, HEAD, working-tree, and first-parent history information.
-
-Implemented responsibilities:
-- find_git_dir: Check only root/.git; return the directory directly or resolve a gitdir pointer
-  file relative to root; unreadable/invalid pointers return None.
-- read_head_ref: Read HEAD; return (branch, None) for a symbolic ref while preserving slash-
-  containing names, or (None, object_id) for detached HEAD; unreadable/empty HEAD returns (None,
-  None).
-- is_valid_sha: Accept only strings of 4 through 40 hexadecimal characters; this is a shape
-  check, not proof that the object exists or its content is authentic.
-- resolve_branch_sha: Try the loose refs/heads/<branch> file, then an exact matching packed-refs
-  entry; accept only shape-valid object IDs and otherwise return None.
-- read_loose_object: Validate the object-ID shape, read/decompress objects/<first
-  two>/<remaining characters>, split its header/content, and return (object_type, content);
-  missing/invalid data returns None.
-- parse_commit_object: Decode commit bytes with UTF-8 replacement, separate headers/message, and
-  return tree, parent IDs, author, committer, and stripped message fields.
-- parse_tree_object: Walk binary mode/name/NUL/20-byte-SHA entries and return (mode, name,
-  sha_hex) tuples; stop on malformed delimiters or truncated object IDs.
-- git_blob_sha1: Hash the exact Git blob header plus caller-supplied bytes, producing the SHA-1
-  used for working-file comparison against HEAD.
-- walk_tree: Recursively expand loose tree objects into relative-path/blob-ID mappings;
-  accumulate warnings for unavailable trees and excluded submodule gitlinks.
-- compute_working_tree_status: Build HEAD blob paths, walk nonexcluded working files, hash
-  tracked bytes, identify missing tracked paths and untracked files, and return status plus
-  warnings. Entirely unavailable tree data yields an unverified None result.
-- collect_recent_commits: Walk first-parent loose commit objects up to limit; format short IDs
-  and subject lines; stop with warnings for cycles, unavailable objects, or a noncommit object.
-- build_git_state: Combine root Git discovery, HEAD resolution, optional working-tree
-  comparison, and first-parent history into GitState; catch unexpected parser errors and return
-  a warning-bearing record.
+Read optional Git context for an export (branch, HEAD commit, clean or dirty working tree,
+  modified and untracked files, recent first-parent commits) straight from the .git folder
+  using the standard library, without running a git executable.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-This file imports no other application modules; its implementation uses the standard library.
-
-Consumers in the supplied source:
-- core/builder.py imports build_git_state.
-- core/exporters.py imports GitState.
+Imports nothing from the application. Imported by export/pipeline.py (build_git_state) and
+  export/render.py (GitState).
 
 Settings / parameters
 ---------------------
-Accepts a project root, directory/file exclusions, and a commit limit (default 5). Uses SHA-1
-  blob comparison and loose-object parsing.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-- find_git_dir(root: Path) -> Path | None
-- read_head_ref(git_dir: Path) -> tuple[str | None, str | None]
-- is_valid_sha(value: str) -> bool
-- resolve_branch_sha(git_dir: Path, branch: str) -> str | None
-- read_loose_object(git_dir: Path, sha: str) -> tuple[str, bytes] | None
-- parse_commit_object(content: bytes) -> dict
-- parse_tree_object(content: bytes) -> list[tuple[str, str, str]]
-- git_blob_sha1(data: bytes) -> str
-- walk_tree(git_dir: Path, tree_sha: str, prefix: str='') -> tuple[dict[str, str], list[str]]
-- compute_working_tree_status(root: Path, git_dir: Path, tree_sha: str, exclude_dirs: set[str],
-  exclude_files: set[str]) -> tuple[bool | None, str, list[str], list[str], list[str]]
-- collect_recent_commits(git_dir: Path, head_sha: str, limit: int=5) -> tuple[list[str],
-  list[str]]
-- build_git_state(root: Path, exclude_dirs: set[str] | None=None, exclude_files: set[str] |
-  None=None, commit_limit: int=5) -> GitState
-
-Module constants and expressions:
-- GIT_DIRNAME = '.git'
-- HEAD_FILENAME = 'HEAD'
-- PACKED_REFS_FILENAME = 'packed-refs'
-- TREE_DIR_MODES = ('40000', '040000')
-- TREE_SUBMODULE_MODE = '160000'
-- HEADS_REF_PREFIX = 'refs/heads/'
-
-GitState record fields:
-- is_git_repo: bool (required constructor field)
-- branch: str | None = None
-- head_commit: str | None = None
-- head_commit_short: str | None = None
-- is_dirty: bool | None = None
-- dirty_status: str = 'unknown'
-- modified_files: tuple[str, ...] = field(default_factory=tuple)
-- untracked_files: tuple[str, ...] = field(default_factory=tuple)
-- recent_commits: tuple[str, ...] = field(default_factory=tuple)
-- detection_method: str = 'loose_object_parse'
-- warnings: tuple[str, ...] = field(default_factory=tuple)
+build_git_state takes the project root, the export's directory and file exclusions (so the
+  output folder and excluded folders are not reported as untracked), and a commit limit
+  (default 5). Working files are compared to HEAD by Git blob SHA-1.
 
 Edge cases
 ----------
-Supports a .git directory or gitdir pointer at the selected root. Missing/packed objects produce
-  warnings; unavailable dirty status can be None. Commit cycles stop history traversal.
-
-Detached HEAD has no branch. A nonpositive history limit yields no recent commits. Missing
-  tracked paths are marked deleted after exclusions are applied; consequently excluded tracked
-  files can be reported as deleted. An unreadable tracked file adds a warning without
-  necessarily forcing is_dirty=None.
+Supports a .git folder or a gitdir: pointer file at the selected root. A detached HEAD has no
+  branch. Missing or packed objects add warnings, and dirty status becomes None (unverified)
+  when no tree data is readable. A repeated commit in the parent chain stops the history walk
+  with a warning. Unexpected parser errors return a GitState carrying the error as a warning,
+  never an exception. Excluded tracked files are reported as deleted.
 
 Known limitations
 -----------------
-Does not search parent directories, parse packfiles, interpret .gitignore, or compare the index.
-  Linked worktree common-directory resolution and SHA-256 repositories are not implemented.
-  Partial subtree warnings can coexist with a dirty/clean result; do not treat that result as
-  full Git verification.
-
-Loose-object parsing does not validate object size headers or recompute object IDs. Tree
-  recursion has no visited-object cycle guard. Raw-byte working-file comparison does not
-  implement Git filters, file-mode/index semantics, or full symlink handling.
+Does not search parent folders, read packfiles, apply .gitignore, compare the index, or
+  support linked-worktree common directories or SHA-256 repositories. Raw-byte comparison
+  ignores Git filters, file modes, and symlink semantics. Treat the result as supplementary
+  context, not Git verification.
 
 Examples
 --------
 Usage from the directory containing run.py:
 
     from pathlib import Path
-    from core.git_state import build_git_state
+    from export.git_state import build_git_state
 
     state = build_git_state(Path("/path/to/repository"), commit_limit=5)
-    print(state.branch, state.head_commit_short, state.is_dirty)
-    for warning in state.warnings:
-        print(warning)
+    print(state.branch, state.head_commit_short, state.is_dirty, state.warnings)
 """
 
 from __future__ import annotations
@@ -173,25 +95,9 @@ HEADS_REF_PREFIX = "refs/heads/"
 
 def read_head_ref(git_dir: Path) -> tuple[str | None, str | None]:
     """
-    Bugfix (v3.1.2): the previous implementation extracted the branch
-    name by taking only the LAST path segment of the ref
-    (`ref_path.rsplit("/", 1)[-1]`), which is wrong for any branch
-    name that itself contains a slash -- an extremely common,
-    everyday convention (e.g. "feature/login-page",
-    "bugfix/null-check", "release/1.0", "users/jason/experiment").
-    For HEAD content "ref: refs/heads/feature/test", this previously
-    returned "test" instead of "feature/test" -- silently wrong
-    branch name displayed everywhere it's shown to the user, and
-    (far more seriously) resolve_branch_sha() below then looks up
-    `refs/heads/test`, which does not exist, since the real ref file
-    lives at `refs/heads/feature/test`. The practical effect: Git
-    State detection silently failed to resolve a HEAD commit at all
-    (reporting no branch info, no dirty status, nothing) for any
-    checked-out branch whose name contains a slash, with no error or
-    warning indicating why. The branch name is now derived by
-    stripping the known "refs/heads/" prefix instead of guessing at
-    path segments, so the full branch name -- slashes and all -- is
-    preserved correctly.
+    Return (branch, None) for a symbolic HEAD or (None, sha) when detached. The
+    refs/heads/ prefix is stripped rather than split on '/', so feature/login keeps
+    its full name and still resolves to its ref file.
     """
     head_path = git_dir / HEAD_FILENAME
     try:
@@ -215,29 +121,8 @@ def read_head_ref(git_dir: Path) -> tuple[str | None, str | None]:
 
 def is_valid_sha(value: str) -> bool:
     """
-    Return True only if `value` looks like a plausible git object id:
-    a non-empty string of pure lowercase/uppercase hex digits, of a
-    length consistent with SHA-1 (40 chars) or a short/abbreviated
-    prefix thereof (this module only ever uses the full 40-char form
-    internally, but validates leniently here since the only caller
-    that needs this check is working with an externally-supplied
-    value -- see resolve_branch_sha()).
-
-    Bugfix: read_loose_object() builds a filesystem path directly from
-    whatever string it is given (`git_dir / "objects" / sha[:2] / sha[2:]`),
-    with no validation that the string only contains hex digits. A
-    sha-like value pulled from a corrupted or maliciously-crafted
-    packed-refs file (which is a plain, hand-editable text file) could
-    contain path-traversal sequences such as "../../../../etc/passwd"
-    -- since sha[:2] would be ".." and sha[2:] would be
-    "/../../../etc/passwd", and Path silently follows ".." components
-    when joined, the resulting object_path could point completely
-    outside the repository's objects/ directory. In practice this
-    still requires the resolved path to also happen to decompress as
-    valid zlib data to do anything beyond a failed read, so the
-    practical impact is low for a local, single-user tool -- but
-    validating the shape of a sha before ever using it to build a path
-    is the correct, defensive fix regardless, and costs nothing.
+    Accept only 4-40 hex characters. Object paths are built from this value, so
+    a crafted packed-refs entry such as ../../etc/passwd must never reach a path.
     """
     if not value:
         return False
@@ -365,47 +250,8 @@ def compute_working_tree_status(
     root: Path, git_dir: Path, tree_sha: str, exclude_dirs: set[str], exclude_files: set[str]
 ) -> tuple[bool | None, str, list[str], list[str], list[str]]:
     """
-    Bugfix (v3.1.3): directory-name and file-name exclusion matching
-    here was case-sensitive (`part in exclude_dirs`, `relative_parts[-1]
-    in exclude_files`) -- the exact same class of bug already fixed in
-    core/scanner.py's exclusion_reason() back in v3.1.2, except this
-    function is a completely separate, independent implementation (it
-    has to be -- it's comparing the working tree against git's tracked
-    blob shas, not deciding what to include in an export), so fixing
-    exclusion_reason() never fixed this one. The two have always been
-    two different implementations of the same "should this path be
-    ignored" concept, and only one of them got the case-insensitivity
-    fix.
-
-    On a case-preserving-but-case-insensitive filesystem (the Windows
-    default, and optionally macOS), a folder actually named `Build`,
-    `Node_Modules`, or `Venv` -- present in DEFAULT_EXCLUDE_DIRS only
-    in lowercase -- was not recognized as excluded here, even though
-    the OS itself treats those names as identical to their
-    default-cased counterparts, and even though core/scanner.py
-    already correctly excludes such a folder from the export proper.
-    Every file inside a folder like this (frequently hundreds or
-    thousands of build artifacts or dependency files) was walked
-    anyway, and since files like these are normally gitignored and
-    therefore absent from `tracked_blobs`, each one was reported as
-    "untracked" in the Git State section of every export -- while the
-    exact same folder's contents were correctly absent from the File
-    Index and Included File Contents sections a few paragraphs above,
-    in the same document. The practical effect was a Git State
-    section that could list a large, misleading pile of "untracked"
-    build/dependency files with nothing to do with the actual project
-    changes a user is trying to review, with no indication anything
-    was being double-counted or miscategorized.
-
-    Directory-name and file-name exclusion here now compare
-    case-insensitively too, using the same `.lower()` normalization
-    already applied to suffix/extension matching in core/scanner.py.
-    Verified with a real `Node_Modules/` folder (populated with
-    several files) alongside a genuinely modified tracked file in the
-    same repository: before the fix, every file under `Node_Modules/`
-    appeared in the "Untracked" list; after the fix, they're correctly
-    excluded from the walk entirely, while the real modified tracked
-    file still correctly appears in "Modified or deleted since HEAD."
+    Compare the working tree against HEAD's tree. Exclusions are case-insensitive,
+    matching export/scan.py, so a Node_Modules folder is not listed as untracked.
     """
     tracked_blobs, warnings = walk_tree(git_dir, tree_sha)
     if not tracked_blobs and warnings:
@@ -526,4 +372,3 @@ def build_git_state(
         )
     except Exception as exc:
         return GitState(is_git_repo=True, warnings=(f"git state detection failed unexpectedly: {exc}",))
-

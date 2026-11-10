@@ -1,144 +1,62 @@
 """
-File: core/scanner.py
+File: export/scan.py
 
 Purpose
 -------
-Select eligible source/text files with a pruned directory walk, apply byte budgets in a
-  deterministic order, capture every included file exactly once with a bounded thread pool,
-  enforce configured completeness, and render a folder tree.
-
-Implemented responsibilities:
-- relative_string: Return the path relative to root as a string; if it is not lexically
-  relative, return the full path string instead.
-- safe_size: Read lstat().st_size; return None on OSError so the scanner can record
-  size_unavailable.
-- build_file_meta: Capture a candidate's path, relative display path, size, lowercased suffix,
-  and lowercased filename in FileMeta.
-- exclusion_reason: Check lexical root membership, excluded directory components, excluded
-  filenames, and excluded suffixes in that order; return the first reason or None.
-- is_configured_source_file: Match lowercased suffix or exact filename against
-  include_extensions, then test filename endings for configured compound extensions.
-- skip_record: Convert FileMeta plus a reason string into an immutable SkipRecord, preserving an
-  unavailable size as None.
-- source_completeness_failures: Return only skip records whose reason belongs to
-  SOURCE_COMPLETENESS_FAILURE_REASONS.
-- build_source_failure_message: Format the blocking file list with reason/byte size and
-  remediation text for a required-completeness ValueError.
-- discover_candidates: Walk the root depth-first without entering excluded directories, the
-  export output directory, internal .pch-* entries, or symlinks; classify every visited entry as
-  a candidate or a SkipRecord.
-- capture_file: Worker-thread function: open one candidate, read at most max_file_bytes + 1
-  bytes, reject a size change since discovery, and compute SHA256/line count from those bytes.
-- collect_included_files: Discover, apply the total-byte budget in sorted path order, resolve the
-  thread count, capture in parallel batches, optionally spool captured bytes, enforce
-  completeness, and return ScanResult (including the thread count actually used).
-- build_tree: Render a directory-first, case-insensitive-name-sorted folder tree using exclusion
-  rules, skipping the export output directory and internal entries; mark ancestor symlink loops.
-- walk: Nested tree-rendering callback: track resolved ancestor directories, filter entries,
-  append connectors/loop labels, and recursively expand nonloop directories.
+Decide which project files go into an export and read each of them exactly once: walk the
+  project, classify every entry as a candidate or a skip with a reason, apply per-file and
+  total byte budgets, capture the selected files on a thread pool, enforce source
+  completeness, and render the folder tree. Owns the records describing that result
+  (FileRecord, SkipRecord, ScanResult).
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-- core.constants: INTERNAL_NAME_PREFIX.
-- core.events: Progress, checkpoint.
-- core.models: FileRecord, ScanResult, ScanSettings, SkipRecord.
-- core.utils: resolve_workers.
-
-Consumers in the supplied source:
-- core/builder.py imports collect_included_files.
-- core/exporters.py imports SOURCE_COMPLETENESS_FAILURE_REASONS, build_tree.
+Imports app (INTERNAL_NAME_PREFIX), export/events.py (Progress, checkpoint), and
+  export/settings.py (ScanSettings, resolve_workers). Imported by export/pipeline.py
+  (collect_included_files, ScanResult) and export/render.py (records, build_tree,
+  SOURCE_COMPLETENESS_FAILURE_REASONS).
 
 Settings / parameters
 ---------------------
-Uses ScanSettings extension/name matching, exclusions, byte limits, hash/line toggles,
-  require_complete_source, and workers ('auto' = one thread per detected CPU core, or an
-  explicit count clamped to the detected cores; never more than 32). Six reasons count toward
-  completeness: file_too_large, total_size_limit, size_unavailable, read_unavailable,
-  source_changed, directory_unavailable.
+Reads the extension and exclusion sets, both byte limits, the hash and line-count toggles,
+  require_complete_source, and workers from ScanSettings. The thread count is
+  resolve_workers(settings.workers) and is returned as ScanResult.workers_used. Files are
+  captured in batches of twice that count. With a spool_dir, captured bytes are written to
+  spool_dir/<relative path> and listed in captured_paths; without one, they are discarded.
 
-Captured bytes are written to spool_dir/<relative path> when spool_dir is supplied; otherwise
-  hashes and line counts are still computed from one read, but the bytes are discarded and
-  captured_paths is empty.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-- relative_string(path: Path, root: Path) -> str
-- safe_size(path: Path) -> int | None
-- build_file_meta(path: Path, root: Path) -> FileMeta
-- exclusion_reason(path: Path, root: Path, settings: ScanSettings) -> str | None
-- is_configured_source_file(meta: FileMeta, settings: ScanSettings) -> bool
-- skip_record(meta: FileMeta, reason: str) -> SkipRecord
-- source_completeness_failures(skipped_records: list[SkipRecord]) -> list[SkipRecord]
-- build_source_failure_message(failures: list[SkipRecord]) -> str
-- discover_candidates(root: Path, settings: ScanSettings, output_dir: Path | None=None,
-  cancel: Event | None=None) -> tuple[list[FileMeta], list[SkipRecord]]
-- capture_file(meta: FileMeta, settings: ScanSettings) -> tuple[FileRecord | None, bytes |
-  None, str | None]
-- collect_included_files(root: Path, settings: ScanSettings, output_dir: Path | None=None,
-  spool_dir: Path | None=None, cancel: Event | None=None, progress:
-  Callable[[Progress], None] | None=None) -> ScanResult
-- build_tree(root: Path, settings: ScanSettings, output_dir: Path | None=None) -> str
-- walk(directory: Path, prefix: str='', visited: frozenset[Path]=frozenset()) -> None
-
-Module constants and expressions:
-- SKIP_OUTSIDE_ROOT = 'outside_root'
-- SKIP_EXTENSION_NOT_INCLUDED = 'extension_not_included'
-- SKIP_FILE_TOO_LARGE = 'file_too_large'
-- SKIP_TOTAL_SIZE_LIMIT = 'total_size_limit'
-- SKIP_SIZE_UNAVAILABLE = 'size_unavailable'
-- SKIP_READ_UNAVAILABLE = 'read_unavailable'
-- SKIP_SOURCE_CHANGED = 'source_changed'
-- SKIP_DIRECTORY_UNAVAILABLE = 'directory_unavailable'
-- SKIP_SYMLINK = 'symlink_not_followed'
-- SKIP_SPECIAL_FILE = 'not_a_regular_file'
-- SKIP_EXPORT_OUTPUT = 'export_output_directory'
-- SKIP_INTERNAL = 'internal_tool_file'
-- SOURCE_COMPLETENESS_FAILURE_REASONS = {SKIP_FILE_TOO_LARGE, SKIP_TOTAL_SIZE_LIMIT,
-  SKIP_SIZE_UNAVAILABLE, SKIP_READ_UNAVAILABLE, SKIP_SOURCE_CHANGED, SKIP_DIRECTORY_UNAVAILABLE}
-
-FileMeta record fields:
-- path: Path (required constructor field)
-- relative_path: str (required constructor field)
-- size_bytes: int | None (required constructor field)
-- suffix: str (required constructor field)
-- name_lower: str (required constructor field)
+Six skip reasons fail completeness: file_too_large, total_size_limit, size_unavailable,
+  read_unavailable, source_changed, directory_unavailable. Intentional skips do not:
+  excluded_directory/file/suffix, extension_not_included, symlink_not_followed,
+  not_a_regular_file, export_output_directory, internal_tool_file.
 
 Edge cases
 ----------
-Directory and filename exclusions are case-insensitive. Compound extensions match filename
-  endings. An excluded directory produces one excluded_directory skip record for the directory
-  itself; its contents are not walked or listed. Exactly-at-limit files fit because size checks
-  use >. A total-budget skip does not stop selection; later smaller files can still fit.
-
-Candidates are budgeted and captured in sorted Path order, matching v3.1.4's sorted rglob order,
-  so worker count never changes which files are included. A file whose size changed between
-  discovery and capture is skipped as source_changed. Symlinked files and directories are skipped
-  as symlink_not_followed (an intentional exclusion, not a completeness failure).
+Budgets apply in sorted path order, so the worker count never changes which files are
+  included. A file exactly at the limit fits. After the total budget is hit, smaller files
+  later in order can still fit. A file whose size changed between discovery and capture is
+  skipped as source_changed. Compound extensions such as .env.example match by filename
+  ending. Exclusions are case-insensitive. With required completeness, a blocking skip raises
+  ValueError listing every blocked file, both before and after capture.
 
 Known limitations
 -----------------
-Completeness is scoped to configured eligible files, not the entire repository. Intentional
-  exclusions, unsupported extensions, and symlinks do not fail it. Each file is read once, but
-  files are captured at slightly different moments; this is not an atomic project-wide
-  snapshot. The tree is rendered from a separate walk using exclusions only, so it can show
-  files absent from the index.
-
-Without spool_dir, captured bytes are not retained, so later rendering must reread originals.
-  Capture holds at most 2 x workers file buffers in memory at once; each buffer is bounded by
-  max_file_bytes + 1.
+Completeness covers configured eligible files, not the whole repository. Files are read at
+  slightly different moments, so an export is not an atomic snapshot. The folder tree comes
+  from a separate walk that applies exclusions only, so it can show files that are absent
+  from the index. Capture holds at most two buffers per thread, each up to max_file_bytes + 1.
 
 Examples
 --------
 Usage from the directory containing run.py:
 
     from pathlib import Path
-    from core.constants import settings_for_profile
-    from core.scanner import collect_included_files, build_tree
+    from export.settings import settings_for_profile
+    from export.scan import collect_included_files, build_tree
 
     root = Path("/path/to/project").resolve()
     settings = settings_for_profile("archive")
     scan = collect_included_files(root, settings)
-    print(len(scan.included_records), scan.total_included_bytes)
+    print(len(scan.included_records), scan.workers_used)
     print(build_tree(root, settings))
 """
 
@@ -153,15 +71,9 @@ import hashlib
 import os
 import stat
 
-from core.constants import INTERNAL_NAME_PREFIX
-from core.events import Progress, checkpoint
-from core.models import (
-    FileRecord,
-    ScanResult,
-    ScanSettings,
-    SkipRecord,
-)
-from core.utils import resolve_workers
+from app import INTERNAL_NAME_PREFIX
+from export.events import Progress, checkpoint
+from export.settings import ScanSettings, resolve_workers
 
 SKIP_OUTSIDE_ROOT = "outside_root"
 SKIP_EXTENSION_NOT_INCLUDED = "extension_not_included"
@@ -180,6 +92,32 @@ SOURCE_COMPLETENESS_FAILURE_REASONS = {
     SKIP_FILE_TOO_LARGE, SKIP_TOTAL_SIZE_LIMIT, SKIP_SIZE_UNAVAILABLE, SKIP_READ_UNAVAILABLE,
     SKIP_SOURCE_CHANGED, SKIP_DIRECTORY_UNAVAILABLE,
 }
+
+
+@dataclass(frozen=True, slots=True)
+class FileRecord:
+    relative_path: str
+    size_bytes: int
+    extension: str
+    sha256: str | None = None
+    line_count: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SkipRecord:
+    relative_path: str
+    reason: str
+    size_bytes: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ScanResult:
+    included_paths: tuple[Path, ...]
+    included_records: tuple[FileRecord, ...]
+    skipped_records: tuple[SkipRecord, ...]
+    total_included_bytes: int
+    captured_paths: tuple[Path, ...] = ()
+    workers_used: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,25 +152,10 @@ def build_file_meta(path: Path, root: Path) -> FileMeta:
 
 def exclusion_reason(path: Path, root: Path, settings: ScanSettings) -> str | None:
     """
-    Bugfix (v3.1.2): directory-name and file-name exclusion matching
-    were case-sensitive (`part in settings.exclude_dirs`, `path.name
-    in settings.exclude_files`), while suffix exclusion two lines
-    below (`suffix = path.suffix.lower()`) was already
-    case-insensitive, and include_extensions matching in
-    is_configured_source_file() below is also already
-    case-insensitive by construction (both sides are pre-lowercased).
-    This was an inconsistency within this same function: on a
-    case-preserving-but-case-insensitive filesystem (the default on
-    Windows, and optionally on macOS), a folder actually named
-    "Build" or "Node_Modules" or "Venv" would silently NOT be excluded
-    by the default "build" / "node_modules" / "venv" entries in
-    DEFAULT_EXCLUDE_DIRS, even though Windows itself treats those
-    names as the same folder. Directory-name and file-name exclusion
-    now compare case-insensitively too, matching how suffix and
-    extension matching already behave.
-
-    v4.0.0: unchanged. The pruned walk in discover_candidates() calls
-    this once per directory instead of once per descendant file.
+    Return why a path is excluded, or None. Directory and file names compare
+    case-insensitively, like suffixes, because Windows treats Build and build as
+    the same folder. Only directory components are checked against
+    exclude_dirs, so a file literally named build is not mistaken for a folder.
     """
     try:
         relative_parts = path.relative_to(root).parts
@@ -294,12 +217,9 @@ def discover_candidates(
     cancel: Event | None = None,
 ) -> tuple[list[FileMeta], list[SkipRecord]]:
     """
-    v4.0.0: replaces v3.1.4's root.rglob("*") traversal. Excluded
-    directories (and the export output directory, wherever it is
-    configured) are pruned at entry instead of having every descendant
-    visited and individually rejected. This also stops custom output
-    folder names from being swept into later exports, which v3.1.4 did
-    not prevent.
+    Walk the project depth-first, never entering excluded folders, the export
+    output folder, .pch- entries, or symlinks. Each skipped folder yields one
+    record instead of one per descendant file.
     """
     output_resolved = output_dir.resolve() if output_dir is not None else None
     candidates: list[FileMeta] = []
@@ -356,10 +276,8 @@ def discover_candidates(
 
 def capture_file(meta: FileMeta, settings: ScanSettings) -> tuple[FileRecord | None, bytes | None, str | None]:
     """
-    Read one file exactly once. Hash and line count come from these same
-    bytes, and the caller spools the same bytes for Markdown and ZIP
-    rendering, so all three always describe identical content
-    (v3.1.4 read each file up to four separate times).
+    Read one file exactly once. Its hash, line count, rendered text, and ZIP
+    copy all come from these bytes, so they always describe the same content.
     """
     try:
         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
@@ -447,12 +365,8 @@ def collect_included_files(
 
 def build_tree(root: Path, settings: ScanSettings, output_dir: Path | None = None) -> str:
     """
-    Build a readable folder tree for the selected project. Protected
-    against symlink loops: each directory's resolved real path is tracked
-    while walking, and revisiting one already on the current path is
-    reported directly in the tree as a loop instead of being descended
-    into again. v4.0.0: the configured export output directory and this
-    tool's internal .pch-* entries are left out, whatever they are named.
+    Render a directory-first folder tree using exclusion rules only. A symlinked
+    directory that loops back to an ancestor is labelled instead of expanded.
     """
     lines: list[str] = [root.name + "/"]
     output_resolved = output_dir.resolve() if output_dir is not None else None

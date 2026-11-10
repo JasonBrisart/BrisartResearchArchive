@@ -1,115 +1,58 @@
 """
-File: core/exporters.py
+File: export/render.py
 
 Purpose
 -------
-Render the Markdown context, JSON manifest, plaintext summary, completeness report, and optional
-  snapshot ZIP from scan results.
-
-Implemented responsibilities:
-- escape_table_cell: Replace backticks with apostrophes, escape pipe characters, flatten
-  newlines, and remove carriage returns before inserting display values into Markdown
-  tables/code spans.
-- source_completeness_report: Filter scan skips to the six configured failure reasons and
-  return required/status/counts/failure records; PASS depends on those skips, not all repository
-  files.
-- describe_workers: Return the capture-thread count actually used plus how it was chosen
-  ("8 (auto)", "4 (requested 4)", or "4 (requested 16, limited to available CPU cores)").
-- git_state_report: Return None for absent Git metadata or dataclasses.asdict for an existing
-  GitState.
-- append_git_state_markdown: Append the Git section to a caller-owned chunk list; render
-  disabled/not-detected cases, branch/HEAD/status, escaped path/history lists, and parser
-  warnings.
-- build_manifest: Return the machine-readable export dictionary with application metadata
-  (name, version, author, affiliation), serialized settings, scan summary, completeness, Git metadata, and all inclusion/skip records.
-- append_source_completeness_markdown: Append the completeness summary and, for FAIL, an escaped
-  table of every blocking eligible-file record.
-- source_fence: Return a backtick fence one longer than the longest backtick run in the text
-  (minimum three), so embedded fences cannot close the code block early.
-- build_context_markdown: Assemble the Markdown export from enabled sections; compute skip
-  counts, render tree/index, and read each file's single captured copy through safe_read when
-  contents are enabled.
-- build_summary_text: Return a plaintext overview of settings (including capture workers),
-  optional Git state, counts,
-  completeness, extension totals, and skip-reason totals.
-- create_snapshot_zip: Open a ZIP in overwrite mode with deflate compression, add four generated
-  outputs at its root, and add each included file's captured bytes under
-  project_files/<relative path>.
+Turn a finished scan into the export's files: PROJECT_CONTEXT.md, the PROJECT_MANIFEST.json
+  dictionary, PROJECT_SUMMARY.txt, the source-completeness report, and the optional
+  PROJECT_SNAPSHOT.zip. Also owns the text handling only rendering needs: reading captured
+  text with optional secret-line redaction, Markdown escaping and fences, and fence language
+  hints.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-- core.constants: AFFILIATION, APP_NAME, APP_VERSION, AUTHOR, AUTO_WORKERS.
-- core.git_state: GitState.
-- core.models: ScanResult, ScanSettings.
-- core.scanner: SOURCE_COMPLETENESS_FAILURE_REASONS, build_tree.
-- core.utils: language_hint, safe_read.
-
-Consumers in the supplied source:
-- core/builder.py imports build_manifest, build_context_markdown, build_summary_text,
-  create_snapshot_zip.
+Imports app (attribution and manifest name), export/git_state.py (GitState), export/scan.py
+  (ScanResult, build_tree, SOURCE_COMPLETENESS_FAILURE_REASONS), and export/settings.py
+  (ScanSettings, AUTO_WORKERS). Imported only by export/pipeline.py, which writes the
+  returned text to disk.
 
 Settings / parameters
 ---------------------
-Receives the root, ScanResult, ScanSettings, creation timestamp, and optional GitState. Output
-  sections follow the supplied toggles. When ScanResult.captured_paths is populated, contents
-  and ZIP members come from those captured copies; otherwise original paths are read (the
-  v3.1.4 behavior). output_dir lets the folder tree omit a custom export folder. The manifest
-  keeps settings.workers as requested ('auto' or a number) and records the resolved count as
-  summary.capture_workers.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-- escape_table_cell(value: str) -> str
-- source_completeness_report(scan: ScanResult, settings: ScanSettings) -> dict
-- describe_workers(scan: ScanResult, settings: ScanSettings) -> str
-- git_state_report(git_state: GitState | None) -> dict | None
-- append_git_state_markdown(chunks: list[str], git_state: GitState | None) -> None
-- build_manifest(root: Path, scan: ScanResult, settings: ScanSettings, created: str, git_state:
-  GitState | None=None) -> dict
-- append_source_completeness_markdown(chunks: list[str], scan: ScanResult, settings:
-  ScanSettings) -> None
-- source_fence(text: str) -> str
-- build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings, created: str,
-  git_state: GitState | None=None, output_dir: Path | None=None) -> str
-- build_summary_text(root: Path, scan: ScanResult, settings: ScanSettings, created: str,
-  git_state: GitState | None=None) -> str
-- create_snapshot_zip(zip_path: Path, context_path: Path, manifest_path: Path, summary_path:
-  Path, settings_path: Path, scan: ScanResult, root: Path) -> None
+Sections follow the ScanSettings toggles. File contents and ZIP members come from
+  ScanResult.captured_paths when present (always, under the pipeline), otherwise from the
+  original files. The manifest keeps settings.workers as requested and adds
+  summary.capture_workers, the count actually used; the Markdown and summary show both, for
+  example "8 (auto)" or "4 (requested 16, limited to available CPU cores)". Redaction replaces
+  any line where password, token, secret, api_key, and similar keys are followed by : or =.
 
 Edge cases
 ----------
-Table values escape pipes and flatten newlines; backticks become apostrophes. Missing Git data
-  and completeness failures are represented explicitly. Skipped details are capped only in
-  Markdown.
-
-An empty scan renders a no-files message instead of an index table. Negative skipped-details
-  limits are clamped to zero in rendering. The manifest retains all skips even when the Markdown
-  table is capped.
+An empty scan renders "No files were included." instead of an index table. The Markdown
+  skipped-details table is capped at skipped_details_limit (negative values count as zero);
+  the manifest always lists every skip. Unreadable text renders a diagnostic line instead of
+  raising, and invalid UTF-8 is replaced. Git sections distinguish disabled, not a
+  repository, and partially readable.
 
 Known limitations
 -----------------
-Markdown redaction does not redact files in the ZIP; ZIP members are the captured original
-  bytes. Hashes describe those bytes, not redacted Markdown. Markdown escaping is not a general
-  sanitization boundary.
-
-When called with a ScanResult that has no captured_paths (e.g. collect_included_files without a
-  spool), files are read again here and hashes can diverge from rendered content if sources
-  change in between. core.builder always supplies captured paths.
+Redaction is heuristic, can miss secrets or hide harmless lines, and applies only to rendered
+  text: ZIP members and hashes are the original bytes. Escaping protects Markdown structure; it
+  is not a general sanitizer.
 
 Examples
 --------
 Usage from the directory containing run.py:
 
     from pathlib import Path
-    from core.constants import settings_for_profile
-    from core.scanner import collect_included_files
-    from core.exporters import build_manifest
+    from export.settings import settings_for_profile
+    from export.scan import collect_included_files
+    from export.render import build_manifest
 
     root = Path("/path/to/project").resolve()
     settings = settings_for_profile("archive")
     scan = collect_included_files(root, settings)
     manifest = build_manifest(root, scan, settings, "example build")
-    print(manifest["source_completeness"]["status"])
+    print(manifest["source_completeness"]["status"], manifest["summary"]["capture_workers"])
 """
 
 from collections import Counter
@@ -117,52 +60,62 @@ from dataclasses import asdict
 from pathlib import Path
 import zipfile
 
-from core.constants import (
-    AFFILIATION,
-    APP_NAME,
-    APP_VERSION,
-    AUTHOR,
-    AUTO_WORKERS,
+import re
+
+from app import AFFILIATION, APP_NAME, APP_VERSION, AUTHOR, MANIFEST_FILENAME
+from export.git_state import GitState
+from export.scan import SOURCE_COMPLETENESS_FAILURE_REASONS, ScanResult, build_tree
+from export.settings import AUTO_WORKERS, ScanSettings
+
+_SECRET_PATTERN = re.compile(
+    r"(?i)(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret)\s*[:=]"
 )
-from core.git_state import GitState
-from core.models import (
-    ScanResult,
-    ScanSettings,
-)
-from core.scanner import (
-    SOURCE_COMPLETENESS_FAILURE_REASONS,
-    build_tree,
-)
-from core.utils import (
-    language_hint,
-    safe_read,
-)
+
+
+def safe_read(path: Path, redact_sensitive_lines: bool = True) -> str:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except Exception as exc:
+            return f"[[Could not read file: {exc}]]"
+    except Exception as exc:
+        return f"[[Could not read file: {exc}]]"
+    if not redact_sensitive_lines:
+        return text
+    redacted_lines: list[str] = []
+    for line in text.splitlines():
+        if _SECRET_PATTERN.search(line):
+            redacted_lines.append("[[REDACTED POSSIBLE SECRET LINE]]")
+        else:
+            redacted_lines.append(line)
+    return "\n".join(redacted_lines)
+
+
+def language_hint(path: Path) -> str:
+    suffix = path.suffix.lower()
+    mapping = {
+        ".py": "python", ".json": "json", ".csv": "csv", ".txt": "text",
+        ".md": "markdown", ".rst": "rst", ".toml": "toml", ".ini": "ini",
+        ".cfg": "ini", ".yaml": "yaml", ".yml": "yaml", ".html": "html",
+        ".css": "css", ".js": "javascript", ".jsx": "jsx", ".ts": "typescript",
+        ".tsx": "tsx", ".sql": "sql", ".xml": "xml", ".bat": "bat",
+        ".ps1": "powershell", ".sh": "bash", ".java": "java", ".c": "c",
+        ".cpp": "cpp", ".h": "c", ".hpp": "cpp", ".cs": "csharp", ".go": "go",
+        ".rs": "rust", ".rb": "ruby", ".php": "php", ".swift": "swift",
+        ".kt": "kotlin", ".kts": "kotlin", ".r": "r", ".pl": "perl", ".lua": "lua",
+    }
+    if path.name.lower() in {".gitignore", ".dockerignore"}:
+        return "text"
+    return mapping.get(suffix, "text")
 
 
 def escape_table_cell(value: str) -> str:
     """
-    Escape a value for safe placement inside a Markdown pipe-table
-    cell, AND/OR inside a single-backtick inline code span (every
-    call site in this module does one or both of these immediately
-    after calling this function).
-    Bugfix (v3.1.2): this function already escaped `|` (pipe) and
-    collapsed embedded newlines, but did not escape backticks. Every
-    call site wraps its result in a single pair of backticks
-    (e.g. f"`{path_cell}`") to render it as inline code -- but if the
-    original value itself contains a literal backtick (a valid
-    filename character on Linux/macOS, e.g. "weird`file.py", and also
-    a completely ordinary character to find inside a real git commit
-    message, e.g. "Fix `foo()` bug"), that backtick prematurely closes
-    the intended code span. Everything between the embedded backtick
-    and the next backtick in the line renders as literal, unescaped
-    Markdown instead of inert code text -- which, worse, undoes the
-    protection this function was already providing against pipe
-    characters, since a pipe that escapes the (now prematurely closed)
-    code span is no longer inside a context where `\\|` reads as
-    intended. Backticks are replaced with a single quote, consistent
-    with this function's existing philosophy of prioritizing rendered
-    output correctness over perfect character fidelity for values
-    that were always going to be adversarial edge cases anyway.
+    Make a value safe inside a Markdown table cell or `code span`: backticks
+    become apostrophes (a backtick would close the span early), pipes are
+    escaped, and newlines are flattened.
     """
     return (
         value.replace("`", "'")
@@ -201,18 +154,6 @@ def git_state_report(git_state: GitState | None) -> dict | None:
 
 
 def append_git_state_markdown(chunks: list[str], git_state: GitState | None) -> None:
-    """
-    Bugfix (v3.1.2): the modified/untracked file paths and recent
-    commit summaries rendered here were previously placed directly
-    inside single backticks with NO escaping at all (unlike every
-    table in this module, which at least escaped pipes/newlines even
-    before this fix). A commit subject line containing a backtick --
-    an extremely common, completely ordinary thing to find in a real
-    commit message (e.g. "Fix `foo()` bug") -- would break the
-    rendered bullet list. Both are now passed through
-    escape_table_cell(), consistent with everywhere else in this
-    module that wraps a value in backticks.
-    """
     chunks.append("## Git State")
     chunks.append("")
     if git_state is None:
@@ -305,11 +246,8 @@ def append_source_completeness_markdown(chunks: list[str], scan: ScanResult, set
 
 def source_fence(text: str) -> str:
     """
-    v4.0.0: v3.1.4 always used a fixed triple-backtick fence, so any
-    embedded file that itself contained ``` (Markdown docs, this tool's
-    own README, docstrings with examples) closed the code block early
-    and broke rendering for the rest of the document. The fence is now
-    always longer than the longest backtick run inside the text.
+    Return a backtick fence longer than any backtick run in the text (minimum
+    three), so an embedded file containing ``` cannot close its block early.
     """
     longest = 0
     run = 0
@@ -369,7 +307,7 @@ def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings,
         remaining = len(scan.skipped_records) - len(visible_records)
         if remaining > 0:
             chunks.append("")
-            chunks.append(f"_Skipped details truncated. {remaining} additional skipped files are listed in PROJECT_MANIFEST.json._")
+            chunks.append(f"_Skipped details truncated. {remaining} additional skipped files are listed in {MANIFEST_FILENAME}._")
         chunks.append("")
     if settings.include_folder_tree:
         chunks.append("## Folder Tree")
@@ -489,4 +427,3 @@ def create_snapshot_zip(zip_path: Path, context_path: Path, manifest_path: Path,
         for path, source in zip(scan.included_paths, sources):
             rel = path.relative_to(root)
             archive.write(source, f"project_files/{rel.as_posix()}")
-

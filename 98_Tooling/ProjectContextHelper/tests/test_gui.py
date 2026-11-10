@@ -1,55 +1,41 @@
 """
-File: tests/test_gui_wiring.py
+File: tests/test_gui.py
 
 Purpose
 -------
-Exercise the unchanged v3.1.4 desktop interface on top of the v4.0.0 engine without a display,
-  using the recording tkinter stand-in in tests/fake_tk.py.
-
-Implemented responsibilities:
-- run_scenario: Run one scenario in a fresh subprocess with fake tkinter installed, a temporary
-  project, and PCH_STATE_DIR pointing at a temporary state folder.
-- test_*: Check that every v3.1.4 control is built, that Build runs on the worker and shows the
-  original dialogs, that Recent Exports refreshes, that hidden settings survive, that profiles
-  round-trip through the Extras controls, that closing mid-build cancels and cleans up, and that
-  the CPU Cores selector lists Auto plus only this machine's counts (1, 4, and 64-core
-  machines), updates its readout, resets with built-in profiles, round-trips through custom
-  profiles, and reaches the export.
+Verify the desktop window's behavior without a display: every control exists, Build runs on
+  the worker and shows the right dialogs, Recent Exports refreshes (proving the GUI records
+  history), the About tab has no update controls, hidden settings survive builds and profile
+  saves, profiles round-trip, closing
+  mid-build cancels and cleans up, profile save failures show an error instead of crashing,
+  and the CPU Cores selector on simulated 1-, 4-, and 64-core machines. Also verifies
+  JobRunner results, errors, and refusing overlapping jobs.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols (inside the scenario subprocesses):
-- gui.builders: make_gui_state, build_settings_from_state.
-- gui.build_tab / gui.options_tab / gui.extras_tab / gui.about_tab: create_* tab functions.
-- gui.main_gui: run_gui.
-- services: storage.
-
-Consumers in the supplied source:
-No application module imports this file; it is run by unittest discovery.
+Imports tests/support.py (APP_ROOT). Each GUI scenario runs in a fresh Python process with
+  tests/fake_tk.py installed as tkinter, then imports the real gui/ modules. JobRunner tests
+  import gui/jobs.py directly.
 
 Settings / parameters
 ---------------------
-Each scenario has a 120 second subprocess timeout. cores, when given, replaces
-  gui.builders.detect_cpu_cores inside the subprocess so selector tests do not depend on the
-  test machine.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-- run_scenario(self, body: str, files: dict[str, str] | None=None, cores: int | None=None) -> None
+Scenarios time out after 120 s. cores replaces gui.state.detect_cpu_cores inside the
+  scenario process.
 
 Edge cases
 ----------
-Subprocess isolation keeps fake tkinter out of every other test module.
+Running each scenario in its own process keeps the fake tkinter out of every other test.
 
 Known limitations
 -----------------
-Verifies wiring and control flow only, not rendering, layout, fonts, real Tk threading rules, or
-  platform dialogs. A manual check on a real display is still required.
+Checks wiring and behavior, not appearance: layout, colors, fonts, and real Tk threading
+  need a manual look on a real display.
 
 Examples
 --------
-Usage from the directory containing run.py:
+From the directory containing run.py:
 
-    python -m unittest discover -s tests -p test_gui_wiring.py -v
+    python -m unittest discover -s tests -p test_gui.py -v
 """
 
 import os
@@ -59,8 +45,11 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from threading import Event
 
-APP_ROOT = Path(__file__).resolve().parents[1]
+from support import APP_ROOT
+
+from gui.jobs import JobRunner
 
 PRELUDE = textwrap.dedent('''
     import sys, time
@@ -69,11 +58,11 @@ PRELUDE = textwrap.dedent('''
     import fake_tk
     fake_tk.install()
     from pathlib import Path
-    from services import storage
+    import storage
     import tkinter as tk
-    import gui.builders
+    import gui.state
     {cores_patch}
-    from gui.builders import make_gui_state, build_settings_from_state
+    from gui.state import make_gui_state, build_settings_from_state
     from gui.build_tab import create_build_tab
     from gui.options_tab import create_options_tab
     from gui.extras_tab import create_extras_tab
@@ -83,12 +72,12 @@ PRELUDE = textwrap.dedent('''
     create_build_tab(parent=tk.Frame(window), window=window, state=state)
     create_options_tab(parent=tk.Frame(window), state=state)
     create_extras_tab(parent=tk.Frame(window), state=state)
-    create_about_tab(parent=tk.Frame(window), window=window, state=state)
+    create_about_tab(parent=tk.Frame(window), state=state)
     build_button = fake_tk.buttons('Build Project Context')[0]
 ''')
 
 
-class GuiWiringTests(unittest.TestCase):
+class GuiTests(unittest.TestCase):
     def run_scenario(self, body, files=None, cores=None):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -98,7 +87,7 @@ class GuiWiringTests(unittest.TestCase):
                 path = project / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text, encoding="utf-8")
-            cores_patch = f"gui.builders.detect_cpu_cores = lambda: {cores}" if cores else ""
+            cores_patch = f"gui.state.detect_cpu_cores = lambda: {cores}" if cores else ""
             code = PRELUDE.format(root=str(APP_ROOT), tests=str(APP_ROOT / "tests"), cores_patch=cores_patch)
             code += f"project = Path({str(project)!r})\n" + textwrap.dedent(body)
             env = dict(os.environ, PCH_STATE_DIR=str(base / "state"))
@@ -111,7 +100,7 @@ class GuiWiringTests(unittest.TestCase):
             for text in ('Browse', 'Open Last Export Folder', 'Open Selected Export Folder',
                          'Refresh', 'Clear History', 'Save Current As', 'Load Selected', 'Delete Selected', 'Refresh List'):
                 assert text in labels, text
-            assert 'Open Releases Page' not in labels
+            assert 'Open Releases Page' not in labels and 'Updates' not in labels
             about = [w.options.get('text') or '' for w in fake_tk.REGISTRY if w.kind == 'Label']
             assert any('Author: Jason Brisart' + chr(10) + 'Brisart Research Archive' in t for t in about), about
             assert not any('github' in t.lower() for t in about)
@@ -188,7 +177,7 @@ class GuiWiringTests(unittest.TestCase):
             notes = [w.options.get('text') or '' for w in fake_tk.REGISTRY if w.kind == 'Label']
             assert any('reports 64 cores' in t and 'up to 32' in t for t in notes)
             state.base_settings.workers = 48
-            from gui.builders import apply_settings_to_state
+            from gui.state import apply_settings_to_state
             apply_settings_to_state(state, state.base_settings)
             assert state.workers_var.get() == '32 cores'
         ''', cores=64)
@@ -215,7 +204,7 @@ class GuiWiringTests(unittest.TestCase):
     def test_close_during_build_cancels_and_cleans_up(self):
         files = {f"f{i}.txt": "x" * 2000 for i in range(400)}
         self.run_scenario('''
-            import gui.main_gui as main_gui
+            import gui.window as main_gui
             fake_tk.REGISTRY.clear()
             def scenario(self):
                 st = self._state
@@ -239,6 +228,42 @@ class GuiWiringTests(unittest.TestCase):
             main_gui.make_gui_state = capture
             main_gui.run_gui()
         ''', files=files)
+
+    def test_profile_and_history_failures_show_dialogs(self):
+        self.run_scenario('''
+            from unittest import mock
+            state.custom_profile_var.set('Review')
+            with mock.patch('storage.save_profile', side_effect=TimeoutError('busy')):
+                try:
+                    fake_tk.buttons('Save Current As')[0].invoke()
+                except TimeoutError:
+                    raise AssertionError('busy settings folder escaped to the user')
+        ''')
+
+
+class JobRunnerTests(unittest.TestCase):
+    def test_result_error_and_overlap(self):
+        runner = JobRunner()
+        runner.start(lambda cancel, emit: 42)
+        runner.thread.join(10)
+        self.assertEqual(list(runner.drain()), [("done", 42)])
+
+        def fail(cancel, emit):
+            raise ValueError("fixture")
+        runner.start(fail)
+        runner.thread.join(10)
+        kind, payload = list(runner.drain())[0]
+        self.assertEqual(kind, "error")
+        self.assertIsInstance(payload, ValueError)
+
+        gate = Event()
+        runner.start(lambda cancel, emit: gate.wait(10))
+        try:
+            with self.assertRaises(RuntimeError):
+                runner.start(lambda cancel, emit: None)
+        finally:
+            gate.set()
+            runner.thread.join(10)
 
 
 if __name__ == "__main__":

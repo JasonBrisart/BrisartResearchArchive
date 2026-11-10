@@ -3,59 +3,47 @@ File: run.py
 
 Purpose
 -------
-Launch Project Context Helper within Brisart Research Archive through the shared CLI dispatcher;
-  no root argument opens the desktop GUI.
-
-The module-level main guard calls the imported cli.cli.main only during direct execution.
+Start Project Context Helper, a Brisart Research Archive tool that packages a project folder
+  into a readable context file, manifest, summary, settings record, and optional ZIP. With a
+  project folder argument it exports from the command line; without one it opens the desktop
+  window. This file is only the entry point; cli.py beside it does the work.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-- cli.cli: main.
+Imports cli (main) and calls it when run as a script. Python puts this file's folder on the
+  import path when it is run, which is how cli, app, storage, export/, and gui/ resolve from
+  any working folder.
 
-Consumers in the supplied source:
-No direct application-module importer is present in the supplied source; entry points/tests may
-  be invoked through their execution guards or discovery.
+Application layout (dependencies point down; nothing imports anything above itself):
+  run.py              entry point
+  cli.py, gui/        interfaces: command line and desktop window
+  storage.py          everything remembered between runs
+  export/             the engine: settings -> scan, git_state -> render -> pipeline (+ events)
+  app.py              identity and every file name the app writes
 
 Settings / parameters
 ---------------------
-Reads command-line arguments through cli.cli; inserts its own directory into sys.path before
-  importing the dispatcher.
+Takes the command-line arguments documented in cli.py; python run.py --help lists them.
 
 Edge cases
 ----------
-The main guard prevents launch when imported. CLI validation and GUI failures are handled
-  downstream.
-
-Importing run.py changes sys.path but does not call main unless __name__ is __main__.
+Importing run.py does nothing; only running it as a script starts the program.
 
 Known limitations
 -----------------
-Command-line exports no longer import tkinter (v4.0.0); a Python installation with tkinter is
-  needed only to open the desktop GUI.
-
-The entry point does not package dependencies or detect an absent graphical display; those
-  failures arise during imports/GUI creation.
+Importing run.py from another script requires that script to put this folder on sys.path
+  first. The desktop window needs tkinter and a display; command-line exports need neither.
 
 Examples
 --------
-Usage from the directory containing run.py:
+From the directory containing run.py (or with its full path from anywhere):
 
     python run.py
-    python run.py "/path/to/project" --profile archive --no-zip
-    python run.py "/path/to/project" --profile standard --remember-settings
-    python run.py "/path/to/project" --workers 8 --progress
-    python run.py --list-profiles
+    python run.py "/path/to/project"
     python run.py --help
 """
 
-from pathlib import Path
-import sys
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from cli.cli import main
+from cli import main
 
 if __name__ == "__main__":
     main()
-

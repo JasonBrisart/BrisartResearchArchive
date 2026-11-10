@@ -3,32 +3,38 @@ File: tests/fake_tk.py
 
 Purpose
 -------
-Provide a minimal recording stand-in for tkinter so GUI wiring can be exercised headlessly.
+Stand in for tkinter so tests/test_gui.py can run the real gui/ modules without a display. It
+  records every widget created and every message shown, runs after() callbacks on demand, and
+  lets a test click buttons and answer yes/no prompts.
 
 Communication / relationships
 -----------------------------
-Installed into sys.modules as tkinter/tkinter.ttk/filedialog/messagebox by tests/test_gui_wiring.py
-subprocesses only. No application module imports this file.
+Installed into sys.modules as tkinter, tkinter.ttk, tkinter.filedialog, and
+  tkinter.messagebox by install(), only inside tests/test_gui.py scenario processes. No
+  application module imports it. tests/support.py holds the setup shared by real test files.
 
 Settings / parameters
 ---------------------
-REGISTRY records widgets; MESSAGES records dialogs; ASK_ANSWER controls askyesno; FOLDER controls
-askdirectory. Tk.after queues callbacks for run_pending().
+REGISTRY holds every widget, MESSAGES every (kind, title, text) dialog, ASK_ANSWER[0] the
+  answer to askyesno, and FOLDER[0] what askdirectory returns. Tk.run_pending() runs queued
+  after() callbacks until none remain or the timeout passes. buttons(text) finds buttons by
+  label; Widget.invoke() honors state="disabled".
 
 Edge cases
 ----------
-Unknown widget methods are accepted as no-ops so layout calls do not fail.
+Any widget method it does not implement is accepted and does nothing, so layout calls
+  (pack, grid, bind, and so on) never fail.
 
 Known limitations
 -----------------
-Does not render, measure, or emulate real Tk event semantics, threading rules, fonts, or
-platform behavior. Passing wiring tests is not physical GUI validation.
+Does not draw, measure, or follow real Tk event or threading rules. Passing GUI tests proves
+  wiring and behavior, not appearance.
 
 Examples
 --------
-Usage from the directory containing run.py:
+From the directory containing run.py:
 
-    python -m unittest discover -s tests -p test_gui_wiring.py -v
+    python -m unittest discover -s tests -p test_gui.py -v
 """
 import time
 import types

@@ -1,98 +1,70 @@
 """
-File: tests/test_v4_engine.py
+File: tests/test_export.py
 
 Purpose
 -------
-Regression tests for the v4.x export engine, persistence, and CLI changes: single-read
-  capture, parallel/sequential parity, auto/explicit capture-worker resolution, staging cleanup, cancellation, output-path safety,
-  pruning, symlink policy, adaptive fences, settings fixes, locked persistence, and full Git
-  State.
-
-Implemented responsibilities:
-- EngineTests: Build fixture projects in temporary folders and assert export, manifest, ZIP,
-  and skip-record behavior through core.builder.create_context.
-- StorageTests: Exercise services.storage locking, corrupt-file protection, preference parsing,
-  and temp-file cleanup.
-- CliTests: Run run.py in subprocesses to confirm tkinter-free exports and flag handling.
-- JobRunnerTests: Confirm the GUI worker controller reports results, errors, and overlap.
+Verify the export engine end to end and the settings rules it depends on: outputs and
+  manifest, ZIP hashes matching the manifest, identical results with 1 or 8 threads, auto and
+  clamped worker counts, single-read capture, Markdown-only redaction, completeness stops,
+  cancellation and failure cleanup, unique and flat output folders, output-folder safety,
+  pruning, symlinks, embedded fences, settings validation and loading, Git branch names, CPU
+  core detection, and that export/ loads without storage, the GUI, tkinter, or urllib.request.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-- core.builder: create_context, validate_settings.
-- core.constants: settings_for_profile.
-- core.events: BuildCancelled.
-- core.exporters: source_fence.
-- core.git_state: build_git_state.
-- core.models: ScanSettings.
-- services: storage.
-- gui.jobs: JobRunner.
-
-Consumers in the supplied source:
-No application module imports this file; it is run by unittest discovery.
+Imports tests/support.py (APP_ROOT, IsolatedStateMixin), export/events.py,
+  export/git_state.py, export/pipeline.py, export/render.py, and export/settings.py. Run by
+  unittest discovery; nothing imports it.
 
 Settings / parameters
 ---------------------
-Every test points PCH_STATE_DIR at its own temporary folder, so the real state files beside
-  run.py are never read or written.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-Standard unittest setUp/test_* methods; see the class bodies.
+Each engine test gets a temporary project and points PCH_STATE_DIR at a temporary folder.
+  Core counts are patched (export.settings.detect_cpu_cores) where a result depends on them,
+  so outcomes do not depend on the test machine.
 
 Edge cases
 ----------
-The symlink test is skipped on systems where unprivileged symlink creation is not allowed
-  (common on Windows without Developer Mode).
+The symlink test is skipped where unprivileged symlinks are not allowed (common on Windows
+  without Developer Mode).
 
 Known limitations
 -----------------
-Fixture-based tests do not prove behavior on every platform, filesystem, or project size, and
-  do not exercise the network updater or a real Tk display.
+Fixture projects are small; behavior on very large projects, network drives, and every
+  platform is not covered.
 
 Examples
 --------
-Usage from the directory containing run.py:
+From the directory containing run.py:
 
-    python -m unittest discover -s tests -v
-    python -m unittest discover -s tests -p test_v4_engine.py -v
+    python -m unittest discover -s tests -p test_export.py -v
 """
 
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
 from unittest import mock
 import hashlib
 import json
-import os
 import subprocess
 import sys
 import tempfile
 import unittest
 import zipfile
 
-APP_ROOT = Path(__file__).resolve().parents[1]
-if str(APP_ROOT) not in sys.path:
-    sys.path.insert(0, str(APP_ROOT))
+from support import APP_ROOT, IsolatedStateMixin
 
-from core.builder import create_context, validate_settings
-from core.constants import settings_for_profile
-from core.events import BuildCancelled
-from core.exporters import source_fence
-from core.git_state import build_git_state
-from core.models import ScanSettings
-from services import storage
-from gui.jobs import JobRunner
-
-
-class IsolatedStateMixin:
-    def isolate(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.base = Path(self.tmp.name)
-        self.state_dir = self.base / "state"
-        patcher = mock.patch.dict(os.environ, {"PCH_STATE_DIR": str(self.state_dir)})
-        patcher.start()
-        self.addCleanup(patcher.stop)
+from export.events import BuildCancelled
+from export.git_state import build_git_state
+from export.pipeline import create_context, validate_root
+from export.render import safe_read, source_fence
+from export.settings import (
+    ScanSettings,
+    detect_cpu_cores,
+    normalize_extension,
+    resolve_workers,
+    settings_for_profile,
+    validate_settings,
+    worker_limit,
+)
 
 
 class EngineTests(IsolatedStateMixin, unittest.TestCase):
@@ -127,7 +99,6 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         for path in (result.context_path, result.manifest_path, result.summary_path):
             self.assertNotIn("github", path.read_text(encoding="utf-8").lower(), path)
         self.assertIn("Affiliation: **Brisart Research Archive**", result.context_path.read_text(encoding="utf-8"))
-        self.assertEqual(len(storage.load_history()), 1)
         self.assert_no_staging()
 
     def test_zip_hashes_match_manifest(self):
@@ -144,13 +115,13 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         self.settings.workers = 1
         one = json.loads(self.build().manifest_path.read_text(encoding="utf-8"))
         self.settings.workers = 8
-        with mock.patch("core.utils.detect_cpu_cores", return_value=8):
+        with mock.patch("export.settings.detect_cpu_cores", return_value=8):
             eight = json.loads(self.build().manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(eight["summary"]["capture_workers"], 8)
         self.assertEqual(one["included_files"], eight["included_files"])
 
     def test_auto_workers_use_every_detected_core(self):
-        with mock.patch("core.utils.detect_cpu_cores", return_value=6):
+        with mock.patch("export.settings.detect_cpu_cores", return_value=6):
             result = self.build()
         manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(manifest["settings"]["workers"], "auto")
@@ -160,7 +131,7 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
 
     def test_explicit_workers_are_limited_to_detected_cores(self):
         self.settings.workers = 16
-        with mock.patch("core.utils.detect_cpu_cores", return_value=4):
+        with mock.patch("export.settings.detect_cpu_cores", return_value=4):
             result = self.build()
         manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(manifest["settings"]["workers"], 16)
@@ -209,13 +180,13 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         self.assertEqual(list(self.exports().iterdir()), [])
 
     def test_render_failure_cleans_staging(self):
-        with mock.patch("core.builder.build_manifest", side_effect=OSError("fixture failure")):
+        with mock.patch("export.pipeline.build_manifest", side_effect=OSError("fixture failure")):
             with self.assertRaises(OSError):
                 self.build()
         self.assertEqual(list(self.exports().iterdir()), [])
 
     def test_same_second_builds_get_unique_folders(self):
-        with mock.patch("core.builder.timestamp_slug", return_value="20260101_000000"):
+        with mock.patch("export.pipeline.timestamp_slug", return_value="20260101_000000"):
             first = self.build().export_dir
             second = self.build().export_dir
         self.assertNotEqual(first, second)
@@ -316,134 +287,66 @@ class EngineTests(IsolatedStateMixin, unittest.TestCase):
         manifest = json.loads(self.build().manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(manifest["git_state"]["branch"], "feature/test")
 
-
-class StorageTests(IsolatedStateMixin, unittest.TestCase):
-    def setUp(self):
-        self.isolate()
-
-    def test_concurrent_thread_profile_saves(self):
-        settings = settings_for_profile("archive")
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            list(pool.map(lambda i: storage.save_profile(f"p{i}", settings), range(24)))
-        self.assertEqual(len(storage.list_profiles()), 24)
-
-    def test_concurrent_process_profile_saves(self):
+    def test_engine_does_not_load_app_state_gui_or_network(self):
         code = (
-            "import sys; sys.path.insert(0, sys.argv[1]);"
-            "from services import storage; from core.constants import settings_for_profile;"
-            "storage.save_profile(sys.argv[2], settings_for_profile('archive'))"
+            f"import sys; sys.path.insert(0, {str(APP_ROOT)!r});"
+            "import export.pipeline;"
+            "loaded = [m for m in sys.modules if m.split('.')[0] in ('storage', 'gui', 'tkinter') or m == 'urllib.request'];"
+            "assert not loaded, loaded"
         )
-        processes = [
-            subprocess.Popen([sys.executable, "-c", code, str(APP_ROOT), f"proc{i}"], env=os.environ.copy())
-            for i in range(4)
-        ]
-        for process in processes:
-            self.assertEqual(process.wait(timeout=120), 0)
-        self.assertEqual(len(storage.list_profiles()), 4)
-
-    def test_corrupt_profiles_file_is_not_overwritten(self):
-        self.state_dir.mkdir(parents=True)
-        path = self.state_dir / "custom_profiles.json"
-        path.write_text("{broken", encoding="utf-8")
-        with self.assertRaises(ValueError):
-            storage.save_profile("Review", settings_for_profile("archive"))
-        self.assertEqual(path.read_text(encoding="utf-8"), "{broken")
-
-    def test_preferences_require_real_booleans(self):
-        self.state_dir.mkdir(parents=True)
-        path = self.state_dir / "app_settings.json"
-        path.write_text('{"open_after_build": "false", "check_updates_startup": true}', encoding="utf-8")
-        prefs = storage.load_preferences()
-        self.assertFalse(prefs.open_after_build)
-        self.assertTrue(prefs.check_updates_startup)
-        path.write_text("[]", encoding="utf-8")
-        self.assertEqual(storage.load_preferences(), storage.AppPreferences())
-
-    def test_failed_atomic_write_leaves_no_temp_file(self):
-        with mock.patch("services.storage.os.replace", side_effect=OSError("fixture")):
-            with self.assertRaises(OSError):
-                storage.save_profile("Review", settings_for_profile("archive"))
-        self.assertEqual([p.name for p in self.state_dir.iterdir()], [])
-
-    def test_stale_lock_is_recovered(self):
-        self.state_dir.mkdir(parents=True)
-        lock = self.state_dir / storage.LOCK_FILENAME
-        lock.write_text("999999", encoding="utf-8")
-        old = lock.stat().st_mtime - 120
-        os.utime(lock, (old, old))
-        storage.save_profile("Review", settings_for_profile("archive"))
-        self.assertEqual(storage.list_profiles(), ["Review"])
-
-    def test_history_ignores_bad_shapes(self):
-        self.state_dir.mkdir(parents=True)
-        (self.state_dir / "build_history.json").write_text('{"not": "a list"}', encoding="utf-8")
-        self.assertEqual(storage.load_history(), [])
-        (self.state_dir / "build_history.json").write_text('[1, "x", null]', encoding="utf-8")
-        self.assertEqual(storage.load_history(), [])
+        self.assertEqual(subprocess.run([sys.executable, "-c", code], capture_output=True).returncode, 0)
 
 
-class CliTests(IsolatedStateMixin, unittest.TestCase):
+class ExportHelperTests(unittest.TestCase):
     def setUp(self):
-        self.isolate()
-        self.project = self.base / "project"
-        self.project.mkdir()
-        (self.project / "sample.py").write_text("x = 1\n", encoding="utf-8")
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
 
-    def run_cli(self, *args):
-        return subprocess.run(
-            [sys.executable, str(APP_ROOT / "run.py"), *args], capture_output=True, text=True,
-            env=os.environ.copy(), timeout=120,
-        )
+    def test_extension_normalization_handles_whitespace_and_case(self):
+        self.assertEqual(normalize_extension(' PY '), '.py')
+        self.assertEqual(normalize_extension(' .JSON '), '.json')
+        self.assertEqual(normalize_extension(' '), '')
 
-    def test_cli_does_not_import_tkinter(self):
-        code = f"import sys; sys.path.insert(0, {str(APP_ROOT)!r}); import cli.cli; assert 'tkinter' not in sys.modules"
-        self.assertEqual(subprocess.run([sys.executable, "-c", code]).returncode, 0)
+    def test_redaction_removes_secret_lines_but_preserves_other_lines(self):
+        path = self.root / 'settings.txt'
+        path.write_text('name = sample\napi_key = private-value\nmode = local', encoding='utf-8')
+        result = safe_read(path)
+        self.assertNotIn('private-value', result)
+        self.assertIn('[[REDACTED POSSIBLE SECRET LINE]]', result)
+        self.assertIn('name = sample', result)
+        self.assertIn('mode = local', result)
 
-    def test_cli_export_with_workers_and_progress(self):
-        completed = self.run_cli(str(self.project), "--workers", "2", "--progress", "--no-zip")
-        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
-        self.assertIn("Build completed", completed.stdout)
-        self.assertIn("[capturing]", completed.stderr)
+    def test_explicit_unredacted_read_preserves_original(self):
+        path = self.root / 'settings.txt'
+        value = 'token = fixture-only\n'
+        path.write_text(value, encoding='utf-8')
+        self.assertEqual(safe_read(path, False), value)
 
-    def test_cli_accepts_auto_workers(self):
-        completed = self.run_cli(str(self.project), "--workers", "AUTO", "--no-zip")
-        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
-        export = next((self.project / "PROJECT_CONTEXT_EXPORTS").iterdir())
-        settings = json.loads((export / "PROJECT_CONTEXT_SETTINGS.json").read_text(encoding="utf-8"))
-        self.assertEqual(settings["workers"], "auto")
+    def test_valid_root_is_resolved(self):
+        self.assertEqual(validate_root(self.root), self.root.resolve())
 
-    def test_cli_rejects_bad_workers_and_outside_output(self):
-        self.assertEqual(self.run_cli(str(self.project), "--workers", "0").returncode, 1)
-        bad = self.run_cli(str(self.project), "--workers", "fast")
-        self.assertEqual(bad.returncode, 1)
-        self.assertIn("--workers must be 'auto'", bad.stdout)
-        self.assertEqual(self.run_cli(str(self.project), "--output-dir", "../escape").returncode, 1)
-        self.assertFalse((self.base / "escape").exists())
+    def test_missing_root_is_rejected(self):
+        with self.assertRaises(FileNotFoundError):
+            validate_root(self.root / 'missing')
 
+    def test_file_instead_of_root_is_rejected(self):
+        path = self.root / 'file.txt'
+        path.write_text('fixture', encoding='utf-8')
+        with self.assertRaises(NotADirectoryError):
+            validate_root(path)
 
-class JobRunnerTests(unittest.TestCase):
-    def test_result_error_and_overlap(self):
-        runner = JobRunner()
-        runner.start(lambda cancel, emit: 42)
-        runner.thread.join(10)
-        self.assertEqual(list(runner.drain()), [("done", 42)])
+    def test_cpu_core_detection_never_reports_zero(self):
+        self.assertGreaterEqual(detect_cpu_cores(), 1)
+        with mock.patch("export.settings.os.process_cpu_count", create=True, return_value=None):
+            self.assertEqual(detect_cpu_cores(), 1)
 
-        def fail(cancel, emit):
-            raise ValueError("fixture")
-        runner.start(fail)
-        runner.thread.join(10)
-        kind, payload = list(runner.drain())[0]
-        self.assertEqual(kind, "error")
-        self.assertIsInstance(payload, ValueError)
-
-        gate = Event()
-        runner.start(lambda cancel, emit: gate.wait(10))
-        try:
-            with self.assertRaises(RuntimeError):
-                runner.start(lambda cancel, emit: None)
-        finally:
-            gate.set()
-            runner.thread.join(10)
+    def test_worker_resolution(self):
+        self.assertEqual(resolve_workers("auto", cores=8), 8)
+        self.assertEqual(resolve_workers(3, cores=8), 3)
+        self.assertEqual(resolve_workers(16, cores=4), 4)
+        self.assertEqual(resolve_workers("auto", cores=64), 32)
+        self.assertEqual(worker_limit(1), 1)
 
 
 if __name__ == "__main__":

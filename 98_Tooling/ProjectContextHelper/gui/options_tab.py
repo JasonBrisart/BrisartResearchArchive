@@ -3,106 +3,60 @@ File: gui/options_tab.py
 
 Purpose
 -------
-Create the scrollable Options tab: export-size/output controls, the Performance section (CPU-core
-  selector with a live core meter), and output-section/preference checkboxes.
-
-Implemented responsibilities:
-- create_options_tab: Create a scrollable settings panel with output folder, decimal-MB limits,
-  detail cap, the Performance section, and ten bound output/preference checkboxes.
-- create_performance_section: Build the CPU Cores selector (Auto plus 1..this machine's core
-  limit), a row of core cells that fill to show how many cores the build will use, a usage
-  readout, and an explanation; redraw both whenever the selection changes, including when a
-  built-in or custom profile is applied.
-- core_usage_text: Return the readout for a resolved count, e.g. "Using all 8 cores" or
-  "Using 3 of 8 cores".
-- redraw: Nested trace callback: resolve the selection with the same rule the scanner uses,
-  repaint the meter cells, and update the readout.
+Build the scrollable Options tab: output folder and size limits, the Performance section
+  (CPU Cores selector, a row of core cells showing how many cores the next build uses, and a
+  readout), and the output-section and folder-opening checkboxes.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-- core.constants: MAX_WORKERS.
-- core.utils: resolve_workers, worker_limit.
-- gui.builders: GuiState, core_label, label_to_workers, worker_choices.
-- gui.scroll_frame: create_scrollable_area.
-
-Consumers in the supplied source:
-- gui/main_gui.py imports create_options_tab.
-- tests/test_gui_wiring.py drives the selector through state.workers_var.
+Imports export/settings.py (MAX_WORKERS, resolve_workers, worker_limit), gui/state.py
+  (GuiState, core_label, label_to_workers, worker_choices), and gui/widgets.py
+  (create_scrollable_area, MUTED). Imported by gui/window.py.
 
 Settings / parameters
 ---------------------
-Binds output folder, decimal-MB size limits, skipped-detail limit, CPU cores, ZIP, redaction,
-  hashes, line counts, tree, index, contents, timestamps, and folder-opening controls to
-  GuiState. The selector lists only counts this machine can run (a 4-core machine shows Auto and
-  1-4, never 5-32). Meter cells are 14 px, or 11 px above 16 cores so 32 cells still fit the
-  minimum window width; filled cells use ACCENT, idle cells use IDLE.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-- create_options_tab(parent: tk.Frame, state: GuiState) -> None
-- create_performance_section(parent: tk.Frame, state: GuiState) -> None
-- core_usage_text(used: int, limit: int) -> str
-- redraw(*_args) -> None
-
-Module constants and expressions:
-- ACCENT = '#2f6fde'
-- IDLE = '#dde3ec'
-- MUTED = '#666666'
+The selector is read-only and lists Auto plus only the counts this machine can run (a 4-core
+  machine gets Auto and 1-4). Meter cells are 14 px, or 11 px above 16 cores so 32 still fit
+  the minimum window width; used cells are ACCENT and idle cells IDLE. The meter uses the same
+  resolve_workers rule as the scanner, so it always matches the count the export reports.
 
 Edge cases
 ----------
-Input validation occurs when settings are built, not while typing. Scroll support is delegated
-  to gui.scroll_frame. The CPU selector is read-only, so it cannot hold a value outside its list.
-
-The output-folder field is stripped at build time and defaults to EXPORTS_DIRNAME when blank.
-  The Open Export Folder checkbox is an application preference, not a serialized ScanSettings
-  field. A one-core machine shows Auto (1 core) and 1 core. A machine reporting more than
-  MAX_WORKERS cores shows a note that only MAX_WORKERS are used.
+The meter and readout redraw whenever workers_var changes, including when a profile is
+  applied. A 1-core machine shows Auto (1 core) and 1 core. A machine reporting more than 32
+  cores gets a note that only 32 are used. Typed values are validated when a build starts,
+  not while typing.
 
 Known limitations
 -----------------
-Does not expose extension/exclusion sets, require_complete_source, or the Git history limit.
-  Redaction does not remove original content from ZIP snapshots.
-
-The options UI does not validate output path containment or update exclusion rules when the
-  output folder name changes. Core counts are logical processors as reported by the OS; the
-  meter shows threads requested, not live CPU load.
+Extension and exclusion sets, required completeness, and the Git history limit have no
+  controls. The meter shows threads requested, not live CPU load. The output folder is checked
+  for safety only when a build starts.
 
 Examples
 --------
 Usage from the directory containing run.py:
 
     import tkinter as tk
-    from gui.builders import make_gui_state
     from gui.options_tab import create_options_tab
+    from gui.state import make_gui_state
 
     window = tk.Tk()
-    state = make_gui_state()
     frame = tk.Frame(window)
     frame.pack(fill="both", expand=True)
-    create_options_tab(frame, state)
+    create_options_tab(frame, make_gui_state())
     window.mainloop()
-
-    This constructs the component in an existing Tk application. For the complete
-    four-tab interface, use python run.py rather than running this module directly.
 """
 
 import tkinter as tk
 from tkinter import ttk
 
-from core.constants import MAX_WORKERS
-from core.utils import resolve_workers, worker_limit
-from gui.builders import (
-    GuiState,
-    core_label,
-    label_to_workers,
-    worker_choices,
-)
-from gui.scroll_frame import create_scrollable_area
+from export.settings import MAX_WORKERS, resolve_workers, worker_limit
+from gui.state import GuiState, core_label, label_to_workers, worker_choices
+from gui.widgets import MUTED, create_scrollable_area
 
 ACCENT = "#2f6fde"
 IDLE = "#dde3ec"
-MUTED = "#666666"
 
 
 def core_usage_text(used: int, limit: int) -> str:
@@ -197,4 +151,3 @@ def create_options_tab(
     for index, (label, variable, help_text) in enumerate(options):
         tk.Checkbutton(checkbox_frame, text=label, variable=variable).grid(row=index, column=0, sticky="w", pady=2)
         tk.Label(checkbox_frame, text=help_text, fg=MUTED, anchor="w", justify="left", wraplength=560).grid(row=index, column=1, sticky="w", padx=(12, 0), pady=2)
-

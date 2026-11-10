@@ -3,106 +3,102 @@ File: gui/build_tab.py
 
 Purpose
 -------
-Build folder selection, built-in profile selection, export execution, and last-export-folder
-  controls.
-
-Implemented responsibilities:
-- create_build_tab: Bind folder/profile widgets to shared state, register the profile-change
-  callback, create build/open buttons, and define their session-local callbacks.
-- browse: Open a directory chooser; on a nonempty selection, update selected_folder and
-  status_text.
-- refresh_profile_description: Respond to profile variable writes by applying built-in defaults
-  and updating the explanatory profile label.
-- build: On the Tk thread, validate inputs with prepare_build (showing Build Stopped/Build Failed
-  immediately on bad input), disable the button, and start execute_build on the JobRunner.
-- poll: Every 80 ms, drain worker events: show phase progress in the status bar; on completion
-  re-enable the button, refresh Recent Exports, show the v3.1.4 dialogs, and optionally open the
-  folder. Keeps polling while a close-time cancellation is in progress.
-- finish: Map the worker outcome to the original dialogs: done -> Build Complete, ValueError ->
-  Build Stopped, cancelled -> status only, anything else -> Build Failed.
-- open_last_export: Show a no-export message when this session has no successful build;
-  otherwise open state.last_export_dir.
+Build the Build tab and run builds from the window: project folder selection, the built-in
+  profile dropdown with its description, the Build Project Context button, and Open Last
+  Export Folder. prepare_build validates on the Tk thread; execute_build runs the export on
+  the background worker, then saves last-used settings and records history; the outcome
+  becomes status bar text and dialogs.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-- core.constants: VALID_PROFILES.
-- gui.builders: GuiState, apply_profile_defaults, execute_build, prepare_build,
-  profile_description.
-- gui.dialogs: open_folder, show_build_complete, show_error, show_info, show_warning.
-
-Consumers in the supplied source:
-- gui/main_gui.py imports create_build_tab.
+Imports export/pipeline.py (create_context, BuildResult), export/settings.py (profile names,
+  ScanSettings), gui/state.py (GuiState, apply_profile_defaults, build_settings_from_state),
+  gui/widgets.py (open_folder, show_build_complete, MUTED), and storage (save_last_settings,
+  record_export). Imported by gui/window.py. Calls state.history_refresh, registered by
+  gui/about_tab.py, after each successful build.
 
 Settings / parameters
 ---------------------
-Uses GuiState and the shared builder. Changing the built-in profile applies preset defaults;
-  open_after_build is read when the build starts and controls post-build folder opening. Layout,
-  labels, and dialogs are unchanged from v3.1.4.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-- create_build_tab(parent: tk.Frame, window: tk.Tk, state: GuiState) -> None
-- browse() -> None
-- refresh_profile_description(*_args) -> None
-- finish(kind: str, payload: object, open_after: bool) -> None
-- poll(open_after: bool) -> None
-- build() -> None
-- open_last_export() -> None
+Changing the profile applies that preset to every control. The worker queue is polled every
+  80 ms. Open Export Folder After Build is read when the build starts.
 
 Edge cases
 ----------
-An empty folder selection is rejected downstream. ValueError produces a build-stopped warning;
-  other build exceptions show an error. Opening the last export requires a prior successful
-  build in this session.
-
-Canceling the folder chooser leaves state unchanged. The profile trace is attached after widget
-  construction. A failed build does not replace the last successful session export path.
-  Clicking Build while a build runs does nothing (the button is disabled). Dialogs are
-  suppressed while the window is closing.
+Validation errors (no folder, bad sizes) appear before any thread starts. During a build the
+  button is disabled and the status bar shows the phase and file count. A ValueError from the
+  build (such as a completeness stop) shows Build Stopped, cancellation only updates the
+  status bar, and other errors show Build Failed. No dialogs appear while the window is
+  closing. A failed build keeps the previous last-export folder and saves nothing.
 
 Known limitations
 -----------------
-Last-export-folder state is session-local, separate from persisted export history. There is no
-  Cancel button (the v3.1.4 layout is kept); closing the window is the way to cancel a running
-  build. Settings edits made while a build runs apply to the next build only.
+There is no Cancel button; closing the window cancels. The last export folder is remembered
+  only for this session (history on the About tab persists). Edits made during a build apply
+  to the next one. execute_build runs on the worker thread and must never touch Tk.
 
 Examples
 --------
 Usage from the directory containing run.py:
 
     import tkinter as tk
-    from gui.builders import make_gui_state
     from gui.build_tab import create_build_tab
+    from gui.state import make_gui_state
 
     window = tk.Tk()
-    state = make_gui_state()
     frame = tk.Frame(window)
     frame.pack(fill="both", expand=True)
-    create_build_tab(frame, window, state)
+    create_build_tab(frame, window, make_gui_state())
     window.mainloop()
-
-    This constructs the component in an existing Tk application. For the complete
-    four-tab interface, use python run.py rather than running this module directly.
 """
 
+from pathlib import Path
+from threading import Event
+from typing import Callable
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
-from core.constants import VALID_PROFILES
-from gui.builders import (
-    GuiState,
-    apply_profile_defaults,
-    execute_build,
-    prepare_build,
-    profile_description,
-)
-from gui.dialogs import (
-    open_folder,
-    show_build_complete,
-    show_error,
-    show_info,
-    show_warning,
-)
+from export.pipeline import BuildResult, create_context
+from export.settings import PROFILE_ARCHIVE, PROFILE_STANDARD, VALID_PROFILES, ScanSettings
+from gui.state import GuiState, apply_profile_defaults, build_settings_from_state
+from gui.widgets import MUTED, open_folder, show_build_complete
+import storage
+
+
+def profile_description(profile: str) -> str:
+    if profile == PROFILE_STANDARD:
+        return (
+            "standard: quick everyday backup and project overview. "
+            "Creates a ZIP snapshot, folder tree, and file index "
+            "without hashes, line counts, full file contents, or "
+            "skipped-file details."
+        )
+    if profile == PROFILE_ARCHIVE:
+        return (
+            "archive (default): maximum preservation mode. Includes "
+            "all available export information with larger limits and "
+            "enforced source completeness. Best for backups, long-term "
+            "preservation, research archives, and full project records."
+        )
+    return "Unknown profile."
+
+
+def prepare_build(state: GuiState) -> tuple[Path, ScanSettings]:
+    folder = state.selected_folder.get().strip()
+    if not folder:
+        raise ValueError("Please select a project folder first.")
+    return Path(folder), build_settings_from_state(state)
+
+
+def execute_build(
+    folder: Path,
+    settings: ScanSettings,
+    cancel: Event | None = None,
+    progress: Callable | None = None,
+) -> BuildResult:
+    result = create_context(folder, settings=settings, cancel=cancel, progress=progress)
+    storage.save_last_settings(settings)
+    storage.record_export(result, settings)
+    return result
 
 
 def create_build_tab(
@@ -131,7 +127,7 @@ def create_build_tab(
     profile_menu.grid(row=0, column=1, sticky="w", pady=4)
     profile_description_var = tk.StringVar(value=profile_description(state.profile_var.get()))
     tk.Label(
-        quick_frame, textvariable=profile_description_var, justify="left", anchor="w", fg="#555555", wraplength=700,
+        quick_frame, textvariable=profile_description_var, justify="left", anchor="w", fg=MUTED, wraplength=700,
     ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
     def refresh_profile_description(*_args) -> None:
@@ -173,10 +169,10 @@ def create_build_tab(
             state.status_text.set("Build cancelled.")
         elif isinstance(payload, ValueError):
             state.status_text.set("Build stopped.")
-            show_warning("Build Stopped", str(payload))
+            messagebox.showwarning("Build Stopped", str(payload))
         else:
             state.status_text.set("Build failed.")
-            show_error("Build Failed", str(payload))
+            messagebox.showerror("Build Failed", str(payload))
 
     def poll(open_after: bool) -> None:
         for kind, payload in state.jobs.drain():
@@ -195,11 +191,11 @@ def create_build_tab(
             folder, settings = prepare_build(state)
         except ValueError as exc:
             state.status_text.set("Build stopped.")
-            show_warning("Build Stopped", str(exc))
+            messagebox.showwarning("Build Stopped", str(exc))
             return
         except Exception as exc:
             state.status_text.set("Build failed.")
-            show_error("Build Failed", str(exc))
+            messagebox.showerror("Build Failed", str(exc))
             return
         open_after = state.open_after_build_var.get()
         state.status_text.set("Building project context...")
@@ -211,8 +207,7 @@ def create_build_tab(
 
     def open_last_export() -> None:
         if state.last_export_dir is None:
-            show_info("No Export Yet", "Build a project context export first.")
+            messagebox.showinfo("No Export Yet", "Build a project context export first.")
             return
         open_folder(state.last_export_dir)
     tk.Button(parent, text="Open Last Export Folder", command=open_last_export).pack(pady=(0, 8))
-

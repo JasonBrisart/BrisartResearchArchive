@@ -1,132 +1,75 @@
 """
-File: cli/cli.py
+File: cli.py
 
 Purpose
 -------
-Parse export, profile-management, and legacy update commands, then dispatch to the builder or
-  desktop GUI.
-
-Implemented responsibilities:
-- build_parser: Construct the argparse parser with an optional root, built-in profile selection,
-  export overrides, named-profile actions, and legacy update actions; return the parser without
-  parsing arguments.
-- settings_from_args: Start from the requested built-in preset, replace it with remembered/named
-  settings when available, then apply explicit overrides; return the resulting ScanSettings
-  without exporting.
-- parse_workers_arg: Convert the --workers text to 'auto' (any case) or an int; anything else
-  raises ValueError so the build fails with the normal one-line message and exit status 1.
-- run_update_check: Print release status; return when no update/asset exists; optionally open
-  the release page, or download and apply a source/EXE update. Installation failures print a
-  message and exit 1; successful EXE replacement exits 0.
-- run_profile_list: Read saved custom profile names through storage and print a list or the no-
-  profiles message.
-- run_profile_delete: Delete a trimmed profile name through storage and print whether a record
-  was removed.
-- run_cli: Parse process arguments; handle listing, deletion, and update actions in that order;
-  launch the GUI (imported only at that point) when no export root remains; otherwise build with
-  optional --progress output, optionally save settings/profile, and print output paths/counts.
-- print_progress: Nested --progress callback: write one phase/count line per event to stderr.
-- main: Delegate directly to run_cli; this is the dispatcher imported by run.py.
+Run Project Context Helper from the command line: parse arguments, build export settings from
+  the preset, remembered settings, a named profile, and explicit flags, run the export, record
+  it, and print the result. Also lists and deletes saved custom profiles, and opens the desktop
+  window when no project folder is given.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-- core.constants: APP_NAME, APP_VERSION, AUTO_WORKERS, DEFAULT_PROFILE, MAX_WORKERS,
-  VALID_PROFILES, settings_for_profile.
-- core.builder: create_context.
-- core.utils: normalize_extension.
-- core.events: Progress.
-- gui.main_gui: run_gui (imported inside run_cli, only when the GUI is launched).
-- services: storage.
-- services.updater: apply_exe_update, apply_staged_update, check_for_updates, download_update,
-  open_releases_page, stage_exe_update.
-
-Consumers in the supplied source:
-- run.py imports main.
+Imports app (banner), export/settings.py (presets and flag parsing), export/pipeline.py
+  (create_context), export/events.py (--progress), and storage (profiles, last settings,
+  record_export). Imported by run.py (main) and tests/test_cli.py. gui/window.py is imported
+  only when the window opens, so command-line exports load neither tkinter nor any network
+  module.
 
 Settings / parameters
 ---------------------
-Built-in profile defaults are followed by optional last-used settings, a named custom profile,
-  and explicit CLI overrides. Size limits must be positive; negative detail/history limits are
-  clamped to zero. --workers sets the capture thread count: 'auto' (one per detected CPU core)
-  or 1-32 (range validated by the builder; counts above the detected cores are clamped).
-  --progress prints pipeline phases to stderr so stdout stays unchanged.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-- build_parser() -> argparse.ArgumentParser
-- settings_from_args(args)
-- parse_workers_arg(value: str) -> int | str
-- run_update_check(open_page_when_available: bool=False, install: bool=False) -> None
-- run_profile_list() -> None
-- run_profile_delete(name: str) -> None
-- run_cli() -> None
-- print_progress(event: Progress) -> None
-- main() -> None
+Settings are applied in order, later winning: the --profile preset (archive by default),
+  --use-last-settings, --load-profile NAME, then explicit flags. --extensions replaces the
+  extension set; --exclude-dir/--exclude-file add to it. --workers accepts auto (default,
+  every detected CPU core) or 1-32. Byte limits must be positive; negative detail and Git
+  history limits count as 0. --progress writes phases to stderr so stdout stays parseable.
+  Every successful export is added to history; --remember-settings and --save-profile NAME
+  store its settings.
 
 Edge cases
 ----------
-A missing custom profile prints a warning. Expected build errors (ValueError, missing/invalid
-  root, OSError) exit with status 1; Ctrl+C exits with status 130 after the builder removes its
-  staging folder. Update application errors are caught separately. With no root, standalone management commands return
-  instead of opening the GUI.
-
-When both --git-state and --no-git-state are present, the latter wins because it is applied
-  last. --extensions replaces the extension set; repeated exclusions extend existing sets. With
-  no root, an earlier list/delete action returns before later actions are reached.
+Expected failures (bad settings, missing folder, completeness stop, filesystem errors) print
+  "Build failed: ..." and exit 1; Ctrl+C exits 130 with nothing published; unknown flags,
+  including the removed --check-updates, --install-updates, and --open-releases, exit 2.
+  --no-git-state beats --git-state. A missing --load-profile prints a warning and continues.
+  A failed --save-profile is reported without failing the finished export. Without a project
+  folder, --list-profiles and --delete-profile run and return instead of opening the window.
 
 Known limitations
 -----------------
-There is no CLI flag for every ScanSettings field. (v4.0.0: the GUI, and therefore tkinter, is no
-  longer imported for command-line exports.)
-
-No positive enabling flags are provided for hashes/contents/etc. after a standard preset
-  disables them. --save-profile without a root does not save a profile; it falls through to GUI
-  launch. --save-profile failures (including a busy or unreadable profiles file) are reported
-  and do not fail the already-completed export.
+Not every setting has a flag, and no flag turns hashes, contents, and similar sections back
+  on after the standard preset disables them; use a saved profile. main() reads sys.argv; it
+  takes no argument list.
 
 Examples
 --------
-Usage from the directory containing run.py:
+From the directory containing run.py (or with its full path from anywhere):
 
-    python run.py "/path/to/project" --profile archive --no-zip
-    python run.py "/path/to/project" --max-file-bytes 4000000 --max-total-bytes 150000000
-    python run.py "/path/to/project" --workers 8 --progress
-    python run.py "/path/to/project" --workers auto
+    python run.py "/path/to/project"
+    python run.py "/path/to/project" --profile standard --no-zip
+    python run.py "/path/to/project" --workers 4 --progress
     python run.py "/path/to/project" --save-profile "Review"
     python run.py "/path/to/project" --load-profile "Review" --no-redact
     python run.py --list-profiles
     python run.py --delete-profile "Review"
-
-    --no-redact deliberately disables Markdown redaction. ZIP members are original
-    source bytes regardless of that flag. --open-releases alone is not a standalone
-    action: it is consulted by the update-check flow.
 """
 
 from pathlib import Path
 import argparse
 import sys
 
-from core.constants import (
-    APP_NAME,
-    APP_VERSION,
+from app import APP_NAME, APP_VERSION
+from export.events import Progress
+from export.pipeline import create_context
+from export.settings import (
     AUTO_WORKERS,
     DEFAULT_PROFILE,
     MAX_WORKERS,
     VALID_PROFILES,
+    normalize_extension,
     settings_for_profile,
 )
-from core.builder import create_context
-from core.utils import normalize_extension
-from core.events import Progress
-from services import storage
-from services.updater import (
-    apply_exe_update,
-    apply_staged_update,
-    check_for_updates,
-    download_update,
-    open_releases_page,
-    stage_exe_update,
-)
+import storage
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -163,9 +106,6 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Capture threads: 'auto' (default, every detected CPU core) or 1-{MAX_WORKERS}.",
     )
     parser.add_argument("--progress", action="store_true", help="Print build phases to stderr.")
-    parser.add_argument("--check-updates", action="store_true")
-    parser.add_argument("--install-updates", action="store_true")
-    parser.add_argument("--open-releases", action="store_true")
     return parser
 
 
@@ -238,60 +178,6 @@ def parse_workers_arg(value: str) -> int | str:
         raise ValueError(f"--workers must be 'auto' or a whole number from 1 to {MAX_WORKERS} (got {value!r}).") from None
 
 
-def run_update_check(open_page_when_available: bool = False, install: bool = False) -> None:
-    """
-    Bugfix (v3.1.2): the download/apply steps below had no exception
-    handling at all, unlike the equivalent GUI flow in
-    gui/about_tab.py (which already wraps its own call to
-    download_update() in a try/except) and unlike this file's main
-    build flow (already wrapped in v3.1.1). A corrupted download (see
-    the new exception download_update() can now raise for a
-    BadZipFile), a checksum mismatch from verify_digest(), or a
-    filesystem error while backing up/copying files during
-    apply_staged_update()/apply_exe_update() would previously crash
-    this command with a raw Python traceback instead of the same
-    clean "Update failed: ..." style message every other error path
-    in this file already uses.
-    """
-    info = check_for_updates()
-    print(f"{APP_NAME} v{APP_VERSION}")
-    print()
-    print(info.message)
-    if not info.update_available:
-        return
-    print(f"Release page: {info.release_url}")
-    if info.asset_kind == "none":
-        return
-    if not install:
-        if open_page_when_available:
-            open_releases_page(info.release_url)
-        return
-    try:
-        if info.asset_kind == "exe":
-            print()
-            print(f"Downloading update {info.latest_version} (compiled executable)...")
-            staged_path = stage_exe_update(info)
-            print(f"Staged and checksum-verified at: {staged_path}")
-            print("Backing up current executable and applying update...")
-            apply_exe_update(staged_path, current_version=APP_VERSION)
-            print("Update applied. This process will now exit so the new executable can be swapped into place; it will relaunch automatically in a few seconds.")
-            sys.exit(0)
-        print()
-        print(f"Downloading update {info.latest_version}...")
-        staged_dir = download_update(info)
-        print(f"Staged in: {staged_dir}")
-        print("Backing up current files and applying update...")
-        result = apply_staged_update(staged_dir)
-        print(f"Backup written to: {result.backup_dir}")
-        print(f"Files updated: {len(result.applied_files)}")
-        print("Restart the application to run the new version.")
-    except SystemExit:
-        raise
-    except Exception as exc:
-        print(f"Update failed: {exc}")
-        sys.exit(1)
-
-
 def run_profile_list() -> None:
     names = storage.list_profiles()
     print(f"{APP_NAME} v{APP_VERSION}")
@@ -314,7 +200,7 @@ def run_profile_delete(name: str) -> None:
         print(f"No custom profile named '{name}' was found.")
 
 
-def run_cli() -> None:
+def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
@@ -328,13 +214,8 @@ def run_cli() -> None:
         if not args.root:
             return
 
-    if args.check_updates or args.install_updates:
-        run_update_check(open_page_when_available=args.open_releases, install=args.install_updates)
-        if not args.root:
-            return
-
     if not args.root:
-        from gui.main_gui import run_gui
+        from gui.window import run_gui
         run_gui()
         return
 
@@ -358,6 +239,7 @@ def run_cli() -> None:
         print("Build interrupted; no export was published.")
         sys.exit(130)
 
+    storage.record_export(result, settings)
     if args.remember_settings:
         storage.save_last_settings(settings)
 
@@ -386,12 +268,5 @@ def run_cli() -> None:
     print(f"Included Files: {result.included_count}")
     print(f"Skipped Files : {result.skipped_count}")
     print(f"Included Bytes: {result.total_included_bytes}")
-
-
-def main() -> None:
-    run_cli()
-
-
-if __name__ == "__main__":
-    main()
+    print(f"Capture Workers: {result.capture_workers}")
 

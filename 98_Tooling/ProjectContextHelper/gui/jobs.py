@@ -3,50 +3,29 @@ File: gui/jobs.py
 
 Purpose
 -------
-Run one export at a time on a background thread for the desktop GUI and hand its progress and
-  outcome back through a queue, so the Tk thread stays responsive (new in v4.0.0).
-
-Implemented responsibilities:
-- JobRunner.__init__: Create the event queue, a cancellation Event, and an empty thread slot.
-- JobRunner.busy: Report whether the current worker thread is still alive.
-- JobRunner.start: Refuse to start while busy; otherwise create a fresh cancellation Event and
-  run operation(cancel, emit) on a non-daemon thread named pch-job.
-- JobRunner.drain: Yield up to 100 queued events without blocking; called from Tk after()
-  callbacks.
-- worker: Nested thread body: run the operation and queue ('progress', Progress),
-  ('done', result), ('cancelled', message), or ('error', exception).
+Run one export at a time on a background thread and pass its progress and outcome back to
+  the Tk thread through a queue, so the window stays responsive during long builds.
 
 Communication / relationships
 -----------------------------
-Internal imports and exchanged symbols:
-- core.events: BuildCancelled.
-
-Consumers in the supplied source:
-- gui/builders.py imports JobRunner.
+Imports export/events.py (BuildCancelled). Imported by gui/state.py, which stores a JobRunner
+  in GuiState; gui/build_tab.py starts jobs and drains events; gui/window.py cancels on close.
 
 Settings / parameters
 ---------------------
-operation is any callable taking (cancel: threading.Event, emit: Callable[[Progress], None])
-  and returning a result. Events are plain Python objects; the worker never touches tkinter.
-
-Function signatures (nested callbacks are scoped to their enclosing function):
-- __init__(self) -> None
-- busy(self) -> bool
-- start(self, operation: Callable[[Event, Callable], object]) -> None
-- drain(self) -> Iterator[tuple[str, object]]
-- worker() -> None
+start(operation) calls operation(cancel_event, emit) on a non-daemon thread named pch-job.
+  Events are ("progress", Progress), ("done", result), ("cancelled", message), or
+  ("error", exception); drain() yields up to 100 per call without blocking.
 
 Edge cases
 ----------
-Exceptions are queued as exception objects, so the GUI can show ValueError as "Build Stopped"
-  and anything else as "Build Failed", exactly as v3.1.4 did on the Tk thread. Starting while a
-  job is running raises RuntimeError.
+start raises RuntimeError while a job is still running. Exceptions are queued as objects so
+  the Build tab can show ValueError as "Build Stopped" and anything else as "Build Failed".
 
 Known limitations
 -----------------
-Cancellation is cooperative (see core/events.py). The queue is unbounded; the GUI drains it in
-  batches of 100 every 80 ms. The thread is non-daemon, so the process waits for a running
-  export to finish or cancel before exiting.
+The queue is unbounded. The thread is non-daemon, so closing the program waits for a running
+  export to finish or reach a cancellation checkpoint.
 
 Examples
 --------
@@ -66,7 +45,7 @@ from queue import Empty, Queue
 from threading import Event, Thread
 from typing import Callable, Iterator
 
-from core.events import BuildCancelled
+from export.events import BuildCancelled
 
 
 class JobRunner:
