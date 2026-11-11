@@ -3,16 +3,15 @@ File: tests/test_rights.py
 
 Purpose
 -------
-Verify the entitlement rules in entitle/rights.py and the shared basics they rest on in the
-  entitle package root: how a payload and its rights are built, how a payload is loaded and
-  judged (format, product, expiry), what an EntitlementResult grants and refuses, and the
-  canonical JSON, clock and required-field helpers every other module uses.
+Verify the entitlement rules in entitle/rights.py: how a payload and its rights are built, how a
+  payload is loaded and judged (format, product, expiry, including an expiry given as a date
+  alone), and what an EntitlementResult grants and refuses.
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (EntitleError, canonical_json, require_text, utc_now_iso) and
-  entitle/rights.py. Needs no files, no encryption and no record log. Run by pytest; nothing
-  imports it.
+Imports entitle/common.py (EntitleError) and entitle/rights.py. Needs no files, no encryption
+  and no record log. The shared helpers are tested in tests/test_common.py. Run by pytest;
+  nothing imports it.
 
 Settings / parameters
 ---------------------
@@ -21,11 +20,11 @@ Expiry tests use timestamps one day either side of now, so they do not depend on
 
 Edge cases
 ----------
-Covers an expiry without a zone (read as UTC), a trailing Z, an unparseable expiry, an
-  unsupported format and a wrong product, each denied with its own reason; payload bytes that
-  are not JSON or decode to something other than an object; require_right on a denied result
-  and on a right that was not granted; and required text that is empty, whitespace, missing or
-  not text.
+Covers an expiry without a zone (read as UTC), a trailing Z, an unparseable expiry, a date-only
+  expiry (start of that day, so today's date is already expired), an unsupported format and a
+  wrong product, each denied with its own reason; payload bytes that are not JSON or decode to
+  something other than an object; and require_right on a denied result and on a right that was
+  not granted.
 
 Known limitations
 -----------------
@@ -33,7 +32,7 @@ Does not cover sealed files (tests/test_entitlements.py) or a machine with a wro
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_rights.py
 """
@@ -42,7 +41,7 @@ import datetime
 
 import pytest
 
-from entitle import EntitleError, canonical_json, require_text, utc_now_iso
+from entitle.common import EntitleError
 from entitle.rights import (
     EntitlementDenied,
     EntitlementResult,
@@ -62,16 +61,13 @@ def _past_iso():
     return (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
 
 
-class TestCanonicalJson:
-    def test_round_trip_matches_load(self):
-        payload = {"b": 2, "a": 1, "nested": {"z": 9, "y": 8}}
-        encoded = canonical_json(payload)
-        assert load_entitlement_payload(encoded) == payload
+def _today(days=0):
+    return (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=days)).date().isoformat()
 
-    def test_output_is_deterministic_key_order(self):
-        first = canonical_json({"b": 1, "a": 2})
-        second = canonical_json({"a": 2, "b": 1})
-        assert first == second
+
+class TestLoadPayload:
+    def test_a_payload_round_trips(self):
+        assert load_entitlement_payload(b'{"a": 1}') == {"a": 1}
 
     def test_load_invalid_bytes_raises_entitle_error(self):
         with pytest.raises(EntitleError):
@@ -81,16 +77,6 @@ class TestCanonicalJson:
         for raw in (b"[1, 2]", b"42", b'"text"', b"null"):
             with pytest.raises(EntitleError, match="not a JSON object"):
                 load_entitlement_payload(raw)
-
-
-class TestRequireText:
-    def test_blank_or_missing_text_names_the_field(self):
-        for value in ("", "   ", None, 7):
-            with pytest.raises(ValueError, match="^fork name is required.$"):
-                require_text(product="P", fork_name=value)
-
-    def test_present_text_passes(self):
-        assert require_text(product="P", fork_name=" f ") is None
 
 
 class TestParseIsoDatetime:
@@ -106,6 +92,9 @@ class TestParseIsoDatetime:
     def test_naive_datetime_is_assumed_utc(self):
         parsed = parse_iso_datetime("2026-01-01T00:00:00")
         assert parsed.tzinfo is not None
+
+    def test_a_date_alone_is_the_start_of_that_day_in_utc(self):
+        assert parse_iso_datetime("2026-12-31") == datetime.datetime(2026, 12, 31, tzinfo=datetime.timezone.utc)
 
 
 class TestMakeEntitlementPayload:
@@ -180,6 +169,16 @@ class TestEvaluatePayload:
         assert result.allowed is False
         assert result.reason == "invalid_expiration_timestamp"
 
+    def test_a_date_alone_expires_at_the_start_of_that_day(self):
+        # Documented behavior, pinned because it surprises people: "2026-12-31" is 00:00 UTC.
+        for days, allowed in ((-1, False), (0, False), (1, True)):
+            result = evaluate_payload(self._valid_payload(expires_at=_today(days)), expected_product_id="EntitleDemo")
+            assert result.allowed is allowed, (days, result.reason)
+
+    def test_a_time_on_the_last_day_includes_the_whole_day(self):
+        payload = self._valid_payload(expires_at=_today(1) + "T23:59:59Z")
+        assert evaluate_payload(payload, expected_product_id="EntitleDemo").allowed is True
+
 
 class TestEntitlementResult:
     def test_denied_result_has_no_rights(self):
@@ -239,10 +238,3 @@ class TestMakeRights:
             "can_use_enterprise_features", "can_modify", "can_fork", "can_export_source", "can_redistribute",
         ))
         assert rights["deployment_limit"] is None and rights["support_tier"] == "gold"
-
-
-class TestTimeHelpers:
-    def test_utc_now_iso_is_second_resolution_utc_and_parses_back(self):
-        text = utc_now_iso()
-        assert text.endswith("+00:00") and "." not in text
-        assert parse_iso_datetime(text).utcoffset() == datetime.timedelta(0)

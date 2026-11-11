@@ -29,7 +29,7 @@ Only pytest is supported; the tests use its fixtures, tmp_path and monkeypatch.
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests
 """

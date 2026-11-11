@@ -34,7 +34,7 @@ It does not draw, measure or follow real Tk event rules. Passing tests prove wir
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_gui.py
 """

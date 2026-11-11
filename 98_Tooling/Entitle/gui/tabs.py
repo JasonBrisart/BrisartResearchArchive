@@ -46,9 +46,9 @@ No field for custom payload metadata, no confirmation before Issue overwrites an
 
 Examples
 --------
-The tabs are only built by the window; from the directory containing main.py:
+The tabs are only built by the window; from the directory containing run.py:
 
-    python main.py gui
+    python run.py gui
 """
 
 import tkinter as tk
@@ -64,6 +64,7 @@ from entitle.tracking import deploy_from_file, record_fork, record_provenance
 _ENTITLE_FOLDER = Path(__file__).resolve().parent.parent
 ENTITLEMENT_FILE = str(_ENTITLE_FOLDER / "entitlements" / "lab_a.entitle")
 RECORD_STORE = str(_ENTITLE_FOLDER / "records" / "entitle_records.log")
+
 DEMO_ISSUER = "JasonBrisart"
 DEMO_SUBJECT = "ResearchLabA"
 DEMO_PRODUCT = "EntitleDemo"

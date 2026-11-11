@@ -3,25 +3,28 @@ File: tests/test_cli.py
 
 Purpose
 -------
-Verify the command line end to end: the full lifecycle (issue, verify, governed deployments up
-  to and past the limit, fork, provenance, list, revoke, refused deployment, reinstate, check,
+Verify the command line end to end: the full lifecycle (issue, verify, governed deployments up to
+  and past the limit, fork, provenance, list, revoke, refused deployment, reinstate, check,
   report, tamper detection), migrating a file from the previous encryption, every expected
   failure printing one clean error with the right exit status, usage errors, help and version
-  (with the linked encryption), and that main.py works from another working folder without
-  loading tkinter.
+  (with the linked encryption), that output the terminal cannot encode never turns a finished
+  operation into a failure, and that run.py works from another working folder without loading
+  tkinter.
 
 Communication / relationships
 -----------------------------
 Imports cli.py, version.py and entitle/records.py (to shorten the store lock wait), and runs
-  main.py as a real process for the working-folder and tkinter checks. Uses tests/support.py
-  (including the lock holder) and the fixtures in tests/fixtures/ (an entitlement written by the
-  previous encryption and a record log written by v0.4.1).
+  run.py as a real process for the working-folder, tkinter and output-encoding checks. Uses
+  tests/support.py (including the lock holder) and the fixtures in tests/fixtures/ (an
+  entitlement written by the previous encryption and a record log written by v0.4.1).
   Run by pytest; nothing imports it.
 
 Settings / parameters
 ---------------------
 Most tests call cli.main(argv) in this process and read pytest's capsys; the process tests use
-  support.run_main. Everything is written under pytest's tmp_path. The demo key is a test value.
+  support.run_entitle. Everything is written under pytest's tmp_path. The demo key is a test value.
+  The output-encoding tests start run.py with PYTHONIOENCODING=ascii, which is what a redirected
+  Windows console with a legacy code page looks like to Python.
 
 Edge cases
 ----------
@@ -30,8 +33,9 @@ Covers: verify denied (exit 1, no migration note), a refused deployment (exit 0,
   and exit 1), a store locked by another process, a short key or seed, an invalid expiry or
   deployment limit, a blank required field (nothing written), a missing file, a file migrate
   cannot open (left unchanged), an unknown command or record type (exit 2), no arguments (help,
-  exit 0), a Python without tkinter, and a broken window module that must surface as itself
-  rather than as a missing tkinter.
+  exit 0), a Python without tkinter, a broken window module that must surface as itself rather
+  than as a missing tkinter, and Chinese and Cyrillic names printed to an ASCII-only output
+  (exit 0, written once, shown as escapes).
 
 Known limitations
 -----------------
@@ -41,7 +45,7 @@ Running without 97_Encryption is tested in tests/test_encryption.py. Does not op
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_cli.py
 """
@@ -55,9 +59,10 @@ import pytest
 
 import cli
 from entitle import records
+from entitle.records import RecordStore
 from support import (
     DRBG_PERSONALIZATION, DRBG_SEED, ENTITLE_ROOT, FIXTURES, ISSUER, LEGACY_ENTITLEMENT, MASTER_KEY, PRODUCT,
-    SUBJECT, run_main, store_lock_held_elsewhere,
+    SUBJECT, run_entitle, store_lock_held_elsewhere,
 )
 from version import __version__
 
@@ -90,52 +95,41 @@ def _deploy_args(path, store, host):
 class TestLifecycle:
     def test_the_whole_workflow_runs_and_the_audit_trail_verifies(self, tmp_path, capsys):
         entitlement, store = tmp_path / "ent" / "lab.entitle", tmp_path / "rec" / "r.log"
-
         code, out, _ = _call(capsys, *_issue_args(entitlement, "lab-1", "--deployment-limit", "5", "--modify", "--fork"))
         assert code == 0 and entitlement.is_file()
         assert out.startswith("Protected entitlement created:") and '"can_modify": true' in out
-
         code, out, _ = _call(capsys, "verify", *_identity(), "--master-key", MASTER_KEY, "--file", str(entitlement))
         assert code == 0 and "VERIFIED: entitlement is valid." in out
-
         code, out, _ = _call(capsys, "verify", *_identity(), "--master-key", "wrong-key-wrong-key-wrong-key-wrong-key",
                              "--file", str(entitlement))
         assert code == 1 and "DENIED: bsr_verification_failed" in out
-
         for host in ("node-1", "node-2"):
             code, out, _ = _call(capsys, *_deploy_args(entitlement, store, host))
             assert code == 0 and json.loads(out)["recorded"] is True
-
         code, out, _ = _call(capsys, "track", "fork", "--product", PRODUCT, "--source-version", "1.4.0",
                              "--fork-name", "lab-custom", "--maintainer", SUBJECT, "--store", str(store))
         assert code == 0 and json.loads(out)["record_type"] == "fork"
         code, out, _ = _call(capsys, "track", "provenance", "--product", PRODUCT, "--origin", ISSUER,
                              "--version", "1.4.0", "--previous-version", "1.3.0", "--custodian", SUBJECT, "--store", str(store))
         assert code == 0 and json.loads(out)["data"]["previous_version"] == "1.3.0"
-
         code, out, _ = _call(capsys, "track", "list", "--type", "fork", "--store", str(store))
         assert code == 0 and [r["record_type"] for r in json.loads(out)] == ["fork"]
-
         code, out, _ = _call(capsys, "revoke", "revoke", "--entitlement-id", "lab-1", "--reason", "key compromise", "--store", str(store))
         assert code == 0 and json.loads(out)["data"]["reason"] == "key compromise"
         code, out, _ = _call(capsys, "revoke", "check", "--entitlement-id", "lab-1", "--store", str(store))
         assert code == 0 and out.rstrip().endswith("REVOKED")
-
         code, out, _ = _call(capsys, *_deploy_args(entitlement, store, "node-3"))
         assert code == 0 and json.loads(out)["reason"] == "entitlement_revoked"
-
         code, out, _ = _call(capsys, "revoke", "reinstate", "--entitlement-id", "lab-1", "--reason", "cleared", "--store", str(store))
         assert code == 0
         code, out, _ = _call(capsys, "revoke", "check", "--entitlement-id", "lab-1", "--store", str(store))
         assert out.rstrip().endswith("ACTIVE")
         code, out, _ = _call(capsys, *_deploy_args(entitlement, store, "node-3"))
         assert json.loads(out)["deployments_used"] == 3
-
         code, out, _ = _call(capsys, "report", "--store", str(store))
         assert code == 0
         assert "deployment: 3" in out and "fork: 1" in out and "revocation: 1" in out and "reinstatement: 1" in out
         assert "EntitleDemo: 3" in out and "VERIFIED: hash chain intact across 7 records." in out
-
         report_file = tmp_path / "out" / "audit.json"
         code, out, _ = _call(capsys, "report", "--store", str(store), "--format", "json", "--output", str(report_file))
         assert code == 0 and out.strip() == f"Report written to {report_file}"
@@ -245,11 +239,21 @@ class TestExpectedFailures:
         code, out, _ = _call(capsys, "report", "--store", str(tmp_path / "typo.log"))
         assert code == 0 and "this store file does not exist" in out
 
+    def test_a_file_that_is_too_large_or_not_an_entitlement_is_one_clean_line(self, tmp_path, capsys):
+        junk = tmp_path / "junk.entitle"
+        junk.write_text("not an entitlement", encoding="utf-8")
+        code, _, err = _call(capsys, "verify", *_identity(), "--master-key", MASTER_KEY, "--file", str(junk))
+        assert code == 1 and err.strip() == "Error: junk.entitle is not a protected Entitle entitlement file."
+        utf16 = tmp_path / "ps.entitle"
+        utf16.write_bytes(b"\xff\xfe" + "{}".encode("utf-16-le"))
+        code, _, err = _call(capsys, "verify", *_identity(), "--master-key", MASTER_KEY, "--file", str(utf16))
+        assert code == 1 and "is UTF-16 text" in err and "Traceback" not in err
+
 
 class TestUsage:
     def test_no_arguments_prints_help_with_every_command(self, capsys):
         code, out, _ = _call(capsys)
-        assert code == 0
+        assert code == 0 and out.startswith("usage: run.py")
         for command in ("issue", "verify", "track", "revoke", "report", "gui"):
             assert command in out
 
@@ -272,7 +276,12 @@ class TestUsage:
         with pytest.raises(SystemExit) as caught:
             cli.main(argv)
         assert caught.value.code == 2
-        assert "usage:" in capsys.readouterr().err
+        assert "usage: run.py" in capsys.readouterr().err
+
+    def test_the_expiry_help_says_what_a_date_alone_means(self, capsys):
+        with pytest.raises(SystemExit):
+            cli.main(["issue", "--help"])
+        assert "a date alone means 00:00 UTC that day" in " ".join(capsys.readouterr().out.split())
 
 
 class TestMigrate:
@@ -288,6 +297,7 @@ class TestMigrate:
         path = self._legacy(tmp_path)
         code, out, _ = _call(capsys, "verify", *_identity(), "--master-key", MASTER_KEY, "--file", str(path))
         assert code == 0 and "VERIFIED: entitlement is valid." in out and cli.PREVIOUS_ENCRYPTION_NOTE in out
+        assert "python run.py migrate" in out
         code, out, err = _call(capsys, *self._migrate_args(path))
         assert code == 0 and err == ""
         assert out.splitlines()[0] == f"MIGRATED: {path} now uses the current encryption (BSR2-S64-SIV)."
@@ -330,19 +340,55 @@ class TestFilesAndLogsWrittenByEarlierReleases:
         assert out.rstrip().endswith("ACTIVE")
 
 
+class TestOutputNeverFailsAfterTheWork:
+    ASCII_ONLY = {"PYTHONIOENCODING": "ascii"}
+
+    def test_names_the_output_cannot_encode_do_not_turn_a_written_record_into_a_failure(self, tmp_path):
+        # Before 0.6.0 the record was written, then printing it raised UnicodeEncodeError: the
+        # command reported an error and exited 1, and retrying wrote a duplicate record.
+        store = tmp_path / "r.log"
+        done = run_entitle("track", "fork", "--product", "P", "--source-version", "1", "--fork-name", "实验室",
+                           "--maintainer", "узел", "--store", str(store), env=self.ASCII_ONLY)
+        assert done.returncode == 0, done.stderr
+        assert "\\u5b9e\\u9a8c\\u5ba4" in done.stdout and "Traceback" not in done.stderr
+        stored = RecordStore(store).read_all()
+        assert len(stored) == 1 and stored[0]["data"]["fork_name"] == "实验室" and stored[0]["data"]["maintainer"] == "узел"
+
+    def test_the_report_and_error_messages_survive_the_same_output(self, tmp_path):
+        store = tmp_path / "r.log"
+        run_entitle("track", "fork", "--product", "Ł", "--source-version", "1", "--fork-name", "实验室", "--maintainer", "m",
+                    "--store", str(store))
+        report = run_entitle("report", "--store", str(store), env=self.ASCII_ONLY)
+        assert report.returncode == 0 and "VERIFIED" in report.stdout
+        missing = run_entitle("verify", *_identity(), "--master-key", MASTER_KEY, "--file", "文件.entitle",
+                              cwd=tmp_path, env=self.ASCII_ONLY)
+        assert missing.returncode == 1 and missing.stderr.startswith("Error: ") and "Traceback" not in missing.stderr
+        assert "\\u6587\\u4ef6.entitle" in missing.stderr
+
+    def test_output_that_can_be_encoded_is_printed_as_is(self, tmp_path):
+        done = run_entitle("track", "fork", "--product", "P", "--source-version", "1", "--fork-name", "лаб",
+                           "--maintainer", "m", "--store", str(tmp_path / "r.log"), env={"PYTHONIOENCODING": "utf-8"})
+        assert done.returncode == 0 and '"fork_name": "лаб"' in done.stdout
+
+
 class TestRealProcess:
-    def test_main_works_from_any_working_folder(self, tmp_path):
+    def test_run_py_works_from_any_working_folder(self, tmp_path):
         elsewhere = tmp_path / "somewhere" / "else"
         elsewhere.mkdir(parents=True)
-        version = run_main("--version", cwd=elsewhere)
+        version = run_entitle("--version", cwd=elsewhere)
         assert version.returncode == 0 and version.stdout.splitlines()[0] == f"Entitle {__version__}"
-        issued = run_main(*_issue_args("lab.entitle"), cwd=elsewhere)
+        issued = run_entitle(*_issue_args("lab.entitle"), cwd=elsewhere)
         assert issued.returncode == 0, issued.stderr
-        verified = run_main("verify", *_identity(), "--master-key", MASTER_KEY, "--file", "lab.entitle", cwd=elsewhere)
+        verified = run_entitle("verify", *_identity(), "--master-key", MASTER_KEY, "--file", "lab.entitle", cwd=elsewhere)
         assert verified.returncode == 0 and "VERIFIED" in verified.stdout
-        denied = run_main("verify", *_identity(), "--master-key", "wrong-key-wrong-key-wrong-key-wrong-key",
-                          "--file", "lab.entitle", cwd=elsewhere)
+        denied = run_entitle("verify", *_identity(), "--master-key", "wrong-key-wrong-key-wrong-key-wrong-key",
+                             "--file", "lab.entitle", cwd=elsewhere)
         assert denied.returncode == 1
+
+    def test_the_old_main_py_entry_point_is_gone_and_the_help_names_run_py(self):
+        assert not (ENTITLE_ROOT / "main.py").exists() and (ENTITLE_ROOT / "run.py").is_file()
+        helped = run_entitle("--help")
+        assert helped.returncode == 0 and helped.stdout.startswith("usage: run.py")
 
     def test_commands_other_than_gui_never_load_tkinter(self, tmp_path):
         code = (

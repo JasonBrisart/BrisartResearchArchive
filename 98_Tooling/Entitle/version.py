@@ -18,7 +18,7 @@ __version__ is a plain dotted string: major.minor.patch.
 
 Edge cases
 ----------
-Changing it changes the text printed by python main.py --version and shown in the window title
+Changing it changes the text printed by python run.py --version and shown in the window title
   only; it is never written into entitlements or records, so it does not affect verification.
   The version of the linked encryption is not here: it comes from 97_Encryption and is shown
   by --version on its own line.
@@ -29,11 +29,11 @@ Nothing checks that the value matches the newest docs/CHANGELOG.md entry; update
 
 Examples
 --------
-Usage from the directory containing main.py:
+Usage from the directory containing run.py:
 
     from version import __version__
 
     print(f"Entitle {__version__}")
 """
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"

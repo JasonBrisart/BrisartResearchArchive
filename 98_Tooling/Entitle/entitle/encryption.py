@@ -11,8 +11,8 @@ Be Entitle's only link to BSR2, the archive's shared encryption in 97_Encryption
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (EntitleError) and the standard library. Links, on first use,
-  these 97_Encryption/Official modules: brisart_security_aead (the current sealed format),
+Imports entitle/common.py (EntitleError) and the standard library. Links, on first use, these
+  97_Encryption/Official modules: brisart_security_aead (the current sealed format),
   brisart_security_envelope (the previous format, read only), brisart_security_drbg,
   brisart_security_version, and the three they import, brisart_security_primitives,
   brisart_security_sponge and brisart_security_entropy. Imported by entitle/entitlements.py
@@ -38,9 +38,14 @@ Resolution is lazy and cached for the life of the process: nothing from 97_Encry
   when the folder is missing (the message says to keep 98_Tooling and 97_Encryption together),
   a module file is missing, a module fails to import, a brisart_security_* module was already
   imported from somewhere other than ENCRYPTION_DIR (Entitle never runs against an unlinked
-  copy), or a required format constant differs. Every message names paths relative to the
-  archive and never this machine's absolute location. ENCRYPTION_DIR is put on sys.path once,
-  here, because BSR2's modules import each other by flat name.
+  copy), or a required format constant differs. An Entitle folder placed so close to the top of
+  a drive that there is no folder three levels up (directly under the drive root) has
+  ARCHIVE_ROOT at the top of the drive and reports the same "was not found" message instead of
+  failing to import.
+  Every message names paths relative to the archive and never this machine's absolute location,
+  including paths quoted inside an exception's repr, where Windows backslashes are doubled.
+  ENCRYPTION_DIR is put on sys.path once, here, because BSR2's modules import each other by flat
+  name.
 
 Known limitations
 -----------------
@@ -51,7 +56,7 @@ The release is not pinned: any BSR2 release that still provides the required for
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     from entitle import encryption
 
@@ -62,18 +67,27 @@ From the directory containing main.py:
 """
 
 import importlib
-import os
 import sys
 import types
 from dataclasses import dataclass, field
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Optional
 
-from . import EntitleError
+from .common import EntitleError
 
-# entitle/ -> Entitle/ -> 98_Tooling/ -> the folder that holds 97_Encryption.
-ARCHIVE_ROOT = Path(__file__).resolve().parents[3]
+
+def _archive_root(this_file: PurePath) -> PurePath:
+    """The folder holding 98_Tooling, given this file's resolved location.
+
+    entitle/ -> Entitle/ -> 98_Tooling/ -> the archive folder. A copy placed so shallowly that
+    there is no third parent gets the top of the drive, which is simply "not the archive".
+    """
+    parents = this_file.parents
+    return parents[3] if len(parents) > 3 else parents[len(parents) - 1]
+
+
+ARCHIVE_ROOT = Path(_archive_root(Path(__file__).resolve()))
 ENCRYPTION_DIR = ARCHIVE_ROOT / "97_Encryption" / "Official"
 _KEEP_TOGETHER = "Keep the 98_Tooling and 97_Encryption folders together in the same folder."
 
@@ -126,10 +140,27 @@ def _shown(path) -> str:
         return f"a copy outside this archive ({resolved.name})"
 
 
+def _without_location(text: str, root: PurePath) -> str:
+    """``text`` with every spelling of ``root`` removed, so no message names this machine.
+
+    An exception's repr doubles Windows backslashes (C:\\\\Users\\\\...), so the plain, forward-slash
+    and escaped spellings are all removed. A root with no name is the top of a drive; removing "C:\\"
+    or "/" would mangle the text, so it is left alone.
+    """
+    if not root.name:
+        return text
+    spellings = {str(root), root.as_posix(), str(root).replace("\\", "\\\\")}
+    for spelling in sorted(spellings, key=len, reverse=True):
+        for separator in ("\\\\", "\\", "/"):
+            text = text.replace(spelling + separator, "")
+        text = text.replace(spelling, ".")
+    return text
+
+
 def _unavailable(problem: str) -> EncryptionLink:
-    # Import errors can quote absolute paths; strip the archive's own location.
-    problem = problem.replace(str(ARCHIVE_ROOT) + os.sep, "").replace(str(ARCHIVE_ROOT), ".")
-    return EncryptionLink(available=False, location=ENCRYPTION_DIR, problem=problem)
+    return EncryptionLink(
+        available=False, location=ENCRYPTION_DIR, problem=_without_location(problem, ARCHIVE_ROOT)
+    )
 
 
 def _resolve(directory: Path) -> EncryptionLink:
@@ -138,11 +169,9 @@ def _resolve(directory: Path) -> EncryptionLink:
     for name in REQUIRED_MODULES.values():
         if not (directory / f"{name}.py").is_file():
             return _unavailable(f"{_shown(directory)} is missing {name}.py.")
-
     path_entry = str(directory)
     if path_entry not in sys.path:
         sys.path.insert(0, path_entry)
-
     modules = {}
     for attribute, name in REQUIRED_MODULES.items():
         try:
@@ -153,14 +182,12 @@ def _resolve(directory: Path) -> EncryptionLink:
         if origin.parent != directory.resolve():
             return _unavailable(f"{name} was loaded from {_shown(origin)}, not from {_shown(directory)}.")
         modules[attribute] = module
-
     for attribute, constant, required in REQUIRED_FORMATS:
         found = getattr(modules[attribute], constant, None)
         if found != required:
             return _unavailable(
                 f"linked {REQUIRED_MODULES[attribute]}.{constant} is {found!r}; Entitle requires {required!r}."
             )
-
     version = modules["version"]
     return EncryptionLink(
         available=True,

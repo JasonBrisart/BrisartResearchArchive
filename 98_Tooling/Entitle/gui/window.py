@@ -9,7 +9,7 @@ Be Entitle's desktop window shell: the main window, the notebook that holds the 
 
 Communication / relationships
 -----------------------------
-Imports tkinter (tk, ttk, messagebox, ScrolledText), the entitle package root (EntitleError),
+Imports tkinter (tk, ttk, messagebox, ScrolledText), entitle/common.py (EntitleError),
   gui/tabs.py (TABS) and version.py (the title). Imported only by cli.py's gui command, through
   launch(), so the other commands never load tkinter. The tabs call back into the window through
   the app object they are given: app.shared (fields shared between tabs) and app.run(action).
@@ -37,13 +37,14 @@ One window per process, no menus, no remembered size or position, and no keyboar
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
-    python main.py gui
+    python run.py gui
 
 or, from Python:
 
     from gui.window import launch
+
     launch()
 """
 
@@ -52,9 +53,10 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
-from entitle import EntitleError
+from entitle.common import EntitleError
 from gui.tabs import TABS
 from version import __version__
+
 
 class EntitleApp(tk.Tk):
     def __init__(self):

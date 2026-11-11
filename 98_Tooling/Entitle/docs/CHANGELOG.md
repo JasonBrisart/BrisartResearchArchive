@@ -1,8 +1,60 @@
 # Changelog
+
 All notable changes to Entitle are documented in this file.
+
 Entitle is pure Python with no external packages, takes its encryption from
 97_Encryption in the same archive, and is designed for local-first, offline,
 and air-gapped environments.
+
+---
+
+## [0.6.0] - 2026-11-11
+
+An architecture release that also fixes eight defects, found by reading, running and fuzzing the code, and documents one behavior that surprised. Every `__init__.py` is gone: `entitle/__init__.py`, which 0.5.0 had brought back to hold the helpers every module shares, is replaced by `entitle/common.py`, so `entitle/` and `gui/` are implicit namespace packages again, as in 0.4.1 and as in the rest of the Brisart tooling. The entry point is renamed from `main.py` to `run.py`, the name every Brisart tool uses. The entitlement format, the encryption context, the record log format and hash chain, and every command and flag are unchanged; `python main.py ...` becomes `python run.py ...`, and Python code that imported `EntitleError`, `canonical_json`, `utc_now`, `utc_now_iso` or `require_text` from `entitle` imports them from `entitle.common`.
+
+The suite has 282 tests (215 in 0.5.0) and passes on Python 3.12 on Linux. That run used a test copy of `97_Encryption/Official`, not the real library: the previous-format modules (`primitives`, `entropy`, `drbg`, `envelope`) were rewritten from the BSR2 Alpha 3 source in an earlier export and authenticate the real `tests/fixtures/legacy_alpha3_entitlement.json` (a wrong key, a wrong context and a tampered tag are refused), while the sealed-v3 format (`aead`), `sponge` and `version` were stand-ins that only check Entitle's wiring. Nothing here says anything about BSR2-S64-SIV itself, so run `python -m pytest tests` against the real archive; `tests/test_end_to_end.py` is the one that drives the whole workflow through real `run.py` processes with the encryption that sits beside Entitle. Each fix below was reproduced by putting the 0.5.0 behavior back into the new code and watching its test fail (the 0.5.0 files themselves were not on disk in the environment that built this release). Two fuzz runs were made: 300 seeds across 13 kinds of record-log damage, which found the invalid-UTF-8 defect below that reading had missed, and 425 damaged entitlement files (400 current format, 25 previous format), which found nothing but clean denials and errors. The limits of this verification are listed under Compatibility.
+
+### Fixed
+- **A damaged record log could not be audited at all** (`entitle/records.py`). The log was read as strict UTF-8, so any damage that left invalid UTF-8 made `verify_chain()`, the report and `python run.py report` raise `UnicodeDecodeError` instead of reporting `BROKEN`. A power failure in the middle of a record containing a multi-byte character (a host such as `узел-1` or `实验室`) leaves exactly that, as does a stray byte from an editor. Found by fuzzing: before the fix, 6 of the 13 damage kinds raised (three of them on every seed, the others on some). Bytes that are not UTF-8 are now read as replacement characters, so only that line is reported as damaged (`unparseable_record` at its index) and the rest of the log is still counted. `append()` still refuses to extend a damaged log.
+- **A record could be written and the command reported as failed** (`cli.py`). The command wrote the record and then printed it; on an output that cannot encode the text (a redirected Windows console on a legacy code page, any ASCII-only stream) the print raised `UnicodeEncodeError`, the command printed `Error: 'ascii' codec can't encode characters...` and exited 1, and an operator who retried got a duplicate in a log whose records can never be removed. Reproduced with `PYTHONIOENCODING=ascii python run.py track fork --fork-name 实验室 --maintainer узел`: before, exit 1 with the record already written; after, exit 0. `main()` now sets `errors="backslashreplace"` on stdout and stderr, so unencodable characters print as escapes (`\u5b9e\u9a8c\u5ba4`) and the stored record is untouched. The same applies to error messages that quote a path.
+- **Verifying a large previous-format file could take minutes** (`entitle/entitlements.py`). Only the current format had a payload cap; a previous-format file (BSR2 Alpha 3) was decrypted whatever its size, and its MAC runs over every byte before it can fail. With the cap removed, verifying a file with a 450 KB ciphertext had not finished after 50 seconds. A previous-format file whose ciphertext is over twice `MAX_PAYLOAD_BYTES` hex characters is now refused before any decryption (denied as `bsr_verification_failed`), and `read_entitlement_file` refuses any file over `MAX_FILE_BYTES` (1 MiB) by name. Real entitlements are about 1.4 KB (previous format) and 1.3 KB (current), so neither limit is anywhere near them.
+- **Files that passed through Windows tools were rejected or misread** (`entitle/entitlements.py`, `entitle/records.py`). A UTF-8 byte-order mark (added by older versions of Notepad and some other editors) made an `.entitle` file "not a protected Entitle entitlement file" and made the first record of a log unparseable. A file written by Windows PowerShell's `>` or `Out-File` is UTF-16 and failed with a codec error. Both files now read with `utf-8-sig`, Windows line endings are accepted for both formats, and a UTF-16 file is named as such with the fix (`Copy-Item`, or save as UTF-8). Files are still written as plain UTF-8 without a byte-order mark.
+- **The example application crashed on an unusable entitlement file** (`examples/protected_app_example.py`). It promises that anything short of a verified entitlement leaves every governed feature locked, but only `EntitleError` was caught, so a file that was garbage, empty, UTF-16, oversized or unreadable ended in a traceback before the base program started. It now catches `ValueError` and `OSError` as well: the reason is printed, the base program runs, and nothing governed unlocks.
+- **A shallow install crashed at import instead of saying "Encryption not found"** (`entitle/encryption.py`). `ARCHIVE_ROOT` was `Path(__file__).resolve().parents[3]`, which raises `IndexError` when there is no folder three levels above the file, as for an Entitle folder directly under a drive root (`C:\Entitle` has three parents), so every command ended in a traceback although the design is a one-line message. `_archive_root()` now returns the top of the drive in that case, and the existing "was not found" message follows. Reproduced with `parents[3]` put back (`IndexError: 3` on `C:\Entitle`, `/Entitle` and the like). An install at a drive root could not be created in the test environment, so this is covered through the root calculation, not an actual install.
+- **Windows paths leaked into "Encryption not found" messages** (`entitle/encryption.py`). 0.5.0 removed this machine's archive path from the reason by replacing `str(ARCHIVE_ROOT)`, but a path quoted inside an exception's `repr()` (a `SyntaxError` in a BSR2 module, for example) has every backslash doubled, so on Windows the user name and folders stayed in the text. `_without_location()` now removes the plain, forward-slash and doubled-backslash spellings. Covered with a Windows root, because the Linux test environment has no backslashes to scrub.
+- **An entitlement could be issued that could never verify** (`entitle/entitlements.py`). Opening a payload is capped at 64 KiB, but issuing was not: a pasted 70,000-character entitlement ID or support tier was sealed, written and reported as created, then denied as `bsr_verification_failed` on every verification. `issue_entitlement()` now refuses a payload over `MAX_PAYLOAD_BYTES` before sealing, with the size and the fix in the message. This is the same class as the unparseable `--expires` and negative limit that 0.5.0 closed.
+- **`--expires` with a date alone expired the entitlement a day early, and nothing said so** (`entitle/rights.py`, `cli.py`, `docs/README.md`). `2026-12-31` is parsed as 00:00 UTC, so the entitlement stops working when that day begins. The behavior is unchanged (changing it would alter when files already issued expire) but it is now stated in the `--expires` help, the README and the headers, and pinned by tests: yesterday's and today's date are expired, tomorrow's is not, and a time on the last day (`T23:59:59Z`) includes the whole day.
+
+### Changed
+- **`entitle/common.py` replaces `entitle/__init__.py`.** The five shared names (`EntitleError`, `canonical_json`, `utc_now`, `utc_now_iso`, `require_text`) moved unchanged. 0.5.0 had added `entitle/__init__.py` for them, undoing the 0.4.1 decision to remove every `__init__.py`; they now live in a leaf module whose name says what it holds, and importing `entitle.<module>` runs that module and what it imports and nothing else. Inside `entitle/`, `from . import X` became `from .common import X` (`rights.py`, `encryption.py`, `entitlements.py`, `records.py`, `revoke.py`, `tracking.py`); in `cli.py`, `gui/window.py` and `examples/protected_app_example.py`, `from entitle import EntitleError` became `from entitle.common import EntitleError`. The dependency graph inside `entitle/` is unchanged and has no cycles: `common` is at the bottom, `entitlements` builds on `rights` and `encryption`, `tracking`, `revoke` and `report` build on `records`, and only `tracking` joins the two.
+- **`run.py` replaces `main.py`.** Same contents and behavior: the entry point that calls `cli.main()`. The parser's program name is now `run.py` (so `usage:` lines and `--help` say `run.py`), the migration note says `python run.py migrate`, and the example application's "issue one first" help prints `python run.py issue`. Every command in the README, the examples and the source headers was updated, and `tests/support.py`'s `run_main()` became `run_entitle(*args, cwd=None, env=None, root=None)`, which also takes extra environment variables and an alternative Entitle folder.
+- **`tests/test_rights.py` was split along the module boundary.** It also tested the shared helpers, which were not in `rights.py`. Those tests (canonical JSON, `require_text`, the clock) are now `tests/test_common.py`, so `test_<name>.py` covers `<name>.py` again, and `test_rights.py` covers only the rights rules.
+- **`--version`, errors and `report` are unchanged in content**; only the program name in `usage:` lines changed. `entitle/records.py` reads the log with `encoding="utf-8-sig", errors="replace"`, `entitle/entitlements.py` reads an entitlement file as bytes (size check, UTF-16 check, `utf-8-sig`, line endings normalised) instead of `Path.read_text`, and `cli.main()` calls `_make_output_safe()` first.
+- **Source headers.** All Python files were checked again: the six-section order, every Communication section against the real imports in both directions, and the runnable example in each `entitle/` header. Headers for `entitle/revoke.py` (IDs are matched exactly as typed), `entitle/rights.py` and `entitle/entitlements.py` (date-only expiry, the new limits, Windows files), `entitle/records.py` (byte-order mark, invalid UTF-8) and `entitle/encryption.py` (drive-root installs, escaped paths) state the new behavior.
+- `__version__` is now `0.6.0`.
+
+### Removed
+- `entitle/__init__.py` and `main.py` (see above). There are no `__init__.py` files anywhere in the project; `tests/test_common.py` fails if one is added.
+
+### Added
+- **`tests/test_end_to_end.py`: the check to run with your encryption.** It installs a copy of Entitle and of the linked `97_Encryption/Official` into a fresh archive layout and runs the whole workflow through real `run.py` processes: version and encryption link, issue, verify with the right and a wrong key, a previous-format file flagged, migrated and left unchanged, deployments up to and past the limit, a deployment from the migrated file, fork, provenance, revoke, a refused deployment, reinstate, the JSON audit report, a tampered record reported as broken, and the example application. A second test starts six `run.py` processes at once against a limit of 2 and expects exactly two recorded, four refused and an intact chain.
+- **`tests/test_common.py`**: pins the exact bytes of canonical JSON (hashes and sealed files depend on them); checks that every module imports in a fresh interpreter from another folder with `entitle.__file__` equal to `None` and a single path entry (a second `entitle` folder on the path would merge into it); and that no source file raises a warning when compiled (a Windows path with a bare backslash in a docstring is a `SyntaxWarning` today, which this release's own headers tripped once).
+- **Tests for each fix**, 215 to 282 in all. `tests/test_records.py`: 14 kinds of damage under 10 fixed seeds, all of which must be reported or harmless and never raise, plus a byte-order mark and Windows line endings. `tests/test_report.py`: a character cut in half still gets a report, and readable plus unreadable always equals the lines in the file. `tests/test_entitlements.py`: byte-order mark, CRLF, UTF-16 (three variants), invalid UTF-8, an oversized previous-format ciphertext refused in under 5 seconds, a file over the read limit, a payload too large to verify. `tests/test_encryption.py`: the archive root of Posix and Windows paths of every depth, and scrubbing of Windows, forward-slash and Posix spellings. `tests/test_cli.py`: Chinese and Cyrillic names under `PYTHONIOENCODING=ascii` (exit 0, one record, escapes in the output, the stored record exact), the same for report and error messages, the `--expires` help text, and that `run.py` exists, `main.py` does not and `--help` says `run.py`. `tests/test_example.py`: four kinds of unusable file and a folder in place of a file. `tests/test_rights.py` and `tests/test_revoke.py`: date-only expiry, and exact-as-typed IDs.
+- **Mutation checks.** Twelve changes were applied to the finished code and reverted, each putting a 0.5.0 behavior or a guarded structure back, and each was caught by the test written for it: `parents[3]`, no output safety, no previous-format ciphertext cap (the test did not finish within its 50 second limit), no file size limit, plain `utf-8` for entitlement files, plain `utf-8` for the log, strict decoding of the log, the example catching only `EntitleError`, single-spelling path scrubbing, no payload check at issue, an `entitle/__init__.py` added, and a docstring with a bare backslash path added.
+
+### Compatibility
+- **Unchanged and checked:** the entitlement payload and `entitle.entitlement.v1`, the encryption context string (pinned by a test), the record format and hash chain, every command and flag, exit statuses (`verify` exits 1 when denied, `track deploy` exits 0 when a deployment is refused, `report` exits 0 when the chain is broken), the window's six tabs, and sealed and previous-format entitlement files and record logs written by earlier releases. The fixtures `tests/fixtures/legacy_alpha3_entitlement.json` and `tests/fixtures/legacy_v0_4_1_records.log` are byte-identical to the ones in 0.5.0 (their SHA-256 values were compared with the manifest of the 0.5.0 export).
+- **Changed entry point:** `python main.py ...` no longer exists. Shell scripts, CI steps, shortcuts and documentation that call it must call `python run.py ...`; the arguments are the same.
+- **Python API:** `from entitle import EntitleError` (and `canonical_json`, `utc_now`, `utc_now_iso`, `require_text`) must become `from entitle.common import ...`. `import entitle` still works but exposes nothing, because `entitle` is a namespace package. A program protected by Entitle imports `EntitlementDenied` from `entitle.rights` and `verify_entitlement` from `entitle.entitlements`, as before.
+- **Namespace packages:** a second folder named `entitle` anywhere on `sys.path` would be merged into the package. `tests/test_common.py` checks that a normal run sees exactly one, but nothing prevents it on another machine.
+- **Behavior that changed:** an entitlement over 64 KiB can no longer be issued (it could never have been verified); a file over 1 MiB is refused by name; a previous-format file with an oversized ciphertext is denied without being decrypted; a byte-order mark, Windows line endings and (for logs) invalid UTF-8 are tolerated where they used to fail; a UTF-16 file produces its own message; unencodable output is escaped instead of raising; the example application locks instead of crashing; `usage:` lines say `run.py`.
+- **Not changed, still true:** `track deploy` and `report` exit 0 in the cases listed above; a revocation matches the entitlement ID exactly as typed (documented in `entitle/revoke.py` and the README); truncating the end of a log is not detectable by the hash chain; issuing to an existing path replaces the file without asking; replacing a file through a symbolic link replaces the link.
+- **Not verified here:**
+  - BSR2 itself. The suite ran against the test copy of `97_Encryption/Official` described above, so the sealed-v3 format (BSR2-S64-SIV) was only exercised through a stand-in that has the same interface. Run `python -m pytest tests` on the real archive before publishing; if its `97_Encryption/Official` differs from what Entitle requires (`REQUIRED_MODULES` and `REQUIRED_FORMATS` in `entitle/encryption.py`), `tests/test_encryption.py` and `tests/test_end_to_end.py` fail first.
+  - Windows and macOS, and a real display. Several fixes concern Windows (drive-root installs, escaped backslashes, PowerShell's UTF-16, code pages); they are covered through pure-path functions, `PYTHONIOENCODING` and crafted bytes, not by running on Windows. The Windows branch of the record-store lock and the window's appearance are untested.
+  - A real entitlement written by Entitle 0.4.1 (the previous-format fixture stands in) and a real power failure (the damaged-log tests reproduce its effect on the file).
+  - The 0.5.0 files themselves were not available to diff against when this release was built; review `git diff` before committing.
+- No new external dependencies; the application is standard-library Python plus the archive's `97_Encryption`.
 
 ---
 
@@ -293,9 +345,11 @@ you invoke Entitle changes in this release.
 ## [0.3.2] - 2026-08-26
 
 ### Changed
+
 - Removed the unused `from pathlib import Path` import from `gui/tabs/issue_tab.py`.
 
 ### Notes
+
 - This is a cosmetic code cleanup release only.
 - No functional behavior, entitlement processing, licensing logic, CLI commands, GUI workflows, file formats, or outputs were changed.
 - Improves code cleanliness and reduces dead imports in the Issue tab implementation.
@@ -303,11 +357,13 @@ you invoke Entitle changes in this release.
 ---
 
 ## [0.3.1] - 2026-08-18
+
 This release is a follow-up architecture cleanup pass on top of 0.3.0's
 package restructure. No governance logic, record-store semantics, or
 entitlement behavior changed.
 
 ### Added
+
 - `entitle/constants.py` — single source of truth for the five
   `record_type` strings (`deployment`, `fork`, `provenance`, `revocation`,
   `reinstatement`) used throughout the tamper-evident record store. These
@@ -326,6 +382,7 @@ entitlement behavior changed.
   file needs to change.
 
 ### Changed
+
 - `gui/app.py` reduced from a single 407-line file containing all six tabs
   to a 110-line core engine that only builds the window, the shared output
   pane, and the tab registry.
@@ -340,6 +397,7 @@ entitlement behavior changed.
   `elif` branch.
 
 ### Verified
+
 - The full CLI lifecycle (issue, verify, deploy with `deployment_limit`
   enforcement and refusal, fork, provenance, revoke, deploy-while-revoked
   refusal, reinstate, check, audit report) was re-run end-to-end through
@@ -357,6 +415,7 @@ entitlement behavior changed.
 ---
 
 ## [0.3.0] - 2026-08-18
+
 This release restructures Entitle from a flat collection of scripts into a
 proper package with a single command-line entry point, and adds a first
 Tkinter GUI covering every core workflow. No governance logic, record-store
@@ -364,6 +423,7 @@ semantics, or entitlement behavior changed — this is an architecture and
 usability release, not a behavior release.
 
 ### Added
+
 - `main.py` — single CLI entry point. Replaces running each `entitle_*.py`
   script directly. Dispatches to `issue`, `verify`, `track`, `revoke`,
   `report`, and `gui` subcommands, e.g. `python main.py issue ...`,
@@ -400,6 +460,7 @@ usability release, not a behavior release.
   missing, instead of crashing with an uncaught `FileNotFoundError`.
 
 ### Changed
+
 - `protected_app_example.py` → `examples/protected_app_example.py`.
 - Running an Entitle module directly as a script (e.g.
   `python entitle/issue.py`) is no longer supported, because its imports
@@ -407,6 +468,7 @@ usability release, not a behavior release.
   `python -m entitle.issue ...`) instead.
 
 ### Verified
+
 - The full lifecycle (issue, verify, deploy with `deployment_limit`
   enforcement and refusal, fork, provenance, revoke, deploy-while-revoked
   refusal, reinstate, check, audit report, hash-chain tamper detection) was
@@ -426,6 +488,7 @@ usability release, not a behavior release.
   before and after the move into `bsr/`.
 
 ### Notes
+
 - No changes were made to any BrisartSecurityResearch (BSR2) source file.
   BSR2 remains an independent, experimental research dependency and should
   continue to be treated as controlled-environment protection unless
@@ -438,6 +501,7 @@ usability release, not a behavior release.
 ---
 
 ## [0.2.1] - 2026-08-18
+
 This release fixes integration bugs between `entitle_bsr_adapter.py` and the
 real BrisartSecurityResearch (BSR2) module that prevented `entitle_issue.py`
 from running at all against an unmodified BSR2 checkout. No governance logic,
@@ -445,6 +509,7 @@ record-store behavior, or entitlement semantics changed; every fix is
 isolated to the BSR2 adapter wiring layer.
 
 ### Fixed
+
 - `entitle_bsr_adapter.py` imported `BrisartSecurityDRBG`, `encrypt_envelope`,
   and `decrypt_envelope`, but the real BSR2 module exports `BrisartDRBG`,
   `encrypt`, and `decrypt`. Import aliasing was added so BSR2 source files
@@ -466,6 +531,7 @@ isolated to the BSR2 adapter wiring layer.
   directly so the flat layout can live in its own subdirectory.)
 
 ### Verified
+
 - Every known-answer vector shipped with BrisartSecurityResearch (hash, MAC,
   stream, DRBG output, envelope decrypt, and a deterministic envelope
   re-encrypt) was reproduced byte-for-byte against the unmodified BSR2
@@ -476,9 +542,10 @@ isolated to the BSR2 adapter wiring layer.
   and refusal), fork, provenance, revoke, reinstate, and audit reporting.
 - Hash-chain tamper detection was confirmed directly: a manually corrupted
   historical record was correctly flagged by `verify_chain()`, with the
-  exact broken record index reported.
+  exact broken index reported.
 
 ### Notes
+
 - No changes were required to `entitle_core.py`, `entitle_records.py`,
   `entitle_track.py`, `entitle_revoke.py`, or `entitle_report.py`; all
   governance and tamper-evidence logic in those modules was already correct.
@@ -490,12 +557,14 @@ isolated to the BSR2 adapter wiring layer.
 ---
 
 ## [0.2.0] - 2026-08-04
+
 This release brings the implementation in line with the README by adding the
 deployment, fork, provenance, revocation, and audit capabilities that were
 previously described but not yet built. All new tooling is pure standard
 library and writes to a single local, tamper-evident record store.
 
 ### Added
+
 - `entitle_records.py` — append-only, hash-chained record store. Each entry is
   linked to the previous one through a SHA-256 chain, so any edit, deletion, or
   reordering of earlier records is detectable via `verify_chain()`.
@@ -513,6 +582,7 @@ library and writes to a single local, tamper-evident record store.
   verifies the tamper-evident hash chain across the whole store.
 
 ### Changed
+
 - `entitle_track.py` deployment gate now consults `entitle_revoke.is_revoked`
   before recording, so revoked entitlements are refused for new deployments.
 - `README.md` rewritten to document the actual tools with runnable CLI examples,
@@ -520,12 +590,14 @@ library and writes to a single local, tamper-evident record store.
   & Reinstatement, and the Tamper-Evident Record Store.
 
 ### Removed
+
 - Dropped the unimplemented **License Management** feature section from the
   README so documentation matches shipped functionality.
 
 ### Notes
+
 - The record store path is always explicit (`--store`); there is no default
   location by design, keeping record placement fully under operator control.
 - Entitlement protection continues to rely on the experimental
   BrisartSecurityResearch (BSR) modules via `entitle_bsr_adapter.py`. Treat as
-  controlled-environment protection unless independently reviewed.
+  controlled-environment protection unless reviewed.

@@ -29,13 +29,13 @@ A refusal is a returned outcome with a reason, never an exception, and writes no
 
 Known limitations
 -----------------
-Does not run the command line or the window (tests/test_cli.py, tests/test_gui.py) and does
-  not test racing processes for deployments; process-level locking is covered in
+Does not run the command line or the window (tests/test_cli.py, tests/test_gui.py); racing
+  processes are covered in tests/test_end_to_end.py and process-level locking in
   tests/test_records.py.
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_tracking.py
 """
@@ -111,6 +111,10 @@ class TestRegisterDeployment:
         entitlement = _allowed_entitlement(deployment_limit=None)
         for i in range(5):
             assert register_deployment(store, entitlement, host=f"node-{i}")["recorded"] is True
+
+    def test_a_zero_limit_permits_no_deployment(self, store_path):
+        outcome = register_deployment(RecordStore(store_path), _allowed_entitlement(deployment_limit=0), host="node-1")
+        assert (outcome["recorded"], outcome["reason"], outcome["deployments_used"]) == (False, "deployment_limit_reached", 0)
 
     def test_revoked_entitlement_refuses_new_deployment(self, store_path):
         store = RecordStore(store_path)

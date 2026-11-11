@@ -10,7 +10,7 @@ Show how another program guards its features with Entitle: the base program alwa
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (EntitleError), entitle/rights.py (EntitlementDenied) and
+Imports entitle/common.py (EntitleError), entitle/rights.py (EntitlementDenied) and
   entitle/entitlements.py (verify_entitlement): the whole interface a protected program needs.
   Puts the Entitle folder on sys.path so it runs from any working folder. Nothing imports it;
   tests/test_example.py loads it by path and runs main().
@@ -26,10 +26,11 @@ Edge cases
 ----------
 With no entitlement file it prints the issue command that would create one and returns. A file
   that is denied (wrong key, wrong product, expired) keeps every governed feature locked and
-  prints the reason. A check that cannot run at all, such as when 97_Encryption is not found,
-  is treated the same way: the base program still starts, the reason is printed, and nothing
-  governed unlocks. A verified entitlement unlocks only the features whose rights it grants; the
-  rest print "locked" with the missing right.
+  prints the reason. A check that cannot run at all is treated the same way: 97_Encryption not
+  found, a file that is not an entitlement (damaged, empty, UTF-16, or too large) or one that
+  cannot be read. The base program still starts, the reason is printed, and nothing governed
+  unlocks. A verified entitlement unlocks only the features whose rights it grants; the rest
+  print "locked" with the missing right.
 
 Known limitations
 -----------------
@@ -53,7 +54,7 @@ _ENTITLE_ROOT = Path(__file__).resolve().parents[1]
 if str(_ENTITLE_ROOT) not in sys.path:
     sys.path.insert(0, str(_ENTITLE_ROOT))
 
-from entitle import EntitleError  # noqa: E402
+from entitle.common import EntitleError  # noqa: E402
 from entitle.entitlements import verify_entitlement  # noqa: E402
 from entitle.rights import EntitlementDenied  # noqa: E402
 
@@ -114,7 +115,7 @@ def main(entitlement_file=ENTITLEMENT_FILE):
         print(f"No entitlement file found at: {entitlement_file}")
         print("Issue one first, for example:")
         print()
-        print("  python main.py issue \\")
+        print("  python run.py issue \\")
         print(f"      --issuer {ISSUER_ID} --subject {SUBJECT_ID} --product {PRODUCT_ID} \\")
         print("      --entitlement-id lab-a-demo-001 \\")
         print(f'      --master-key "{MASTER_KEY}" \\')
@@ -124,7 +125,7 @@ def main(entitlement_file=ENTITLEMENT_FILE):
 
     try:
         entitlement = load_entitlement(entitlement_file)
-    except EntitleError as exc:
+    except (EntitleError, ValueError, OSError) as exc:
         print("Entitlement could not be checked.")
         print(f"Reason: {exc}")
         print()
@@ -132,6 +133,7 @@ def main(entitlement_file=ENTITLEMENT_FILE):
         print()
         print("Governed features remain locked.")
         return
+
     print("Entitlement result:")
     print(entitlement.to_dict())
     print()

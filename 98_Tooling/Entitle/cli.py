@@ -11,13 +11,13 @@ Be Entitle's command line: parse arguments, call the domain functions in entitle
 
 Communication / relationships
 -----------------------------
-Imports version (the version text), the entitle package root (EntitleError),
-  entitle/encryption.py (status, for --version), entitle/entitlements.py, entitle/records.py
-  (RecordStore, ALL_RECORD_TYPES), entitle/report.py, entitle/revoke.py and entitle/tracking.py.
+Imports version (the version text), entitle/common.py (EntitleError), entitle/encryption.py
+  (status, for --version), entitle/entitlements.py, entitle/records.py (RecordStore,
+  ALL_RECORD_TYPES), entitle/report.py, entitle/revoke.py and entitle/tracking.py.
   gui/window.py is imported only by the gui command, so the other commands never load tkinter.
   Importing this file never touches 97_Encryption; only the commands that seal or open an
   entitlement (issue, verify, migrate, track deploy) and --version resolve it. Imported by
-  main.py (main) and tests/test_cli.py.
+  run.py (main) and tests/test_cli.py.
 
 Settings / parameters
 ---------------------
@@ -27,8 +27,8 @@ Commands: issue, verify, migrate, track {deploy, fork, provenance, list}, revoke
   explicit --store: there is deliberately no default location, so records never land somewhere
   the operator did not choose. track list --type accepts the five record types. report takes
   --format text|json and an optional --output file. issue accepts an optional --drbg-seed and
-  --drbg-personalization; neither is needed. Run main.py <command> --help for each command's
-  flags.
+  --drbg-personalization; neither is needed. --expires takes an ISO timestamp; a date alone means
+  00:00 UTC that day. Run run.py <command> --help for each command's flags.
 
 Edge cases
 ----------
@@ -43,7 +43,10 @@ Exit status: 0 on success; 1 for verify when the entitlement is denied and for a
   migrate reports UNCHANGED for a file that already uses the current one. track deploy exits 0
   even when the deployment is refused: the outcome is in the printed JSON ("recorded": false),
   as before. With no command it prints help and exits 0. A report on a store that does not
-  exist succeeds and says so.
+  exist succeeds and says so. Output never fails once the work is done: characters the console
+  or a redirected file cannot encode (for example Cyrillic or Chinese names on a Windows code
+  page) are printed as backslash escapes, so a record that was written is never reported as a
+  failure that invites a duplicate.
 
 Known limitations
 -----------------
@@ -53,20 +56,20 @@ Known limitations
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
-    python main.py issue --issuer Issuer --subject Lab --product Demo --entitlement-id lab-001 ^
+    python run.py issue --issuer Issuer --subject Lab --product Demo --entitlement-id lab-001 ^
         --master-key "a-master-key-that-is-at-least-32-bytes-long" --deployment-limit 3 ^
         --output entitlements/lab.entitle
-    python main.py verify --issuer Issuer --subject Lab --product Demo --master-key "..." ^
+    python run.py verify --issuer Issuer --subject Lab --product Demo --master-key "..." ^
         --file entitlements/lab.entitle
-    python main.py migrate --issuer Issuer --subject Lab --product Demo --master-key "..." ^
+    python run.py migrate --issuer Issuer --subject Lab --product Demo --master-key "..." ^
         --file entitlements/older_lab.entitle
-    python main.py track deploy --issuer Issuer --subject Lab --product Demo --master-key "..." ^
+    python run.py track deploy --issuer Issuer --subject Lab --product Demo --master-key "..." ^
         --entitlement entitlements/lab.entitle --host node-1 --store records/entitle_records.log
-    python main.py revoke check --entitlement-id lab-001 --store records/entitle_records.log
-    python main.py report --store records/entitle_records.log
-    python main.py gui
+    python run.py revoke check --entitlement-id lab-001 --store records/entitle_records.log
+    python run.py report --store records/entitle_records.log
+    python run.py gui
 
     (Windows line continuation is ^; on Linux and macOS use \\.)
 """
@@ -76,15 +79,15 @@ import json
 import sys
 from pathlib import Path
 
-from entitle import EntitleError, encryption, entitlements, revoke, tracking
+from entitle import encryption, entitlements, revoke, tracking
+from entitle.common import EntitleError
 from entitle.records import ALL_RECORD_TYPES, RecordStore
 from entitle.report import build_report, format_text
 from version import __version__
 
-
 PREVIOUS_ENCRYPTION_NOTE = (
     "NOTE: this file still uses the previous encryption (BSR2 Alpha 3). "
-    "Run 'python main.py migrate' to re-seal it with the current encryption."
+    "Run 'python run.py migrate' to re-seal it with the current encryption."
 )
 
 
@@ -98,6 +101,17 @@ class _VersionAction(argparse.Action):
         print(f"Entitle {__version__}")
         print(encryption.status().describe())
         parser.exit()
+
+
+def _make_output_safe():
+    """Printing must never fail after the work is done: escape what the output cannot encode."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(errors="backslashreplace")
+            except (ValueError, OSError):
+                pass
 
 
 def _print_json(data):
@@ -288,7 +302,7 @@ def _add_drbg(parser):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="main.py",
+        prog="run.py",
         description="Entitle: offline software rights management with a tamper-evident record log.",
     )
     parser.add_argument("-V", "--version", action=_VersionAction, help="Show the version and the linked encryption.")
@@ -297,7 +311,10 @@ def build_parser():
     issue = commands.add_parser("issue", help="Create a protected entitlement container.")
     _add_identity(issue)
     issue.add_argument("--entitlement-id", required=True, help="Entitlement ID.")
-    issue.add_argument("--expires", default=None, help="Expiration ISO timestamp.")
+    issue.add_argument(
+        "--expires", default=None,
+        help="Expiration ISO timestamp, for example 2027-01-31T23:59:59Z (a date alone means 00:00 UTC that day).",
+    )
     issue.add_argument("--output", required=True, help="Output .entitle path.")
     issue.add_argument("--master-key", required=True, help="Master key text (32 to 1024 bytes).")
     _add_drbg(issue)
@@ -392,6 +409,7 @@ def build_parser():
 
 
 def main(argv=None):
+    _make_output_safe()
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.command is None:

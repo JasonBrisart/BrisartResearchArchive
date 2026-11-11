@@ -10,8 +10,8 @@ Own Entitle's tamper-evident record log: an append-only file where every line is
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (EntitleError, canonical_json, utc_now_iso) and, depending on
-  the platform, fcntl (Linux, macOS) or msvcrt (Windows) for the writer lock. Imported by
+Imports entitle/common.py (EntitleError, canonical_json, utc_now_iso) and, depending on the
+  platform, fcntl (Linux, macOS) or msvcrt (Windows) for the writer lock. Imported by
   entitle/revoke.py (revocation and reinstatement types), entitle/tracking.py (deployment, fork
   and provenance types), entitle/report.py (RECORD_TYPE_DEPLOYMENT), cli.py (RecordStore,
   ALL_RECORD_TYPES) and gui/tabs.py (RecordStore). Uses no encryption, so the log works
@@ -37,8 +37,12 @@ transaction() makes a read-then-append sequence atomic across threads and proces
   reads as empty and its chain is valid. A line that is not a JSON object makes read_all and
   append raise RecordStoreError, while verify_chain reports it as chain status
   unparseable_record at that record's index, so tampering is reported rather than crashing the
-  audit. Each append is flushed to disk before the lock is released. Parent folders are created
-  on the first append.
+  audit. A UTF-8 byte-order mark at the start of the file (added by some Windows editors) is not
+  part of any record and is ignored, so re-saving the log in such an editor does not break it.
+  Bytes that are not valid UTF-8 (a multi-byte character cut in half by a power failure while a
+  record was being written, or a stray byte from an editor) are read as replacement characters, so
+  only that line is reported as damaged and the rest of the log stays auditable. Each append is
+  flushed to disk before the lock is released. Parent folders are created on the first append.
 
 Known limitations
 -----------------
@@ -51,7 +55,7 @@ Detection only: the chain shows that earlier records changed, not who changed th
 
 Examples
 --------
-Usage from the directory containing main.py:
+Usage from the directory containing run.py:
 
     from tempfile import TemporaryDirectory
     from entitle.records import RECORD_TYPE_FORK, RecordStore
@@ -74,7 +78,7 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import EntitleError, canonical_json, utc_now_iso
+from .common import EntitleError, canonical_json, utc_now_iso
 
 if os.name == "nt":
     import msvcrt
@@ -172,7 +176,7 @@ class RecordStore:
     def _lines(self):
         if not self.path.exists():
             return []
-        with self.path.open("r", encoding="utf-8") as handle:
+        with self.path.open("r", encoding="utf-8-sig", errors="replace") as handle:
             return [line.strip() for line in handle if line.strip()]
 
     def read_all(self, strict=True):

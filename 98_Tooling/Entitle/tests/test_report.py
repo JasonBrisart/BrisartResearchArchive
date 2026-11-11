@@ -5,7 +5,8 @@ Purpose
 -------
 Verify entitle/report.py: counts by record type and deployments by product, the text
   rendering (empty sections, a broken chain), a store file that does not exist, a store with a
-  truncated record, and a report over a log written by v0.4.1.
+  truncated record or a character cut in half (the audit still reports instead of failing), and
+  a report over a log written by v0.4.1.
 
 Communication / relationships
 -----------------------------
@@ -15,8 +16,8 @@ Imports entitle/rights.py, entitle/records.py, entitle/report.py, entitle/tracki
 
 Settings / parameters
 ---------------------
-Each test gets its own store under pytest's tmp_path; the corruption test truncates one line
-  of a three-record log.
+Each test gets its own store under pytest's tmp_path; the corruption tests truncate one line of
+  a three-record log or cut a multi-byte character in half at the end of the file.
 
 Edge cases
 ----------
@@ -30,7 +31,7 @@ Does not run the report command (tests/test_cli.py) and does not test very large
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_report.py
 """
@@ -115,6 +116,29 @@ class TestStoresThatAreMissingOrDamaged:
         text = format_text(report)
         assert "Unreadable records: 1" in text
         assert "BROKEN: unparseable_record at record index 1." in text
+
+    def test_a_character_cut_in_half_still_gets_a_report_with_the_fix(self, store_path):
+        # A power failure while a record with a non-Latin host name was being written leaves invalid
+        # UTF-8 at the end of the file. Before 0.6.0 that made the whole audit raise UnicodeDecodeError.
+        store = RecordStore(store_path)
+        for i in range(3):
+            store.append("fork", {"i": i, "host": "узел-" + str(i)})
+        raw = store_path.read_bytes()
+        store_path.write_bytes(raw[: raw.rfind("узел".encode()) + 1])
+        report = build_report(store)
+        assert (report["record_count"], report["unreadable_records"]) == (2, 1)
+        assert report["chain"]["valid"] is False and report["chain"]["broken_index"] == 2
+        assert "BROKEN: unparseable_record at record index 2." in format_text(report)
+
+    def test_readable_plus_unreadable_always_equals_the_lines_in_the_file(self, store_path):
+        store = RecordStore(store_path)
+        for i in range(4):
+            store.append("fork", {"i": i})
+        lines = store_path.read_text(encoding="utf-8").strip().split("\n")
+        lines[0], lines[2] = "garbage", lines[2][:20]
+        store_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        report = build_report(store)
+        assert report["record_count"] + report["unreadable_records"] == report["chain"]["record_count"] == 4
 
     def test_the_previous_release_log_reports_its_known_counts(self):
         report = build_report(RecordStore(FIXTURES / "legacy_v0_4_1_records.log"))

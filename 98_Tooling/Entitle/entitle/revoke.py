@@ -10,7 +10,7 @@ Record and answer offline revocation. A revocation or reinstatement is an ordina
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (require_text) and entitle/records.py (RECORD_TYPE_REVOCATION,
+Imports entitle/common.py (require_text) and entitle/records.py (RECORD_TYPE_REVOCATION,
   RECORD_TYPE_REINSTATEMENT); the RecordStore is passed in by the caller. Imported by
   entitle/tracking.py (is_revoked), cli.py (revoke revoke, reinstate and check) and gui/tabs.py
   (Revoke / Reinstate tab). Covered by tests/test_revoke.py.
@@ -37,11 +37,12 @@ Known limitations
 -----------------
 Revocation is advisory and offline: it stops deployments recorded through Entitle, but not a
   copy of the software that never consults the record log, and not an entitlement file already
-  on a machine without that log. verify does not check revocation.
+  on a machine without that log. verify does not check revocation. An ID is matched exactly as
+  typed, so a revocation recorded for " lab-1" or "Lab-1" does not revoke "lab-1".
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     from tempfile import TemporaryDirectory
     from entitle.records import RecordStore
@@ -55,7 +56,7 @@ From the directory containing main.py:
         assert not is_revoked(store, "lab-a-001")
 """
 
-from . import require_text
+from .common import require_text
 from .records import RECORD_TYPE_REINSTATEMENT, RECORD_TYPE_REVOCATION
 
 

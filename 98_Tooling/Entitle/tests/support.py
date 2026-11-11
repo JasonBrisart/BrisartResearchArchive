@@ -6,14 +6,14 @@ Purpose
 Hold what the test files share: the Entitle folder, the demo identity and key, the
   entitlement file written by the previous encryption, a helper that issues a real protected
   entitlement, a helper that holds a record store's writer lock from another process, and a
-  helper that runs main.py as a real process.
+  helper that runs run.py as a real process.
 
 Communication / relationships
 -----------------------------
 Imports entitle/entitlements.py (issue_entitlement) when issue_demo is called. Imported by
   tests/test_entitlements.py, tests/test_cli.py, tests/test_gui.py, tests/test_example.py,
-  tests/test_records.py, tests/test_tracking.py, tests/test_report.py and
-  tests/test_encryption.py. conftest.py puts the Entitle folder on sys.path before any test
+  tests/test_records.py, tests/test_tracking.py, tests/test_report.py, tests/test_encryption.py
+  and tests/test_end_to_end.py. conftest.py puts the Entitle folder on sys.path before any test
   imports this file.
 
 Settings / parameters
@@ -27,13 +27,14 @@ MASTER_KEY (45 characters) meets BSR2's 32-byte minimum; DRBG_SEED (64 character
   issue_demo(path, entitlement_id, **rights) takes the rights flags of issue_entitlement and
   uses no generator option. store_lock_held_elsewhere(store_path) is a context manager that
   keeps the lock held by a separate process (killed on exit, which is also how a crashed writer
-  looks). run_main(*args, cwd) returns the finished process with text output.
+  looks). run_entitle(*args, cwd, env) runs run.py and returns the finished process with text
+  output.
 
 Edge cases
 ----------
-run_main starts a new Python process with a 120 second limit and runs it in cwd (default: the
-  current folder), so tests can prove main.py works from a different working folder. The demo
-  key is a test value; it protects nothing.
+run_entitle starts a new Python process with a 120 second limit and runs it in cwd (default: the
+  current folder), so tests can prove run.py works from a different working folder. env adds to
+  the parent's environment. The demo key is a test value; it protects nothing.
 
 Known limitations
 -----------------
@@ -50,6 +51,7 @@ From a test file in tests/:
         issue_demo(tmp_path / "demo.entitle", modify=True)
 """
 
+import os
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -101,8 +103,10 @@ def store_lock_held_elsewhere(store_path):
         holder.wait(timeout=30)
 
 
-def run_main(*args, cwd=None):
+def run_entitle(*args, cwd=None, env=None, root=None):
+    """Run run.py (from `root`, default this Entitle folder) as a real process."""
+    environment = {**os.environ, **(env or {})}
     return subprocess.run(
-        [sys.executable, str(ENTITLE_ROOT / "main.py"), *args],
-        capture_output=True, text=True, timeout=120, cwd=cwd,
+        [sys.executable, str((root or ENTITLE_ROOT) / "run.py"), *args],
+        capture_output=True, text=True, timeout=120, cwd=cwd, env=environment,
     )

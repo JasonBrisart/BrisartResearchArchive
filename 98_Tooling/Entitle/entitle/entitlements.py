@@ -11,7 +11,7 @@ Own the .entitle file from end to end: what is inside one (a payload sealed with
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (EntitleError, canonical_json, require_text, utc_now_iso),
+Imports entitle/common.py (EntitleError, canonical_json, require_text, utc_now_iso),
   entitle/rights.py (payload, rights and evaluation) and entitle/encryption.py (require, the
   linked BSR2 library; nothing else here touches 97_Encryption). Imported by cli.py (issue,
   verify, migrate), gui/tabs.py (Issue and Verify tabs), entitle/tracking.py
@@ -31,29 +31,35 @@ A file is BSR2 sealed format 3 (suite BSR2-S64-SIV) with 256-byte block padding,
   optional DRBG seed (64 bytes or more) and personalization (16 or more) add a generator of the
   caller's choosing on top of the fresh system entropy BSR2 always uses; neither is needed, and
   a personalization without a seed is seeded from system entropy. MAX_PAYLOAD_BYTES (64 KiB)
-  caps what open_entitlement decrypts. issue_entitlement also takes expires (ISO timestamp),
-  the rights flags enterprise, modify, fork, export_source and redistribute, deployment_limit
-  (default 1) and support_tier (default "standard").
+  caps what open_entitlement decrypts, in either format, and MAX_FILE_BYTES (1 MiB) caps what
+  read_entitlement_file reads. issue_entitlement also takes expires (ISO timestamp; a date alone
+  means 00:00 UTC that day), the rights flags enterprise, modify, fork, export_source and
+  redistribute, deployment_limit (default 1) and support_tier (default "standard").
 
 Edge cases
 ----------
-issue_entitlement checks its inputs before sealing or writing anything: a blank issuer,
-  subject, product or entitlement ID, an expiry that is not an ISO timestamp, or a deployment
-  limit that is negative or not a whole number raises ValueError. A limit of 0 is allowed: the
-  entitlement verifies (for example to unlock features) but permits no tracked deployment.
-  Sealing failures, including a short or oversized key, seed or personalization, raise
-  EntitleBSRError carrying BSR2's reason. open_entitlement never raises for a bad file: a wrong
-  key, issuer, subject or product, a modified, truncated or oversized file, and a payload that
-  is not a JSON object all return (None, previous). verify_entitlement turns that into a denied
-  result with reason bsr_verification_failed, raises FileNotFoundError for a missing file and
-  ValueError for a file that is neither format, and raises EncryptionNotFoundError (never a
-  denial) when 97_Encryption cannot be linked. write_entitlement_file writes beside the target
-  and replaces it in one step, so a failure never leaves a half-written file. migrate_entitlement
-  leaves a current file untouched (reason already_current_encryption); for a previous-format
-  file it opens it, seals the same payload again, checks the new text opens to the identical
-  payload, and only then replaces the file. A file that does not open with the given values
-  raises EntitleError and is not changed. Migration judges nothing: an expired or revoked
-  entitlement migrates like any other.
+issue_entitlement checks its inputs before sealing or writing anything: a blank issuer, subject,
+  product or entitlement ID, an expiry that is not an ISO timestamp, or a deployment limit that
+  is negative or not a whole number raises ValueError, as does a payload over MAX_PAYLOAD_BYTES
+  (such a file could be sealed but never opened, so it is refused at issue). A limit of 0 is
+  allowed: the entitlement verifies (for example to unlock features) but permits no tracked
+  deployment. Sealing failures, including a short or oversized key, seed or personalization,
+  raise EntitleBSRError carrying BSR2's reason. open_entitlement never raises for a bad file: a
+  wrong key, issuer, subject or product, a modified, truncated or oversized file, and a payload
+  that is not a JSON object all return (None, previous). An oversized previous-format file is
+  refused before any decryption, because decrypting one in pure Python takes minutes.
+  verify_entitlement turns that into a denied result with reason bsr_verification_failed, raises
+  FileNotFoundError for a missing file and ValueError for a file that is neither format, is over
+  MAX_FILE_BYTES, or is UTF-16 text (what Windows PowerShell's > and Out-File write; the message
+  says so), and raises EncryptionNotFoundError (never a denial) when 97_Encryption cannot be
+  linked. A UTF-8 byte-order mark and Windows line endings are accepted, so a file that passed
+  through a Windows editor or copy still verifies. write_entitlement_file writes beside the
+  target and replaces it in one step, so a failure never leaves a half-written file.
+  migrate_entitlement leaves a current file untouched (reason already_current_encryption); for a
+  previous-format file it opens it, seals the same payload again, checks the new text opens to
+  the identical payload, and only then replaces the file. A file that does not open with the
+  given values raises EntitleError and is not changed. Migration judges nothing: an expired or
+  revoked entitlement migrates like any other.
 
 Known limitations
 -----------------
@@ -63,11 +69,12 @@ The master key is not stretched, so a guessable key gives guessable protection. 
   previous format. Verification does not consult revocation; that is enforced when deploying.
   Neither interface can issue an unlimited deployment limit (None), although verification and
   deployment honor one. An expiry already in the past is accepted and the file is denied as
-  entitlement_expired from the start.
+  entitlement_expired from the start. Issuing to an existing path replaces that file without
+  asking. Replacing a file through a symbolic link replaces the link, not its target.
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     from tempfile import TemporaryDirectory
     from entitle.entitlements import issue_entitlement, verify_entitlement
@@ -86,7 +93,7 @@ import json
 import os
 from pathlib import Path
 
-from . import EntitleError, canonical_json, require_text, utc_now_iso
+from .common import EntitleError, canonical_json, require_text, utc_now_iso
 from .encryption import require
 from .rights import (
     ENTITLEMENT_FORMAT,
@@ -99,6 +106,7 @@ from .rights import (
 )
 
 MAX_PAYLOAD_BYTES = 64 * 1024
+MAX_FILE_BYTES = 1024 * 1024
 ARMOR_BEGIN = "-----BEGIN BSR2 SEALED MESSAGE-----"
 _ENVELOPE_START = "{"
 _DEFAULT_PERSONALIZATION = b"Entitle/BSR2/entitlement/v1"
@@ -170,6 +178,17 @@ def seal_entitlement(payload, *, master_key, drbg_seed=None, drbg_personalizatio
         raise EntitleBSRError(f"BSR2 encryption failed: {exc}") from exc
 
 
+def _previous_envelope(text):
+    """The parsed previous-format envelope, or None when it is not one or is too large to open."""
+    envelope = json.loads(text)
+    if not isinstance(envelope, dict):
+        return None
+    ciphertext = envelope.get("ciphertext")
+    if isinstance(ciphertext, str) and len(ciphertext) > 2 * MAX_PAYLOAD_BYTES:
+        return None
+    return envelope
+
+
 def open_entitlement(text, *, master_key, issuer, subject, product):
     """Return (payload or None, previous_encryption) for the text of a .entitle file."""
     bsr2 = require()
@@ -178,7 +197,10 @@ def open_entitlement(text, *, master_key, issuer, subject, product):
     try:
         key = _master_key(bsr2, master_key)
         if previous:
-            plaintext = bsr2.envelope.decrypt(key, json.loads(text), context)
+            envelope = _previous_envelope(text)
+            if envelope is None:
+                return None, previous
+            plaintext = bsr2.envelope.decrypt(key, envelope, context)
         else:
             plaintext = bsr2.aead.unseal(
                 key, bsr2.aead.dearmor(text), context, max_plaintext_bytes=MAX_PAYLOAD_BYTES
@@ -201,7 +223,18 @@ def write_entitlement_file(text, path):
 
 def read_entitlement_file(path):
     path = Path(path)
-    text = path.read_text(encoding="utf-8").strip()
+    if path.stat().st_size > MAX_FILE_BYTES:
+        raise ValueError(f"{path.name} is too large to be an entitlement file (over {MAX_FILE_BYTES // 1024} KiB).")
+    raw = path.read_bytes()
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        raise ValueError(
+            f"{path.name} is UTF-16 text, which Windows PowerShell's > and Out-File produce. "
+            "Copy the original file instead, or save it again as UTF-8."
+        )
+    try:
+        text = raw.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n").strip()
+    except UnicodeDecodeError:
+        text = ""
     if not text.startswith(_ENVELOPE_START) and not text.startswith(ARMOR_BEGIN):
         raise ValueError(f"{path.name} is not a protected Entitle entitlement file.")
     return text
@@ -265,6 +298,12 @@ def issue_entitlement(
             "note": "Offline protected entitlement container.",
         },
     )
+    size = len(canonical_json(payload))
+    if size > MAX_PAYLOAD_BYTES:
+        raise ValueError(
+            f"the entitlement is {size:,} bytes, over the {MAX_PAYLOAD_BYTES:,} byte limit that verification "
+            "accepts. Shorten the longest field (the entitlement ID, support tier or a name)."
+        )
     write_entitlement_file(
         seal_entitlement(
             payload, master_key=master_key, drbg_seed=drbg_seed, drbg_personalization=drbg_personalization

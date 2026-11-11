@@ -14,9 +14,9 @@ Verify the window's behavior without a display: the six tabs exist in order, fie
 Communication / relationships
 -----------------------------
 Installs tests/fake_tk.py as tkinter for one test at a time and imports the real gui/window.py
-  (and through it gui/tabs.py) against it. Also imports the entitle package root
-  (EntitleError), entitle/encryption.py (to simulate a missing 97_Encryption), version.py and
-  tests/support.py. Run by pytest; nothing imports it.
+  (and through it gui/tabs.py) against it. Also imports entitle/common.py (EntitleError),
+  entitle/encryption.py (to simulate a missing 97_Encryption), version.py and tests/support.py.
+  Run by pytest; nothing imports it.
 
 Settings / parameters
 ---------------------
@@ -41,7 +41,7 @@ The stand-in does not draw or lay out anything, so appearance, spacing, focus or
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_gui.py
 """
@@ -54,7 +54,8 @@ from pathlib import Path
 import pytest
 
 import fake_tk
-from entitle import EntitleError, encryption
+from entitle import encryption
+from entitle.common import EntitleError
 from support import DRBG_PERSONALIZATION, DRBG_SEED, LEGACY_ENTITLEMENT, MASTER_KEY
 from version import __version__
 
@@ -146,17 +147,14 @@ class TestWorkflow:
         w.click("Issue Entitlement")
         issued = w.data()
         assert issued["created"].endswith("lab.entitle") and issued["payload"]["rights"]["can_modify"] is True
-
         w.click("Verify Entitlement")
         assert w.data()["allowed"] is True and w.data()["rights"]["deployment_limit"] == 5
-
         w.set("Deploy", "host", "node-1")
         w.click("Record Deployment")
         assert w.data()["recorded"] is True and w.data()["deployments_used"] == 1
         w.set("Deploy", "host", "node-2")
         w.click("Record Deployment")
         assert w.data()["deployments_used"] == 2
-
         for key, value in (("source_version", "1.0"), ("fork_name", "lab-custom"), ("maintainer", "Lab"),
                            ("version", "1.1"), ("custodian", "Lab"), ("previous_version", "1.0")):
             w.set("Fork / Provenance", key, value)
@@ -164,7 +162,6 @@ class TestWorkflow:
         assert w.data()["record_type"] == "fork" and w.data()["data"]["fork_name"] == "lab-custom"
         w.click("Record Provenance")
         assert w.data()["data"]["previous_version"] == "1.0" and w.data()["data"]["origin"] == "JasonBrisart"
-
         w.set("Revoke / Reinstate", "entitlement_id", "gui-lab-1")
         w.set("Revoke / Reinstate", "reason", "key compromise")
         w.click("Revoke")
@@ -179,7 +176,6 @@ class TestWorkflow:
         w.set("Deploy", "host", "node-3")
         w.click("Record Deployment")
         assert w.data()["deployments_used"] == 3
-
         w.click("Generate Report")
         assert "deployment: 3" in w.out() and "VERIFIED: hash chain intact across 7 records." in w.out()
         w.click("List All Records")

@@ -10,7 +10,7 @@ Record where Entitle-managed software is deployed and where it came from. Deploy
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (require_text), entitle/entitlements.py (verify_entitlement),
+Imports entitle/common.py (require_text), entitle/entitlements.py (verify_entitlement),
   entitle/records.py (the deployment, fork and provenance record types) and entitle/revoke.py
   (is_revoked); the RecordStore is passed in by the caller. Imported by cli.py (track deploy,
   fork and provenance) and gui/tabs.py (Deploy and Fork / Provenance tabs). Listing records is
@@ -47,7 +47,7 @@ The host is whatever the caller types; nothing proves a deployment happened ther
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     from tempfile import TemporaryDirectory
     from entitle.records import RecordStore
@@ -65,7 +65,7 @@ From the directory containing main.py:
         assert refused["reason"] == "deployment_limit_reached"
 """
 
-from . import require_text
+from .common import require_text
 from .entitlements import verify_entitlement
 from .records import (
     RECORD_TYPE_DEPLOYMENT,

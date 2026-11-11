@@ -5,44 +5,52 @@ Purpose
 -------
 Verify the record store in entitle/records.py: appending and chaining, filtering, chain
   verification against edits, deletions, reordering and unparseable lines, lenient reading for
-  the audit, the writer lock under concurrent threads and processes (no lost records, no forked
-  chain), a lock held by another process, a writer killed while holding the lock, a lock file
-  left behind by 0.5.0, and that a log written by v0.4.1 still verifies and can be extended.
+  the audit, damage of every kind (including bytes that are not UTF-8, as a power failure in the
+  middle of a multi-byte character leaves) never making the audit raise, the writer lock under
+  concurrent threads and processes (no lost records, no forked chain), a lock held by another
+  process, a writer killed while holding the lock, a lock file left behind by 0.5.0, a
+  byte-order mark added by a Windows editor, and that a log written by v0.4.1 still verifies
+  and can be extended.
 
 Communication / relationships
 -----------------------------
-Imports entitle/records.py, the entitle package root (EntitleError) and tests/support.py
-  (fixtures and the lock holder). Uses tests/fixtures/legacy_v0_4_1_records.log, a six-record
-  log written by Entitle 0.4.1. Needs no encryption. Run by pytest; nothing imports it.
+Imports entitle/records.py, entitle/common.py (EntitleError) and tests/support.py (fixtures and
+  the lock holder). Uses tests/fixtures/legacy_v0_4_1_records.log, a six-record log written by
+  Entitle 0.4.1. Needs no encryption. Run by pytest; nothing imports it.
 
 Settings / parameters
 ---------------------
 Each test gets its own store under pytest's tmp_path. The process test starts four Python
   processes of eight appends each; the thread test uses eight threads of ten. Lock tests hold the
   lock from a separate process (tests/support.py) and shorten LOCK_TIMEOUT_SECONDS so they do
-  not wait five seconds.
+  not wait five seconds. The damage test applies each of fourteen corruptions under ten fixed
+  seeds, so it is deterministic.
 
 Edge cases
 ----------
 Tampering tests edit the file directly: a changed field, a deleted record, reversed order, a
   truncated line, a line that is JSON but not an object, and a record whose data is not an
-  object. A lock held by another process is never taken over, however old its file is.
+  object. Damage tests also cut a multi-byte character in half, insert invalid UTF-8, add
+  garbage, NUL bytes, a byte-order mark, Windows line endings and blank lines. A lock held by
+  another process is never taken over, however old its file is.
 
 Known limitations
 -----------------
 The lock is checked on a local Linux filesystem only; the Windows branch of the lock and
   network filesystems are not exercised here. The detection tests cannot show who edited a log,
-  only that it no longer verifies.
+  only that it no longer verifies. Truncating a log at a record boundary is not detectable and is
+  not tested as if it were.
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_records.py
 """
 
 import json
 import os
+import random
 import subprocess
 import sys
 import threading
@@ -50,7 +58,8 @@ import time
 
 import pytest
 
-from entitle import EntitleError, records
+from entitle import records
+from entitle.common import EntitleError
 from entitle.records import (
     ALL_RECORD_TYPES,
     GENESIS_HASH,
@@ -268,6 +277,99 @@ class TestCorruptedStore:
         with pytest.raises(RecordStoreError):
             store.append("fork", {"late": True})
         assert store_path.read_text(encoding="utf-8") == before
+
+
+class TestDamageNeverMakesTheAuditRaise:
+    @staticmethod
+    def _damage(kind, raw, rng):
+        lines = raw.split(b"\n")
+        position = rng.randrange(1, len(raw) - 1)
+        if kind == "truncate":
+            return raw[:position]
+        if kind == "flip_bit":
+            return raw[:position] + bytes([raw[position] ^ (1 << rng.randrange(8))]) + raw[position + 1:]
+        if kind == "cut_multibyte_character":  # what a power failure mid-append leaves behind
+            return raw[: raw.rfind("лаб".encode()) + 1]
+        if kind == "invalid_utf8":
+            return raw[:position] + b"\xff\xfe\x80" + raw[position:]
+        if kind == "garbage_line":
+            return raw + rng.randbytes(40) + b"\n"
+        if kind == "nul_byte":
+            return raw[:position] + b"\x00" + raw[position:]
+        if kind == "delete_line":  # never the last record: cutting the end is undetectable (see Known limitations)
+            del lines[rng.randrange(len(lines) - 2)]
+            return b"\n".join(lines)
+        if kind == "duplicate_line":
+            index = rng.randrange(len(lines) - 1)
+            lines.insert(index, lines[index])
+            return b"\n".join(lines)
+        if kind == "swap_lines":
+            index = rng.randrange(len(lines) - 2)
+            lines[index], lines[index + 1] = lines[index + 1], lines[index]
+            return b"\n".join(lines)
+        if kind == "byte_order_mark":
+            return b"\xef\xbb\xbf" + raw
+        if kind == "windows_line_endings":
+            return raw.replace(b"\n", b"\r\n")
+        if kind == "blank_lines":
+            return raw.replace(b"\n", b"\n\n", 2)
+        if kind == "data_replaced_by_list":
+            record = json.loads(lines[1])
+            record["data"] = [1]
+            lines[1] = json.dumps(record).encode()
+            return b"\n".join(lines)
+        if kind == "empty":
+            return b""
+        raise AssertionError(kind)
+
+    KINDS = ("truncate", "flip_bit", "cut_multibyte_character", "invalid_utf8", "garbage_line", "nul_byte",
+             "delete_line", "duplicate_line", "swap_lines", "byte_order_mark", "windows_line_endings",
+             "blank_lines", "data_replaced_by_list", "empty")
+    HARMLESS = {"byte_order_mark", "windows_line_endings", "blank_lines", "empty"}
+
+    @pytest.mark.parametrize("kind", KINDS)
+    def test_every_kind_of_damage_is_reported_or_harmless_never_raised(self, store_path, kind):
+        store = RecordStore(store_path)
+        for i in range(5):
+            store.append("fork", {"i": i, "name": f"лаб-实验室-{i}"})
+        original = store_path.read_bytes()
+        for seed in range(10):
+            store_path.write_bytes(self._damage(kind, original, random.Random(seed)))
+            status = store.verify_chain()  # must never raise
+            readable = store.read_all(strict=False)  # must never raise
+            assert len(readable) <= status.record_count
+            if kind in self.HARMLESS:
+                assert status.valid, (kind, seed, status.reason)
+            elif kind not in ("truncate", "flip_bit", "nul_byte"):
+                assert not status.valid, (kind, seed)  # these always change what the chain covers
+
+    def test_a_character_cut_in_half_is_one_damaged_record_not_an_unreadable_log(self, store_path):
+        store = RecordStore(store_path)
+        for i in range(3):
+            store.append("fork", {"i": i, "host": "узел-" + str(i)})
+        raw = store_path.read_bytes()
+        store_path.write_bytes(raw[: raw.rfind("узел".encode()) + 1])  # the last record loses most of a character
+        status = store.verify_chain()
+        assert (status.valid, status.broken_index, status.reason) == (False, 2, "unparseable_record")
+        assert [r["data"]["i"] for r in store.read_all(strict=False)] == [0, 1]
+
+
+class TestEditorsAndWindows:
+    def test_a_byte_order_mark_at_the_start_is_ignored_and_appending_still_works(self, store_path):
+        store = RecordStore(store_path)
+        store.append("fork", {"a": 1})
+        store_path.write_bytes(b"\xef\xbb\xbf" + store_path.read_bytes())
+        assert store.verify_chain().valid and store.read_all()[0]["data"] == {"a": 1}
+        store.append("fork", {"a": 2})
+        status = store.verify_chain()
+        assert (status.valid, status.record_count) == (True, 2)
+
+    def test_windows_line_endings_do_not_change_the_chain(self, store_path):
+        store = RecordStore(store_path)
+        for i in range(3):
+            store.append("fork", {"i": i})
+        store_path.write_bytes(store_path.read_bytes().replace(b"\n", b"\r\n"))
+        assert store.verify_chain().valid and [r["data"]["i"] for r in store.read_all()] == [0, 1, 2]
 
 
 class TestWriterLock:

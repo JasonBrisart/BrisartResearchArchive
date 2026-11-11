@@ -7,13 +7,15 @@ Verify the .entitle file and everything done with one, through entitle/entitleme
   encryption context is pinned, sealing and opening round-trip in the current format, every
   mismatch or modification is refused without an exception, files are written in one step,
   issuing refuses inputs that could never work, verification denies with the right reason,
-  files written by Entitle before 0.5.0 (BSR2 Alpha 3) still verify, and migration keeps the
-  entitlement exactly as issued and never damages the original.
+  files written by Entitle before 0.5.0 (BSR2 Alpha 3) still verify, migration keeps the
+  entitlement exactly as issued and never damages the original, and files that passed through
+  Windows tools (a byte-order mark, CRLF line endings, UTF-16) or that are absurdly large are
+  handled instead of hanging or failing obscurely.
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (EntitleError, canonical_json), entitle/encryption.py
-  (require, EncryptionNotFoundError, EncryptionLink), entitle/entitlements.py, entitle/rights.py
+Imports entitle/common.py (EntitleError, canonical_json), entitle/encryption.py (require,
+  EncryptionNotFoundError, EncryptionLink), entitle/entitlements.py, entitle/rights.py
   (make_entitlement_payload) and tests/support.py. Uses
   tests/fixtures/legacy_alpha3_entitlement.json, an envelope sealed with the copy of BSR2 Alpha 3
   that Entitle carried before 0.5.0. Needs 97_Encryption beside 98_Tooling. Run by pytest;
@@ -23,18 +25,22 @@ Settings / parameters
 ---------------------
 Files are written to pytest's tmp_path with the demo identity and key from tests/support.py.
   Expiry tests use timestamps a day either side of now. Tests that need a previous-format file
-  for a particular payload seal one with the linked library's envelope module.
+  for a particular payload seal one with the linked library's envelope module. The oversized-file
+  tests write about a megabyte of hex text.
 
 Edge cases
 ----------
-Covers a wrong key, issuer, subject or product, a modified or truncated file, a payload over
-  the 64 KiB cap, a payload that is not a JSON object, text and bytes keys, a key over 1024
+Covers a wrong key, issuer, subject or product, a modified or truncated file, a payload over the
+  64 KiB cap (current format) and a previous-format file whose ciphertext is over the cap
+  (refused in well under a second, where decrypting it would take minutes), a file over the 1
+  MiB read limit, a payload that is not a JSON object, text and bytes keys, a key over 1024
   bytes, short keys, seeds and personalizations, every combination of the optional generator
-  inputs, a missing file, a file that is neither format, a failed replacement, an unparseable
-  expiry, a negative or non-integer limit, a blank ID, a zero limit, an expired entitlement, a
-  missing 97_Encryption (an error, never a denial), and migration of a previous-format file, a
-  current file, a file that does not open, a copy that does not reopen to the same payload, and
-  an expired entitlement.
+  inputs, a missing file, a file that is neither format, invalid UTF-8, UTF-16 (named as such),
+  a UTF-8 byte-order mark, Windows line endings, a failed replacement, an unparseable expiry, a
+  negative or non-integer limit, a blank ID, a payload over the 64 KiB cap (refused at issue), a
+  zero limit, an expired entitlement, a missing 97_Encryption (an error, never a denial), and
+  migration of a previous-format file, a current file, a file that does not open, a copy that
+  does not reopen to the same payload, and an expired entitlement.
 
 Known limitations
 -----------------
@@ -44,7 +50,7 @@ The previous-format fixture stands in for files issued by real installations of 
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_entitlements.py
 """
@@ -52,11 +58,13 @@ From the directory containing main.py:
 import datetime
 import json
 import shutil
+import time
 from pathlib import Path
 
 import pytest
 
-from entitle import EntitleError, canonical_json, encryption, entitlements
+from entitle import encryption, entitlements
+from entitle.common import EntitleError, canonical_json
 from entitle.encryption import EncryptionNotFoundError
 from entitle.entitlements import (
     ARMOR_BEGIN,
@@ -181,7 +189,6 @@ class TestSealAndOpen:
         )
         assert _open(container, master_key=MASTER_KEY)[0] == _payload()
 
-
     def test_a_key_over_the_maximum_is_refused(self):
         with pytest.raises(EntitleBSRError, match="at most 1024 bytes"):
             seal_entitlement(_payload(), master_key="k" * 1025)
@@ -196,6 +203,7 @@ class TestSealAndOpen:
         ):
             container = seal_entitlement(_payload(), master_key=MASTER_KEY, **options)
             assert _open(container)[0] == _payload(), options
+
 
 class TestFiles:
     def test_save_then_load_round_trips_and_leaves_no_temporary_file(self, tmp_path):
@@ -220,6 +228,95 @@ class TestFiles:
         path.write_text(text, encoding="utf-8")
         with pytest.raises(ValueError, match="bad.entitle is not a protected Entitle entitlement file"):
             read_entitlement_file(path)
+
+
+class TestFilesThatPassedThroughWindowsTools:
+    def _issued(self, tmp_path):
+        path = tmp_path / "lab.entitle"
+        issue_demo(path, entitlement_id="lab-1", modify=True)
+        return path
+
+    def test_a_utf8_byte_order_mark_is_accepted(self, tmp_path):
+        path = self._issued(tmp_path)
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+        result = _verify(path)
+        assert result.allowed and result.payload["entitlement_id"] == "lab-1"
+
+    def test_windows_line_endings_are_accepted_for_both_formats(self, tmp_path):
+        path = self._issued(tmp_path)
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        assert b"\r\n" in path.read_bytes() and _verify(path).allowed
+        legacy = tmp_path / "legacy.entitle"
+        legacy.write_bytes(LEGACY_ENTITLEMENT.read_bytes().replace(b"\n", b"\r\n"))
+        assert _verify(legacy).allowed and uses_previous_encryption(legacy) is True
+
+    def test_what_is_read_does_not_depend_on_the_line_endings_it_was_written_with(self, tmp_path):
+        path = self._issued(tmp_path)
+        unix = read_entitlement_file(path)
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        assert read_entitlement_file(path) == unix
+
+    @pytest.mark.parametrize("encoding", ["utf-16", "utf-16-le", "utf-16-be"])
+    def test_utf16_is_named_as_such_with_the_fix(self, tmp_path, encoding):
+        path = self._issued(tmp_path)
+        text = path.read_text(encoding="utf-8")
+        byte_order_mark = {"utf-16": b"", "utf-16-le": b"\xff\xfe", "utf-16-be": b"\xfe\xff"}[encoding]
+        path.write_bytes(byte_order_mark + text.encode(encoding))
+        with pytest.raises(ValueError, match="lab.entitle is UTF-16 text, which Windows PowerShell"):
+            _verify(path)
+
+    def test_invalid_utf8_is_reported_as_not_an_entitlement_file(self, tmp_path):
+        path = tmp_path / "binary.entitle"
+        path.write_bytes(b"\x80\x81\x82\xff\xfe\xfd")
+        with pytest.raises(ValueError, match="binary.entitle is not a protected Entitle entitlement file"):
+            read_entitlement_file(path)
+
+    def test_a_migrated_file_is_written_with_plain_utf8_and_reads_back(self, tmp_path):
+        path = tmp_path / "legacy.entitle"
+        path.write_bytes(b"\xef\xbb\xbf" + LEGACY_ENTITLEMENT.read_bytes())
+        assert migrate_entitlement(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, master_key=MASTER_KEY, path=path)["migrated"]
+        assert not path.read_bytes().startswith(b"\xef\xbb\xbf") and _verify(path).allowed
+
+
+class TestOversizedFiles:
+    def _legacy_with_ciphertext(self, tmp_path, hex_chars):
+        envelope = json.loads(LEGACY_ENTITLEMENT.read_text(encoding="utf-8"))
+        envelope["ciphertext"] = "ab" * (hex_chars // 2)
+        path = tmp_path / "huge.entitle"
+        path.write_text(json.dumps(envelope), encoding="utf-8")
+        return path
+
+    def test_a_previous_format_file_with_an_oversized_ciphertext_is_refused_before_decrypting(self, tmp_path):
+        # Decrypting this in pure Python takes minutes (the MAC runs over every byte before it can
+        # fail). Before 0.6.0 verification simply hung on such a file.
+        path = self._legacy_with_ciphertext(tmp_path, 900_000)
+        started = time.monotonic()
+        result = _verify(path)
+        assert (result.allowed, result.reason) == (False, "bsr_verification_failed")
+        assert time.monotonic() - started < 5
+
+    def test_a_previous_format_file_at_the_payload_cap_is_still_opened_not_skipped(self, tmp_path):
+        path = self._legacy_with_ciphertext(tmp_path, 2 * entitlements.MAX_PAYLOAD_BYTES)
+        started = time.monotonic()
+        text = read_entitlement_file(path)
+        # It is under the cap, so it reaches decryption (and fails authentication); only prove the
+        # cap itself is not the reason, by checking the envelope is handed on.
+        assert entitlements._previous_envelope(text) is not None
+        assert time.monotonic() - started < 5
+
+    def test_a_file_over_the_read_limit_is_refused_by_name_without_being_read(self, tmp_path):
+        path = tmp_path / "enormous.entitle"
+        path.write_bytes(b"{" + b" " * entitlements.MAX_FILE_BYTES + b"}")
+        with pytest.raises(ValueError, match="enormous.entitle is too large to be an entitlement file"):
+            read_entitlement_file(path)
+        with pytest.raises(ValueError, match="too large"):
+            _verify(path)
+
+    def test_real_entitlements_are_far_below_the_limits(self, tmp_path):
+        path = tmp_path / "lab.entitle"
+        issue_demo(path)
+        assert path.stat().st_size < entitlements.MAX_FILE_BYTES // 100
+        assert LEGACY_ENTITLEMENT.stat().st_size < entitlements.MAX_FILE_BYTES // 100
 
 
 class TestWithoutTheLink:
@@ -306,6 +403,17 @@ class TestDenials:
             with pytest.raises(ValueError):
                 issue_demo(path, **bad)
         assert not path.exists()
+
+    def test_a_payload_too_large_to_ever_verify_is_refused_at_issue(self, tmp_path):
+        # Before 0.6.0 a 70,000-character field was issued without complaint and then denied on every
+        # verification, because opening a payload is capped at 64 KiB.
+        path = tmp_path / "lab.entitle"
+        for field in ({"support_tier": "x" * 70_000}, {"entitlement_id": "e" * 70_000}):
+            with pytest.raises(ValueError, match=r"over the 65,536 byte limit that verification accepts"):
+                issue_demo(path, **field)
+        assert not path.exists()
+        issue_demo(path, support_tier="x" * 2_000)
+        assert _verify(path).allowed
 
     def test_a_zero_limit_verifies_but_permits_no_deployment(self, tmp_path):
         path = tmp_path / "lab.entitle"

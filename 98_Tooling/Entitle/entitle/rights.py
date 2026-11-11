@@ -11,11 +11,12 @@ Define what an entitlement says and how it is judged, independent of how it is s
 
 Communication / relationships
 -----------------------------
-Imports the entitle package root (EntitleError, utc_now) and the standard library (datetime,
-  json). Imported by entitle/entitlements.py (make_rights, make_entitlement_payload,
+Imports entitle/common.py (EntitleError, utc_now) and the standard library (datetime, json).
+  Imported by entitle/entitlements.py (make_rights, make_entitlement_payload,
   load_entitlement_payload, evaluate_payload, parse_iso_datetime, EntitlementResult,
   ENTITLEMENT_FORMAT) and examples/protected_app_example.py (EntitlementDenied). A program that
   protects its features with Entitle only needs EntitlementResult and EntitlementDenied from here.
+  Covered by tests/test_rights.py.
 
 Settings / parameters
 ---------------------
@@ -33,11 +34,13 @@ Edge cases
 evaluate_payload never raises; it denies with one reason: unsupported_entitlement_format,
   wrong_product (only when expected_product_id is given), invalid_expiration_timestamp or
   entitlement_expired, and otherwise allows with reason "verified". An expiry without a zone is
-  read as UTC and a trailing Z is accepted. A denied result has no rights, so has_right is false
-  for everything and get_limit still reads the payload. require_right raises EntitlementDenied
-  for a denied result and for a right that was not granted, with different messages.
-  load_entitlement_payload raises EntitleError for bytes that are not UTF-8 JSON or that decode
-  to something other than an object.
+  read as UTC and a trailing Z is accepted. An expiry given as a date alone ("2026-12-31") means
+  00:00 UTC at the start of that day, so the entitlement stops working when that day begins; give
+  a time ("2026-12-31T23:59:59Z") to include the whole day. A denied result has no rights, so
+  has_right is false for everything and get_limit still reads the payload. require_right raises
+  EntitlementDenied for a denied result and for a right that was not granted, with different
+  messages. load_entitlement_payload raises EntitleError for bytes that are not UTF-8 JSON or that
+  decode to something other than an object.
 
 Known limitations
 -----------------
@@ -48,7 +51,7 @@ Expiry is judged against the local clock, so a machine with a wrong clock accept
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     from entitle.rights import (
         EntitlementDenied, evaluate_payload, make_entitlement_payload, make_rights,
@@ -70,7 +73,7 @@ From the directory containing main.py:
 import datetime
 import json
 
-from . import EntitleError, utc_now
+from .common import EntitleError, utc_now
 
 ENTITLEMENT_FORMAT = "entitle.entitlement.v1"
 

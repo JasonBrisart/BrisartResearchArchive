@@ -4,8 +4,8 @@ File: tests/test_revoke.py
 Purpose
 -------
 Verify revocation in entitle/revoke.py: status for an entitlement that was never revoked,
-  revoked, reinstated and revoked again, scoping to one entitlement ID, preserved history, and
-  that revocations are hash-chained records.
+  revoked, reinstated and revoked again, scoping to one entitlement ID (matched exactly as
+  typed), preserved history, and that revocations are hash-chained records.
 
 Communication / relationships
 -----------------------------
@@ -19,7 +19,8 @@ Each test gets its own record store under pytest's tmp_path.
 Edge cases
 ----------
 The latest revocation or reinstatement for an ID decides its status; an ID with no records
-  is active with no last record; a blank ID is refused before anything is written.
+  is active with no last record; a blank ID is refused before anything is written; an ID with a
+  space or different capitalisation is a different ID.
 
 Known limitations
 -----------------
@@ -28,7 +29,7 @@ Does not cover how revocation affects deployments (tests/test_tracking.py) or th
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_revoke.py
 """
@@ -77,6 +78,12 @@ class TestRevocationStatus:
         assert status_other["revoked"] is False
         assert status_other["last_record"] is None
 
+    def test_ids_are_matched_exactly_as_typed(self, store_path):
+        store = RecordStore(store_path)
+        revoke(store, " ent-1", reason="typo with a leading space")
+        revoke(store, "Ent-1", reason="typo in the capitalisation")
+        assert is_revoked(store, "ent-1") is False and is_revoked(store, " ent-1") is True
+
     def test_full_history_is_preserved_across_multiple_transitions(self, store_path):
         store = RecordStore(store_path)
         revoke(store, "ent-1")
@@ -110,4 +117,3 @@ class TestIsRevoked:
         status = store.verify_chain()
         assert status.valid is True
         assert status.record_count == 2
-

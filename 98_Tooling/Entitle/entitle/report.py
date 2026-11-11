@@ -39,7 +39,7 @@ A verified chain shows the records agree with each other, not that the log is co
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     from tempfile import TemporaryDirectory
     from entitle.records import RECORD_TYPE_FORK, RecordStore

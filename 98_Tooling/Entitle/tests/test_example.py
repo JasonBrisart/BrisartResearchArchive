@@ -5,7 +5,9 @@ Purpose
 -------
 Run examples/protected_app_example.py against real entitlements and check that it guards
   features the way its documentation says: only granted rights unlock, a denied entitlement
-  locks everything, and a missing file explains how to issue one.
+  locks everything, a check that cannot run (no encryption, a damaged, empty, UTF-16 or oversized
+  file, an unreadable file) locks everything while the base program still starts, and a missing
+  file explains how to issue one.
 
 Communication / relationships
 -----------------------------
@@ -22,8 +24,8 @@ Entitlements are issued into pytest's tmp_path for the example's own demo identi
 Edge cases
 ----------
 Covers an entitlement that grants one right, a file issued for a different key (denied), a
-  check that cannot run because 97_Encryption is not found (everything governed stays locked),
-  and an absent file.
+  check that cannot run because 97_Encryption is not found, a file that is garbage, empty,
+  UTF-16 or over the size limit, a path that is a folder (cannot be read), and an absent file.
 
 Known limitations
 -----------------
@@ -31,14 +33,16 @@ Checks printed text, so a reworded message needs the test updated with it.
 
 Examples
 --------
-From the directory containing main.py:
+From the directory containing run.py:
 
     python -m pytest tests/test_example.py
 """
 
 import importlib.util
 
-from entitle import encryption
+import pytest
+
+from entitle import encryption, entitlements
 from support import DRBG_PERSONALIZATION, DRBG_SEED, ENTITLE_ROOT, issue_demo
 
 
@@ -86,10 +90,37 @@ def test_a_check_that_cannot_run_keeps_every_governed_feature_locked(tmp_path, c
     assert "rights verified" not in out
 
 
+@pytest.mark.parametrize("content,reason", [
+    (b"this is not an entitlement", "is not a protected Entitle entitlement file"),
+    (b"", "is not a protected Entitle entitlement file"),
+    (b"\xff\xfe" + "{}".encode("utf-16-le"), "is UTF-16 text"),
+    (b"{" + b" " * (entitlements.MAX_FILE_BYTES + 1) + b"}", "is too large to be an entitlement file"),
+])
+def test_a_file_that_is_not_a_usable_entitlement_locks_everything_but_the_base_program_runs(tmp_path, capsys, content, reason):
+    # Before 0.6.0 these crashed with a traceback before the base program started, although the
+    # example promises that anything short of a verified entitlement leaves governed features locked.
+    path = tmp_path / "lab.entitle"
+    path.write_bytes(content)
+    _load_example().main(path)
+    out = capsys.readouterr().out
+    assert "Entitlement could not be checked." in out and reason in out
+    assert "Base program started." in out and "Governed features remain locked." in out
+    assert "rights verified" not in out and "unlocked" not in out
+
+
+def test_a_path_that_cannot_be_read_locks_everything_too(tmp_path, capsys):
+    folder = tmp_path / "a_folder.entitle"
+    folder.mkdir()
+    _load_example().main(folder)
+    out = capsys.readouterr().out
+    assert "Entitlement could not be checked." in out and "Base program started." in out
+    assert "Governed features remain locked." in out
+
+
 def test_a_missing_file_prints_the_command_that_issues_one(tmp_path, capsys):
     path = tmp_path / "absent.entitle"
     _load_example().main(path)
     out = capsys.readouterr().out
     assert f"No entitlement file found at: {path}" in out
-    assert "python main.py issue" in out and f"--output {path}" in out
-    assert "drbg" not in out
+    assert "python run.py issue" in out and f"--output {path}" in out
+    assert "drbg" not in out and "main.py" not in out
