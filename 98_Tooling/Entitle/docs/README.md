@@ -177,7 +177,7 @@ BrisartResearchArchive/
 
 ```
 Entitle/
-├── run.py                  # Entry point: python run.py <command>
+├── run.py                  # Entry point: python run.py opens the window, python run.py <command> runs one
 ├── cli.py                  # The command line (issue, verify, migrate, track, revoke, report, gui)
 ├── version.py              # The one place the version lives
 ├── entitle/                # Everything Entitle knows; no command-line or window code, no __init__.py
@@ -208,7 +208,7 @@ None of Entitle's folders has an `__init__.py`: `entitle/` and `gui/` are implic
 
 # Tools
 
-Run everything as `python run.py <command>`. `python run.py --help` lists the commands and `python run.py <command> --help` lists each command's options. Windows examples use `^` for line continuation; on Linux and macOS use `\` instead.
+Run `python run.py` to open the window, or `python run.py <command>` to use the command line. `python run.py --help` lists the commands and `python run.py <command> --help` lists each command's options. Windows examples use `^` for line continuation; on Linux and macOS use `\` instead.
 
 Every record command needs an explicit `--store`: there is deliberately no default location, so records never land somewhere you did not choose.
 
@@ -337,10 +337,14 @@ The report summarizes records by type and deployments by product, and verifies t
 ## Open the window
 
 ```
-python run.py gui
+python run.py
 ```
 
-The window has six tabs: Issue, Verify, Deploy, Fork / Provenance, Revoke / Reinstate and Audit Report. Results and errors appear in the pane at the bottom. The issuer, subject, product, master key, entitlement file and record store are shared across tabs, so you type each once: issue an entitlement, switch to Verify, then Deploy, with nothing to retype. The window needs tkinter, which ships with the standard Python installers on Windows and macOS and with most Linux distributions.
+With no arguments `run.py` opens the window; `python run.py gui` does the same. On Windows you can also double-click `run.py`, as long as `.py` files are associated with Python.
+
+The window opens at 880x640, or larger when its tallest tab needs more room, and never larger than your screen. It has six tabs: Issue, Verify, Deploy, Fork / Provenance, Revoke / Reinstate and Audit Report. Results and errors appear in the pane at the bottom. The issuer, subject, product, master key, entitlement file and record store are shared across tabs, so you type each once: issue an entitlement, switch to Verify, then Deploy, with nothing to retype. The window needs tkinter, which ships with the standard Python installers on Windows and macOS and with most Linux distributions.
+
+If the window does not open, start `python run.py` from a terminal to read why: it prints the usage and then one error line, and exits 1. The usual causes are that this Python has no tkinter, or that there is no display (for example over SSH without a desktop). The command-line commands need neither. Double-clicking `run.py` closes its console as soon as the program ends, which hides that message.
 
 ## Errors
 

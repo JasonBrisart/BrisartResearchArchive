@@ -7,23 +7,26 @@ Be Entitle's command line: parse arguments, call the domain functions in entitle
   result, and turn expected failures into a one-line error with an exit status. It holds every
   command (issue, verify, migrate, track, revoke, report, gui) so the domain modules contain no
   argument parsing, and the window and the command line share one implementation of each
-  operation.
+  operation. Run with no command at all it opens the desktop window, so python run.py is the one
+  way in to either interface.
 
 Communication / relationships
 -----------------------------
 Imports version (the version text), entitle/common.py (EntitleError), entitle/encryption.py
   (status, for --version), entitle/entitlements.py, entitle/records.py (RecordStore,
   ALL_RECORD_TYPES), entitle/report.py, entitle/revoke.py and entitle/tracking.py.
-  gui/window.py is imported only by the gui command, so the other commands never load tkinter.
-  Importing this file never touches 97_Encryption; only the commands that seal or open an
-  entitlement (issue, verify, migrate, track deploy) and --version resolve it. Imported by
-  run.py (main) and tests/test_cli.py.
+  gui/window.py is imported only when the window is opened (the gui command, or no command at
+  all), so the other commands never load tkinter. Importing this file never touches
+  97_Encryption; only the commands that seal or open an entitlement (issue, verify, migrate,
+  track deploy) and --version resolve it. Imported by run.py (main), tests/test_cli.py and
+  tests/test_gui.py.
 
 Settings / parameters
 ---------------------
 Commands: issue, verify, migrate, track {deploy, fork, provenance, list}, revoke {revoke,
-  reinstate, check}, report, gui. --version prints "Entitle <version>" and a second line naming
-  the linked encryption (or "Encryption not found: <reason>"). Every record command requires an
+  reinstate, check}, report, gui. With no command at all the window opens, as for gui.
+  --version prints "Entitle <version>" and a second line naming the linked encryption (or
+  "Encryption not found: <reason>"). Every record command requires an
   explicit --store: there is deliberately no default location, so records never land somewhere
   the operator did not choose. track list --type accepts the five record types. report takes
   --format text|json and an optional --output file. issue accepts an optional --drbg-seed and
@@ -42,11 +45,13 @@ Exit status: 0 on success; 1 for verify when the entitlement is denied and for a
   verify prints a NOTE after VERIFIED when the file still uses the previous encryption, and
   migrate reports UNCHANGED for a file that already uses the current one. track deploy exits 0
   even when the deployment is refused: the outcome is in the printed JSON ("recorded": false),
-  as before. With no command it prints help and exits 0. A report on a store that does not
-  exist succeeds and says so. Output never fails once the work is done: characters the console
-  or a redirected file cannot encode (for example Cyrillic or Chinese names on a Windows code
-  page) are printed as backslash escapes, so a record that was written is never reported as a
-  failure that invites a duplicate.
+  as before. With no command at all it opens the window, the same as gui; if the window cannot
+  open (no tkinter, or no display) it prints the usage, then the error, and exits 1, so a bare
+  run.py never leaves the operator without a way forward. --help only prints the usage and never
+  tries to open a window. A report on a store that does not exist succeeds and says so. Output
+  never fails once the work is done: characters the console or a redirected file cannot encode
+  (for example Cyrillic or Chinese names on a Windows code page) are printed as backslash
+  escapes, so a record that was written is never reported as a failure that invites a duplicate.
 
 Known limitations
 -----------------
@@ -56,8 +61,9 @@ Known limitations
 
 Examples
 --------
-From the directory containing run.py:
+From the directory containing run.py (with no command, run.py opens the window):
 
+    python run.py
     python run.py issue --issuer Issuer --subject Lab --product Demo --entitlement-id lab-001 ^
         --master-key "a-master-key-that-is-at-least-32-bytes-long" --deployment-limit 3 ^
         --output entitlements/lab.entitle
@@ -272,7 +278,7 @@ def _cmd_report(args):
     return 0
 
 
-def _cmd_gui(args):
+def _open_window():
     try:
         from gui.window import launch
     except ModuleNotFoundError as exc:
@@ -281,6 +287,19 @@ def _cmd_gui(args):
         raise EntitleError("The window needs tkinter, which this Python installation does not provide.") from exc
     launch()
     return 0
+
+
+def _cmd_gui(args):
+    return _open_window()
+
+
+def _open_window_or_show_usage(parser):
+    """No command given: open the window, and if that cannot be done show the usage before the error."""
+    try:
+        return _open_window()
+    except EntitleError:
+        parser.print_help()
+        raise
 
 
 def _add_store(parser):
@@ -412,10 +431,9 @@ def main(argv=None):
     _make_output_safe()
     parser = build_parser()
     args = parser.parse_args(argv)
-    if args.command is None:
-        parser.print_help()
-        return 0
     try:
+        if args.command is None:
+            return _open_window_or_show_usage(parser)
         return args.handler(args)
     except (EntitleError, ValueError, OSError) as exc:
         print(f"Error: {exc}", file=sys.stderr)

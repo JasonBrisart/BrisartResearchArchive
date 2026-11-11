@@ -19,7 +19,11 @@ Settings / parameters
 REGISTRY holds every widget created, NOTEBOOKS every notebook (its tabs are (frame, text)
   pairs), MESSAGES every (kind, title, text) dialog, and DIALOG_FILE[0] what the file dialogs
   return. buttons(text) finds buttons by label; Widget.invoke() runs a button's command.
-  ScrolledText keeps what was inserted in .text. reset() clears all of it.
+  ScrolledText keeps what was inserted in .text. reset() clears all of it. Tk records
+  geometry() and minsize() (window_geometry, window_minsize) and, in tabs_when_measured, how
+  many tabs existed when update_idletasks() was called, which is when a real window measures
+  itself. winfo_reqwidth/reqheight and winfo_screenwidth/screenheight report Tk.request_size
+  and Tk.screen_size, which tests may replace.
 
 Edge cases
 ----------
@@ -105,18 +109,39 @@ class Widget:
 
 
 class Tk(Widget):
+    request_size = (700, 560)  # what winfo_reqwidth / winfo_reqheight report
+    screen_size = (1920, 1080)  # what winfo_screenwidth / winfo_screenheight report
+
     def __init__(self, *args, **kwargs):
         super().__init__(None)
         self.window_title = ""
+        self.window_geometry = ""
+        self.window_minsize = None
+        self.tabs_when_measured = None
 
     def title(self, text):
         self.window_title = text
 
     def geometry(self, spec):
-        return None
+        self.window_geometry = spec
 
     def minsize(self, width, height):
-        return None
+        self.window_minsize = (width, height)
+
+    def update_idletasks(self):
+        self.tabs_when_measured = sum(len(notebook.tabs) for notebook in NOTEBOOKS)
+
+    def winfo_reqwidth(self):
+        return type(self).request_size[0]
+
+    def winfo_reqheight(self):
+        return type(self).request_size[1]
+
+    def winfo_screenwidth(self):
+        return type(self).screen_size[0]
+
+    def winfo_screenheight(self):
+        return type(self).screen_size[1]
 
     def mainloop(self):
         return None

@@ -7,9 +7,10 @@ Verify the command line end to end: the full lifecycle (issue, verify, governed 
   and past the limit, fork, provenance, list, revoke, refused deployment, reinstate, check,
   report, tamper detection), migrating a file from the previous encryption, every expected
   failure printing one clean error with the right exit status, usage errors, help and version
-  (with the linked encryption), that output the terminal cannot encode never turns a finished
-  operation into a failure, and that run.py works from another working folder without loading
-  tkinter.
+  (with the linked encryption), what happens when no command is given (the window opens, or the
+  usage and the reason are shown when it cannot), that output the terminal cannot encode never
+  turns a finished operation into a failure, and that run.py works from another working folder
+  without loading tkinter.
 
 Communication / relationships
 -----------------------------
@@ -32,16 +33,18 @@ Covers: verify denied (exit 1, no migration note), a refused deployment (exit 0,
   false), a damaged record store (report says BROKEN and exits 0; other commands print an error
   and exit 1), a store locked by another process, a short key or seed, an invalid expiry or
   deployment limit, a blank required field (nothing written), a missing file, a file migrate
-  cannot open (left unchanged), an unknown command or record type (exit 2), no arguments (help,
-  exit 0), a Python without tkinter, a broken window module that must surface as itself rather
-  than as a missing tkinter, and Chinese and Cyrillic names printed to an ASCII-only output
-  (exit 0, written once, shown as escapes).
+  cannot open (left unchanged), an unknown command or record type (exit 2), no command when no
+  window can open (usage on stdout, the reason on stderr, exit 1), --help (which never tries to
+  open a window), a Python without tkinter, a broken window module that must surface as itself
+  rather than as a missing tkinter, and Chinese and Cyrillic names printed to an ASCII-only
+  output (exit 0, written once, shown as escapes).
 
 Known limitations
 -----------------
-Running without 97_Encryption is tested in tests/test_encryption.py. Does not open a real
-  window (tests/test_gui.py uses a tkinter stand-in) and does not run on Windows or macOS from
-  here, so path quoting in those shells is untested.
+Running without 97_Encryption is tested in tests/test_encryption.py, and a bare run.py
+  opening the window in tests/test_gui.py. Does not open a real window (tests/test_gui.py uses
+  a tkinter stand-in) and does not run on Windows or macOS from here, so path quoting in those
+  shells is untested.
 
 Examples
 --------
@@ -251,11 +254,21 @@ class TestExpectedFailures:
 
 
 class TestUsage:
-    def test_no_arguments_prints_help_with_every_command(self, capsys):
-        code, out, _ = _call(capsys)
-        assert code == 0 and out.startswith("usage: run.py")
+    def test_no_command_with_no_window_available_shows_the_usage_then_the_reason(self, capsys, monkeypatch):
+        for name in [m for m in sys.modules if m == "gui" or m.startswith("gui.")]:
+            monkeypatch.delitem(sys.modules, name)
+        monkeypatch.setitem(sys.modules, "tkinter", None)
+        code, out, err = _call(capsys)
+        assert code == 1 and out.startswith("usage: run.py")
         for command in ("issue", "verify", "track", "revoke", "report", "gui"):
             assert command in out
+        assert err.strip() == "Error: The window needs tkinter, which this Python installation does not provide."
+
+    def test_the_help_flag_prints_the_usage_without_trying_to_open_a_window(self, capsys, monkeypatch):
+        monkeypatch.setitem(sys.modules, "tkinter", None)  # a window attempt would fail loudly
+        with pytest.raises(SystemExit) as caught:
+            cli.main(["--help"])
+        assert caught.value.code == 0 and capsys.readouterr().out.startswith("usage: run.py")
 
     def test_version_flag_prints_the_version_file_value(self, capsys):
         with pytest.raises(SystemExit) as caught:
@@ -389,6 +402,15 @@ class TestRealProcess:
         assert not (ENTITLE_ROOT / "main.py").exists() and (ENTITLE_ROOT / "run.py").is_file()
         helped = run_entitle("--help")
         assert helped.returncode == 0 and helped.stdout.startswith("usage: run.py")
+
+    def test_no_command_without_tkinter_exits_one_with_the_usage_on_stdout_and_the_reason_on_stderr(self):
+        code = (
+            f"import sys; sys.path.insert(0, {str(ENTITLE_ROOT)!r}); sys.modules['tkinter'] = None;"
+            "import cli; raise SystemExit(cli.main([]))"
+        )
+        done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+        assert done.returncode == 1 and done.stdout.startswith("usage: run.py")
+        assert done.stderr.strip() == "Error: The window needs tkinter, which this Python installation does not provide."
 
     def test_commands_other_than_gui_never_load_tkinter(self, tmp_path):
         code = (

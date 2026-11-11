@@ -8,6 +8,41 @@ and air-gapped environments.
 
 ---
 
+## [0.6.1] - 2026-11-11
+
+A usability release. `python run.py` with no arguments now opens the desktop window. In 0.6.0 it printed the usage text and exited with status 0, so the window could only be reached by typing `python run.py gui`, a command nothing on screen mentions. `run.py` is now the one front door to both interfaces: no arguments opens the window, and a command runs that command. The window also sizes itself to its content. No entitlement, record or command behavior changed, and no file format changed.
+
+The 77 tests in `tests/test_cli.py`, `tests/test_gui.py` and `tests/test_common.py` pass on Python 3.12 (Linux), including the whole command-line lifecycle and the window's workflow. They ran against the test copy of `97_Encryption/Official` described under 0.6.0, not the real library. The suite is now 292 tests (282 in 0.6.0, ten added); the other 215 test files this release does not touch and were not re-run. Five deliberate breakages were applied to the finished code and reverted, and each was caught by the test written for it: no command printing the usage and exiting 0 again, the usage no longer shown when the window cannot open, the reason swallowed, the window measured before its tabs exist, and the size no longer capped to the screen. The window itself was not opened on a real display; the limits of this verification are listed under Compatibility.
+
+### Changed
+- **`python run.py` with no arguments opens the window** (`cli.py`). `main()` now handles "no command" by calling `_open_window()`, the function the `gui` command already used: it imports `gui.window` only then (so every other command still never loads tkinter), reports a missing tkinter as one clear error, and calls `launch()`. The `gui` command and the no-command route are the same code. When the window cannot open (no tkinter, or the `tk.TclError` that `launch()` turns into an `EntitleError`, such as no display), `_open_window_or_show_usage()` prints the usage on stdout, then the error on stderr, and the exit status is 1. Before, no command printed the usage and exited 0, which hid the window from anyone who did not already know the `gui` command. `--help` is unchanged: it prints the usage, exits 0, and never tries to open a window.
+- **`run.py` header** now describes both uses (no arguments opens the window; a command runs it), including that double-clicking `run.py` on Windows runs it with no arguments when `.py` files are associated with Python, and that from a double-click the console closes at once if the window cannot open, so the message is only readable from a terminal. No code in `run.py` changed.
+- **The window measures itself once every tab exists** (`gui/window.py`). It used to be a fixed 880x640. The notebook is as tall as its tallest tab (the Issue tab has sixteen rows of fields and then its button row, and a row's height depends on the platform's fonts and display scaling), and when the contents need more than the window gives, Tk's packer squeezes the widget packed last, which is the output pane. The window now calls `update_idletasks()` after the last tab is added, reads `winfo_reqwidth()` and `winfo_reqheight()`, and opens at the larger of 880x640 and that size, never more than the screen minus 60 px across and 120 px down (room for the title bar and the taskbar). The minimum stays 760x560, or the starting size on a screen smaller than that. This is a precaution: how the Issue tab looked at 880x640, and whether anything was ever cut off, were not observed on a real display.
+- **The output pane is 8 lines high instead of 10** (`gui/window.py`), giving the form the room.
+- **README**: Open the window now starts with `python run.py`, says what to do if it does not open (run it from a terminal to read the usage and the reason; the usual causes are no tkinter or no display), and the Tools intro and the Project Layout comment for `run.py` describe the two uses.
+- **Source headers** of `cli.py`, `run.py`, `gui/window.py`, `tests/fake_tk.py`, `tests/test_cli.py` and `tests/test_gui.py` state the new behavior and were checked again against the real imports (the six sections in order, no line over 100 columns, every import and importer named).
+- `__version__` is now `0.6.1`.
+
+### Added
+- **Tests of opening the window** (`tests/test_gui.py`, `TestOpeningTheWindow`, four tests): `cli.main([])` and `cli.main(["gui"])` each build the six-tab window and return 0; `run.py` run as a script with no arguments (through `runpy`) ends with exit status 0 and a window; and with a Tk that cannot open a display, no command shows the usage on stdout, then `Error: Could not open a window: ...` on stderr, and returns 1.
+- **Tests of the window's size** (`tests/test_gui.py`, `TestWindowSize`, four tests): content that fits opens at 880x640 with a 760x560 minimum; a taller or wider tab makes the window that size; the window is measured only after all six tabs exist; and a 1366x768 screen caps the height to 648 and an 800x600 screen caps it to 740x480 with the minimum following.
+- **Tests of no-command behavior** (`tests/test_cli.py`, three tests, one of which replaces `test_no_arguments_prints_help_with_every_command`): no command with no tkinter shows the usage with every command, then the reason, and exits 1, in this process and in a real process; and `--help` prints the usage and exits 0 even with tkinter unavailable.
+- **`tests/fake_tk.py`** records `geometry()` and `minsize()`, records how many tabs existed when `update_idletasks()` was called, and reports `Tk.request_size` and `Tk.screen_size` from `winfo_reqwidth/reqheight` and `winfo_screenwidth/screenheight`, so the sizing arithmetic can be tested without a display.
+
+### Notes
+- **`cli.py` stays beside `run.py`.** A `cli/` folder to mirror `gui/` was considered and not done: it would hold one file, the one-file package that was removed in the 0.4 and 0.5 reorganizations, and `gui/` is a folder because it is two modules. If the command line grows past one file, split it then.
+
+### Compatibility
+- **Unchanged:** every command and flag, exit statuses (including `verify` exiting 1 when denied and `track deploy` and `report` exiting 0 in the cases listed under 0.6.0), the entitlement and record formats, the encryption link, `python run.py gui`, and `python run.py --help`.
+- **Behavior that changed:** running `python run.py` with no arguments. It opens the window where it used to print the usage and exit 0. A script that ran it bare to get the usage should run `python run.py --help`. On a machine where the window cannot open it still prints the usage, but now also writes the reason on stderr and exits 1.
+- **Not verified here:**
+  - A real display. The tests use the tkinter stand-in, which checks the sizing arithmetic and the wiring but not appearance. The 880x640 starting size, the 8-line pane and whether the Issue tab fits were not seen.
+  - Double-clicking `run.py` on Windows. It is described from how Windows starts `.py` files; it was not tried.
+  - The real `97_Encryption/Official`, Windows and macOS, as under 0.6.0.
+- No new external dependencies.
+
+---
+
 ## [0.6.0] - 2026-11-11
 
 An architecture release that also fixes eight defects, found by reading, running and fuzzing the code, and documents one behavior that surprised. Every `__init__.py` is gone: `entitle/__init__.py`, which 0.5.0 had brought back to hold the helpers every module shares, is replaced by `entitle/common.py`, so `entitle/` and `gui/` are implicit namespace packages again, as in 0.4.1 and as in the rest of the Brisart tooling. The entry point is renamed from `main.py` to `run.py`, the name every Brisart tool uses. The entitlement format, the encryption context, the record log format and hash chain, and every command and flag are unchanged; `python main.py ...` becomes `python run.py ...`, and Python code that imported `EntitleError`, `canonical_json`, `utc_now`, `utc_now_iso` or `require_text` from `entitle` imports them from `entitle.common`.

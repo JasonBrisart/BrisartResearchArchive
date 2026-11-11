@@ -8,13 +8,15 @@ Verify the window's behavior without a display: the six tabs exist in order, fie
   the limit, fork, provenance, revoke, refused deployment, reinstate, check, report, list)
   works by pressing the real buttons with nothing retyped between tabs, a file written by the
   previous encryption is flagged on Verify and migrated by its button, errors show in the
-  output pane and a dialog instead of closing the window, and no window opening is reported as
-  an error.
+  output pane and a dialog instead of closing the window, no window opening is reported as an
+  error, python run.py with no arguments (and with the gui command) opens the window, and the
+  window sizes itself to its tallest tab without outgrowing the screen.
 
 Communication / relationships
 -----------------------------
 Installs tests/fake_tk.py as tkinter for one test at a time and imports the real gui/window.py
-  (and through it gui/tabs.py) against it. Also imports entitle/common.py (EntitleError),
+  (and through it gui/tabs.py) against it. Also imports cli.py (to run main with no command or
+  with gui) and runs run.py in this process with runpy, entitle/common.py (EntitleError),
   entitle/encryption.py (to simulate a missing 97_Encryption), version.py and tests/support.py.
   Run by pytest; nothing imports it.
 
@@ -31,7 +33,9 @@ Covers a deployment limit that is not a whole number, a short key (error dialog 
   "ERROR: EntitleBSRError" in the pane), a wrong key on Verify (shown as a denied result, not an
   error), optional fields left empty (stored as null, not empty text), a missing 97_Encryption
   (an error, never a denial), migrating a file that does not open (an error, file untouched), a
-  record store holding a corrupted line, and a Tk that cannot open a display.
+  record store holding a corrupted line, a Tk that cannot open a display (also when no command
+  was given, which must show the usage and then the reason), and a screen too small for the
+  window's content.
 
 Known limitations
 -----------------
@@ -47,16 +51,18 @@ From the directory containing run.py:
 """
 
 import json
+import runpy
 import shutil
 import sys
 from pathlib import Path
 
 import pytest
 
+import cli
 import fake_tk
 from entitle import encryption
 from entitle.common import EntitleError
-from support import DRBG_PERSONALIZATION, DRBG_SEED, LEGACY_ENTITLEMENT, MASTER_KEY
+from support import DRBG_PERSONALIZATION, DRBG_SEED, ENTITLE_ROOT, LEGACY_ENTITLEMENT, MASTER_KEY
 from version import __version__
 
 TAB_TITLES = ["Issue", "Verify", "Deploy", "Fork / Provenance", "Revoke / Reinstate", "Audit Report"]
@@ -293,6 +299,59 @@ class TestErrors:
     def test_the_store_may_not_exist_yet_and_the_report_says_so(self, ready):
         ready.click("Generate Report")
         assert "this store file does not exist" in ready.out()
+
+
+class TestOpeningTheWindow:
+    def test_no_command_opens_the_window(self, window):
+        fake_tk.reset()
+        assert cli.main([]) == 0
+        assert [text for _, text in fake_tk.NOTEBOOKS[0].tabs] == TAB_TITLES
+
+    def test_the_gui_command_opens_the_same_window(self, window):
+        fake_tk.reset()
+        assert cli.main(["gui"]) == 0
+        assert [text for _, text in fake_tk.NOTEBOOKS[0].tabs] == TAB_TITLES
+
+    def test_run_py_with_no_arguments_opens_the_window(self, window, monkeypatch):
+        fake_tk.reset()
+        monkeypatch.setattr(sys, "argv", ["run.py"])
+        with pytest.raises(SystemExit) as caught:
+            runpy.run_path(str(ENTITLE_ROOT / "run.py"), run_name="__main__")
+        assert caught.value.code == 0 and len(fake_tk.NOTEBOOKS) == 1
+
+    def test_no_display_with_no_command_shows_the_usage_then_the_reason(self, window, monkeypatch, capsys):
+        def no_display(self, *args, **kwargs):
+            raise fake_tk.TclError("no display name and no $DISPLAY environment variable")
+
+        monkeypatch.setattr(fake_tk.Tk, "__init__", no_display)
+        assert cli.main([]) == 1
+        captured = capsys.readouterr()
+        assert captured.out.startswith("usage: run.py")
+        assert captured.err.strip() == "Error: Could not open a window: no display name and no $DISPLAY environment variable"
+
+
+class TestWindowSize:
+    def _open(self, window, monkeypatch, request, screen=(1920, 1080)):
+        monkeypatch.setattr(fake_tk.Tk, "request_size", request)
+        monkeypatch.setattr(fake_tk.Tk, "screen_size", screen)
+        return Window(window.module).app
+
+    def test_content_that_fits_opens_at_the_nominal_size(self, window, monkeypatch):
+        app = self._open(window, monkeypatch, (700, 560))
+        assert (app.window_geometry, app.window_minsize) == ("880x640", (760, 560))
+
+    def test_a_taller_or_wider_tab_makes_the_window_bigger(self, window, monkeypatch):
+        assert self._open(window, monkeypatch, (700, 721)).window_geometry == "880x721"
+        assert self._open(window, monkeypatch, (1000, 640)).window_geometry == "1000x640"
+
+    def test_the_window_is_measured_after_every_tab_exists(self, window, monkeypatch):
+        assert self._open(window, monkeypatch, (700, 560)).tabs_when_measured == len(TAB_TITLES)
+
+    def test_a_small_screen_caps_the_size_and_the_minimum_follows(self, window, monkeypatch):
+        app = self._open(window, monkeypatch, (1000, 900), screen=(1366, 768))
+        assert (app.window_geometry, app.window_minsize) == ("1000x648", (760, 560))
+        app = self._open(window, monkeypatch, (1000, 900), screen=(800, 600))
+        assert (app.window_geometry, app.window_minsize) == ("740x480", (740, 480))
 
 
 class TestLaunch:
