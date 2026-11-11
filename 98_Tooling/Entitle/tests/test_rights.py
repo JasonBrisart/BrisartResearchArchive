@@ -1,43 +1,55 @@
 """
-File: tests/test_core.py
+File: tests/test_rights.py
 
 Purpose
 -------
-Regression checks in 98_Tooling/Entitle/tests/test_core.py.
+Verify the entitlement rules in entitle/rights.py and the shared basics they rest on in the
+  entitle package root: how a payload and its rights are built, how a payload is loaded and
+  judged (format, product, expiry), what an EntitlementResult grants and refuses, and the
+  canonical JSON, clock and required-field helpers every other module uses.
 
 Communication / relationships
 -----------------------------
-Direct module imports: datetime, pytest, entitle.core.
+Imports the entitle package root (EntitleError, canonical_json, require_text, utc_now_iso) and
+  entitle/rights.py. Needs no files, no encryption and no record log. Run by pytest; nothing
+  imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Expiry tests use timestamps one day either side of now, so they do not depend on the date the
+  suite runs. Payloads are built in memory with the demo identity.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Covers an expiry without a zone (read as UTC), a trailing Z, an unparseable expiry, an
+  unsupported format and a wrong product, each denied with its own reason; payload bytes that
+  are not JSON or decode to something other than an object; require_right on a denied result
+  and on a right that was not granted; and required text that is empty, whitespace, missing or
+  not text.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Does not cover sealed files (tests/test_entitlements.py) or a machine with a wrong clock.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+From the directory containing main.py:
+
+    python -m pytest tests/test_rights.py
 """
 
 import datetime
 
 import pytest
 
-from entitle.core import (
-    EntitleError,
+from entitle import EntitleError, canonical_json, require_text, utc_now_iso
+from entitle.rights import (
     EntitlementDenied,
     EntitlementResult,
-    canonical_json,
     evaluate_payload,
     load_entitlement_payload,
     make_entitlement_payload,
+    make_rights,
     parse_iso_datetime,
 )
 
@@ -64,6 +76,21 @@ class TestCanonicalJson:
     def test_load_invalid_bytes_raises_entitle_error(self):
         with pytest.raises(EntitleError):
             load_entitlement_payload(b"{not-json")
+
+    def test_json_that_is_not_an_object_is_not_a_payload(self):
+        for raw in (b"[1, 2]", b"42", b'"text"', b"null"):
+            with pytest.raises(EntitleError, match="not a JSON object"):
+                load_entitlement_payload(raw)
+
+
+class TestRequireText:
+    def test_blank_or_missing_text_names_the_field(self):
+        for value in ("", "   ", None, 7):
+            with pytest.raises(ValueError, match="^fork name is required.$"):
+                require_text(product="P", fork_name=value)
+
+    def test_present_text_passes(self):
+        assert require_text(product="P", fork_name=" f ") is None
 
 
 class TestParseIsoDatetime:
@@ -194,3 +221,28 @@ class TestEntitlementResult:
         assert as_dict["rights"] == {"can_run": True}
         assert as_dict["allowed"] is True
 
+
+class TestMakeRights:
+    def test_defaults_grant_only_running(self):
+        rights = make_rights()
+        assert rights["can_run"] is True
+        assert [rights[name] for name in (
+            "can_use_enterprise_features", "can_modify", "can_fork", "can_export_source", "can_redistribute",
+        )] == [False] * 5
+        assert rights["deployment_limit"] == 1
+        assert rights["support_tier"] == "standard"
+
+    def test_each_flag_grants_its_right(self):
+        rights = make_rights(enterprise=True, modify=True, fork=True, export_source=True, redistribute=True,
+                             deployment_limit=None, support_tier="gold")
+        assert all(rights[name] for name in (
+            "can_use_enterprise_features", "can_modify", "can_fork", "can_export_source", "can_redistribute",
+        ))
+        assert rights["deployment_limit"] is None and rights["support_tier"] == "gold"
+
+
+class TestTimeHelpers:
+    def test_utc_now_iso_is_second_resolution_utc_and_parses_back(self):
+        text = utc_now_iso()
+        assert text.endswith("+00:00") and "." not in text
+        assert parse_iso_datetime(text).utcoffset() == datetime.timedelta(0)

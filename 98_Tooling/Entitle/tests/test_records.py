@@ -3,32 +3,67 @@ File: tests/test_records.py
 
 Purpose
 -------
-Regression checks in 98_Tooling/Entitle/tests/test_records.py.
+Verify the record store in entitle/records.py: appending and chaining, filtering, chain
+  verification against edits, deletions, reordering and unparseable lines, lenient reading for
+  the audit, the writer lock under concurrent threads and processes (no lost records, no forked
+  chain), a lock held by another process, a writer killed while holding the lock, a lock file
+  left behind by 0.5.0, and that a log written by v0.4.1 still verifies and can be extended.
 
 Communication / relationships
 -----------------------------
-Direct module imports: json, entitle.records.
+Imports entitle/records.py, the entitle package root (EntitleError) and tests/support.py
+  (fixtures and the lock holder). Uses tests/fixtures/legacy_v0_4_1_records.log, a six-record
+  log written by Entitle 0.4.1. Needs no encryption. Run by pytest; nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Each test gets its own store under pytest's tmp_path. The process test starts four Python
+  processes of eight appends each; the thread test uses eight threads of ten. Lock tests hold the
+  lock from a separate process (tests/support.py) and shorten LOCK_TIMEOUT_SECONDS so they do
+  not wait five seconds.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Tampering tests edit the file directly: a changed field, a deleted record, reversed order, a
+  truncated line, a line that is JSON but not an object, and a record whose data is not an
+  object. A lock held by another process is never taken over, however old its file is.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+The lock is checked on a local Linux filesystem only; the Windows branch of the lock and
+  network filesystems are not exercised here. The detection tests cannot show who edited a log,
+  only that it no longer verifies.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+From the directory containing main.py:
+
+    python -m pytest tests/test_records.py
 """
 
 import json
+import os
+import subprocess
+import sys
+import threading
+import time
 
-from entitle.records import GENESIS_HASH, RECORD_FORMAT, RecordStore
+import pytest
+
+from entitle import EntitleError, records
+from entitle.records import (
+    ALL_RECORD_TYPES,
+    GENESIS_HASH,
+    RECORD_FORMAT,
+    RECORD_TYPE_DEPLOYMENT,
+    RECORD_TYPE_FORK,
+    RECORD_TYPE_PROVENANCE,
+    RECORD_TYPE_REINSTATEMENT,
+    RECORD_TYPE_REVOCATION,
+    RecordStore,
+    RecordStoreError,
+)
+from support import ENTITLE_ROOT, FIXTURES, store_lock_held_elsewhere
 
 
 class TestRecordStoreBasics:
@@ -177,3 +212,146 @@ class TestVerifyChain:
         assert as_dict["valid"] is True
         assert as_dict["record_count"] == 1
 
+
+class TestRecordTypes:
+    def test_the_five_types_are_stable_strings(self):
+        assert ALL_RECORD_TYPES == ("deployment", "fork", "provenance", "revocation", "reinstatement")
+        assert (RECORD_TYPE_DEPLOYMENT, RECORD_TYPE_FORK, RECORD_TYPE_PROVENANCE,
+                RECORD_TYPE_REVOCATION, RECORD_TYPE_REINSTATEMENT) == ALL_RECORD_TYPES
+
+
+class TestCorruptedStore:
+    def _corrupt(self, store_path, index, replacement):
+        lines = store_path.read_text(encoding="utf-8").strip().split("\n")
+        lines[index] = replacement
+        store_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def _filled(self, store_path, count=4):
+        store = RecordStore(store_path)
+        for i in range(count):
+            store.append("fork", {"i": i})
+        return store
+
+    def test_truncated_line_is_reported_by_verify_chain_not_raised(self, store_path):
+        store = self._filled(store_path)
+        self._corrupt(store_path, 2, '{"format": "entitle.record.v1", "reco')
+        status = store.verify_chain()
+        assert (status.valid, status.broken_index, status.reason) == (False, 2, "unparseable_record")
+        assert status.record_count == 4
+
+    def test_json_that_is_not_an_object_is_unparseable(self, store_path):
+        store = self._filled(store_path, 2)
+        self._corrupt(store_path, 1, "[1, 2, 3]")
+        assert store.verify_chain().reason == "unparseable_record"
+
+    def test_a_record_whose_data_is_not_an_object_is_unparseable(self, store_path):
+        store = self._filled(store_path, 2)
+        record = json.loads(store_path.read_text(encoding="utf-8").split("\n")[1])
+        record["data"] = ["not", "an", "object"]
+        self._corrupt(store_path, 1, json.dumps(record))
+        assert store.verify_chain().reason == "unparseable_record"
+        with pytest.raises(RecordStoreError, match="record 1 has no data object"):
+            store.read_all()
+
+    def test_lenient_reading_skips_only_the_unreadable_lines(self, store_path):
+        store = self._filled(store_path, 4)
+        self._corrupt(store_path, 2, "not json")
+        assert [r["data"]["i"] for r in store.read_all(strict=False)] == [0, 1, 3]
+
+    def test_read_all_and_append_raise_a_clear_error(self, store_path):
+        store = self._filled(store_path, 2)
+        self._corrupt(store_path, 0, "not json")
+        with pytest.raises(RecordStoreError, match="record 0 is not a valid JSON object") as caught:
+            store.read_all()
+        assert isinstance(caught.value, EntitleError)
+        before = store_path.read_text(encoding="utf-8")
+        with pytest.raises(RecordStoreError):
+            store.append("fork", {"late": True})
+        assert store_path.read_text(encoding="utf-8") == before
+
+
+class TestWriterLock:
+    def test_nested_transactions_do_not_deadlock(self, store_path):
+        store = RecordStore(store_path)
+        with store.transaction():
+            with store.transaction():
+                store.append("fork", {"a": 1})
+            store.append("fork", {"a": 2})
+        assert store.verify_chain().record_count == 2
+
+    def test_concurrent_threads_keep_every_record_and_a_valid_chain(self, store_path):
+        store = RecordStore(store_path)
+        barrier = threading.Barrier(8)
+
+        def work(thread):
+            barrier.wait()
+            for i in range(10):
+                store.append("fork", {"thread": thread, "i": i})
+
+        threads = [threading.Thread(target=work, args=(n,)) for n in range(8)]
+        [t.start() for t in threads]
+        [t.join() for t in threads]
+        status = store.verify_chain()
+        assert status.valid, status.reason
+        assert status.record_count == 80
+
+    def test_concurrent_processes_keep_every_record_and_a_valid_chain(self, store_path):
+        code = (
+            "import sys; sys.path.insert(0, sys.argv[1]);"
+            "from entitle.records import RecordStore; s = RecordStore(sys.argv[2]);"
+            "[s.append('fork', {'p': sys.argv[3], 'i': i}) for i in range(8)]"
+        )
+        processes = [
+            subprocess.Popen([sys.executable, "-c", code, str(ENTITLE_ROOT), str(store_path), str(n)])
+            for n in range(4)
+        ]
+        assert [p.wait(timeout=120) for p in processes] == [0, 0, 0, 0]
+        status = RecordStore(store_path).verify_chain()
+        assert status.valid, status.reason
+        assert status.record_count == 32
+
+    def test_a_lock_held_by_another_process_times_out_and_is_never_taken(self, store_path, monkeypatch):
+        monkeypatch.setattr(records, "LOCK_TIMEOUT_SECONDS", 0.3)
+        with store_lock_held_elsewhere(store_path):
+            started = time.monotonic()
+            with pytest.raises(TimeoutError, match="record store is busy"):
+                RecordStore(store_path).append("fork", {"a": 1})
+            assert time.monotonic() - started < 5
+        assert not store_path.exists()
+
+    def test_a_killed_writer_releases_the_store_at_once(self, store_path, monkeypatch):
+        monkeypatch.setattr(records, "LOCK_TIMEOUT_SECONDS", 2.0)
+        with store_lock_held_elsewhere(store_path):
+            pass  # the holder is killed here, while it still holds the lock
+        started = time.monotonic()
+        RecordStore(store_path).append("fork", {"a": 1})
+        assert time.monotonic() - started < 2.0
+        assert RecordStore(store_path).verify_chain().record_count == 1
+
+    def test_an_old_lock_file_nobody_holds_does_not_block_writers(self, store_path):
+        store_path.parent.mkdir(parents=True)
+        lock = store_path.with_name(store_path.name + ".lock")
+        lock.write_text("left by 0.5.0", encoding="utf-8")
+        old = lock.stat().st_mtime - 120
+        os.utime(lock, (old, old))
+        RecordStore(store_path).append("fork", {"a": 1})
+        assert RecordStore(store_path).verify_chain().record_count == 1
+
+
+class TestRecordsWrittenByV041:
+    def test_the_previous_release_log_still_verifies_and_reads(self):
+        store = RecordStore(FIXTURES / "legacy_v0_4_1_records.log")
+        status = store.verify_chain()
+        assert (status.valid, status.record_count) == (True, 6)
+        assert sorted(r["record_type"] for r in store.read_all()) == sorted(
+            ["deployment", "deployment", "fork", "provenance", "revocation", "reinstatement"]
+        )
+        assert all(r["format"] == RECORD_FORMAT for r in store.read_all())
+
+    def test_new_records_can_extend_the_previous_release_log(self, tmp_path):
+        copy = tmp_path / "legacy.log"
+        copy.write_bytes((FIXTURES / "legacy_v0_4_1_records.log").read_bytes())
+        store = RecordStore(copy)
+        store.append("fork", {"fork_name": "after-upgrade"})
+        status = store.verify_chain()
+        assert (status.valid, status.record_count) == (True, 7)

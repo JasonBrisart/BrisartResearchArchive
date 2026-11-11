@@ -3,88 +3,84 @@ File: entitle/revoke.py
 
 Purpose
 -------
-Entitle Revoke
+Record and answer offline revocation. A revocation or reinstatement is an ordinary entry in the
+  tamper-evident record log, so it cannot be silently removed or reordered, and an
+  entitlement's whole history stays readable after it is reinstated. Deployments through
+  entitle/tracking.py are refused while an entitlement is revoked.
 
 Communication / relationships
 -----------------------------
-Direct module imports: argparse, json, .record_types, .records.
+Imports the entitle package root (require_text) and entitle/records.py (RECORD_TYPE_REVOCATION,
+  RECORD_TYPE_REINSTATEMENT); the RecordStore is passed in by the caller. Imported by
+  entitle/tracking.py (is_revoked), cli.py (revoke revoke, reinstate and check) and gui/tabs.py
+  (Revoke / Reinstate tab). Covered by tests/test_revoke.py.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+revoke(store, entitlement_id, issuer_id=None, product_id=None, reason=None) and reinstate(...)
+  append one record whose data holds those four fields and return it. is_revoked(store,
+  entitlement_id) returns a bool. revocation_status(store, entitlement_id) returns
+  {"entitlement_id", "revoked", "last_record"}, where last_record is the latest revocation or
+  reinstatement for that ID, or None.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+The latest revocation or reinstatement for an ID decides, so revoke, reinstate, revoke leaves it
+  revoked. Status is per entitlement_id: revoking one never affects another, and issuer_id and
+  product_id are recorded for the audit but not used to match. Revoking an ID that was never
+  issued, or revoking twice, is accepted and recorded; nothing checks that the entitlement
+  exists. A blank entitlement_id raises ValueError before anything is written, because a record
+  can never be removed. A damaged record log raises RecordStoreError rather than guessing a
+  status.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Revocation is advisory and offline: it stops deployments recorded through Entitle, but not a
+  copy of the software that never consults the record log, and not an entitlement file already
+  on a machine without that log. verify does not check revocation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+From the directory containing main.py:
 
-Additional module documentation
--------------------------------
-Entitle Revoke
+    from tempfile import TemporaryDirectory
+    from entitle.records import RecordStore
+    from entitle.revoke import is_revoked, reinstate, revoke
 
-Offline revocation for Entitle entitlements.
-
-Revocation is recorded as an append-only, tamper-evident entry in the same local
-record store used by deployment/fork/provenance tracking. Because the store is
-hash-chained, a revocation cannot be silently removed or reordered without
-breaking the chain.
-
-An entitlement is considered revoked if the store contains a "revocation" record
-for its entitlement_id that is not followed by a later "reinstatement" record for
-the same entitlement_id. This lets you both revoke and, if needed, reinstate,
-while preserving the full history.
-
-Example:
-    python main.py revoke revoke --entitlement-id lab-a-demo-001 \\
-        --issuer JasonBrisart --product EntitleDemo --reason "key compromise" \\
-        --store records/entitle_records.log
+    with TemporaryDirectory() as folder:
+        store = RecordStore(f"{folder}/entitle_records.log")
+        revoke(store, "lab-a-001", reason="key compromise")
+        assert is_revoked(store, "lab-a-001")
+        reinstate(store, "lab-a-001", reason="cleared")
+        assert not is_revoked(store, "lab-a-001")
 """
 
-import argparse
-import json
-
-from .record_types import RECORD_TYPE_REINSTATEMENT, RECORD_TYPE_REVOCATION
-from .records import RecordStore
+from . import require_text
+from .records import RECORD_TYPE_REINSTATEMENT, RECORD_TYPE_REVOCATION
 
 
 def revocation_status(store, entitlement_id):
-    """
-    Return the effective revocation status for an entitlement_id.
-
-    Walks the record log in order. The most recent revocation or reinstatement
-    record for this entitlement_id wins.
-    """
     revoked = False
     last_record = None
     for record in store.read_all():
         record_type = record.get("record_type")
         if record_type not in (RECORD_TYPE_REVOCATION, RECORD_TYPE_REINSTATEMENT):
             continue
-        if record.get("data", {}).get("entitlement_id") != entitlement_id:
+        if record["data"].get("entitlement_id") != entitlement_id:
             continue
         revoked = record_type == RECORD_TYPE_REVOCATION
         last_record = record
-    return {
-        "entitlement_id": entitlement_id,
-        "revoked": revoked,
-        "last_record": last_record,
-    }
+    return {"entitlement_id": entitlement_id, "revoked": revoked, "last_record": last_record}
 
 
 def is_revoked(store, entitlement_id):
     return revocation_status(store, entitlement_id)["revoked"]
 
 
-def revoke(store, entitlement_id, issuer_id=None, product_id=None, reason=None):
+def _append(store, record_type, entitlement_id, issuer_id, product_id, reason):
+    require_text(entitlement_id=entitlement_id)
     return store.append(
-        RECORD_TYPE_REVOCATION,
+        record_type,
         {
             "entitlement_id": entitlement_id,
             "issuer_id": issuer_id,
@@ -92,86 +88,11 @@ def revoke(store, entitlement_id, issuer_id=None, product_id=None, reason=None):
             "reason": reason,
         },
     )
+
+
+def revoke(store, entitlement_id, issuer_id=None, product_id=None, reason=None):
+    return _append(store, RECORD_TYPE_REVOCATION, entitlement_id, issuer_id, product_id, reason)
 
 
 def reinstate(store, entitlement_id, issuer_id=None, product_id=None, reason=None):
-    return store.append(
-        RECORD_TYPE_REINSTATEMENT,
-        {
-            "entitlement_id": entitlement_id,
-            "issuer_id": issuer_id,
-            "product_id": product_id,
-            "reason": reason,
-        },
-    )
-
-
-def _cmd_revoke(args):
-    store = RecordStore(args.store)
-    record = revoke(
-        store,
-        entitlement_id=args.entitlement_id,
-        issuer_id=args.issuer,
-        product_id=args.product,
-        reason=args.reason,
-    )
-    print(json.dumps(record, indent=2, ensure_ascii=False))
-
-
-def _cmd_reinstate(args):
-    store = RecordStore(args.store)
-    record = reinstate(
-        store,
-        entitlement_id=args.entitlement_id,
-        issuer_id=args.issuer,
-        product_id=args.product,
-        reason=args.reason,
-    )
-    print(json.dumps(record, indent=2, ensure_ascii=False))
-
-
-def _cmd_check(args):
-    store = RecordStore(args.store)
-    status = revocation_status(store, args.entitlement_id)
-    print(json.dumps(status, indent=2, ensure_ascii=False))
-    print()
-    print("REVOKED" if status["revoked"] else "ACTIVE")
-
-
-def build_parser():
-    parser = argparse.ArgumentParser(
-        prog="revoke",
-        description="Revoke, reinstate, or check Entitle entitlements offline.",
-    )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    rev = subparsers.add_parser("revoke", help="Record a revocation.")
-    rev.add_argument("--entitlement-id", required=True)
-    rev.add_argument("--issuer", default=None)
-    rev.add_argument("--product", default=None)
-    rev.add_argument("--reason", default=None)
-    rev.add_argument("--store", required=True, help="Record store file path.")
-    rev.set_defaults(func=_cmd_revoke)
-
-    rei = subparsers.add_parser("reinstate", help="Record a reinstatement.")
-    rei.add_argument("--entitlement-id", required=True)
-    rei.add_argument("--issuer", default=None)
-    rei.add_argument("--product", default=None)
-    rei.add_argument("--reason", default=None)
-    rei.add_argument("--store", required=True, help="Record store file path.")
-    rei.set_defaults(func=_cmd_reinstate)
-
-    chk = subparsers.add_parser("check", help="Check revocation status.")
-    chk.add_argument("--entitlement-id", required=True)
-    chk.add_argument("--store", required=True, help="Record store file path.")
-    chk.set_defaults(func=_cmd_check)
-
-    return parser
-
-
-def main(argv=None):
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    args.func(args)
-    return 0
-
+    return _append(store, RECORD_TYPE_REINSTATEMENT, entitlement_id, issuer_id, product_id, reason)

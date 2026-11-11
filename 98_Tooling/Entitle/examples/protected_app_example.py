@@ -3,88 +3,74 @@ File: examples/protected_app_example.py
 
 Purpose
 -------
-Protected App Example
+Show how another program guards its features with Entitle: the base program always runs, and
+  each governed feature (enterprise, modify, fork, source export, redistribution) runs only when
+  a verified entitlement grants the matching right. Anything short of a verified entitlement
+  leaves every governed feature locked. There is no activation server, telemetry or network use.
 
 Communication / relationships
 -----------------------------
-Direct module imports: sys, pathlib, entitle.bootstrap, entitle.core, entitle.bsr_adapter.
+Imports the entitle package root (EntitleError), entitle/rights.py (EntitlementDenied) and
+  entitle/entitlements.py (verify_entitlement): the whole interface a protected program needs.
+  Puts the Entitle folder on sys.path so it runs from any working folder. Nothing imports it;
+  tests/test_example.py loads it by path and runs main().
 
 Settings / parameters
 ---------------------
-Module-level named settings: _REPO_ROOT, ISSUER_ID, SUBJECT_ID, PRODUCT_ID, ENTITLEMENT_FILE, MASTER_KEY. See their definitions below for values.
+ISSUER_ID (JasonBrisart), SUBJECT_ID (ResearchLabA), PRODUCT_ID (EntitleDemo) and MASTER_KEY
+  must match the entitlement being checked; they match the issue command in docs/README.md.
+  ENTITLEMENT_FILE defaults to entitlements/lab_a.entitle in the Entitle folder, and
+  main(entitlement_file) takes another path. MASTER_KEY is a demo value written into the source.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+With no entitlement file it prints the issue command that would create one and returns. A file
+  that is denied (wrong key, wrong product, expired) keeps every governed feature locked and
+  prints the reason. A check that cannot run at all, such as when 97_Encryption is not found,
+  is treated the same way: the base program still starts, the reason is printed, and nothing
+  governed unlocks. A verified entitlement unlocks only the features whose rights it grants; the
+  rest print "locked" with the missing right.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Never put a real master key in source: keep it in controlled local configuration, outside
+  public repositories. The program checks the entitlement once at start; it does not consult
+  the record log, so it does not see revocations. BSR2 (97_Encryption) is experimental research
+  cryptography, so treat this as protection for controlled environments. Like the rest of
+  Entitle it needs 97_Encryption beside 98_Tooling.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Issue the demo entitlement (docs/README.md, "Issue an entitlement"), then from any folder:
 
-Additional module documentation
--------------------------------
-Protected App Example
-
-This file demonstrates how another software project can use Entitle.
-
-Behavior:
-    - Base program can run.
-    - Governed features require valid Entitle rights.
-    - If the protected entitlement fails BSR verification, governed features remain locked.
-    - No cloud activation.
-    - No telemetry.
-    - No online license server.
-
-Run this from anywhere:
     python examples/protected_app_example.py
 """
 
 import sys
 from pathlib import Path
 
-# Allow this script to be run directly (e.g. ``python examples/protected_app_example.py``)
-# regardless of the current working directory, by putting the repository root on
-# sys.path so ``entitle`` (and, via entitle.bootstrap, ``vendor/``) can be found.
-_REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+_ENTITLE_ROOT = Path(__file__).resolve().parents[1]
+if str(_ENTITLE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ENTITLE_ROOT))
 
-from entitle.bootstrap import ensure_bsr_on_path
-ensure_bsr_on_path()
-
-from entitle.core import EntitlementDenied
-from entitle.bsr_adapter import verify_protected_entitlement
+from entitle import EntitleError  # noqa: E402
+from entitle.entitlements import verify_entitlement  # noqa: E402
+from entitle.rights import EntitlementDenied  # noqa: E402
 
 ISSUER_ID = "JasonBrisart"
 SUBJECT_ID = "ResearchLabA"
 PRODUCT_ID = "EntitleDemo"
-ENTITLEMENT_FILE = str(_REPO_ROOT / "entitlements" / "lab_a.entitle")
-
-"""
-For this demo, the master key is hardcoded.
-
-For real internal deployments:
-    - Store this in a local secure configuration area.
-    - Keep issuer-side keys controlled.
-    - Do not put sensitive master keys in public repositories.
-
-Because BrisartSecurityResearch is experimental research software, this should be
-treated as controlled-environment entitlement protection unless reviewed.
-"""
-MASTER_KEY = b"change-this-master-key-change-this-master-key"
+ENTITLEMENT_FILE = str(_ENTITLE_ROOT / "entitlements" / "lab_a.entitle")
+MASTER_KEY = "change-this-master-key-change-this-master-key"
 
 
-def load_entitlement():
-    return verify_protected_entitlement(
-        path=ENTITLEMENT_FILE,
+def load_entitlement(entitlement_file):
+    return verify_entitlement(
+        issuer=ISSUER_ID,
+        subject=SUBJECT_ID,
+        product=PRODUCT_ID,
         master_key=MASTER_KEY,
-        expected_product_id=PRODUCT_ID,
-        issuer_id=ISSUER_ID,
-        subject_id=SUBJECT_ID,
+        path=entitlement_file,
     )
 
 
@@ -123,29 +109,34 @@ def redistribution_feature(entitlement):
     print("Preparing redistribution package.")
 
 
-def main():
-    if not Path(ENTITLEMENT_FILE).exists():
-        print(f"No entitlement file found at: {ENTITLEMENT_FILE}")
+def main(entitlement_file=ENTITLEMENT_FILE):
+    if not Path(entitlement_file).exists():
+        print(f"No entitlement file found at: {entitlement_file}")
         print("Issue one first, for example:")
         print()
         print("  python main.py issue \\")
         print(f"      --issuer {ISSUER_ID} --subject {SUBJECT_ID} --product {PRODUCT_ID} \\")
         print("      --entitlement-id lab-a-demo-001 \\")
-        print("      --master-key \"change-this-master-key-change-this-master-key\" \\")
-        print("      --drbg-seed \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" \\")
-        print("      --drbg-personalization \"EntitleDemoPersonalization\" \\")
+        print(f'      --master-key "{MASTER_KEY}" \\')
         print("      --modify --fork --deployment-limit 3 \\")
-        print(f"      --output {ENTITLEMENT_FILE}")
+        print(f"      --output {entitlement_file}")
         return
 
-    entitlement = load_entitlement()
+    try:
+        entitlement = load_entitlement(entitlement_file)
+    except EntitleError as exc:
+        print("Entitlement could not be checked.")
+        print(f"Reason: {exc}")
+        print()
+        base_program()
+        print()
+        print("Governed features remain locked.")
+        return
     print("Entitlement result:")
     print(entitlement.to_dict())
     print()
-
     base_program()
     print()
-
     if not entitlement.allowed:
         print("Entitlement verification failed.")
         print(f"Reason: {entitlement.reason}")
@@ -168,4 +159,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

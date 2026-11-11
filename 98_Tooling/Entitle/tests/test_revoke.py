@@ -3,28 +3,37 @@ File: tests/test_revoke.py
 
 Purpose
 -------
-Regression checks in 98_Tooling/Entitle/tests/test_revoke.py.
+Verify revocation in entitle/revoke.py: status for an entitlement that was never revoked,
+  revoked, reinstated and revoked again, scoping to one entitlement ID, preserved history, and
+  that revocations are hash-chained records.
 
 Communication / relationships
 -----------------------------
-Direct module imports: entitle.records, entitle.revoke.
+Imports entitle/records.py and entitle/revoke.py. Uses the store_path fixture from
+  tests/conftest.py. Run by pytest; nothing imports it.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+Each test gets its own record store under pytest's tmp_path.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+The latest revocation or reinstatement for an ID decides its status; an ID with no records
+  is active with no last record; a blank ID is refused before anything is written.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Does not cover how revocation affects deployments (tests/test_tracking.py) or the command
+  line (tests/test_cli.py).
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+From the directory containing main.py:
+
+    python -m pytest tests/test_revoke.py
 """
+
+import pytest
 
 from entitle.records import RecordStore
 from entitle.revoke import is_revoked, reinstate, revocation_status, revoke
@@ -77,6 +86,14 @@ class TestRevocationStatus:
         all_records = store.read_all()
         assert len(all_records) == 4
         assert is_revoked(store, "ent-1") is False
+
+
+class TestRequiredFields:
+    def test_a_blank_entitlement_id_is_refused_and_nothing_is_written(self, store_path):
+        for action in (revoke, reinstate):
+            with pytest.raises(ValueError, match="entitlement id is required"):
+                action(RecordStore(store_path), "   ")
+        assert not store_path.exists()
 
 
 class TestIsRevoked:

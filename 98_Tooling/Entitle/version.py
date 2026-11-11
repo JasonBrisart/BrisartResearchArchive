@@ -3,43 +3,37 @@ File: version.py
 
 Purpose
 -------
-Single source of truth for the Entitle version.
+Hold the Entitle version string, the one place every surface reads it from: the command line,
+  the window title, tests, and any release or packaging script. It has no imports and no side
+  effects, so offline release tooling can read it without importing the application.
 
 Communication / relationships
 -----------------------------
-No direct module-level imports are declared.
+Imports nothing. Imported by cli.py (--version), gui/window.py (window title), and
+  tests/test_cli.py and tests/test_gui.py (which check that both surfaces show it).
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+__version__ is a plain dotted string: major.minor.patch.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Changing it changes the text printed by python main.py --version and shown in the window title
+  only; it is never written into entitlements or records, so it does not affect verification.
+  The version of the linked encryption is not here: it comes from 97_Encryption and is shown
+  by --version on its own line.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Nothing checks that the value matches the newest docs/CHANGELOG.md entry; update both together.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Usage from the directory containing main.py:
 
-Additional module documentation
--------------------------------
-Single source of truth for the Entitle version.
+    from version import __version__
 
-This lives in a standalone root module (rather than inside ``entitle/__init__.py``)
-so every surface of the project -- the ``entitle`` package, the CLI in ``main.py``,
-the GUI, packaging metadata, and any release/verification tooling -- reads the
-version from exactly one place. Keeping it here mirrors the convention used across
-the wider Brisart ecosystem, where each project exposes a top-level ``version.py``
-whose ``__version__`` string is the authoritative release identifier.
-
-The value is a plain string with no imports and no side effects, so it can be
-read cheaply by tooling (including offline/air-gapped release scripts) without
-importing the whole package.
+    print(f"Entitle {__version__}")
 """
 
-__version__ = "0.4.1"
-
+__version__ = "0.5.0"

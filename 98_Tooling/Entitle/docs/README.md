@@ -6,7 +6,7 @@ Entitle is software that helps developers and organizations define, distribute, 
 
 Built for developers, research organizations, archives, government environments, and air-gapped systems, Entitle provides practical tools for managing software entitlements, deployment records, software provenance, ownership documentation, and distribution governance without relying on cloud infrastructure, online activation, telemetry, or vendor-controlled services.
 
-Entitle is **pure Python**, uses **no external dependencies**, and is designed to be **local-first, offline, and auditable**.
+Entitle is **pure Python**, uses **no external packages**, takes its encryption from the archive's own `97_Encryption` (BSR2) rather than carrying a copy, and is designed to be **local-first, offline, and auditable**.
 
 ---
 
@@ -118,7 +118,7 @@ Export records for internal review, governance processes, and long-term retentio
 
 ## Tamper-Evident Record Store
 
-Deployment, fork, provenance, and revocation records are written to a single append-only log. Each entry is linked to the previous one through a SHA-256 hash chain, so any edit, deletion, or reordering of earlier records can be detected during verification.
+Deployment, fork, provenance, and revocation records are written to a single append-only log. Each entry is linked to the previous one through a SHA-256 hash chain, so any edit, deletion, or reordering of earlier records can be detected during verification. Writers take an operating-system lock on a `.lock` file beside the store, so the command line and the window can record at the same time without forking the chain or exceeding a deployment limit. The operating system releases the lock if a writer is killed, so a crash never leaves the store locked. Records can never be edited or removed, so a record with a blank required field (an entitlement ID, host, fork name, and so on) is refused before it is written.
 
 ---
 
@@ -156,61 +156,81 @@ Ensure software rights records remain accessible long after deployment.
 # Requirements
 
 - Python 3.10 or newer
-- No external dependencies (Python standard library only)
+- The Python standard library only: no external packages. tkinter is needed only for the desktop window; every command-line command runs without it.
+- `97_Encryption/Official` beside `98_Tooling` in the same archive folder. This is where all of Entitle's encryption comes from; Entitle keeps no copy of it.
 
-Entitlement protection is handled by the BrisartSecurityResearch (BSR) modules through `entitle_bsr_adapter.py`. Place the BSR files in `bsr/` beside the Entitle source, or adjust the imports in the adapter. BSR is currently experimental research software and should be treated as controlled-environment protection unless independently reviewed.
+Entitle's one connection to BSR2 is `entitle/encryption.py`, which finds `97_Encryption/Official` relative to itself (no configuration, no absolute path) and refuses to run against any other copy. If the folder is missing or incompatible, Entitle still starts, `report`, `revoke` and the `track` record commands still work, and every command that seals or opens an entitlement says `Encryption not found` and why, instead of falling back to anything weaker. `python main.py --version` shows which encryption is linked. Because Entitle needs its sibling folder, copy the whole archive, or both `97_Encryption` and `98_Tooling`, when moving it between machines. BSR2 is experimental research software and should be treated as controlled-environment protection unless independently reviewed.
+
+New entitlement files are BSR2 sealed messages (BSR2-S64-SIV), stored as armored text. Files written by Entitle before 0.5.0 (BSR2 Alpha 3) still verify, and `migrate` re-seals them in the current format.
 
 ---
 
 # Project Layout
 
 ```
-Entitle/
-├── bsr/                       # BrisartSecurityResearch modules (DRBG + envelope)
-├── entitlements/              # Issued protected .entitle containers
-├── entitle_core.py            # Entitlement payloads and rights evaluation
-├── entitle_bsr_adapter.py     # Bridge between Entitle and BSR protection
-├── entitle_issue.py           # Issue a protected entitlement
-├── entitle_verify.py          # Verify a protected entitlement
-├── entitle_records.py         # Append-only, hash-chained record store
-├── entitle_track.py           # Record deployments, forks, provenance
-├── entitle_revoke.py          # Revoke / reinstate / check entitlements
-├── entitle_report.py          # Audit and reporting
-├── protected_app_example.py   # Example of guarding features with Entitle
-└── README.md
+BrisartResearchArchive/
+├── 97_Encryption/
+│   └── Official/           # BSR2: the encryption Entitle links to (not part of Entitle)
+└── 98_Tooling/
+    └── Entitle/
 ```
+
+```
+Entitle/
+├── main.py                 # Entry point: python main.py <command>
+├── cli.py                  # The command line (issue, verify, migrate, track, revoke, report, gui)
+├── version.py              # The one place the version lives
+├── entitle/                # Everything Entitle knows; no command-line or window code
+│   ├── __init__.py         #   EntitleError and the helpers every module shares
+│   ├── rights.py           #   What an entitlement says and how its rights are judged
+│   ├── entitlements.py     #   The .entitle file: issue, verify, migrate
+│   ├── encryption.py       #   The only link to 97_Encryption
+│   ├── records.py          #   Tamper-evident record log and its writer lock
+│   ├── tracking.py         #   Deployments (governed), forks and provenance
+│   ├── revoke.py           #   Revoke, reinstate, check
+│   └── report.py           #   Audit report
+├── gui/                    # The desktop window
+│   ├── window.py           #   Window, output pane, error handling
+│   └── tabs.py             #   The six workflow tabs and their form layout
+├── examples/               # protected_app_example.py
+├── tests/                  # pytest suite; test_<name>.py covers <name>.py (test_gui.py covers gui/)
+├── docs/                   # README.md and CHANGELOG.md
+├── entitlements/           # Issued .entitle files (created on use, git-ignored)
+├── records/                # Record logs (created on use, git-ignored)
+└── reports/                # Saved reports (git-ignored)
+```
+
+The command line and the window both call the same functions in `entitle/`, so they cannot disagree about what an operation does. Dependencies point one way: `entitlements.py` builds on `rights.py` and `encryption.py`; `tracking.py`, `revoke.py` and `report.py` build on `records.py`; and only `tracking.py` joins the two, because a deployment needs a verified entitlement. The record log never touches encryption, which is why it keeps working without `97_Encryption`.
 
 ---
 
 # Tools
 
-All tools are standard-library Python scripts. Windows examples use `^` for line
-continuation; on Linux/macOS use `\` instead.
+Run everything as `python main.py <command>`. `python main.py --help` lists the commands and `python main.py <command> --help` lists each command's options. Windows examples use `^` for line continuation; on Linux and macOS use `\` instead.
+
+Every record command needs an explicit `--store`: there is deliberately no default location, so records never land somewhere you did not choose.
 
 ## Issue an entitlement
 
-Create a protected, offline entitlement container.
+Create a protected, offline entitlement container. The master key must be 32 to 1024 bytes and is used directly as the BSR2 key, so make it long and random.
 
 ```
-python entitle_issue.py ^
+python main.py issue ^
     --issuer JasonBrisart ^
     --subject ResearchLabA ^
     --product EntitleDemo ^
     --entitlement-id lab-a-demo-001 ^
     --master-key "change-this-master-key-change-this-master-key" ^
-    --drbg-seed "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ^
-    --drbg-personalization "EntitleDemoPersonalization" ^
     --deployment-limit 3 ^
     --output entitlements/lab_a.entitle
 ```
 
-Rights flags such as `--enterprise`, `--modify`, `--fork`, `--export-source`,
-and `--redistribute` grant the corresponding governed rights.
+Rights flags `--enterprise`, `--modify`, `--fork`, `--export-source` and `--redistribute` grant the matching rights. `--expires` takes an ISO timestamp and is checked before anything is written. `--deployment-limit` is 0 or more; 0 gives an entitlement that verifies (for example to unlock features) but permits no tracked deployment. `--drbg-seed` (64 bytes or more) and `--drbg-personalization` (16 or more) are optional: they add a generator of your choosing on top of the fresh system entropy BSR2 always uses, and nothing needs them.
 
 ## Verify an entitlement
 
 ```
-python entitle_verify.py ^
+python main.py verify ^
     --issuer JasonBrisart ^
     --subject ResearchLabA ^
     --product EntitleDemo ^
@@ -218,13 +238,29 @@ python entitle_verify.py ^
     --file entitlements/lab_a.entitle
 ```
 
-## Record a governed deployment
+Exits 0 and prints `VERIFIED` when the entitlement is valid; exits 1 and prints `DENIED: <reason>` otherwise. When the file still uses the previous encryption, `VERIFIED` is followed by a note pointing at `migrate`. A missing `97_Encryption` is an error (exit 1), never `DENIED`.
 
-Only recorded if the entitlement verifies, grants `can_run`, is not revoked,
-and the deployment limit has not been reached.
+## Migrate an entitlement to the current encryption
+
+Files written by Entitle before 0.5.0 use the previous encryption (BSR2 Alpha 3). They keep verifying, and `migrate` re-seals one in place with the current encryption while keeping the entitlement exactly as issued (ID, rights, limit, issue time and expiry):
 
 ```
-python entitle_track.py deploy ^
+python main.py migrate ^
+    --issuer JasonBrisart ^
+    --subject ResearchLabA ^
+    --product EntitleDemo ^
+    --master-key "change-this-master-key-change-this-master-key" ^
+    --file entitlements/older_lab.entitle
+```
+
+It prints `MIGRATED`, or `UNCHANGED` for a file that already uses the current encryption. The new file is checked to open to the identical entitlement before it replaces the old one in a single step, and a file that does not open with the given issuer, subject, product and key is left untouched with an error. Entitle versions before 0.5.0 cannot open a migrated file, so keep a copy first if one of them must still read it. The window does the same with the Migrate to Current Encryption button on the Verify tab.
+
+## Record a governed deployment
+
+Only recorded if the entitlement verifies, grants `can_run`, is not revoked, and the deployment limit has not been reached. A refused deployment is not an error: the command exits 0 and prints `"recorded": false` with the reason.
+
+```
+python main.py track deploy ^
     --issuer JasonBrisart ^
     --subject ResearchLabA ^
     --product EntitleDemo ^
@@ -238,14 +274,14 @@ python entitle_track.py deploy ^
 ## Record a fork or provenance
 
 ```
-python entitle_track.py fork ^
+python main.py track fork ^
     --product EntitleDemo ^
     --source-version 1.4.0 ^
     --fork-name lab-a-custom ^
     --maintainer ResearchLabA ^
     --store records/entitle_records.log
 
-python entitle_track.py provenance ^
+python main.py track provenance ^
     --product EntitleDemo ^
     --origin JasonBrisart ^
     --version 1.4.0 ^
@@ -256,25 +292,27 @@ python entitle_track.py provenance ^
 ## List records
 
 ```
-python entitle_track.py list --type deployment --store records/entitle_records.log
+python main.py track list --type deployment --store records/entitle_records.log
 ```
+
+`--type` is one of `deployment`, `fork`, `provenance`, `revocation` or `reinstatement`; omit it to list everything.
 
 ## Revoke, reinstate, or check an entitlement
 
 ```
-python entitle_revoke.py revoke ^
+python main.py revoke revoke ^
     --entitlement-id lab-a-demo-001 ^
     --issuer JasonBrisart ^
     --product EntitleDemo ^
     --reason "key compromise" ^
     --store records/entitle_records.log
 
-python entitle_revoke.py reinstate ^
+python main.py revoke reinstate ^
     --entitlement-id lab-a-demo-001 ^
     --reason "cleared" ^
     --store records/entitle_records.log
 
-python entitle_revoke.py check ^
+python main.py revoke check ^
     --entitlement-id lab-a-demo-001 ^
     --store records/entitle_records.log
 ```
@@ -282,16 +320,46 @@ python entitle_revoke.py check ^
 ## Generate an audit report
 
 ```
-python entitle_report.py --store records/entitle_records.log
+python main.py report --store records/entitle_records.log
 
-python entitle_report.py ^
+python main.py report ^
     --store records/entitle_records.log ^
     --format json ^
     --output reports/entitle_audit.json
 ```
 
-The report summarizes records by type, deployments by product, and verifies the
-tamper-evident hash chain across the whole store.
+The report summarizes records by type and deployments by product, and verifies the tamper-evident hash chain across the whole store. A damaged record is reported as `BROKEN` with its index rather than stopping the report; the readable records are still counted and the report says how many lines could not be read. A store file that does not exist is reported as having no records, not as a verified log. The report command exits 0 either way; read the chain line (or `chain.valid` in the JSON) for the result.
+
+## Open the window
+
+```
+python main.py gui
+```
+
+The window has six tabs: Issue, Verify, Deploy, Fork / Provenance, Revoke / Reinstate and Audit Report. Results and errors appear in the pane at the bottom. The issuer, subject, product, master key, entitlement file and record store are shared across tabs, so you type each once: issue an entitlement, switch to Verify, then Deploy, with nothing to retype. The window needs tkinter, which ships with the standard Python installers on Windows and macOS and with most Linux distributions.
+
+## Errors
+
+Expected problems (a key or seed that is too short, `Encryption not found`, a blank required field, an expiry that is not an ISO timestamp, a negative deployment limit, a missing file, a damaged or busy record store) print a single `Error: ...` line on stderr and exit 1, with the reason BSR2, the store or the check gave. Nothing is written when an input is refused. A mistyped command or option exits 2 with usage help.
+
+`--master-key` and the optional DRBG options are ordinary command-line arguments, so they are visible in the process list and in shell history. Use a throwaway key for testing and a controlled shell for real keys.
+
+## Protect an application
+
+`examples/protected_app_example.py` shows a program whose base features always run and whose governed features unlock only with the matching right. Issue `entitlements/lab_a.entitle` with the command above, then run:
+
+```
+python examples/protected_app_example.py
+```
+
+## Run the tests
+
+```
+python -m pip install pytest
+python -m pytest tests
+```
+
+The tests use pytest and run from `98_Tooling/Entitle` with `97_Encryption` beside `98_Tooling`; the application itself needs nothing beyond the standard library and that folder.
 
 ---
 

@@ -3,154 +3,112 @@ File: entitle/report.py
 
 Purpose
 -------
-Entitle Report
+Summarize a record log for audit: how many records of each type, deployments per product, the
+  time span covered, and whether the hash chain is intact. build_report returns plain data and
+  format_text renders it as text; printing or saving it is the caller's job.
 
 Communication / relationships
 -----------------------------
-Direct module imports: argparse, json, pathlib, .record_types, .records.
+Imports entitle/records.py (RECORD_TYPE_DEPLOYMENT); the RecordStore is passed in. Imported by
+  cli.py (report, as text or JSON) and gui/tabs.py (Audit Report tab). Needs no encryption, so
+  it works without 97_Encryption. Covered by tests/test_report.py.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+build_report(store) returns store (the path as text), store_exists, record_count (readable
+  records), unreadable_records (lines that are not a record), counts_by_type,
+  deployments_by_product, first_record_at, last_record_at and chain (valid, broken_index,
+  reason, record_count). format_text(report) renders it under the heading "Entitle Audit Report",
+  with "(none)" for empty sections and an "Unreadable records" line only when there are some.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+A store file that does not exist is reported with store_exists false and the text says so,
+  rather than presenting a missing log as a verified one. A log with damaged lines still gets a
+  full report: readable records are counted, unreadable ones are reported as a number, and the
+  chain is BROKEN at the first damaged index (reason unparseable_record). An existing but empty
+  log reports its chain as VERIFIED across 0 records. Records missing created_at report None for
+  the time span instead of failing.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+A verified chain shows the records agree with each other, not that the log is complete: a log
+  cut short at the end still verifies, and so does one rewritten from an edit onward. Keep an
+  independent copy of the last entry hash if completeness matters. Counts are read from the
+  whole file each time.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+From the directory containing main.py:
 
-Additional module documentation
--------------------------------
-Entitle Report
+    from tempfile import TemporaryDirectory
+    from entitle.records import RECORD_TYPE_FORK, RecordStore
+    from entitle.report import build_report, format_text
 
-Audit and reporting for the Entitle record store.
-
-Generates a governance report over deployments, forks, and provenance records,
-and verifies the tamper-evident hash chain so you can confirm the log has not
-been edited, truncated, or reordered.
-
-Example:
-    python main.py report --store records/entitle_records.log
+    with TemporaryDirectory() as folder:
+        store = RecordStore(f"{folder}/entitle_records.log")
+        store.append(RECORD_TYPE_FORK, {"fork_name": "lab-a"})
+        report = build_report(store)
+        assert report["counts_by_type"] == {"fork": 1} and report["chain"]["valid"]
+        print(format_text(report))
 """
 
-import argparse
-import json
-from pathlib import Path
-
-from .record_types import RECORD_TYPE_DEPLOYMENT
-from .records import RecordStore
+from .records import RECORD_TYPE_DEPLOYMENT
 
 
 def build_report(store):
-    records = store.read_all()
+    records = store.read_all(strict=False)
     chain = store.verify_chain()
     counts = {}
     for record in records:
         record_type = record.get("record_type", "unknown")
         counts[record_type] = counts.get(record_type, 0) + 1
     deployments_by_product = {}
-    for record in store.filter(record_type=RECORD_TYPE_DEPLOYMENT):
-        product_id = record.get("data", {}).get("product_id", "unknown")
-        deployments_by_product[product_id] = (
-            deployments_by_product.get(product_id, 0) + 1
-        )
-    first_created = records[0]["created_at"] if records else None
-    last_created = records[-1]["created_at"] if records else None
+    for record in records:
+        if record.get("record_type") == RECORD_TYPE_DEPLOYMENT:
+            product_id = record["data"].get("product_id", "unknown")
+            deployments_by_product[product_id] = deployments_by_product.get(product_id, 0) + 1
     return {
         "store": str(store.path),
+        "store_exists": store.path.exists(),
         "record_count": len(records),
+        "unreadable_records": chain.record_count - len(records),
         "counts_by_type": counts,
         "deployments_by_product": deployments_by_product,
-        "first_record_at": first_created,
-        "last_record_at": last_created,
+        "first_record_at": records[0].get("created_at") if records else None,
+        "last_record_at": records[-1].get("created_at") if records else None,
         "chain": chain.to_dict(),
     }
 
 
-def build_report_for_path(store_path):
-    """Convenience wrapper used by both the CLI and the GUI."""
-    return build_report(RecordStore(store_path))
+def _section(lines, title, counts):
+    lines.append(title)
+    lines.append("-" * 20)
+    if counts:
+        for name, count in sorted(counts.items()):
+            lines.append(f"{name}: {count}")
+    else:
+        lines.append("(none)")
+    lines.append("")
 
 
 def format_text(report):
-    lines = []
-    lines.append("Entitle Audit Report")
-    lines.append("=" * 20)
-    lines.append(f"Store: {report['store']}")
+    lines = ["Entitle Audit Report", "=" * 20, f"Store: {report['store']}"]
+    if not report.get("store_exists", True):
+        lines.append("Note: this store file does not exist, so there are no records to audit.")
     lines.append(f"Total records: {report['record_count']}")
+    if report.get("unreadable_records"):
+        lines.append(f"Unreadable records: {report['unreadable_records']} (not counted below)")
     lines.append(f"First record: {report['first_record_at']}")
     lines.append(f"Last record:  {report['last_record_at']}")
     lines.append("")
-    lines.append("Records by type")
-    lines.append("-" * 20)
-    if report["counts_by_type"]:
-        for record_type, count in sorted(report["counts_by_type"].items()):
-            lines.append(f"{record_type}: {count}")
-    else:
-        lines.append("(none)")
-    lines.append("")
-    lines.append("Deployments by product")
-    lines.append("-" * 20)
-    if report["deployments_by_product"]:
-        for product_id, count in sorted(report["deployments_by_product"].items()):
-            lines.append(f"{product_id}: {count}")
-    else:
-        lines.append("(none)")
-    lines.append("")
+    _section(lines, "Records by type", report["counts_by_type"])
+    _section(lines, "Deployments by product", report["deployments_by_product"])
     chain = report["chain"]
     lines.append("Chain integrity")
     lines.append("-" * 20)
     if chain["valid"]:
         lines.append(f"VERIFIED: hash chain intact across {chain['record_count']} records.")
     else:
-        lines.append(
-            f"BROKEN: {chain['reason']} at record index {chain['broken_index']}."
-        )
+        lines.append(f"BROKEN: {chain['reason']} at record index {chain['broken_index']}.")
     return "\n".join(lines)
-
-
-def build_parser():
-    parser = argparse.ArgumentParser(
-        prog="report",
-        description="Audit and report on the Entitle record store.",
-    )
-    parser.add_argument("--store", required=True, help="Record store file path.")
-    parser.add_argument(
-        "--format",
-        choices=["text", "json"],
-        default="text",
-        help="Output format.",
-    )
-    parser.add_argument(
-        "--output",
-        default=None,
-        help="Optional file to write the report to. Prints to screen if omitted.",
-    )
-    return parser
-
-
-def main(argv=None):
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    report = build_report_for_path(args.store)
-    if args.format == "json":
-        rendered = json.dumps(report, indent=2, ensure_ascii=False)
-    else:
-        rendered = format_text(report)
-    if args.output:
-        path = Path(args.output)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8") as handle:
-            handle.write(rendered)
-            handle.write("\n")
-        print(f"Report written to {path}")
-    else:
-        print(rendered)
-    return 0
-

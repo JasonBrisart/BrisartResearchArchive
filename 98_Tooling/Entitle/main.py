@@ -1,100 +1,42 @@
-#!/usr/bin/env python3
 """
 File: main.py
 
 Purpose
 -------
-Entitle — single command-line entry point.
+Start Entitle. This is only the entry point: cli.py beside it parses the command line and
+  opens the window when asked, so python main.py <command> is the one way in.
 
 Communication / relationships
 -----------------------------
-Direct module imports: importlib, sys, entitle.bootstrap, version.
+Imports cli (main) and calls it when run as a script. Python puts this file's folder on the
+  import path when it runs, which is how cli, version, entitle/ and gui/ resolve from any
+  working folder.
 
 Settings / parameters
 ---------------------
-Module-level named settings: COMMAND_MODULES. See their definitions below for values.
+Takes the command-line arguments documented in cli.py; python main.py --help lists them.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Importing main does nothing; only running it as a script starts the program. The exit status
+  is the one cli.main returns.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Importing main from another script requires that script to put this folder on sys.path first.
+  The window command needs tkinter and a display; every other command needs neither.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+From the directory containing main.py (or with its full path from anywhere):
 
-Additional module documentation
--------------------------------
-Entitle — single command-line entry point.
-
-Usage:
-    python main.py issue    ...    Create a protected entitlement container.
-    python main.py verify   ...    Verify a protected entitlement container.
-    python main.py track    ...    Record deployments, forks, provenance.
-    python main.py revoke   ...    Revoke, reinstate, or check entitlements.
-    python main.py report   ...    Audit and report on the record store.
-    python main.py gui             Launch the Tkinter GUI.
-    python main.py --version       Print the Entitle version and exit.
-
-Run ``python main.py <command> --help`` for a command's own options.
-
-This script bootstraps the sibling ``vendor/`` directory (BrisartSecurityResearch,
-used completely unmodified) onto sys.path, then dispatches to the appropriate
-``entitle.<command>.main(argv)`` function.
-
-Adding a new CLI command is a matter of adding one entry to COMMAND_MODULES below;
-no other part of this file needs to change.
+    python main.py --help
+    python main.py verify --issuer Issuer --subject Lab --product Demo --master-key "..." ^
+        --file lab.entitle
+    python main.py gui
 """
 
-import importlib
-import sys
-
-from entitle.bootstrap import ensure_bsr_on_path
-from version import __version__
-
-# Maps a CLI command name to the dotted module path implementing it. Each target
-# module is expected to expose a ``main(argv=None)`` function, following the same
-# convention as entitle.issue, entitle.verify, etc.
-COMMAND_MODULES = {
-    "issue": "entitle.issue",
-    "verify": "entitle.verify",
-    "track": "entitle.tracking.cli",
-    "revoke": "entitle.revoke",
-    "report": "entitle.report",
-}
-
-
-def _print_top_level_help():
-    print(__doc__)
-
-
-def main(argv=None):
-    ensure_bsr_on_path()
-    argv = list(sys.argv[1:] if argv is None else argv)
-    if not argv or argv[0] in ("-h", "--help"):
-        _print_top_level_help()
-        return 0
-    if argv[0] in ("-V", "--version"):
-        print(f"Entitle {__version__}")
-        return 0
-
-    command, rest = argv[0], argv[1:]
-    if command == "gui":
-        from gui.app import launch
-        launch()
-        return 0
-    if command not in COMMAND_MODULES:
-        print(f"Unknown command: {command!r}")
-        print()
-        _print_top_level_help()
-        return 2
-    module = importlib.import_module(COMMAND_MODULES[command])
-    return module.main(rest)
-
+from cli import main
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

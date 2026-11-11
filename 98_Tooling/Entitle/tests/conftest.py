@@ -3,43 +3,47 @@ File: tests/conftest.py
 
 Purpose
 -------
-Regression checks in 98_Tooling/Entitle/tests/conftest.py.
+Prepare every pytest run: put the Entitle folder on sys.path so entitle/, gui/, cli.py and
+  version.py import without installing anything, and provide the store_path fixture.
 
 Communication / relationships
 -----------------------------
-Direct module imports: sys, pathlib, entitle.bootstrap, pytest.
+Imports pytest. Loaded automatically by pytest before any test module. It does not import the
+  application: entitle/encryption.py puts 97_Encryption/Official on the import path itself, so
+  no preparation beyond the Entitle folder is needed. The tests do need 97_Encryption beside
+  98_Tooling, because that is where Entitle's encryption lives.
 
 Settings / parameters
 ---------------------
-Module-level named settings: REPO_ROOT. See their definitions below for values.
+store_path is a fresh record-store path inside pytest's tmp_path; its parent folder does not
+  exist yet, so tests can check that the first append creates it.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Running pytest from the Entitle folder or from tests/ both work. A different test runner has
+  to put the Entitle folder on its import path itself.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Only pytest is supported; the tests use its fixtures, tmp_path and monkeypatch.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+From the directory containing main.py:
+
+    python -m pytest tests
 """
 
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+import pytest
 
-from entitle.bootstrap import ensure_bsr_on_path  # noqa: E402
-ensure_bsr_on_path()
-
-import pytest  # noqa: E402
+ENTITLE_ROOT = Path(__file__).resolve().parent.parent
+if str(ENTITLE_ROOT) not in sys.path:
+    sys.path.insert(0, str(ENTITLE_ROOT))
 
 
 @pytest.fixture
 def store_path(tmp_path):
     return tmp_path / "records" / "entitle_records.log"
-
