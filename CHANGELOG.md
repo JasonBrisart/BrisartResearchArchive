@@ -11,40 +11,34 @@ multiple projects within the archive.
 
 ## Cryptography migration status
 
-*Kept current. Last updated 2026-11-08.*
+*Kept current. Last updated 2026-11-12.*
 
 ### Why BSR2 was updated
 
-The previous encryption, BSR2 Alpha 3 (0.3.0-alpha), is weakest in virtual
-machines. If a VM is restored from a snapshot, or cloned, both the random
-generator's state and the operating system's randomness can be rolled back to
-an earlier point. The BSR2 Alpha 3 v2 envelope can then seal two different
-messages with the same keystream, and anyone holding both can recover
-information about their contents. On bare metal with no snapshots or clones,
-this is very unlikely; in snapshotted or cloned VMs, it is a realistic risk.
+The previous encryption, BSR2 Alpha 3 (0.3.0-alpha), is weakest in virtual machines. If a VM is restored from a snapshot, or cloned, both the random generator's state and the operating system's randomness can be rolled back to an earlier point. The BSR2 Alpha 3 v2 envelope can then seal two different messages with the same keystream, and anyone holding both can recover information about their contents. On bare metal with no snapshots or clones, this is very unlikely; in snapshotted or cloned VMs, it is a realistic risk.
 
-BSR2 Alpha 4 (0.4.0-alpha, `97_Encryption/Official`) closes that gap and two
-related ones:
+BSR2 Alpha 4 (0.4.0-alpha, now 0.4.1-alpha, `97_Encryption/Official`) closes that gap and two related ones:
 
 | Weakness in BSR2 Alpha 3 | Who it affects | BSR2 Alpha 4 |
-| --- | --- | --- |
+|---|---|---|
 | A rolled-back or cloned machine can make the v2 envelope reuse a keystream | VMs restored from snapshots or cloned | Sealed format v3 (`BSR2-S64-SIV`) stays safe even when a nonce repeats |
 | The random generator has no fork detection, does not refuse being copied, and accepts a constant entropy sample, so a duplicated generator repeats its output | Cloned VMs; code that forks or copies a generator | Fork, copy, and constant-sample protections |
 | The passphrase KDF is not memory-hard, so a copied keyring is cheap to attack with GPUs or custom hardware | Anyone whose keyring files could be copied | Memory-hard KDF (`BSR2-MHF-1`) |
 
-Moving data to the new encryption is a one-way re-encryption, which is why
-each project migrates separately, as set out in the 2026-10-23 entry.
+Moving data to the new encryption is a one-way re-encryption, which is why each project migrates separately, as set out in the 2026-10-23 entry.
+
+> **Alpha 4 has its own open finding.** The first cryptanalysis of BSR2 (`97_Encryption/Official/docs/CRYPTANALYSIS.md`, 2026-11-12) found that the BSR2 permutation is not a bijection (finding F1). No practical attack on sealed messages, streams, archives, or keyrings was found, and migrating still closes the three weaknesses above. But BSR2 remains experimental research cryptography and should not be the only protection for anything valuable.
 
 ### Adoption status
 
 | Project | Status |
-| --- | --- |
+|---|---|
 | Identity Tools Official (`95_Identity_Tools/Official`) | **Migrated** in 1.10.0 (2026-11-08). Linked to `97_Encryption/Official` with no local copy; migrates existing data in place. Migration record: its `docs/ENCRYPTION_MIGRATION.md`; details in its `docs/CHANGELOG.md`. |
 | Identity Tools LTS-2028 1.4.x (`95_Identity_Tools/LTS-2028 1.4.x`) | **Migrated** in 1.4.0 (2026-11-08), with the same code as Official 1.10.0. 1.4.x is the LTS-2028 line that adopts the shared implementation and shares Official's architecture. It keeps reading the previous encryption, and keeps its migration path, until at least 8 February 2027. Migration record: its `docs/ENCRYPTION_MIGRATION.md`; details in its `docs/CHANGELOG.md`. |
 | Identity Tools LTS-2028 1.3.x (`95_Identity_Tools/LTS-2028 1.3.x`) | **Not migrating**, by designation, under the LTS rule in the 2026-10-23 entry. 1.3.x keeps its original LTS contract and vendored BSR2 Alpha 3 until its end of life on 31 December 2028, and still receives security updates. It keeps all three weaknesses above (KI-008 to KI-010 in its `docs/KNOWN_ISSUES.md`). Labs running 1.3.x in snapshotted or cloned VMs should move to LTS-2028 1.4.x. |
+| Entitle (`98_Tooling/Entitle`) | **Migrated** in 0.5.0 ([DATE]); current release 0.7.1, verified against `97_Encryption/Official` 0.4.1-alpha. Linked to `97_Encryption/Official` with no local copy, and writes only the current sealed format (`BSR2-S64-SIV`). Entitlement files written before 0.5.0 still verify, and `run.py migrate` re-seals each one in place, one file at a time, after checking that the new copy opens to the same entitlement. Since 0.7.0, Entitle can also issue signed entitlements, which use Ed25519 instead of BSR2 and need no migration; `run.py migrate --signing-key` converts a shared-key file to one. Details in its `docs/CHANGELOG.md`. |
 
-Every other applicable project remains pending migration until it is listed
-here as migrated.
+Every other applicable project remains pending migration until it is listed here as migrated.
 
 ---
 
