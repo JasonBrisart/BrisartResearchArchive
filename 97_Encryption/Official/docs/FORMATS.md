@@ -1,6 +1,6 @@
 # BSR2 Wire Formats
 
-This document gives the exact byte layout of every format produced by release `0.4.0-alpha`. Unless stated otherwise, integers are unsigned big-endian. `frame(x)` means `u64(len(x)) || x`. Each BSR2-S64 call names its domain string in quotes.
+This document gives the exact byte layout of every format produced by release `0.4.1-alpha`. Unless stated otherwise, integers are unsigned big-endian. `frame(x)` means `u64(len(x)) || x`. Each BSR2-S64 call names its domain string in quotes.
 
 Every format here is research material and has not been independently reviewed.
 
@@ -257,3 +257,23 @@ The file is created with mode `0600` and is never silently overwritten.
 ## 8. Legacy envelope v2: `BSR2-ARX-SPONGE-ETM`
 
 This format is unchanged. See `docs/DESIGN.md`, section "Legacy Envelope v2". The JSON field set is exactly `algorithm`, `version`, `salt`, `nonce`, `ciphertext`, and `tag`, with canonical lowercase hex.
+
+---
+
+## 9. Ed25519: `brisart_security_signature.py` (added in 0.4.1)
+
+This is a standard format, not a BSR2 format. There is no header, version field, or armor, and integers are little-endian, unlike sections 1 to 8. A caller defines its own container; Entitle's signed document, for example, is described in `98_Tooling/Entitle/entitle/signing.py`.
+
+| Property | Value |
+|---|---|
+| Standard | RFC 8032 section 5.1 (PureEdDSA, no context), edwards25519, SHA-512 |
+| Private key | 32-byte seed |
+| Public key | 32 bytes: the y coordinate little-endian, top bit = low bit of x |
+| Signature | 64 bytes: `R` (32-byte encoded point) `||` `S` (32-byte little-endian integer, strictly below the group order `L`) |
+| Group order `L` | `2^252 + 27742317777372353535851937790883648493` |
+| Nonce | `SHA-512(prefix || message)` reduced modulo `L`, where `prefix` is the second half of `SHA-512(seed)`; no randomness at signing time |
+| Challenge | `SHA-512(R || public key || message)` reduced modulo `L` |
+
+Verification accepts exactly one encoding of each valid signature: `y` must be below `p`, `S` must be below `L`, and the public key must not have small order (the last is stricter than the RFC).
+
+Known-answer evidence is RFC 8032 section 7.1 (TEST 1, TEST 2, TEST 3, and TEST SHA(abc)), embedded in `tests/test_brisart_security_signature.py`. These are published constants, so there is no generator and no frozen vector file for them.

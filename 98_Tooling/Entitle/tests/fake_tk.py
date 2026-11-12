@@ -16,14 +16,15 @@ Imported only by tests/test_gui.py, which installs modules() into sys.modules as
 
 Settings / parameters
 ---------------------
-REGISTRY holds every widget created, NOTEBOOKS every notebook (its tabs are (frame, text)
-  pairs), MESSAGES every (kind, title, text) dialog, and DIALOG_FILE[0] what the file dialogs
-  return. buttons(text) finds buttons by label; Widget.invoke() runs a button's command.
-  ScrolledText keeps what was inserted in .text. reset() clears all of it. Tk records
-  geometry() and minsize() (window_geometry, window_minsize) and, in tabs_when_measured, how
-  many tabs existed when update_idletasks() was called, which is when a real window measures
-  itself. winfo_reqwidth/reqheight and winfo_screenwidth/screenheight report Tk.request_size
-  and Tk.screen_size, which tests may replace.
+REGISTRY holds every widget created, NOTEBOOKS every notebook (its tabs are (frame, text) pairs),
+  MESSAGES every (kind, title, text) dialog, DIALOG_FILE[0] what the file dialogs return, and
+  ANSWERS[0] what messagebox.askyesno answers (True unless a test says otherwise). buttons(text)
+  finds buttons by label; Widget.invoke() runs a button's command. ScrolledText keeps what was
+  inserted in .text. reset() clears all of it. Tk records geometry() and minsize()
+  (window_geometry, window_minsize) and, in tabs_when_measured, how many tabs existed when
+  update_idletasks() was called, which is when a real window measures itself.
+  winfo_reqwidth/reqheight and winfo_screenwidth/screenheight report Tk.request_size and
+  Tk.screen_size, which tests may replace.
 
 Edge cases
 ----------
@@ -49,6 +50,7 @@ REGISTRY = []
 NOTEBOOKS = []
 MESSAGES = []
 DIALOG_FILE = [""]
+ANSWERS = [True]  # what askyesno returns
 
 
 def reset():
@@ -56,6 +58,7 @@ def reset():
     NOTEBOOKS.clear()
     MESSAGES.clear()
     DIALOG_FILE[0] = ""
+    ANSWERS[0] = True
 
 
 class TclError(Exception):
@@ -190,6 +193,14 @@ filedialog.asksaveasfilename = lambda **kwargs: DIALOG_FILE[0]
 
 messagebox = types.ModuleType("tkinter.messagebox")
 messagebox.showerror = lambda title, message="": MESSAGES.append(("showerror", title, message))
+
+
+def _askyesno(title, message=""):
+    MESSAGES.append(("askyesno", title, message))
+    return ANSWERS[0]
+
+
+messagebox.askyesno = _askyesno
 
 scrolledtext = types.ModuleType("tkinter.scrolledtext")
 scrolledtext.ScrolledText = ScrolledText

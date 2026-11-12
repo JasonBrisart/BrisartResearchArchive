@@ -8,13 +8,14 @@ Pure-Python research into custom cryptographic constructions and a hardened, SQX
 ## Current Status
 
 ```text
-Project release:          0.4.0-alpha
+Project release:          0.4.1-alpha
 Release name:             BSR2 Alpha 4
 Permutation:              BSR2-P1024 (unchanged since Alpha 2)
 Recommended formats:      Sealed message v3 (BSR2-S64-SIV)
                           Stream v1 (BSR-STREAM-1)
                           Archive v1 (Brisart Secure Archive, .bsa)
 Legacy format:            Envelope v2 (BSR2-ARX-SPONGE-ETM), still supported
+Public-key signatures:    Ed25519 (RFC 8032), a standard algorithm, not BSR2 (added in 0.4.1)
 Dependencies:             Python 3.10+ standard library only
 Production ready:         No
 Independently reviewed:   No
@@ -36,6 +37,14 @@ The release number, the permutation, and each container format have separate ver
 | Command line | `brisart_security_cli.py` | Single entry point for every feature above, plus `selftest`. |
 
 The 0.4.0 changes also harden the existing core: argument validation is stricter, the DRBG gains fork detection and refuses to be cloned, short entropy requests no longer fail at random, and the permutation runs about 1.7× faster with bit-identical output. See [`CHANGELOG.md`](CHANGELOG.md) for the full file-by-file record.
+
+## What 0.4.1 Adds
+
+| Capability | Where | Summary |
+|---|---|---|
+| Ed25519 signatures | `brisart_security_signature.py` | RFC 8032 PureEdDSA in pure Python: key generation from `brisart_security_entropy.py`, deterministic signing, and strict verification (canonical encodings, S below the group order, small-order public keys refused). Reproduces the RFC 8032 test vectors. It is a standard algorithm, not a BSR2 construction, and it has no key file, password protection, or command line here. Used by `98_Tooling/Entitle`. |
+
+No wire format, vector file, or existing module changed in 0.4.1.
 
 ## Architecture
 
@@ -142,8 +151,9 @@ assert ArchiveReader(archive, key=key).read("a/b.txt") == b"alpha"
 | Path traversal and overwrite attacks | Names are validated on create and on extract. Resolved paths must stay inside the destination. Symlinked parents are refused. No overwrite without opt-in. Outputs are written atomically. |
 | Accidental corruption | Recovery records repair damage without the key. Authentication is re-checked after repair. |
 | Process fork | The DRBG destroys itself in a forked child. The entropy duplicate-detector resets. |
+| Forged or altered issuer-signed files (0.4.1) | Ed25519 verification needs only a public key, so a verifier cannot sign. The sealed, stream, and archive formats do not use it and stay shared-key. |
 
-**Out of scope:** side channels (CPython is not constant-time; MHF indexing depends on secret data), a full machine-state rollback that also replays OS randomness, public-key signatures, and any cryptographic strength claim for the custom constructions. See [`SECURITY.md`](SECURITY.md).
+**Out of scope:** side channels (CPython is not constant-time; MHF indexing depends on secret data), a full machine-state rollback that also replays OS randomness, public-key authenticity for the sealed, stream, and archive formats (they are shared-key only; `brisart_security_signature.py` is a separate module), and any cryptographic strength claim for the custom constructions. See [`SECURITY.md`](SECURITY.md).
 
 ## Repository Layout
 
@@ -168,6 +178,7 @@ assert ArchiveReader(archive, key=key).read("a/b.txt") == b"alpha"
 │   ├── test_aead_v3.py
 │   ├── test_archive.py
 │   ├── test_brisart_security.py
+│   ├── test_brisart_security_signature.py
 │   ├── test_bsr2_parameters.py
 │   ├── test_drbg_hardening.py
 │   ├── test_entropy_hardening.py
@@ -193,6 +204,7 @@ assert ArchiveReader(archive, key=key).read("a/b.txt") == b"alpha"
 ├── brisart_security_keys.py
 ├── brisart_security_primitives.py
 ├── brisart_security_recovery.py
+├── brisart_security_signature.py
 ├── brisart_security_sponge.py
 ├── brisart_security_stream.py
 ├── brisart_security_version.py
@@ -211,7 +223,7 @@ python research/run_research_suite.py
 python brisart_security_cli.py selftest
 ```
 
-In 0.4.0 these ran on CPython 3.12 (Linux) with the following results: 175 tests, `OK`, in about 80 seconds; 19 of 19 research checks passed plus 3 benchmarks in about 90 seconds; and 6 of 6 self-test checks passed. Most of the unit-test time is the legacy 10,000-iteration KDF in `tests/test_brisart_security.py`. [`docs/TESTING.md`](docs/TESTING.md) describes each layer and the vector policy.
+In 0.4.0 these ran on CPython 3.12 (Linux) with the following results: 175 tests, `OK`, in about 80 seconds; 19 of 19 research checks passed plus 3 benchmarks in about 90 seconds; and 6 of 6 self-test checks passed. In 0.4.1 the same sequence gave 193 tests, `OK` (the 175 above plus 18 for Ed25519), 19 of 19 research checks plus 3 benchmarks, and 6 of 6 self-test checks. Most of the unit-test time is the legacy 10,000-iteration KDF in `tests/test_brisart_security.py`. [`docs/TESTING.md`](docs/TESTING.md) describes each layer and the vector policy.
 
 ## Performance
 

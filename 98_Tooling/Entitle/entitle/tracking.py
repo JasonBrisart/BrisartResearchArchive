@@ -4,46 +4,48 @@ File: entitle/tracking.py
 Purpose
 -------
 Record where Entitle-managed software is deployed and where it came from. Deployments are
-  governed: one is recorded only if the entitlement verifies, grants can_run, is not revoked and
-  has room under its deployment limit. Forks and provenance are documentary and are always
-  recorded when their fields are filled in, so lineage is never lost to a policy check.
+  governed seats: one is recorded only if the entitlement verifies, grants can_run, is not
+  revoked, the host does not already hold a seat, and a seat is free under the deployment
+  limit; releasing a host gives its seat back. Forks and provenance are documentary and are
+  always recorded when their fields are filled in, so lineage is never lost to a policy check.
 
 Communication / relationships
 -----------------------------
-Imports entitle/common.py (require_text), entitle/entitlements.py (verify_entitlement),
-  entitle/records.py (the deployment, fork and provenance record types) and entitle/revoke.py
-  (is_revoked); the RecordStore is passed in by the caller. Imported by cli.py (track deploy,
-  fork and provenance) and gui/tabs.py (Deploy and Fork / Provenance tabs). Listing records is
-  RecordStore.filter, called directly. Covered by tests/test_tracking.py.
+Imports entitle/common.py (require_identifier, require_text), entitle/entitlements.py
+  (verify_entitlement), entitle/records.py (the deployment, release, fork and provenance record
+  types) and entitle/revoke.py (is_revoked); the RecordStore is passed in. Imported by cli.py
+  (track deploy, release, fork and provenance) and gui/tabs.py (Deploy and Fork / Provenance
+  tabs). Covered by tests/test_tracking.py.
 
 Settings / parameters
 ---------------------
-deploy_from_file(issuer, subject, product, master_key, entitlement_path, host, store,
-  environment=None, notes=None) verifies the file and then calls register_deployment(store,
-  entitlement, host, environment=None, notes=None), which takes an already verified
-  EntitlementResult. The limit is rights.deployment_limit (None means unlimited), counted per
-  product, subject and entitlement_id. record_fork(store, product, source_version, fork_name,
-  maintainer, environment=None, notes=None) and record_provenance(store, product, origin,
-  version, custodian, previous_version=None, notes=None) append and return one record.
+deploy_from_file(issuer, subject, product, entitlement_path, host, store, master_key=None,
+  public_keys=None, revocation_list=None, environment=None, notes=None) verifies the file and
+  calls register_deployment(store, entitlement, host, environment=None, notes=None), which takes
+  an already verified EntitlementResult. release_deployment(store, product, subject,
+  entitlement_id, host, reason=None) frees a seat. active_hosts() returns {host: seats held},
+  deployments minus releases, per product, subject and entitlement_id; count_deployments() is
+  their sum. The limit is rights.deployment_limit (None is unlimited).
 
 Edge cases
 ----------
 Refusals are returned, never raised, and write nothing: {"recorded": False, "reason": ...} with
-  entitlement_denied:<reason>, run_right_not_granted, entitlement_revoked or
-  deployment_limit_reached (which also reports deployment_limit and deployments_used). The
-  revocation check, the count and the append run in one store transaction, so concurrent
-  deployments from any number of processes cannot exceed the limit. The file is verified before
-  the lock is taken, so encryption never holds the store. If 97_Encryption cannot be linked,
-  deploy_from_file raises EncryptionNotFoundError before touching the store. Files written by
-  the previous encryption deploy like current ones. A blank host, or a blank required fork or
-  provenance field, raises ValueError before anything is written.
+  entitlement_denied:<reason>, run_right_not_granted, entitlement_revoked,
+  already_deployed_on_host or deployment_limit_reached (the last two also report
+  deployment_limit and deployments_used); a release of a host that holds no seat returns
+  {"released": False, "reason": "no_active_deployment_on_host"}. The revocation check, the seat
+  count and the append run in one store transaction, so concurrent deployments and releases from
+  any number of processes cannot exceed the limit. The file is verified before the lock is
+  taken. A deployment from a signed file records the signing key ID. A host or entitlement ID
+  with spaces at either end, and a blank required field, raise ValueError before anything is
+  written. Logs written before 0.7.0 have no release records; every deployment in them counts.
 
 Known limitations
 -----------------
-The host is whatever the caller types; nothing proves a deployment happened there. Deployments
-  are counted, not de-duplicated, so recording the same host twice uses two of the limit, and a
-  deployment cannot be released. Fork and provenance records are not checked against any
-  earlier record.
+The host is whatever the caller types; nothing proves a deployment happened there or that a
+  released host stopped running the software. A seat is held until it is released: there is no
+  lease that expires on its own, because that needs a server. Fork and provenance records are
+  not checked against earlier records.
 
 Examples
 --------
@@ -52,7 +54,7 @@ From the directory containing run.py:
     from tempfile import TemporaryDirectory
     from entitle.records import RecordStore
     from entitle.rights import EntitlementResult
-    from entitle.tracking import register_deployment
+    from entitle.tracking import register_deployment, release_deployment
 
     entitlement = EntitlementResult.allowed_result({
         "product_id": "Demo", "subject_id": "Lab", "issuer_id": "Issuer", "entitlement_id": "e-1",
@@ -63,19 +65,23 @@ From the directory containing run.py:
         assert register_deployment(store, entitlement, host="node-1")["recorded"]
         refused = register_deployment(store, entitlement, host="node-2")
         assert refused["reason"] == "deployment_limit_reached"
+        release_deployment(store, product="Demo", subject="Lab", entitlement_id="e-1",
+                           host="node-1")
+        assert register_deployment(store, entitlement, host="node-2")["recorded"]
 """
 
-from .common import require_text
+from .common import require_identifier, require_text
 from .entitlements import verify_entitlement
 from .records import (
     RECORD_TYPE_DEPLOYMENT,
     RECORD_TYPE_FORK,
     RECORD_TYPE_PROVENANCE,
+    RECORD_TYPE_RELEASE,
 )
 from .revoke import is_revoked
 
 
-def count_deployments(store, product_id, subject_id, entitlement_id):
+def _matches(product_id, subject_id, entitlement_id):
     def matches(record):
         data = record["data"]
         return (
@@ -84,7 +90,27 @@ def count_deployments(store, product_id, subject_id, entitlement_id):
             and data.get("entitlement_id") == entitlement_id
         )
 
-    return len(store.filter(record_type=RECORD_TYPE_DEPLOYMENT, predicate=matches))
+    return matches
+
+
+def active_hosts(store, product_id, subject_id, entitlement_id):
+    """{host: active deployments on it}: deployments minus releases, for one entitlement."""
+    active = {}
+    matches = _matches(product_id, subject_id, entitlement_id)
+    for record in store.read_all():
+        if not matches(record):
+            continue
+        host = record["data"].get("host")
+        if record.get("record_type") == RECORD_TYPE_DEPLOYMENT:
+            active[host] = active.get(host, 0) + 1
+        elif record.get("record_type") == RECORD_TYPE_RELEASE and active.get(host, 0) > 0:
+            active[host] -= 1
+    return {host: count for host, count in active.items() if count > 0}
+
+
+def count_deployments(store, product_id, subject_id, entitlement_id):
+    """Seats in use: deployments not yet released."""
+    return sum(active_hosts(store, product_id, subject_id, entitlement_id).values())
 
 
 def _refused(reason, **details):
@@ -92,7 +118,7 @@ def _refused(reason, **details):
 
 
 def register_deployment(store, entitlement, host, environment=None, notes=None):
-    require_text(host=host)
+    require_identifier(host=host)
     if not entitlement.allowed:
         return _refused(f"entitlement_denied:{entitlement.reason}")
     if not entitlement.has_right("can_run"):
@@ -104,7 +130,10 @@ def register_deployment(store, entitlement, host, environment=None, notes=None):
     with store.transaction():
         if is_revoked(store, entitlement_id):
             return _refused("entitlement_revoked")
-        used = count_deployments(store, product_id, subject_id, entitlement_id)
+        hosts = active_hosts(store, product_id, subject_id, entitlement_id)
+        used = sum(hosts.values())
+        if host in hosts:
+            return _refused("already_deployed_on_host", deployment_limit=limit, deployments_used=used)
         if limit is not None and used >= limit:
             return _refused("deployment_limit_reached", deployment_limit=limit, deployments_used=used)
         record = store.append(
@@ -117,6 +146,7 @@ def register_deployment(store, entitlement, host, environment=None, notes=None):
                 "host": host,
                 "environment": environment,
                 "notes": notes,
+                **({"signed_by": entitlement.signed_by} if getattr(entitlement, "signed_by", None) else {}),
             },
         )
     return {
@@ -128,9 +158,30 @@ def register_deployment(store, entitlement, host, environment=None, notes=None):
     }
 
 
-def deploy_from_file(*, issuer, subject, product, master_key, entitlement_path, host, store, environment=None, notes=None):
+def release_deployment(store, *, product, subject, entitlement_id, host, reason=None):
+    """Free the seat a host holds, so the entitlement can be deployed elsewhere."""
+    require_text(product=product, subject=subject)
+    require_identifier(entitlement_id=entitlement_id, host=host)
+    with store.transaction():
+        hosts = active_hosts(store, product, subject, entitlement_id)
+        if host not in hosts:
+            return {"released": False, "reason": "no_active_deployment_on_host", "record": None}
+        record = store.append(
+            RECORD_TYPE_RELEASE,
+            {"product_id": product, "subject_id": subject, "entitlement_id": entitlement_id, "host": host,
+             "reason": reason},
+        )
+    return {"released": True, "reason": "deployment_released", "record": record,
+            "deployments_used": sum(hosts.values()) - 1}
+
+
+def deploy_from_file(
+    *, issuer, subject, product, entitlement_path, host, store, master_key=None, public_keys=None,
+    revocation_list=None, environment=None, notes=None,
+):
     entitlement = verify_entitlement(
-        issuer=issuer, subject=subject, product=product, master_key=master_key, path=entitlement_path,
+        issuer=issuer, subject=subject, product=product, master_key=master_key, public_keys=public_keys,
+        revocation_list=revocation_list, path=entitlement_path,
     )
     return register_deployment(store, entitlement, host=host, environment=environment, notes=notes)
 

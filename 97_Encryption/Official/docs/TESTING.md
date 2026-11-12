@@ -1,6 +1,6 @@
 # Testing Guide
 
-Release: `0.4.0-alpha`
+Release: `0.4.1-alpha`
 
 BrisartSecurityResearch uses five testing layers. Each one answers a different question. A passing result shows only that the tested behaviour happened as expected. It does not establish cryptographic security.
 
@@ -17,6 +17,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 | Suite | Covers |
 |---|---|
 | `test_brisart_security.py` | Legacy v2 envelope, rate-32 primitives, DRBG lifecycle (unchanged cases) |
+| `test_brisart_security_signature.py` | Ed25519 (0.4.1): RFC 8032 vectors, round trips, refusal of modified, malleated, non-canonical, and small-order input, key generation from the entropy source; agreement with the `cryptography` package when it is installed (skipped otherwise) |
 | `test_envelope_hardening.py` | v2 failure ordering, size checks before hex decoding, master-key ceiling |
 | `test_entropy_hardening.py` | Alpha 3 restart mitigation; all-zero, constant, and repeat rejection; short-request fix; fork reset |
 | `test_primitives_hardening.py` | Fast permutation equals the Alpha 3 reference; type and range validation; XOR fast path; cache isolation; `wipe` |
@@ -33,6 +34,8 @@ python -m unittest discover -s tests -p "test_*.py" -v
 | `test_v3_known_answers.py` | Frozen v3 vectors (S64, sealed, stream, MHF) |
 
 Result at release (CPython 3.12, Linux): **175 tests, `OK`, about 80 s**. Most of that time is the legacy 10,000-iteration KDF in `test_brisart_security.py`'s `setUpClass`.
+
+With the Ed25519 suite (0.4.1): **193 tests, `OK`**, about 110 s on a single-CPU machine.
 
 ---
 
@@ -52,6 +55,8 @@ This suite regenerates the BSR2 parameters from the public seed and compares the
 |---|---|---|
 | `tests/known_answer_vectors.json` | `tests/generate_test_vectors.py` | Legacy hash, MAC, stream, DRBG, v2 envelope |
 | `tests/v3_known_answer_vectors.json` | `tests/generate_v3_vectors.py` | BSR2-S64 modes, sealed v3, stream v1, BSR2-MHF-1 |
+
+The Ed25519 vectors are RFC 8032 section 7.1 constants embedded in `tests/test_brisart_security_signature.py`; they are published, so they have no generator and no frozen file here.
 
 **Policy.** Never regenerate a vector file before an ordinary regression run. Regenerate only when you are deliberately changing the format it pins. When you do, review it together with the version numbers, `docs/FORMATS.md`, and the changelog.
 

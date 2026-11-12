@@ -3,10 +3,10 @@ File: tests/test_common.py
 
 Purpose
 -------
-Verify entitle/common.py, the four things every Entitle module shares (the error base class,
-  canonical JSON, the UTC clock and the required-text check), and that entitle/ really is a
-  namespace package: every module imports in a fresh interpreter, from any working folder, with
-  no entitle/__init__.py, and only one entitle folder is on the path.
+Verify entitle/common.py, what every Entitle module shares (the error base class, canonical JSON,
+  the UTC clock, the required-text and identifier checks and the atomic file writer), and that
+  entitle/ really is a namespace package: every module imports in a fresh interpreter, from any
+  working folder, with no entitle/__init__.py, and only one entitle folder is on the path.
 
 Communication / relationships
 -----------------------------
@@ -41,13 +41,17 @@ From the directory containing run.py:
 
 import datetime
 import json
+import os
+import stat
 import subprocess
 import sys
 import warnings
 
 import pytest
 
-from entitle.common import EntitleError, canonical_json, require_text, utc_now, utc_now_iso
+from entitle.common import (
+    EntitleError, canonical_json, require_identifier, require_text, utc_now, utc_now_iso, write_text_atomically,
+)
 from support import ENTITLE_ROOT
 
 
@@ -107,8 +111,9 @@ class TestNamespacePackage:
         assert not list(ENTITLE_ROOT.rglob("__init__.py"))
         code = (
             f"import sys; sys.path.insert(0, {str(ENTITLE_ROOT)!r});"
-            "import entitle.common, entitle.rights, entitle.encryption, entitle.entitlements,"
-            " entitle.records, entitle.revoke, entitle.tracking, entitle.report, cli, version, run;"
+            "import entitle.common, entitle.rights, entitle.encryption, entitle.signing, entitle.host,"
+            " entitle.entitlements, entitle.records, entitle.revoke, entitle.revocation_list, entitle.tracking,"
+            " entitle.checkpoints, entitle.report, cli, version, run;"
             "import entitle;"
             "assert entitle.__file__ is None, entitle.__file__;"
             f"assert list(entitle.__path__) == [{str(ENTITLE_ROOT / 'entitle')!r}], list(entitle.__path__);"
@@ -116,3 +121,46 @@ class TestNamespacePackage:
         )
         done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=tmp_path)
         assert done.returncode == 0, done.stderr
+
+
+class TestRequireIdentifier:
+    @pytest.mark.parametrize("value,message", [
+        (" lab-1", "must not start or end with spaces"), ("lab-1 ", "must not start or end with spaces"),
+        ("lab\t1", "must not contain control characters"), ("lab\x001", "must not contain control characters"),
+        ("", "is required"), (None, "is required"),
+    ])
+    def test_identifiers_that_could_never_match_are_refused(self, value, message):
+        with pytest.raises(ValueError, match=message):
+            require_identifier(entitlement_id=value)
+
+    def test_ordinary_identifiers_pass_including_non_latin_text(self):
+        assert require_identifier(entitlement_id="lab-a 001", host="узел-1") is None
+
+
+class TestWriteTextAtomically:
+    def test_it_writes_utf8_with_a_final_newline_and_leaves_no_temporary_file(self, tmp_path):
+        path = tmp_path / "a" / "b.txt"
+        write_text_atomically(path, "实验室")
+        assert path.read_bytes() == "实验室\n".encode("utf-8") and [p.name for p in path.parent.iterdir()] == ["b.txt"]
+
+    def test_overwrite_false_refuses_an_existing_file(self, tmp_path):
+        path = tmp_path / "b.txt"
+        write_text_atomically(path, "first")
+        with pytest.raises(FileExistsError, match="already exists"):
+            write_text_atomically(path, "second", overwrite=False)
+        assert path.read_text(encoding="utf-8") == "first\n"
+
+    def test_a_failed_replacement_keeps_the_old_file_and_cleans_up(self, tmp_path, monkeypatch):
+        from entitle import common
+
+        path = tmp_path / "b.txt"
+        write_text_atomically(path, "old")
+        monkeypatch.setattr(common.os, "replace", lambda *_: (_ for _ in ()).throw(OSError("disk full")))
+        with pytest.raises(OSError, match="disk full"):
+            write_text_atomically(path, "new")
+        assert path.read_text(encoding="utf-8") == "old\n" and [p.name for p in tmp_path.iterdir()] == ["b.txt"]
+
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX permissions")
+    def test_private_files_are_owner_only(self, tmp_path):
+        write_text_atomically(tmp_path / "secret", "x", private=True)
+        assert stat.S_IMODE((tmp_path / "secret").stat().st_mode) == 0o600

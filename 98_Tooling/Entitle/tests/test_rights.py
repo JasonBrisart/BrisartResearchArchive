@@ -5,7 +5,9 @@ Purpose
 -------
 Verify the entitlement rules in entitle/rights.py: how a payload and its rights are built, how a
   payload is loaded and judged (format, product, expiry, including an expiry given as a date
-  alone), and what an EntitlementResult grants and refuses.
+  alone; and for signed payloads issuer, subject, not-before, a clock behind the issue time and
+  machine binding), and what an EntitlementResult grants and refuses, including that only true
+  grants a right.
 
 Communication / relationships
 -----------------------------
@@ -238,3 +240,50 @@ class TestMakeRights:
             "can_use_enterprise_features", "can_modify", "can_fork", "can_export_source", "can_redistribute",
         ))
         assert rights["deployment_limit"] is None and rights["support_tier"] == "gold"
+
+
+class TestSignedPayloadRules:
+    NOW = datetime.datetime(2027, 6, 1, 12, 0, tzinfo=datetime.timezone.utc)
+
+    def _payload(self, **overrides):
+        payload = make_entitlement_payload(
+            issuer_id="issuer", subject_id="lab", product_id="Demo", entitlement_id="e-1",
+            rights=make_rights(modify=True), issued_at="2027-06-01T00:00:00+00:00", signed=True,
+        )
+        payload.update(overrides)
+        return payload
+
+    def _judge(self, payload, **expected):
+        return evaluate_payload(payload, expected_product_id="Demo", now=self.NOW, **expected)
+
+    def test_a_signed_payload_is_format_v2_and_is_allowed(self):
+        payload = self._payload()
+        assert payload["format"] == "entitle.entitlement.v2" and payload["machines"] == []
+        assert self._judge(payload, expected_issuer_id="issuer", expected_subject_id="lab").allowed
+
+    def test_the_issuer_and_subject_are_checked_when_expected(self):
+        assert self._judge(self._payload(), expected_issuer_id="x").reason == "wrong_issuer"
+        assert self._judge(self._payload(), expected_subject_id="x").reason == "wrong_subject"
+
+    def test_not_before_and_a_clock_behind_the_issue_time(self):
+        assert self._judge(self._payload(not_before="2027-06-02T00:00:00Z")).reason == "entitlement_not_yet_valid"
+        assert self._judge(self._payload(not_before="soon")).reason == "invalid_not_before_timestamp"
+        assert self._judge(self._payload(issued_at="2027-06-01T13:00:00Z")).reason == "clock_before_issue_time"
+        assert self._judge(self._payload(issued_at="2027-06-01T12:04:00Z")).allowed  # inside the 5 minute skew
+
+    def test_machine_binding(self):
+        bound = self._payload(machines=["m1:" + "a" * 32])
+        assert self._judge(bound, machine_id="m1:" + "a" * 32).allowed
+        assert self._judge(bound, machine_id="m1:" + "b" * 32).reason == "machine_not_authorized"
+        assert self._judge(bound).reason == "machine_not_authorized"
+        assert self._judge(self._payload(machines="m1:x")).reason == "invalid_machine_binding"
+
+    def test_a_right_is_granted_only_by_true_not_by_anything_truthy(self):
+        result = EntitlementResult.allowed_result({"rights": {"can_modify": "yes", "can_fork": 1, "can_run": True}})
+        assert not result.has_right("can_modify") and not result.has_right("can_fork") and result.has_right("can_run")
+        assert self._judge(self._payload(rights=["can_run"])).reason == "invalid_rights"
+
+    def test_shared_key_payloads_cannot_carry_signed_only_fields(self):
+        with pytest.raises(ValueError, match="need a signed entitlement"):
+            make_entitlement_payload(issuer_id="i", subject_id="s", product_id="p", entitlement_id="e", rights={},
+                                     issued_at="2027-01-01T00:00:00Z", machines=["m1:" + "a" * 32])

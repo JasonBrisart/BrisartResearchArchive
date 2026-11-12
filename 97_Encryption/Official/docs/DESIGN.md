@@ -1,6 +1,6 @@
 # BSR2 Design Notes
 
-Release: `0.4.0-alpha` (BSR2 Alpha 4)
+Release: `0.4.1-alpha` (BSR2 Alpha 4)
 
 This document explains what each construction does and why it was designed that way. Byte layouts are in [`FORMATS.md`](FORMATS.md). Nothing here is a security proof, a standard, or a recommendation for production use.
 
@@ -141,7 +141,7 @@ Interleaving lets a contiguous burst of up to `P` damaged chunks be repaired. Re
 - Permission bits are limited to 0644/0755.
 - Decompression is bounded by the authenticated size plus one byte.
 
-**Not provided:** public-key signatures (SQX had them), encrypted recovery records, append/update of existing archives, or streaming (out-of-core) processing.
+**Not provided:** public-key signatures in the archive (SQX had them; the archive is shared-key only and does not use `brisart_security_signature.py`), encrypted recovery records, append/update of existing archives, or streaming (out-of-core) processing.
 
 ---
 
@@ -167,7 +167,22 @@ This format is unchanged from Alpha 3. Salt and nonce are each a DRBG contributi
 
 ---
 
-## 12. Unestablished Properties
+## 12. Ed25519 Signatures (standalone, not BSR2)
+
+`brisart_security_signature.py` (added in 0.4.1) is the one public-key primitive in the project.
+
+**Design choices**
+
+- **Standard, not custom.** It implements Ed25519 (PureEdDSA over edwards25519 with SHA-512) exactly as RFC 8032 specifies, so keys and signatures interoperate with other implementations. BSR2 is deliberately not used: the value of a signature scheme is that others can check it, and an unreviewed construction cannot offer that.
+- **Deterministic signing.** The nonce is derived from the seed and the message (RFC 8032 section 5.1.6), so signing needs no randomness and a weak generator cannot leak the key. Only key generation uses entropy, and it takes it from `brisart_security_entropy.system_entropy` like every other module (section 11).
+- **Strict verification.** `verify` refuses non-canonical point encodings, an S not below the group order (so each signature has exactly one valid encoding), and public keys of small order, and it returns `False` instead of raising for malformed input. Small-order keys are allowed by the RFC but let anyone compute a signature for any message, so a mistaken key file would otherwise trust everybody.
+- **Minimal dependencies.** `hashlib` and `brisart_security_entropy.py`; nothing from the BSR2 permutation.
+
+**Not provided:** constant-time arithmetic, Ed25519ctx or Ed25519ph, batch verification, key files, password protection, a command-line interface, and any use inside the sealed, stream, or archive formats.
+
+---
+
+## 13. Unestablished Properties
 
 None of the following has been established for any construction here:
 

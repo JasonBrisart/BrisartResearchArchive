@@ -6,6 +6,81 @@ This repository contains experimental research software. A changelog entry recor
 
 ---
 
+## 0.4.1-alpha
+
+### Ed25519 signatures
+
+Release status:
+
+```text
+Current experimental release
+```
+
+### Release Overview
+
+This release adds the project's first public-key primitive, Ed25519 (RFC 8032), in one new module, `brisart_security_signature.py`. It exists so that a tool in the archive can prove who issued a file while the program that checks it holds only a public key and therefore cannot sign. The first consumer is `98_Tooling/Entitle`, which uses it for signed entitlements, revocation lists, and log checkpoints.
+
+It is a standard algorithm, not a BSR2 construction. No existing module, wire format, or known-answer vector changes, and the sealed, stream, and archive formats do not use it. The release identity moves from `0.4.0-alpha` to `0.4.1-alpha`; the release name stays "BSR2 Alpha 4" and no format version changes.
+
+An earlier revision of the module was already in the working tree. It drew randomness from `os.urandom`, named its error `SignatureError`, shipped pytest-only tests, and was not mentioned in any document, while four documents still said that no signatures exist. This entry records the module as it now stands and what the review changed.
+
+Verification (CPython 3.12, Linux):
+
+- Unit suite: **193 tests, `OK`**, run with `python -m unittest discover -s tests -p "test_*.py"` (175 existing plus 18 new)
+- `python -m doctest brisart_security_signature.py` and `python -m doctest brisart_security_version.py`: every example passes (6 and 2)
+- All four RFC 8032 section 7.1 vectors tested (TEST 1, TEST 2, TEST 3, TEST SHA(abc)) reproduce byte for byte; the SHA(abc) vector was also confirmed against the independent `cryptography` package before being added
+- Agreement with the `cryptography` package on 300 random key and message pairs: same public key, same signature, and each side verifies the other's signatures
+- Eight deliberate breakages of the module were applied and reverted; seven were caught by a test, and one (removing the explicit type check at the top of `verify`) is an equivalent change, because the later `bytes()` conversion and `except` produce the same refusals
+- `selftest`: 6 of 6 PASS
+- Research suite: **19 of 19 checks PASS** plus 3 benchmarks, about 90 s; its report records the release as `0.4.1-alpha`. It does not exercise the new module
+
+### Added
+
+#### `brisart_security_signature.py`: Ed25519
+
+- **What:** `generate_seed`, `public_key`, `sign`, and `verify` for Ed25519 as RFC 8032 section 5.1 specifies it (PureEdDSA, edwards25519, SHA-512), with `ALGORITHM`, `SEED_BYTES`, `PUBLIC_KEY_BYTES`, `SIGNATURE_BYTES`, and `BrisartSignatureError`.
+- **Why:** shared-key formats make every verifier able to forge. A signature scheme separates the right to check from the right to issue, and a standard one can be checked by anyone with any implementation, which an unreviewed construction cannot offer.
+- **Signing is deterministic** (RFC 8032 section 5.1.6): it needs no random number, so a weak generator cannot leak the key. Only `generate_seed` uses entropy.
+- **Verification is strict.** It returns `False`, and never raises, for a wrong type or length, a public key or R that is not a canonical point encoding (including y at or above p), an S at or above the group order, and a public key of small order.
+- **Tests:** `tests/test_brisart_security_signature.py` (18 tests, `unittest`).
+
+### Changed
+
+Relative to the earlier working-tree revision of the module:
+
+- **Randomness now comes from `brisart_security_entropy.system_entropy`.** `docs/DESIGN.md` section 11 says that function is the only non-deterministic source, and the first revision called `os.urandom` directly, so keys skipped the health checks every other module gets. A failed health check now raises `BrisartSignatureError` from `generate_seed` instead of being swallowed.
+- **`SignatureError` is now `BrisartSignatureError`**, matching the `Brisart<Domain>Error` names every other module uses. No alias was kept; the only users were this module's tests and Entitle, which does not import it.
+- **`verify` refuses public keys of small order.** RFC 8032 allows them, but under such a key (the identity, for example) the verification equation holds for a signature anyone can compute for any message, so a mistaken or damaged key file would trust everybody. The first revision accepted them. Keys made by `public_key` never have small order, and all four RFC vectors are unaffected.
+- **The tests were rewritten as `unittest`.** The first revision imported pytest, so the runner this project documents (`python -m unittest discover`) failed to import the file on a machine without pytest, which is the air-gapped case. The suite now needs only the standard library, and the `cryptography` cross-check runs only if that package happens to be installed.
+- **The SHA(abc) vector was added.** The first revision's test header claimed it, but the file held three vectors.
+- **Header and annotations** follow the other modules: six sections in the project's layout, type hints, and doctest examples that run.
+
+#### `brisart_security_version.py`
+
+- `PROJECT_RELEASE` is now `0.4.1-alpha` (was `0.4.0-alpha`). `RELEASE_NAME` stays `BSR2 Alpha 4`, and `PERMUTATION_ID`, `LEGACY_ENVELOPE_ID`, `SEALED_FORMAT_VERSION`, `STREAM_FORMAT_VERSION`, and `ARCHIVE_FORMAT_VERSION` are unchanged. The module docstring now records what 0.4.1 added. The CLI `info` and `--version` output and the research-suite provenance read the new value from here.
+
+#### Documentation
+
+`README.md`, `SECURITY.md`, `docs/DESIGN.md`, `docs/FORMATS.md`, and `docs/TESTING.md` now describe the module, and the four that name the current release (`README.md`, `docs/DESIGN.md`, `docs/FORMATS.md`, `docs/TESTING.md`) name `0.4.1-alpha`. Statements that describe 0.4.0 itself ("In 0.4.0 the runner moved", "What 0.4.0 Adds") are history and were left as written. Before this entry `README.md` listed public-key signatures as out of scope, `SECURITY.md` said "no digital signatures are implemented", and `docs/DESIGN.md` listed them under "Not provided" for the archive. Those statements are scoped to the sealed, stream, and archive formats, which remain shared-key. `README.md` gains a "What 0.4.1 Adds" section, `docs/DESIGN.md` gains section 12 (the old section 12 is now 13), `docs/FORMATS.md` gains section 9, `docs/TESTING.md` lists the new suite, and `SECURITY.md` states what is and is not claimed for Ed25519.
+
+### Compatibility
+
+- No change to any wire format, vector file, or existing module. Every format version is unchanged, and `tests/known_answer_vectors.json` and `tests/v3_known_answer_vectors.json` were not regenerated.
+- `PROJECT_RELEASE` changes from `0.4.0-alpha` to `0.4.1-alpha`, so anything that prints or compares the release string sees the new value. Nothing in the project compares it.
+- `98_Tooling/Entitle` 0.7.0 works unchanged with this revision, because it uses only `generate_seed`, `public_key`, `sign`, `verify`, and `ALGORITHM`. Entitle 0.7.1 additionally checks that the entropy module this one draws from comes from the same folder.
+- A caller that caught `SignatureError` must catch `BrisartSignatureError`.
+- `brisart_security_signature.py` now imports `brisart_security_entropy.py`, which every `Official` folder has.
+
+### Limits
+
+- Not independently reviewed. Reproducing the RFC vectors and agreeing with another implementation on random inputs is evidence of correct implementation, not of security.
+- Not constant-time: Python integer arithmetic can leak timing about the seed to an observer on the same machine, so sign only on the owner's own machine. `verify` handles no secret.
+- No key file, password protection, command-line interface, archive signing, Ed25519ctx, Ed25519ph, or batch verification. These were left out on purpose; a caller stores the seed itself.
+- About 20 ms per signature or verification, which suits licence files, revocation lists, and checkpoints, not bulk signing.
+- Linux and CPython 3.12 only; other platforms and Python versions were not run.
+
+---
+
 ## 0.4.0-alpha
 
 ### BSR2 Alpha 4
@@ -13,7 +88,7 @@ This repository contains experimental research software. A changelog entry recor
 Release status:
 
 ```text
-Current experimental release
+Historical experimental release
 ```
 
 ### Release Overview

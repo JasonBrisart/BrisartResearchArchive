@@ -3,21 +3,24 @@ File: tests/test_cli.py
 
 Purpose
 -------
-Verify the command line end to end: the full lifecycle (issue, verify, governed deployments up to
-  and past the limit, fork, provenance, list, revoke, refused deployment, reinstate, check,
-  report, tamper detection), migrating a file from the previous encryption, every expected
-  failure printing one clean error with the right exit status, usage errors, help and version
-  (with the linked encryption), what happens when no command is given (the window opens, or the
-  usage and the reason are shown when it cannot), that output the terminal cannot encode never
-  turns a finished operation into a failure, and that run.py works from another working folder
-  without loading tkinter.
+Verify the command line end to end: the signed lifecycle (keys, issue, verify with the public key,
+  deploy and release under --strict, checkpoint create and verify, revoke and publish a list, a
+  truncated log caught), secrets kept off the command line, the full shared-key lifecycle (issue,
+  verify, governed deployments up to and past the limit, fork, provenance, list, revoke, refused
+  deployment, reinstate, check, report, tamper detection), migrating a file from the previous
+  encryption, every expected failure printing one clean error with the right exit status, usage
+  errors, help and version (with the linked encryption), what happens when no command is given
+  (the window opens, or the usage and the reason are shown when it cannot), that output the
+  terminal cannot encode never turns a finished operation into a failure, and that run.py works
+  from another working folder without loading tkinter.
 
 Communication / relationships
 -----------------------------
 Imports cli.py, version.py and entitle/records.py (to shorten the store lock wait), and runs
   run.py as a real process for the working-folder, tkinter and output-encoding checks. Uses
   tests/support.py (including the lock holder) and the fixtures in tests/fixtures/ (an
-  entitlement written by the previous encryption and a record log written by v0.4.1).
+  entitlement written by the previous encryption and a record log written by v0.4.1). The
+  signed tests make their keys through the keys generate command with ENTITLE_PASSPHRASE set.
   Run by pytest; nothing imports it.
 
 Settings / parameters
@@ -64,8 +67,8 @@ import cli
 from entitle import records
 from entitle.records import RecordStore
 from support import (
-    DRBG_PERSONALIZATION, DRBG_SEED, ENTITLE_ROOT, FIXTURES, ISSUER, LEGACY_ENTITLEMENT, MASTER_KEY, PRODUCT,
-    SUBJECT, run_entitle, store_lock_held_elsewhere,
+    DRBG_PERSONALIZATION, DRBG_SEED, ENTITLE_ROOT, FIXTURES, ISSUER, LEGACY_ENTITLEMENT, MASTER_KEY, PASSPHRASE,
+    PRODUCT, SUBJECT, run_entitle, store_lock_held_elsewhere,
 )
 from version import __version__
 
@@ -274,9 +277,10 @@ class TestUsage:
         with pytest.raises(SystemExit) as caught:
             cli.main(["--version"])
         assert caught.value.code == 0
-        first, second = capsys.readouterr().out.strip().splitlines()
+        first, second, third = capsys.readouterr().out.strip().splitlines()
         assert first == f"Entitle {__version__}"
         assert second.startswith("Encryption: BSR2 Alpha") and second.endswith(", from 97_Encryption/Official")
+        assert third == "Signatures: Ed25519 (RFC 8032), from 97_Encryption/Official"
         assert __version__.count(".") >= 2
 
     @pytest.mark.parametrize("argv", [
@@ -316,7 +320,8 @@ class TestMigrate:
         assert out.splitlines()[0] == f"MIGRATED: {path} now uses the current encryption (BSR2-S64-SIV)."
         assert "Entitle versions before 0.5.0 cannot open it" in out
         code, out, _ = _call(capsys, "verify", *_identity(), "--master-key", MASTER_KEY, "--file", str(path))
-        assert code == 0 and "VERIFIED" in out and "NOTE" not in out
+        assert code == 0 and "VERIFIED" in out and cli.PREVIOUS_ENCRYPTION_NOTE not in out
+        assert cli.SHARED_KEY_NOTE in out
         code, out, _ = _call(capsys, *self._migrate_args(path))
         assert code == 0 and out.strip() == f"UNCHANGED: {path} already uses the current encryption."
 
@@ -419,3 +424,117 @@ class TestRealProcess:
             "assert 'tkinter' not in sys.modules and 'gui' not in sys.modules"
         )
         assert subprocess.run([sys.executable, "-c", code], capture_output=True).returncode == 0
+
+
+class TestSignedWorkflowFromTheCommandLine:
+    @pytest.fixture
+    def keys(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("ENTITLE_PASSPHRASE", PASSPHRASE)
+        signing_key, public = tmp_path / "keys" / "i.signing-key", tmp_path / "keys" / "i.public-key"
+        assert cli.main(["keys", "generate", "--name", ISSUER, "--signing-key", str(signing_key),
+                         "--public-key", str(public)]) == 0
+        capsys.readouterr()
+        return signing_key, public
+
+    def test_keys_issue_verify_deploy_release_publish_and_checkpoint(self, tmp_path, capsys, keys):
+        signing_key, public = keys
+        lab, store = tmp_path / "lab.entitle", tmp_path / "r.log"
+        code, out, _ = _call(capsys, "issue", *_identity(), "--entitlement-id", "lab-1", "--signing-key", str(signing_key),
+                             "--deployment-limit", "1", "--modify", "--output", str(lab))
+        assert code == 0 and out.startswith("Signed entitlement created:") and "NOTE" not in out
+        code, out, _ = _call(capsys, "verify", *_identity(), "--public-key", str(public), "--file", str(lab))
+        assert code == 0 and "VERIFIED" in out and "NOTE" not in out and '"signed_by"' in out
+        deploy = ["track", "deploy", *_identity(), "--public-key", str(public), "--entitlement", str(lab),
+                  "--store", str(store), "--strict"]
+        assert _call(capsys, *deploy, "--host", "n1")[0] == 0
+        code, out, _ = _call(capsys, *deploy, "--host", "n2")
+        assert code == cli.EXIT_REFUSED and json.loads(out)["reason"] == "deployment_limit_reached"
+        code, out, _ = _call(capsys, "track", "release", "--product", PRODUCT, "--subject", SUBJECT,
+                             "--entitlement-id", "lab-1", "--host", "n1", "--store", str(store))
+        assert code == 0 and json.loads(out)["released"] is True
+        assert _call(capsys, *deploy, "--host", "n2")[0] == 0
+        checkpoint = tmp_path / "log.entitle-checkpoint"
+        code, out, _ = _call(capsys, "checkpoint", "create", "--signing-key", str(signing_key), "--store", str(store),
+                             "--output", str(checkpoint))
+        assert code == 0 and '"record_count": 3' in out
+        code, out, _ = _call(capsys, "checkpoint", "verify", "--public-key", str(public), "--store", str(store),
+                             "--checkpoint", str(checkpoint))
+        assert code == 0 and "VERIFIED: the first 3 records" in out
+        assert _call(capsys, "revoke", "revoke", "--entitlement-id", "lab-1", "--store", str(store))[0] == 0
+        listing = tmp_path / "revoked.entitle-crl"
+        code, out, _ = _call(capsys, "revoke", "publish", "--issuer", ISSUER, "--signing-key", str(signing_key),
+                             "--store", str(store), "--output", str(listing))
+        assert code == 0 and "(sequence 1)" in out
+        code, out, _ = _call(capsys, "verify", *_identity(), "--public-key", str(public), "--file", str(lab),
+                             "--revocation-list", str(listing))
+        assert code == 1 and "DENIED: entitlement_revoked" in out
+        store.write_text("\n".join(store.read_text(encoding="utf-8").splitlines()[:2]) + "\n", encoding="utf-8")
+        code, out, _ = _call(capsys, "checkpoint", "verify", "--public-key", str(public), "--store", str(store),
+                             "--checkpoint", str(checkpoint))
+        assert code == 1 and "FAILED: log_truncated" in out
+
+    def test_a_signed_file_without_a_public_key_says_which_key_it_needs(self, tmp_path, capsys, keys):
+        lab = tmp_path / "lab.entitle"
+        _call(capsys, "issue", *_identity(), "--entitlement-id", "e", "--signing-key", str(keys[0]), "--output", str(lab))
+        code, out, err = _call(capsys, "verify", *_identity(), "--master-key", MASTER_KEY, "--file", str(lab))
+        assert code == 1 and out == "" and "give the issuer's public key with --public-key" in err
+
+    def test_issuing_over_an_existing_file_needs_force(self, tmp_path, capsys, keys):
+        lab = tmp_path / "lab.entitle"
+        args = ["issue", *_identity(), "--entitlement-id", "e", "--signing-key", str(keys[0]), "--output", str(lab)]
+        assert _call(capsys, *args)[0] == 0
+        before = lab.read_bytes()
+        code, _, err = _call(capsys, *args)
+        assert code == 1 and "already exists" in err and lab.read_bytes() == before
+        assert _call(capsys, *args, "--force")[0] == 0
+
+    def test_inspect_and_fingerprint_and_unlimited(self, tmp_path, capsys, keys):
+        lab = tmp_path / "lab.entitle"
+        code, out, _ = _call(capsys, "fingerprint")
+        fingerprint = out.strip()
+        assert code == 0 and fingerprint.startswith("m1:")
+        _call(capsys, "issue", *_identity(), "--entitlement-id", "e", "--signing-key", str(keys[0]), "--unlimited",
+              "--machine", fingerprint, "--output", str(lab))
+        code, out, _ = _call(capsys, "inspect", "--file", str(lab))
+        assert code == 0 and '"deployment_limit": null' in out and fingerprint in out and "UNVERIFIED" in out
+        code, out, _ = _call(capsys, "verify", *_identity(), "--public-key", str(keys[1]), "--file", str(lab),
+                             "--machine", "m1:" + "0" * 32)
+        assert code == 1 and "DENIED: machine_not_authorized" in out
+
+
+class TestSecretsStayOffTheCommandLine:
+    def test_the_master_key_can_come_from_a_file_or_the_environment(self, tmp_path, capsys, monkeypatch):
+        key_file = tmp_path / "master.key"
+        key_file.write_text(MASTER_KEY + "\n", encoding="utf-8")
+        lab = tmp_path / "lab.entitle"
+        args = ["issue", *_identity(), "--entitlement-id", "e", "--output", str(lab)]
+        assert _call(capsys, *args, "--master-key-file", str(key_file))[0] == 0
+        monkeypatch.setenv("ENTITLE_MASTER_KEY", MASTER_KEY)
+        code, out, _ = _call(capsys, "verify", *_identity(), "--file", str(lab))
+        assert code == 0 and "VERIFIED" in out and cli.SHARED_KEY_NOTE in out
+
+    def test_no_master_key_anywhere_is_one_clear_error(self, tmp_path, capsys, monkeypatch):
+        monkeypatch.delenv("ENTITLE_MASTER_KEY", raising=False)
+        code, _, err = _call(capsys, "issue", *_identity(), "--entitlement-id", "e", "--output", str(tmp_path / "x"))
+        assert code == 1 and "a master key is required" in err
+
+    def test_a_passphrase_comes_from_a_file_and_is_never_a_flag(self, tmp_path, capsys, monkeypatch):
+        monkeypatch.delenv("ENTITLE_PASSPHRASE", raising=False)
+        monkeypatch.setattr(sys, "stdin", None)
+        passphrase = tmp_path / "pass.txt"
+        passphrase.write_text(PASSPHRASE, encoding="utf-8")
+        base = ["keys", "generate", "--name", "I", "--signing-key", str(tmp_path / "s"), "--public-key", str(tmp_path / "p")]
+        code, _, err = _call(capsys, *base)
+        assert code == 1 and "a passphrase is required" in err
+        assert _call(capsys, *base, "--passphrase-file", str(passphrase))[0] == 0
+        with pytest.raises(SystemExit):
+            cli.main([*base, "--passphrase", PASSPHRASE])
+
+    def test_report_strict_exits_three_on_a_broken_chain(self, tmp_path, capsys):
+        store = tmp_path / "r.log"
+        _call(capsys, "track", "fork", "--product", "P", "--source-version", "1", "--fork-name", "f", "--maintainer", "m",
+              "--store", str(store))
+        assert _call(capsys, "report", "--store", str(store), "--strict")[0] == 0
+        store.write_text(store.read_text(encoding="utf-8").replace('"f"', '"g"'), encoding="utf-8")
+        code, out, _ = _call(capsys, "report", "--store", str(store), "--strict")
+        assert code == cli.EXIT_REFUSED and "BROKEN" in out

@@ -3,14 +3,14 @@ File: tests/test_records.py
 
 Purpose
 -------
-Verify the record store in entitle/records.py: appending and chaining, filtering, chain
-  verification against edits, deletions, reordering and unparseable lines, lenient reading for
-  the audit, damage of every kind (including bytes that are not UTF-8, as a power failure in the
-  middle of a multi-byte character leaves) never making the audit raise, the writer lock under
-  concurrent threads and processes (no lost records, no forked chain), a lock held by another
-  process, a writer killed while holding the lock, a lock file left behind by 0.5.0, a
-  byte-order mark added by a Windows editor, and that a log written by v0.4.1 still verifies
-  and can be extended.
+Verify the record store in entitle/records.py: the six record types, appending and chaining,
+  filtering, chain verification against edits, deletions, reordering and unparseable lines,
+  lenient reading for the audit, damage of every kind (including bytes that are not UTF-8, as a
+  power failure in the middle of a multi-byte character leaves) never making the audit raise, the
+  writer lock under concurrent threads and processes (no lost records, no forked chain), a lock
+  held by another process, a writer killed while holding the lock, a lock file left behind by
+  0.5.0, a byte-order mark added by a Windows editor, and that a log written by v0.4.1 still
+  verifies and can be extended.
 
 Communication / relationships
 -----------------------------
@@ -68,6 +68,7 @@ from entitle.records import (
     RECORD_TYPE_FORK,
     RECORD_TYPE_PROVENANCE,
     RECORD_TYPE_REINSTATEMENT,
+    RECORD_TYPE_RELEASE,
     RECORD_TYPE_REVOCATION,
     RecordStore,
     RecordStoreError,
@@ -223,10 +224,10 @@ class TestVerifyChain:
 
 
 class TestRecordTypes:
-    def test_the_five_types_are_stable_strings(self):
-        assert ALL_RECORD_TYPES == ("deployment", "fork", "provenance", "revocation", "reinstatement")
+    def test_the_six_types_are_stable_strings_and_the_original_five_keep_their_order(self):
+        assert ALL_RECORD_TYPES == ("deployment", "fork", "provenance", "revocation", "reinstatement", "release")
         assert (RECORD_TYPE_DEPLOYMENT, RECORD_TYPE_FORK, RECORD_TYPE_PROVENANCE,
-                RECORD_TYPE_REVOCATION, RECORD_TYPE_REINSTATEMENT) == ALL_RECORD_TYPES
+                RECORD_TYPE_REVOCATION, RECORD_TYPE_REINSTATEMENT, RECORD_TYPE_RELEASE) == ALL_RECORD_TYPES
 
 
 class TestCorruptedStore:

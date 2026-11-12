@@ -5,7 +5,10 @@ Purpose
 -------
 Verify entitle/encryption.py, Entitle's link to BSR2 in 97_Encryption/Official: that it resolves
   to the archive's own 97_Encryption/Official and nowhere else, that every linked module comes
-  from that folder, that Entitle keeps no copy of any brisart_security_* module, that a missing,
+  from that folder, that Entitle keeps no copy of any brisart_security_* module, that the Ed25519
+  module links on its own (a 97_Encryption without it still serves shared-key files), must
+  reproduce the RFC 8032 test vector before it is trusted, and must take its randomness from
+  that same folder, that a missing,
   incomplete, foreign or incompatible library is reported as "Encryption not found" with a
   reason that never shows this machine's path (including Windows paths, whose backslashes an
   exception's repr doubles), that an Entitle folder too close to the top of a drive still starts
@@ -229,3 +232,74 @@ class TestEncryptionNotFound:
         assert run("revoke", "revoke", "--entitlement-id", "e", "--store", store).returncode == 0
         report = run("report", "--store", store)
         assert report.returncode == 0 and "VERIFIED: hash chain intact across 2 records." in report.stdout
+
+
+class TestTheSignatureLink:
+    def test_ed25519_links_from_the_same_folder_and_reproduces_rfc_8032(self):
+        link = encryption.signature_status()
+        assert link.available, link.problem
+        assert link.describe() == "Signatures: Ed25519 (RFC 8032), from 97_Encryption/Official"
+        module = encryption.signatures()
+        assert Path(module.__file__).resolve().parent == encryption.ENCRYPTION_DIR.resolve()
+
+    def test_a_97_encryption_without_the_signature_module_still_serves_shared_key_files(self, tmp_path, monkeypatch):
+        folder = tmp_path / "Official"
+        folder.mkdir()
+        link = encryption._resolve_signatures(folder)
+        assert not link.available and "is missing brisart_security_signature.py" in link.problem
+        assert "Shared-key entitlements still work" in link.problem
+        assert link.describe().startswith("Signatures not found: ")
+        monkeypatch.setattr(encryption, "signature_status", lambda: link)
+        with pytest.raises(EncryptionNotFoundError, match="^Signatures not found: "):
+            encryption.signatures()
+        assert encryption.require()  # BSR2 is unaffected
+
+    @staticmethod
+    def _forget(monkeypatch, *names):
+        """Drop modules from sys.modules for this test only, and again at its end (even if absent now)."""
+        monkeypatch.setattr(sys, "path", list(sys.path))
+        for name in names:
+            monkeypatch.setitem(sys.modules, name, object())
+            del sys.modules[name]
+
+    def _fake_module(self, tmp_path, monkeypatch, body):
+        folder = tmp_path / "Official"
+        folder.mkdir()
+        (folder / "brisart_security_signature.py").write_text(body, encoding="utf-8")
+        self._forget(monkeypatch, "brisart_security_signature")
+        return encryption._resolve_signatures(folder)
+
+    def test_a_signature_module_that_takes_its_randomness_from_another_folder_is_refused(self, tmp_path, monkeypatch):
+        folder, stale = tmp_path / "Official", tmp_path / "stale_copy"
+        folder.mkdir()
+        stale.mkdir()
+        (stale / "brisart_security_entropy.py").write_text(
+            "class BrisartEntropyError(RuntimeError):\n    pass\n\n\ndef system_entropy(length):\n    return bytes(length)\n",
+            encoding="utf-8",
+        )
+        shutil.copyfile(encryption.ENCRYPTION_DIR / "brisart_security_signature.py", folder / "brisart_security_signature.py")
+        self._forget(monkeypatch, "brisart_security_signature", "brisart_security_entropy")
+        sys.path.insert(0, str(stale))  # restored by _forget's monkeypatch of sys.path
+        link = encryption._resolve_signatures(folder)
+        assert not link.available
+        assert "brisart_security_signature takes its randomness from " in link.problem and ", not from " in link.problem
+        assert link.describe().startswith("Signatures not found: ")
+
+    def test_the_real_signature_module_takes_its_randomness_from_the_linked_folder(self):
+        module = encryption.signatures()
+        owner = sys.modules[module.system_entropy.__module__]
+        assert Path(owner.__file__).resolve().parent == encryption.ENCRYPTION_DIR.resolve()
+
+    def test_a_module_that_is_not_ed25519_is_refused(self, tmp_path, monkeypatch):
+        link = self._fake_module(tmp_path, monkeypatch, 'ALGORITHM = "Ed448"\n')
+        assert not link.available and "requires 'Ed25519'" in link.problem
+
+    def test_a_module_that_does_not_reproduce_the_test_vector_is_refused(self, tmp_path, monkeypatch):
+        accepts_everything = (
+            'ALGORITHM = "Ed25519"\n'
+            "def public_key(seed): return bytes.fromhex('d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a')\n"
+            "def sign(seed, message): return bytes(64)\n"
+            "def verify(public, message, signature): return True\n"
+        )
+        link = self._fake_module(tmp_path, monkeypatch, accepts_everything)
+        assert not link.available and "does not reproduce the RFC 8032 test vector" in link.problem

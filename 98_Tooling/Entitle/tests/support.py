@@ -3,32 +3,32 @@ File: tests/support.py
 
 Purpose
 -------
-Hold what the test files share: the Entitle folder, the demo identity and key, the
-  entitlement file written by the previous encryption, a helper that issues a real protected
-  entitlement, a helper that holds a record store's writer lock from another process, and a
-  helper that runs run.py as a real process.
+Hold what the test files share: the Entitle folder, the demo identity, key and passphrase,
+  the entitlement file written by the previous encryption, helpers that make an issuer key pair
+  and issue real shared-key and signed entitlements, a helper that holds a record store's writer
+  lock from another process, and a helper that runs run.py as a real process.
 
 Communication / relationships
 -----------------------------
-Imports entitle/entitlements.py (issue_entitlement) when issue_demo is called. Imported by
-  tests/test_entitlements.py, tests/test_cli.py, tests/test_gui.py, tests/test_example.py,
-  tests/test_records.py, tests/test_tracking.py, tests/test_report.py, tests/test_encryption.py
-  and tests/test_end_to_end.py. conftest.py puts the Entitle folder on sys.path before any test
-  imports this file.
+Imports entitle/entitlements.py (issue_entitlement) and entitle/signing.py (generate_key_pair,
+  load_signing_key) when a helper is called. Imported by every tests/test_*.py file that needs the
+  demo identity, keys or a real process. conftest.py puts the Entitle folder on sys.path before
+  any test imports this file.
 
 Settings / parameters
 ---------------------
 MASTER_KEY (45 characters) meets BSR2's 32-byte minimum; DRBG_SEED (64 characters) and
-  DRBG_PERSONALIZATION meet the minimums of the optional generator and are used only by tests
-  of that option. ISSUER, SUBJECT and PRODUCT are the demo identity used by the fixtures in
+  DRBG_PERSONALIZATION meet the minimums of the optional generator and are used only by tests of
+  that option. ISSUER, SUBJECT and PRODUCT are the demo identity used by the fixtures in
   tests/fixtures/. LEGACY_ENTITLEMENT is a BSR2 Alpha 3 envelope sealed, with the copy of BSR2
-  that Entitle carried before 0.5.0, for that identity and key (entitlement lab-a-demo-001,
-  modify and fork, limit 2).
-  issue_demo(path, entitlement_id, **rights) takes the rights flags of issue_entitlement and
-  uses no generator option. store_lock_held_elsewhere(store_path) is a context manager that
-  keeps the lock held by a separate process (killed on exit, which is also how a crashed writer
-  looks). run_entitle(*args, cwd, env) runs run.py and returns the finished process with text
-  output.
+  that Entitle carried before 0.5.0, for that identity and key (entitlement lab-a-demo-001, modify
+  and fork, limit 2). PASSPHRASE (28 characters) protects every test signing key. issue_demo(path,
+  entitlement_id, **rights) issues a shared-key file and issue_signed(path, signing_key,
+  entitlement_id, **rights) a signed one; both pass the other issue_entitlement arguments through.
+  make_keys(folder, name) writes a key pair and returns (SigningKey, PublicKey, signing key path,
+  public key path). store_lock_held_elsewhere(store_path) is a context manager that keeps the lock
+  held by a separate process (killed on exit, which is also how a crashed writer looks).
+  run_entitle(*args, cwd, env) runs run.py and returns the finished process with text output.
 
 Edge cases
 ----------
@@ -64,6 +64,7 @@ LEGACY_ENTITLEMENT = FIXTURES / "legacy_alpha3_entitlement.json"
 MASTER_KEY = "change-this-master-key-change-this-master-key"
 DRBG_SEED = "a" * 64
 DRBG_PERSONALIZATION = "EntitleTestPersonalization"
+PASSPHRASE = "correct horse battery staple"
 ISSUER = "JasonBrisart"
 SUBJECT = "ResearchLabA"
 PRODUCT = "EntitleDemo"
@@ -80,6 +81,26 @@ def issue_demo(path, entitlement_id="ent-1", **rights):
         master_key=MASTER_KEY,
         output=path,
         **rights,
+    )
+
+
+def make_keys(folder, name=ISSUER):
+    """A fresh issuer key pair in folder: (SigningKey, PublicKey, signing key path, public key path)."""
+    from entitle.signing import generate_key_pair, load_signing_key
+
+    folder = Path(folder)
+    signing_path, public_path = folder / f"{name}.signing-key", folder / f"{name}.public-key"
+    public = generate_key_pair(name=name, signing_key_path=signing_path, public_key_path=public_path,
+                               passphrase=PASSPHRASE)
+    return load_signing_key(signing_path, PASSPHRASE), public, signing_path, public_path
+
+
+def issue_signed(path, signing_key, entitlement_id="ent-1", **rights):
+    from entitle.entitlements import issue_entitlement
+
+    return issue_entitlement(
+        issuer=ISSUER, subject=SUBJECT, product=PRODUCT, entitlement_id=entitlement_id, signing_key=signing_key,
+        output=path, **rights,
     )
 
 

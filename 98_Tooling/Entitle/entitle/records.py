@@ -12,20 +12,23 @@ Communication / relationships
 -----------------------------
 Imports entitle/common.py (EntitleError, canonical_json, utc_now_iso) and, depending on the
   platform, fcntl (Linux, macOS) or msvcrt (Windows) for the writer lock. Imported by
-  entitle/revoke.py (revocation and reinstatement types), entitle/tracking.py (deployment, fork
-  and provenance types), entitle/report.py (RECORD_TYPE_DEPLOYMENT), cli.py (RecordStore,
-  ALL_RECORD_TYPES) and gui/tabs.py (RecordStore). Uses no encryption, so the log works
-  without 97_Encryption. Covered by tests/test_records.py.
+  entitle/revoke.py (revocation and reinstatement types), entitle/tracking.py (deployment,
+  release, fork and provenance types), entitle/report.py (RECORD_TYPE_DEPLOYMENT),
+  entitle/checkpoints.py (head, entry_hash_at, verify_chain, through the store it is given),
+  cli.py (RecordStore, ALL_RECORD_TYPES) and gui/tabs.py (RecordStore). Uses no encryption, so
+  the log works without 97_Encryption. Covered by tests/test_records.py.
 
 Settings / parameters
 ---------------------
-Each record carries format ("entitle.record.v1"), record_id, record_type, created_at,
-  prev_hash, data and entry_hash; the hash covers every field except entry_hash itself. The
-  first record chains to GENESIS_HASH (64 zeros). The five record types are deployment, fork,
-  provenance, revocation and reinstatement; they are stored in every record, so they never
-  change. The writer lock is an operating-system lock on a "<store>.lock" file beside the store;
-  a waiting writer gives up after LOCK_TIMEOUT_SECONDS (5). read_all(strict=False) skips
-  unreadable lines instead of raising.
+Each record carries format ("entitle.record.v1"), record_id, record_type, created_at, prev_hash,
+  data and entry_hash; the hash covers every field except entry_hash itself. The first record
+  chains to GENESIS_HASH (64 zeros). The six record types are deployment, fork, provenance,
+  revocation, reinstatement and (since 0.7.0) release; they are stored in every record, so
+  existing names never change and new ones are only ever added. head() returns (record count, last
+  entry hash) of a log whose chain verifies; entry_hash_at(index) returns the stored entry hash of
+  one line, or None. The writer lock is an operating-system lock on a "<store>.lock" file beside
+  the store; a waiting writer gives up after LOCK_TIMEOUT_SECONDS (5). read_all(strict=False)
+  skips unreadable lines instead of raising.
 
 Edge cases
 ----------
@@ -47,7 +50,8 @@ transaction() makes a read-then-append sequence atomic across threads and proces
 Known limitations
 -----------------
 Detection only: the chain shows that earlier records changed, not who changed them, and
-  someone who rewrites every record and every hash after the edit produces a valid chain.
+  someone who rewrites every record and every hash after the edit, or cuts records off the end,
+  produces a valid chain; a signed checkpoint (entitle/checkpoints.py) is what catches both.
   Every append re-reads the whole file to find the last hash, so very large logs get slower.
   The lock is advisory between copies of Entitle, is tested on a local Linux filesystem only,
   and network filesystems may not honor it. A crash in the middle of writing a line leaves a
@@ -90,12 +94,14 @@ RECORD_TYPE_FORK = "fork"
 RECORD_TYPE_PROVENANCE = "provenance"
 RECORD_TYPE_REVOCATION = "revocation"
 RECORD_TYPE_REINSTATEMENT = "reinstatement"
+RECORD_TYPE_RELEASE = "release"
 ALL_RECORD_TYPES = (
     RECORD_TYPE_DEPLOYMENT,
     RECORD_TYPE_FORK,
     RECORD_TYPE_PROVENANCE,
     RECORD_TYPE_REVOCATION,
     RECORD_TYPE_REINSTATEMENT,
+    RECORD_TYPE_RELEASE,
 )
 
 GENESIS_HASH = "0" * 64
@@ -192,6 +198,25 @@ class RecordStore:
     def last_hash(self):
         records = self.read_all()
         return records[-1].get("entry_hash", GENESIS_HASH) if records else GENESIS_HASH
+
+    def head(self):
+        """(record count, entry hash of the last record) of a log whose chain verifies."""
+        status = self.verify_chain()
+        if not status.valid:
+            raise RecordStoreError(
+                f"{self.path.name}: the hash chain is broken ({status.reason} at record {status.broken_index})."
+            )
+        return status.record_count, self.last_hash()
+
+    def entry_hash_at(self, index):
+        """The stored entry hash of line ``index`` (0-based), or None when it is missing or unreadable."""
+        lines = self._lines()
+        if not 0 <= index < len(lines):
+            return None
+        try:
+            return _parse_record(lines[index], index, self.path.name).get("entry_hash")
+        except RecordStoreError:
+            return None
 
     @contextmanager
     def transaction(self):

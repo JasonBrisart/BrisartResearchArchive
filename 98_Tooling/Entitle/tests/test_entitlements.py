@@ -10,13 +10,20 @@ Verify the .entitle file and everything done with one, through entitle/entitleme
   files written by Entitle before 0.5.0 (BSR2 Alpha 3) still verify, migration keeps the
   entitlement exactly as issued and never damages the original, and files that passed through
   Windows tools (a byte-order mark, CRLF line endings, UTF-16) or that are absurdly large are
-  handled instead of hanging or failing obscurely.
+  handled instead of hanging or failing obscurely. For signed entitlements (0.7.0): the public
+  key alone verifies, the identity must match, an untrusted key or any change is refused, the
+  wrong kind of key is a usage error, not-before, clock and machine rules apply, a revocation
+  list or record log refuses a revoked entitlement and a bad or older list fails closed, a
+  shared-key file converts to signed, and inspect shows only what may be shown.
 
 Communication / relationships
 -----------------------------
-Imports entitle/common.py (EntitleError, canonical_json), entitle/encryption.py (require,
-  EncryptionNotFoundError, EncryptionLink), entitle/entitlements.py, entitle/rights.py
-  (make_entitlement_payload) and tests/support.py. Uses
+Imports entitle/common.py (EntitleError, canonical_json, and the module, to make a replacement
+  fail), entitle/encryption.py (require, EncryptionNotFoundError, EncryptionLink),
+  entitle/entitlements.py, entitle/rights.py (make_entitlement_payload), entitle/host.py
+  (HostState, machine_fingerprint), entitle/records.py, entitle/revoke.py,
+  entitle/revocation_list.py (publish), entitle/signing.py (peek_document, to forge a payload)
+  and tests/support.py (including make_keys and issue_signed). Uses
   tests/fixtures/legacy_alpha3_entitlement.json, an envelope sealed with the copy of BSR2 Alpha 3
   that Entitle carried before 0.5.0. Needs 97_Encryption beside 98_Tooling. Run by pytest;
   nothing imports it.
@@ -55,6 +62,7 @@ From the directory containing run.py:
     python -m pytest tests/test_entitlements.py
 """
 
+import base64
 import datetime
 import json
 import shutil
@@ -63,12 +71,13 @@ from pathlib import Path
 
 import pytest
 
-from entitle import encryption, entitlements
+from entitle import common, encryption, entitlements
 from entitle.common import EntitleError, canonical_json
 from entitle.encryption import EncryptionNotFoundError
 from entitle.entitlements import (
     ARMOR_BEGIN,
     EntitleBSRError,
+    inspect_entitlement,
     is_previous_encryption,
     issue_entitlement,
     make_context,
@@ -80,9 +89,15 @@ from entitle.entitlements import (
     verify_entitlement,
     write_entitlement_file,
 )
+from entitle.host import HostState, machine_fingerprint
+from entitle.records import RecordStore
+from entitle.revocation_list import publish_revocation_list
+from entitle.revoke import reinstate, revoke
 from entitle.rights import make_entitlement_payload
+from entitle.signing import peek_document
 from support import (
     DRBG_PERSONALIZATION, DRBG_SEED, ISSUER, LEGACY_ENTITLEMENT, MASTER_KEY, PRODUCT, SUBJECT, issue_demo,
+    issue_signed, make_keys,
 )
 
 WRONG_KEY = "wrong-key-wrong-key-wrong-key-wrong-key"
@@ -216,7 +231,7 @@ class TestFiles:
     def test_saving_replaces_the_old_file_in_one_step(self, tmp_path, monkeypatch):
         path = tmp_path / "lab.entitle"
         path.write_text("old content", encoding="utf-8")
-        monkeypatch.setattr(entitlements.os, "replace", lambda *_: (_ for _ in ()).throw(OSError("disk full")))
+        monkeypatch.setattr(common.os, "replace", lambda *_: (_ for _ in ()).throw(OSError("disk full")))
         with pytest.raises(OSError, match="disk full"):
             write_entitlement_file(ARMOR_BEGIN + "\nnew\n", path)
         assert path.read_text(encoding="utf-8") == "old content"
@@ -538,7 +553,7 @@ class TestMigrate:
     def test_a_failed_replacement_leaves_the_original_file_working(self, tmp_path, monkeypatch):
         path = self._legacy(tmp_path)
         before = path.read_bytes()
-        monkeypatch.setattr(entitlements.os, "replace", lambda *_: (_ for _ in ()).throw(OSError("disk full")))
+        monkeypatch.setattr(common.os, "replace", lambda *_: (_ for _ in ()).throw(OSError("disk full")))
         with pytest.raises(OSError):
             self._migrate(path)
         monkeypatch.undo()
@@ -571,3 +586,226 @@ def _payload_of(path):
     return json.loads(bsr2.aead.unseal(
         MASTER_KEY.encode(), sealed, make_context(PRODUCT, ISSUER, SUBJECT)
     ))
+
+
+# Signed entitlements (0.7.0) -------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def keys(tmp_path_factory):
+    return make_keys(tmp_path_factory.mktemp("keys"))
+
+
+def _verify_signed(path, keys, **overrides):
+    args = dict(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, public_keys=[keys[1]], path=path)
+    args.update(overrides)
+    return verify_entitlement(**args)
+
+
+class TestSignedEntitlements:
+    def test_a_signed_entitlement_verifies_with_the_public_key_alone(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        payload = issue_signed(path, keys[0], entitlement_id="lab-1", modify=True, deployment_limit=3)
+        assert payload["format"] == "entitle.entitlement.v2" and payload["metadata"]["signing_key_id"] == keys[1].key_id
+        assert path.read_text(encoding="utf-8").startswith(entitlements.SIGNED_BEGIN)
+        result = _verify_signed(path, keys)
+        assert result.allowed and result.has_right("can_modify") and result.signed_by == keys[1].key_id
+        assert result.get_limit("deployment_limit") == 3 and result.to_dict()["signed_by"] == keys[1].key_id
+
+    @pytest.mark.parametrize("override,reason", [
+        ({"issuer": "OtherIssuer"}, "wrong_issuer"),
+        ({"subject": "OtherLab"}, "wrong_subject"),
+        ({"product": "OtherProduct"}, "wrong_product"),
+    ])
+    def test_the_identity_must_match_exactly(self, tmp_path, keys, override, reason):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0])
+        assert _verify_signed(path, keys, **override).reason == reason
+
+    def test_a_key_the_verifier_does_not_trust_is_refused(self, tmp_path, keys):
+        stranger = make_keys(tmp_path / "stranger", name="Stranger")
+        path = tmp_path / "forged.entitle"
+        issue_signed(path, stranger[0], modify=True, redistribute=True)
+        assert _verify_signed(path, keys).reason == "unknown_signing_key"
+
+    def test_any_change_to_the_file_is_refused(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0])
+        original = path.read_text(encoding="utf-8")
+        payload, _ = peek_document(original, "entitlement")
+        payload["rights"]["can_redistribute"] = True
+        head = original.split("\n\n")[0]
+        encoded = base64.b64encode(canonical_json(payload)).decode()
+        path.write_text(head + "\n\n" + encoded + "\n-----END ENTITLE SIGNED ENTITLEMENT-----\n", encoding="utf-8")
+        assert _verify_signed(path, keys).reason == "signature_invalid"
+        path.write_text(original.replace("Algorithm", "Algorythm"), encoding="utf-8")
+        assert _verify_signed(path, keys).reason == "malformed_entitlement"
+
+    def test_the_wrong_kind_of_key_material_is_a_usage_error_not_a_denial(self, tmp_path, keys):
+        signed, shared = tmp_path / "signed.entitle", tmp_path / "shared.entitle"
+        issue_signed(signed, keys[0])
+        issue_demo(shared)
+        with pytest.raises(ValueError, match="signed entitlement; check it with the issuer's public key"):
+            verify_entitlement(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, master_key=MASTER_KEY, path=signed)
+        with pytest.raises(ValueError, match="shared-key entitlement; it needs the master key"):
+            _verify_signed(shared, keys)
+
+    def test_issue_needs_exactly_one_way_to_protect_the_file(self, tmp_path, keys):
+        for protection in ({}, {"master_key": MASTER_KEY, "signing_key": keys[0]}):
+            with pytest.raises(ValueError, match="either a signing key"):
+                issue_entitlement(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, entitlement_id="e",
+                                  output=tmp_path / "x.entitle", **protection)
+        assert not (tmp_path / "x.entitle").exists()
+
+    def test_an_existing_file_is_not_replaced_unless_asked(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0], entitlement_id="first")
+        with pytest.raises(FileExistsError):
+            issue_signed(path, keys[0], entitlement_id="second")
+        assert _verify_signed(path, keys).payload["entitlement_id"] == "first"
+        issue_signed(path, keys[0], entitlement_id="second", overwrite=True)
+        assert _verify_signed(path, keys).payload["entitlement_id"] == "second"
+
+    def test_an_unlimited_entitlement_can_be_issued(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0], deployment_limit=None)
+        assert _verify_signed(path, keys).get_limit("deployment_limit", default="absent") is None
+
+
+class TestNotBeforeAndClock:
+    def test_not_before_in_the_future_is_not_yet_valid(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0], not_before=_iso(2))
+        assert _verify_signed(path, keys).reason == "entitlement_not_yet_valid"
+        later = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=3)
+        assert _verify_signed(path, keys, now=later).allowed
+
+    def test_not_before_must_come_before_expiry_and_needs_a_signed_file(self, tmp_path, keys):
+        with pytest.raises(ValueError, match="not before must be earlier than expires"):
+            issue_signed(tmp_path / "x.entitle", keys[0], not_before=_iso(5), expires=_iso(4))
+        with pytest.raises(ValueError, match="need a signed entitlement"):
+            issue_demo(tmp_path / "y.entitle", not_before=_iso(1))
+
+    def test_a_clock_behind_the_issue_time_is_refused(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0])
+        an_hour_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)
+        assert _verify_signed(path, keys, now=an_hour_ago).reason == "clock_before_issue_time"
+
+    def test_host_state_refuses_a_clock_wound_back(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0], expires=_iso(10))
+        state = HostState(tmp_path / "state.json")
+        assert _verify_signed(path, keys, host_state=state, now=datetime.datetime.now(datetime.timezone.utc)
+                              + datetime.timedelta(days=20)).reason == "entitlement_expired"
+        assert _verify_signed(path, keys, host_state=state).reason == "clock_rollback_detected"
+
+
+class TestMachineBinding:
+    def test_a_bound_entitlement_runs_only_on_its_machines(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        here, elsewhere = machine_fingerprint(), "m1:" + "0" * 32
+        issue_signed(path, keys[0], machines=[here, elsewhere])
+        assert _verify_signed(path, keys).allowed  # this machine's fingerprint is computed when needed
+        assert _verify_signed(path, keys, machine_id=elsewhere).allowed
+        assert _verify_signed(path, keys, machine_id="m1:" + "1" * 32).reason == "machine_not_authorized"
+        issue_signed(path, keys[0], machines=[elsewhere], overwrite=True)
+        assert _verify_signed(path, keys).reason == "machine_not_authorized"
+
+    def test_only_real_fingerprints_can_be_bound_and_only_in_signed_files(self, tmp_path, keys):
+        with pytest.raises(ValueError, match="is not a machine fingerprint"):
+            issue_signed(tmp_path / "x.entitle", keys[0], machines=["my-laptop"])
+        with pytest.raises(ValueError, match="need a signed entitlement"):
+            issue_demo(tmp_path / "y.entitle", machines=[machine_fingerprint()])
+
+
+class TestRevocationAtVerification:
+    def _revoked_list(self, tmp_path, keys, entitlement_id, issuer=ISSUER):
+        store = RecordStore(tmp_path / "r.log")
+        revoke(store, entitlement_id, reason="key compromise")
+        output = tmp_path / "revoked.entitle-crl"
+        publish_revocation_list(store, keys[0], issuer=issuer, output=output, overwrite=True)
+        return store, output
+
+    def test_a_revocation_list_or_the_record_log_refuses_a_revoked_entitlement(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0], entitlement_id="lab-7")
+        store, listing = self._revoked_list(tmp_path, keys, "lab-7")
+        assert _verify_signed(path, keys, revocation_list=listing).reason == "entitlement_revoked"
+        assert _verify_signed(path, keys, store=store).reason == "entitlement_revoked"
+        assert _verify_signed(path, keys).allowed  # without either, verify cannot know
+
+    def test_a_shared_key_entitlement_can_be_checked_against_a_list_too(self, tmp_path, keys):
+        path = tmp_path / "shared.entitle"
+        issue_demo(path, entitlement_id="lab-8")
+        _, listing = self._revoked_list(tmp_path, keys, "lab-8")
+        result = _verify(path, public_keys=[keys[1]], revocation_list=listing)
+        assert result.reason == "entitlement_revoked"
+        with pytest.raises(ValueError, match="give the issuer's public key"):
+            _verify(path, revocation_list=listing)
+
+    def test_a_list_for_another_issuer_or_a_forged_list_fails_closed(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0], entitlement_id="lab-1")
+        _, listing = self._revoked_list(tmp_path, keys, "other", issuer="SomeoneElse")
+        assert _verify_signed(path, keys, revocation_list=listing).reason == "revocation_list_invalid"
+        listing.write_text(listing.read_text(encoding="utf-8").replace("Signature: ", "Signature: AA", 1), encoding="utf-8")
+        assert _verify_signed(path, keys, revocation_list=listing).reason == "revocation_list_invalid"
+
+    def test_host_state_refuses_an_older_revocation_list(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, keys[0], entitlement_id="lab-1")
+        store = RecordStore(tmp_path / "r.log")
+        revoke(store, "lab-1")
+        old = tmp_path / "old.entitle-crl"
+        publish_revocation_list(store, keys[0], issuer=ISSUER, output=old)
+        reinstate(store, "lab-1")
+        revoke(store, "lab-1")
+        new = tmp_path / "new.entitle-crl"
+        publish_revocation_list(store, keys[0], issuer=ISSUER, output=new)
+        state = HostState(tmp_path / "state.json")
+        assert _verify_signed(path, keys, revocation_list=new, host_state=state).reason == "entitlement_revoked"
+        assert _verify_signed(path, keys, revocation_list=old, host_state=state).reason == "revocation_list_rollback"
+
+
+class TestConvertToSigned:
+    def test_a_shared_key_file_converts_to_signed_keeping_the_entitlement(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_demo(path, entitlement_id="lab-1", modify=True, deployment_limit=4, expires=_iso(30))
+        before = _verify(path).payload
+        outcome = migrate_entitlement(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, master_key=MASTER_KEY, path=path,
+                                      signing_key=keys[0])
+        assert outcome == {"migrated": True, "reason": "converted_to_signed", "entitlement_id": "lab-1"}
+        after = _verify_signed(path, keys)
+        assert after.allowed and after.signed_by == keys[1].key_id
+        for field in ("entitlement_id", "issued_at", "expires_at", "rights"):
+            assert after.payload[field] == before[field]
+        assert migrate_entitlement(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, master_key=MASTER_KEY, path=path,
+                                   signing_key=keys[0])["reason"] == "already_signed"
+
+    def test_a_previous_format_file_converts_straight_to_signed(self, tmp_path, keys):
+        path = tmp_path / "legacy.entitle"
+        shutil.copyfile(LEGACY_ENTITLEMENT, path)
+        migrate_entitlement(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, master_key=MASTER_KEY, path=path,
+                            signing_key=keys[0])
+        assert _verify_signed(path, keys).payload["entitlement_id"] == "lab-a-demo-001"
+
+    def test_a_file_that_does_not_open_is_not_converted(self, tmp_path, keys):
+        path = tmp_path / "lab.entitle"
+        issue_demo(path)
+        before = path.read_bytes()
+        with pytest.raises(EntitleError, match="Nothing was changed"):
+            migrate_entitlement(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, master_key=WRONG_KEY, path=path,
+                                signing_key=keys[0])
+        assert path.read_bytes() == before
+
+
+class TestInspect:
+    def test_inspect_shows_a_signed_payload_marked_unverified_and_hides_nothing_it_cannot(self, tmp_path, keys):
+        signed, shared = tmp_path / "signed.entitle", tmp_path / "shared.entitle"
+        issue_signed(signed, keys[0], entitlement_id="lab-1")
+        issue_demo(shared, entitlement_id="secret-id-123")
+        shown = inspect_entitlement(signed)
+        assert (shown["format"], shown["verified"], shown["signing_key_id"]) == ("signed", False, keys[1].key_id)
+        assert shown["payload"]["entitlement_id"] == "lab-1"
+        hidden = inspect_entitlement(shared)
+        assert hidden["format"] == "sealed" and "payload" not in hidden and "secret-id-123" not in str(hidden)

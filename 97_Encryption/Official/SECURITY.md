@@ -40,7 +40,7 @@ Do not use it as the only protection for credentials, identity records, recovery
 
 - Timing, cache, power, and other side channels. CPython integer arithmetic is not constant-time, and BSR2-MHF-1 uses data-dependent addressing.
 - An attacker who can roll back the complete machine state, including OS randomness
-- Public-key authenticity (no digital signatures are implemented)
+- Public-key authenticity for sealed messages, streams, and archives (they are shared-key only; Ed25519 signatures are a separate module that those formats do not use)
 - Memory disclosure: Python cannot reliably erase keys
 - Confidentiality of compressed sizes and file counts beyond the optional padding
 
@@ -57,6 +57,8 @@ The project does not claim any of the following:
 - Entropy-source validation
 - Side-channel resistance
 - Production suitability
+
+Ed25519 (`brisart_security_signature.py`, added in 0.4.1) is different in kind. It is the standard RFC 8032 algorithm, not a custom construction, and the list above concerns the custom BSR2 constructions. The project claims only that this implementation reproduces the RFC 8032 test vectors and agrees with an independent implementation on random inputs. It has not been independently reviewed, and it is not constant-time (see Out of scope).
 
 ## Reporting implementation issues
 

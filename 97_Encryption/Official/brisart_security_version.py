@@ -14,7 +14,7 @@ research/run_research_suite.py (report provenance). No imports of its own.
 
 Settings / parameters
 ---------------------
-PROJECT_RELEASE        Semantic project release string ("0.4.0-alpha").
+PROJECT_RELEASE        Semantic project release string ("0.4.1-alpha").
 RELEASE_NAME           Human release name ("BSR2 Alpha 4").
 PERMUTATION_ID         Identifier of the frozen BSR2 permutation.
 LEGACY_ENVELOPE_ID     Algorithm identifier of the JSON/hex version 2 envelope.
@@ -26,6 +26,8 @@ Edge cases
 ----------
 The release, the permutation, and each container format are versioned
 independently. Bumping PROJECT_RELEASE never changes a wire format by itself.
+0.4.1-alpha added Ed25519 signatures (brisart_security_signature.py); no format
+version changed, and RELEASE_NAME stays "BSR2 Alpha 4".
 
 Known limitations
 -----------------
@@ -36,10 +38,10 @@ Examples
 --------
 >>> from brisart_security_version import PROJECT_RELEASE
 >>> PROJECT_RELEASE
-'0.4.0-alpha'
+'0.4.1-alpha'
 """
 
-PROJECT_RELEASE = "0.4.0-alpha"
+PROJECT_RELEASE = "0.4.1-alpha"
 RELEASE_NAME = "BSR2 Alpha 4"
 PERMUTATION_ID = "BSR2-P1024"
 LEGACY_ENVELOPE_ID = "BSR2-ARX-SPONGE-ETM"

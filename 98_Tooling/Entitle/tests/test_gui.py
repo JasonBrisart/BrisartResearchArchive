@@ -3,7 +3,10 @@ File: tests/test_gui.py
 
 Purpose
 -------
-Verify the window's behavior without a display: the six tabs exist in order, fields shared
+Verify the window's behavior without a display: the seven tabs exist in order, the signed
+  workflow (generate keys, issue, verify, deploy, release, checkpoint, revoke, publish a list,
+  verify against it, inspect) and converting a shared-key file to signed work from the buttons,
+  a wrong passphrase or declining to replace a file writes nothing, fields shared
   between tabs really are one variable, the whole workflow (issue, verify, deploy up to and past
   the limit, fork, provenance, revoke, refused deployment, reinstate, check, report, list)
   works by pressing the real buttons with nothing retyped between tabs, a file written by the
@@ -62,10 +65,10 @@ import cli
 import fake_tk
 from entitle import encryption
 from entitle.common import EntitleError
-from support import DRBG_PERSONALIZATION, DRBG_SEED, ENTITLE_ROOT, LEGACY_ENTITLEMENT, MASTER_KEY
+from support import ENTITLE_ROOT, LEGACY_ENTITLEMENT, MASTER_KEY, PASSPHRASE
 from version import __version__
 
-TAB_TITLES = ["Issue", "Verify", "Deploy", "Fork / Provenance", "Revoke / Reinstate", "Audit Report"]
+TAB_TITLES = ["Keys", "Issue", "Verify", "Deploy", "Fork / Provenance", "Revoke / Reinstate", "Audit Report"]
 
 
 def _purge_gui_modules():
@@ -115,14 +118,27 @@ def ready(window, tmp_path):
     window.app.shared["entitlement_file"].set(str(tmp_path / "ent" / "lab.entitle"))
     window.app.shared["store"].set(str(tmp_path / "rec" / "r.log"))
     window.set("Issue", "entitlement_id", "gui-lab-1")
-    window.set("Issue", "drbg_seed", DRBG_SEED)
-    window.set("Issue", "drbg_personalization", DRBG_PERSONALIZATION)
+    window.set("Issue", "signed", False)  # the shared-key flow; signed_ready covers the signed one
     window.set("Issue", "deployment_limit", "5")
     return window
 
 
+@pytest.fixture
+def signed_ready(window, tmp_path):
+    window.app.shared["signing_key"].set(str(tmp_path / "keys" / "issuer.signing-key"))
+    window.app.shared["public_key"].set(str(tmp_path / "keys" / "issuer.public-key"))
+    window.app.shared["passphrase"].set(PASSPHRASE)
+    window.app.shared["entitlement_file"].set(str(tmp_path / "ent" / "lab.entitle"))
+    window.app.shared["store"].set(str(tmp_path / "rec" / "r.log"))
+    window.set("Issue", "entitlement_id", "gui-signed-1")
+    window.set("Issue", "deployment_limit", "2")
+    window.set("Revoke / Reinstate", "revocation_list", str(tmp_path / "ent" / "revoked.entitle-crl"))
+    window.set("Audit Report", "checkpoint", str(tmp_path / "rec" / "log.entitle-checkpoint"))
+    return window
+
+
 class TestStructure:
-    def test_six_tabs_appear_in_order_and_the_title_carries_the_version(self, window):
+    def test_seven_tabs_appear_in_order_and_the_title_carries_the_version(self, window):
         assert [text for _, text in fake_tk.NOTEBOOKS[0].tabs] == TAB_TITLES
         assert window.app.window_title.startswith(f"Entitle {__version__}")
 
@@ -225,6 +241,77 @@ class TestWorkflow:
         assert ready.app.shared["entitlement_file"].get() == "/chosen/path.entitle"
 
 
+class TestSignedWorkflow:
+    def test_keys_issue_verify_deploy_release_publish_and_checkpoint_with_nothing_retyped(self, signed_ready, tmp_path):
+        w = signed_ready
+        w.click("Generate Key Pair")
+        assert w.data()["public_key"]["algorithm"] == "Ed25519" and fake_tk.MESSAGES == []
+        w.set("Issue", "modify", True)
+        w.click("Issue Entitlement")
+        assert w.data()["signed"] is True and w.data()["payload"]["format"] == "entitle.entitlement.v2"
+        assert Path(w.data()["created"]).read_text(encoding="utf-8").startswith("-----BEGIN ENTITLE SIGNED ENTITLEMENT-----")
+        w.click("Verify Entitlement")
+        assert w.data()["allowed"] is True and w.data()["signed_by"] and "note" not in w.data()
+        w.app.shared["master_key"].set("")  # a signed file never needs the master key
+        for host in ("node-1", "node-2"):
+            w.set("Deploy", "host", host)
+            w.click("Record Deployment")
+            assert w.data()["recorded"] is True
+        w.set("Deploy", "host", "node-3")
+        w.click("Record Deployment")
+        assert w.data()["reason"] == "deployment_limit_reached"
+        w.set("Deploy", "host", "node-1")
+        w.set("Deploy", "release_entitlement_id", "gui-signed-1")
+        w.click("Release Deployment")
+        assert w.data()["released"] is True and w.data()["deployments_used"] == 1
+        w.set("Deploy", "host", "node-3")
+        w.click("Record Deployment")
+        assert w.data()["recorded"] is True
+        w.click("Create Checkpoint")
+        assert w.data()["record_count"] == 4
+        w.click("Verify Checkpoint")
+        assert w.data()["valid"] is True
+        w.set("Revoke / Reinstate", "entitlement_id", "gui-signed-1")
+        w.click("Revoke")
+        w.click("Publish Revocation List")
+        assert [e["entitlement_id"] for e in w.data()["revoked"]] == ["gui-signed-1"]
+        w.set("Verify", "revocation_list", str(tmp_path / "ent" / "revoked.entitle-crl"))
+        w.click("Verify Entitlement")
+        assert (w.data()["allowed"], w.data()["reason"]) == (False, "entitlement_revoked")
+        w.click("Inspect")
+        assert w.data()["format"] == "signed" and w.data()["verified"] is False
+
+    def test_a_wrong_passphrase_is_an_error_and_nothing_is_issued(self, signed_ready):
+        signed_ready.click("Generate Key Pair")
+        signed_ready.app.shared["passphrase"].set("not the passphrase at all")
+        signed_ready.click("Issue Entitlement")
+        assert signed_ready.out().startswith("ERROR: EntitleError: the passphrase does not open")
+        assert not Path(signed_ready.app.shared["entitlement_file"].get()).exists()
+
+    def test_declining_to_replace_an_existing_file_writes_nothing(self, signed_ready):
+        signed_ready.click("Generate Key Pair")
+        signed_ready.click("Issue Entitlement")
+        path = Path(signed_ready.app.shared["entitlement_file"].get())
+        before = path.read_bytes()
+        fake_tk.ANSWERS[0] = False
+        signed_ready.click("Issue Entitlement")
+        assert signed_ready.out() == "Cancelled: nothing was written." and path.read_bytes() == before
+        assert [kind for kind, _, _ in fake_tk.MESSAGES][-1] == "askyesno"
+
+    def test_a_shared_key_file_is_converted_to_signed_by_its_button(self, signed_ready):
+        w = signed_ready
+        w.click("Generate Key Pair")
+        w.app.shared["master_key"].set(MASTER_KEY)
+        w.set("Issue", "signed", False)
+        w.click("Issue Entitlement")
+        w.click("Verify Entitlement")
+        assert "shared-key entitlement" in w.data()["note"]
+        w.click("Convert to Signed")
+        assert w.data()["reason"] == "converted_to_signed"
+        w.click("Verify Entitlement")
+        assert w.data()["allowed"] is True and w.data()["signed_by"] and "note" not in w.data()
+
+
 class TestMigrate:
     def test_a_previous_encryption_file_is_flagged_on_verify_and_migrated_by_its_button(self, ready):
         path = Path(ready.app.shared["entitlement_file"].get())
@@ -235,7 +322,8 @@ class TestMigrate:
         ready.click("Migrate to Current Encryption")
         assert ready.data() == {"migrated": True, "reason": "migrated", "entitlement_id": "lab-a-demo-001"}
         ready.click("Verify Entitlement")
-        assert ready.data()["allowed"] is True and "note" not in ready.data()
+        assert ready.data()["allowed"] is True and "previous encryption" not in ready.data()["note"]
+        assert "shared-key entitlement" in ready.data()["note"]
         ready.click("Migrate to Current Encryption")
         assert ready.data()["reason"] == "already_current_encryption"
         assert fake_tk.MESSAGES == []
@@ -270,7 +358,7 @@ class TestErrors:
     def test_a_deployment_limit_that_is_not_a_number_is_named_in_the_message(self, ready):
         ready.set("Issue", "deployment_limit", "lots")
         ready.click("Issue Entitlement")
-        assert "Deployment Limit must be a whole number." in ready.out()
+        assert ready.out() == "ERROR: ValueError: Deployment limit (blank = 1, 'unlimited') must be a whole number."
 
     def test_an_empty_deployment_limit_means_the_default_of_one(self, ready):
         ready.set("Issue", "deployment_limit", "")

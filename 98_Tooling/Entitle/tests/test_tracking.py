@@ -3,17 +3,19 @@ File: tests/test_tracking.py
 
 Purpose
 -------
-Verify entitle/tracking.py: counting deployments, the governed deployment rules (denied
-  entitlement, missing can_run, deployment limit, unlimited, revoked), that deployments extend
-  the hash chain, that forks and provenance are recorded without any policy check but refuse
-  blank required fields, that the limit holds when many deployments race, and deploy_from_file
-  against real entitlement files, including one written by the previous encryption.
+Verify entitle/tracking.py: counting seats, the governed deployment rules (denied entitlement,
+  missing can_run, deployment limit, unlimited, revoked, a host that already holds a seat),
+  releasing a seat (also racing deployments), a deployment from a signed file, that deployments
+  extend the hash chain, that forks and provenance are recorded without any policy check but
+  refuse blank required fields, that the limit holds when many deployments race, and
+  deploy_from_file against real entitlement files, including one written by the previous
+  encryption.
 
 Communication / relationships
 -----------------------------
 Imports entitle/rights.py, entitle/records.py, entitle/revoke.py, entitle/tracking.py and
-  tests/support.py. Uses the store_path fixture from tests/conftest.py. Run by pytest;
-  nothing imports it.
+  tests/support.py (including make_keys and issue_signed for the signed deployment). Uses the
+  store_path fixture from tests/conftest.py. Run by pytest; nothing imports it.
 
 Settings / parameters
 ---------------------
@@ -47,8 +49,11 @@ import pytest
 from entitle.rights import EntitlementResult
 from entitle.records import RecordStore
 from entitle.revoke import revoke
-from entitle.tracking import count_deployments, deploy_from_file, record_fork, record_provenance, register_deployment
-from support import ISSUER, LEGACY_ENTITLEMENT, MASTER_KEY, PRODUCT, SUBJECT, issue_demo
+from entitle.tracking import (
+    active_hosts, count_deployments, deploy_from_file, record_fork, record_provenance, register_deployment,
+    release_deployment,
+)
+from support import ISSUER, LEGACY_ENTITLEMENT, MASTER_KEY, PRODUCT, SUBJECT, issue_demo, issue_signed, make_keys
 
 
 def _allowed_entitlement(deployment_limit=1, can_run=True, **payload_overrides):
@@ -232,3 +237,66 @@ class TestDeployFromFile:
         assert self._deploy(tmp_path, store)["recorded"] is True
         revoke(store, "lab-1")
         assert self._deploy(tmp_path, store, host="node-2")["reason"] == "entitlement_revoked"
+
+
+class TestSeats:
+    def test_releasing_a_host_frees_its_seat_for_another(self, store_path):
+        store = RecordStore(store_path)
+        entitlement = _allowed_entitlement(deployment_limit=1)
+        assert register_deployment(store, entitlement, host="node-1")["recorded"] is True
+        assert register_deployment(store, entitlement, host="node-2")["reason"] == "deployment_limit_reached"
+        released = release_deployment(store, product="EntitleDemo", subject="ResearchLabA", entitlement_id="ent-1",
+                                       host="node-1", reason="decommissioned")
+        assert (released["released"], released["deployments_used"]) == (True, 0)
+        assert register_deployment(store, entitlement, host="node-2")["recorded"] is True
+        assert count_deployments(store, "EntitleDemo", "ResearchLabA", "ent-1") == 1
+        assert active_hosts(store, "EntitleDemo", "ResearchLabA", "ent-1") == {"node-2": 1}
+        assert store.verify_chain().valid
+
+    def test_a_host_holds_one_seat_and_cannot_release_what_it_does_not_hold(self, store_path):
+        store = RecordStore(store_path)
+        entitlement = _allowed_entitlement(deployment_limit=5)
+        register_deployment(store, entitlement, host="node-1")
+        again = register_deployment(store, entitlement, host="node-1")
+        assert (again["recorded"], again["reason"], again["deployments_used"]) == (False, "already_deployed_on_host", 1)
+        nothing = release_deployment(store, product="EntitleDemo", subject="ResearchLabA", entitlement_id="ent-1",
+                                     host="node-9")
+        assert (nothing["released"], nothing["reason"]) == (False, "no_active_deployment_on_host")
+        assert len(store.read_all()) == 1
+
+    def test_a_host_with_spaces_at_either_end_is_refused(self, store_path):
+        with pytest.raises(ValueError, match="host must not start or end with spaces"):
+            register_deployment(RecordStore(store_path), _allowed_entitlement(), host="node-1 ")
+        assert not store_path.exists()
+
+    def test_releases_race_safely_with_deployments(self, store_path):
+        store = RecordStore(store_path)
+        entitlement = _allowed_entitlement(deployment_limit=2)
+        register_deployment(store, entitlement, host="a")
+        register_deployment(store, entitlement, host="b")
+        barrier = threading.Barrier(6)
+        outcomes = []
+
+        def work(n):
+            barrier.wait()
+            if n < 2:
+                outcomes.append(release_deployment(store, product="EntitleDemo", subject="ResearchLabA",
+                                                   entitlement_id="ent-1", host="a")["released"])
+            else:
+                outcomes.append(register_deployment(store, entitlement, host=f"new-{n}")["recorded"])
+
+        threads = [threading.Thread(target=work, args=(n,)) for n in range(6)]
+        [t.start() for t in threads]
+        [t.join() for t in threads]
+        assert count_deployments(store, "EntitleDemo", "ResearchLabA", "ent-1") <= 2
+        assert store.verify_chain().valid
+
+
+class TestDeployFromSignedFile:
+    def test_a_signed_entitlement_deploys_with_the_public_key_and_records_its_signer(self, tmp_path, store_path):
+        signing_key, public, _, _ = make_keys(tmp_path / "keys")
+        path = tmp_path / "lab.entitle"
+        issue_signed(path, signing_key, entitlement_id="lab-1", deployment_limit=1)
+        outcome = deploy_from_file(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, public_keys=[public],
+                                   entitlement_path=path, host="node-1", store=RecordStore(store_path))
+        assert outcome["recorded"] is True and outcome["record"]["data"]["signed_by"] == public.key_id

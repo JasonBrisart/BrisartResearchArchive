@@ -17,8 +17,9 @@ Settings / parameters
 ---------------------
 build_report(store) returns store (the path as text), store_exists, record_count (readable
   records), unreadable_records (lines that are not a record), counts_by_type,
-  deployments_by_product, first_record_at, last_record_at and chain (valid, broken_index,
-  reason, record_count). format_text(report) renders it under the heading "Entitle Audit Report",
+  deployments_by_product, first_record_at, last_record_at, head_hash (the last record's entry
+  hash when the chain verifies, else None) and chain (valid, broken_index, reason,
+  record_count). format_text(report) renders it under the heading "Entitle Audit Report",
   with "(none)" for empty sections and an "Unreadable records" line only when there are some.
 
 Edge cases
@@ -33,9 +34,10 @@ A store file that does not exist is reported with store_exists false and the tex
 Known limitations
 -----------------
 A verified chain shows the records agree with each other, not that the log is complete: a log
-  cut short at the end still verifies, and so does one rewritten from an edit onward. Keep an
-  independent copy of the last entry hash if completeness matters. Counts are read from the
-  whole file each time.
+  cut short at the end still verifies, and so does one rewritten from an edit onward. The text
+  prints the head hash so it can be written down, and entitle/checkpoints.py signs it, which is
+  what proves later that nothing was cut or rewritten. deployments_by_product counts deployment
+  records, including ones later released. Counts are read from the whole file each time.
 
 Examples
 --------
@@ -77,6 +79,7 @@ def build_report(store):
         "deployments_by_product": deployments_by_product,
         "first_record_at": records[0].get("created_at") if records else None,
         "last_record_at": records[-1].get("created_at") if records else None,
+        "head_hash": records[-1].get("entry_hash") if records and chain.valid else None,
         "chain": chain.to_dict(),
     }
 
@@ -109,6 +112,9 @@ def format_text(report):
     lines.append("-" * 20)
     if chain["valid"]:
         lines.append(f"VERIFIED: hash chain intact across {chain['record_count']} records.")
+        if report.get("head_hash"):
+            lines.append(f"Head hash: {report['head_hash']}")
+            lines.append("A chain cannot show records cut from the end; sign a checkpoint to prove that.")
     else:
         lines.append(f"BROKEN: {chain['reason']} at record index {chain['broken_index']}.")
     return "\n".join(lines)

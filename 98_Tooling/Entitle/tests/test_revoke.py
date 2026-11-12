@@ -5,7 +5,8 @@ Purpose
 -------
 Verify revocation in entitle/revoke.py: status for an entitlement that was never revoked,
   revoked, reinstated and revoked again, scoping to one entitlement ID (matched exactly as
-  typed), preserved history, and that revocations are hash-chained records.
+  typed; IDs with spaces at either end are refused, and such IDs written by earlier releases are
+  still read as written), preserved history, and that revocations are hash-chained records.
 
 Communication / relationships
 -----------------------------
@@ -80,9 +81,21 @@ class TestRevocationStatus:
 
     def test_ids_are_matched_exactly_as_typed(self, store_path):
         store = RecordStore(store_path)
-        revoke(store, " ent-1", reason="typo with a leading space")
         revoke(store, "Ent-1", reason="typo in the capitalisation")
-        assert is_revoked(store, "ent-1") is False and is_revoked(store, " ent-1") is True
+        assert is_revoked(store, "ent-1") is False and is_revoked(store, "Ent-1") is True
+
+    def test_an_id_with_spaces_at_either_end_is_refused_before_it_can_miss(self, store_path):
+        # Before 0.7.0 " ent-1" was recorded, never matched "ent-1", and could never be removed.
+        for action in (revoke, reinstate):
+            for typed in (" ent-1", "ent-1 ", "ent-\n1"):
+                with pytest.raises(ValueError, match="entitlement id must not"):
+                    action(RecordStore(store_path), typed)
+        assert not store_path.exists()
+
+    def test_an_id_recorded_with_spaces_by_an_earlier_release_is_still_read_as_written(self, store_path):
+        RecordStore(store_path).append("revocation", {"entitlement_id": " ent-1", "reason": "0.6.1"})
+        assert is_revoked(RecordStore(store_path), " ent-1") is True
+        assert is_revoked(RecordStore(store_path), "ent-1") is False
 
     def test_full_history_is_preserved_across_multiple_transitions(self, store_path):
         store = RecordStore(store_path)
