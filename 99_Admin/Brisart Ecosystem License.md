@@ -43,11 +43,7 @@ Anything beyond the rights expressly granted above requires an active subscripti
 
 ### Your Material
 
-**Your material remains yours on the Free Tier.**
-
-Using an Official Release exactly as published does not transfer ownership of your files, data, datasets, research, records, results, intellectual property, or other material to Brisart.
-
-See Section 3 for the ownership rules that apply after subscribing.
+**Free Tier use does not change ownership of your material. See Section 3.**
 
 ### Frameworks
 
@@ -73,7 +69,7 @@ These rights exist only while the subscription remains active.
 
 **They are rented, not permanently acquired.**
 
-Subscribed Brisart Activity is subject to the ownership rules in Section 3.
+Subscribed Brisart Activity is subject to Section 3.
 
 ---
 
@@ -89,11 +85,13 @@ The ownership rule is simple:
 
 Material used solely under the Free Tier remains the property of its owner.
 
-Using an Official Release exactly as published does not transfer your files, data, datasets, research, records, results, intellectual property, or other material to Brisart.
+Using an Official Release exactly as published does not transfer ownership of your files, data, datasets, research, records, results, intellectual property, or other material to Brisart.
 
 ### Subscription
 
-Once you subscribe, material used through Subscribed Brisart Activity becomes Subscribed Material and belongs to Brisart.
+**When material becomes Subscribed Material, it belongs to Brisart.**
+
+The subscriber assigns to Brisart all rights, title, and interest in that Subscribed Material.
 
 Subscribed Material includes:
 
@@ -108,23 +106,13 @@ Subscribed Material includes:
 - Brisart-Derived Work.
 - Other material created, entered, generated, processed, stored, secured, analyzed, developed, incorporated, or otherwise used through Brisart while subscribed.
 
-When material becomes Subscribed Material, the subscriber assigns to Brisart all rights, title, and interest in that material.
-
-### Pre-Existing Material
-
 Purchasing a subscription does not, by itself, transfer material that existed before the subscription began.
 
 **Pre-existing material becomes Subscribed Material when it is used through Subscribed Brisart Activity.**
 
-### Location Does Not Change Ownership
-
-Ownership does not depend on where Subscribed Material is stored or whether Brisart possesses it.
-
 **Brisart does not need to receive, access, inspect, monitor, or possess the material for Brisart ownership to apply.**
 
 **Subscribed use determines ownership, not where the material is stored.**
-
-### Subscriber Responsibility
 
 The subscriber is responsible for ensuring that material used through Subscribed Brisart Activity may be used and assigned under this license.
 
@@ -148,14 +136,14 @@ When a subscription lapses, expires, or is cancelled:
 - **There is no grandfathering.**
 - Ownership established under Section 3 does not end.
 - Brisart-owned Subscribed Material remains Brisart property.
-- Brisart-owned Subscribed Material cannot be moved back into or used under the Free Tier.
+- Brisart-owned Subscribed Material cannot be used under the Free Tier.
 - The former subscriber may return to Free Tier use of Official Releases under Section 1.
 - Resubscribing restores applicable subscriber rights going forward.
 - Resubscribing does not reverse Brisart ownership or retroactively authorize activity conducted while the subscription was inactive.
 
 Until the subscription is restored, the former subscriber must stop using, maintaining, modifying, implementing, publishing, distributing, hosting, licensing, selling, commercializing, or otherwise exploiting Brisart-Derived Work and other Brisart-owned Subscribed Material.
 
-The same continuing-subscription requirement applies to academic publications, research papers, validation studies, datasets, analyses, results, implementations, derivative frameworks, specifications, software, products, and other Subscribed Material.
+Academic publications, research papers, validation studies, datasets, analyses, results, implementations, derivative frameworks, specifications, software, products, and other Subscribed Material are subject to the same continuing-subscription requirement.
 
 ---
 
@@ -179,7 +167,7 @@ Every tier grants the same rights.
 
 - Modified Brisart software is not an Official Release and may not be represented as one unless Brisart expressly authorizes it.
 
-- Authorized Brisart activity may occur locally, privately, online, offline, on restricted networks, or on air-gapped systems. Network status does not change this license.
+- Network status does not change this license. Brisart activity may occur online, locally, privately, offline, on restricted networks, or on air-gapped systems.
 
 - Brisart does not require continuous Internet connectivity, telemetry, remote access, source-code upload, research-data upload, experimental-result upload, or connection to a Brisart licensing server unless separately agreed.
 
