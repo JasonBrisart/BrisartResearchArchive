@@ -108,7 +108,7 @@ Subscribed Material includes:
 - Brisart-Derived Work.
 - Other material created, entered, generated, processed, stored, secured, analyzed, developed, incorporated, or otherwise used through Brisart while subscribed.
 
-By subscribing, you assign to Brisart all rights, title, and interest in Subscribed Material.
+When material becomes Subscribed Material, the subscriber assigns to Brisart all rights, title, and interest in that material.
 
 ### Pre-Existing Material
 
