@@ -95,4 +95,4 @@ Every tier grants the same rights. Price and seat count are the only differences
 
 - Multiple Individual subscribers may collaborate on Brisart-Derived Work only while all participants maintain active subscriptions. All participants must be identified on the resulting work. If any participant's subscription ends, the jointly created work may no longer be published, distributed, hosted, maintained, commercialized, or otherwise made available until all participants again maintain active subscriptions.
 
-- All files, documents, data and other works you create using Brisart software, curriculums, or Brisart Frameworks are the property of Brisart, and you assign to Brisart all rights in them.
+- Except for works created solely through activities permitted under Section 1 (Free, No Subscription Required), all files, documents, data, and other works created using Brisart software, curriculums, or Brisart Frameworks are the property of Brisart, and the creator assigns to Brisart all rights in them. Materials created solely through permitted Free Tier use are not subject to this assignment.
