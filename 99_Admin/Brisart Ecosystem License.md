@@ -41,13 +41,11 @@ The Free Tier does not grant the right to fork, modify, adapt, extend, implement
 
 Anything beyond the rights expressly granted above requires an active subscription.
 
-### Your Material
-
-**Free Tier use does not change ownership of your material. See Section 3.**
-
 ### Frameworks
 
 **Brisart Frameworks are read-only on the Free Tier.**
+
+**Reading is the entire Free Tier grant for Brisart Frameworks.**
 
 Implementation, reimplementation, operationalization, adaptation, extension, testing, validation, redistribution, commercialization, derivative research, and creation of Brisart-Derived Work require an active subscription.
 
@@ -69,7 +67,7 @@ These rights exist only while the subscription remains active.
 
 **They are rented, not permanently acquired.**
 
-Subscribed Brisart Activity is subject to Section 3.
+Subscribed Brisart Activity is subject to the ownership rules in Section 3.
 
 ---
 
@@ -167,9 +165,7 @@ Every tier grants the same rights.
 
 - Modified Brisart software is not an Official Release and may not be represented as one unless Brisart expressly authorizes it.
 
-- Network status does not change this license. Brisart activity may occur online, locally, privately, offline, on restricted networks, or on air-gapped systems.
-
-- Brisart does not require continuous Internet connectivity, telemetry, remote access, source-code upload, research-data upload, experimental-result upload, or connection to a Brisart licensing server unless separately agreed.
+- Network status does not change this license. Brisart does not require continuous Internet connectivity, telemetry, remote access, source-code upload, research-data upload, experimental-result upload, or connection to a Brisart licensing server unless separately agreed.
 
 - Copies necessary to deploy an Official Release or authorized Brisart-Derived Work among covered users are internal deployment and not external redistribution.
 
