@@ -1,11 +1,11 @@
 # Constrained Parallel Convergence (CPC): A Mechanism for Multi-State Stabilization Under Constraint
 
-**Jason Brisart**  
-**Brisart Research Archive**  
-**Contact:** jason@brisartresearcharchive.com  
-**Website:** brisartresearcharchive.com  
-**Version:** 1.0  
-**Publication date:** June 2026
+- **Author:** Jason Brisart
+- **Affiliation:** Brisart Research Archive
+- **Contact:** [jason@brisartresearcharchive.com](mailto:jason@brisartresearcharchive.com)
+- **ORCID / Website:** [Brisart Research Archive](http://www.brisartresearcharchive.com/)
+- **Version:** 1.0  
+- **Publication date:** June 2026
 
 ## Abstract
 
