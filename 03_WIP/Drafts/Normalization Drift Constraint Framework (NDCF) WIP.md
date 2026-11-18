@@ -49,8 +49,10 @@ $$
 Subject to:
 
 $$
-A(S(t))\subseteq \operatorname{neighborhood}(S(t))
+A(S(t))\subseteq N(S(t))
 $$
+
+where $N(S(t))$ represents the domain-defined neighborhood of state $S(t)$.
 
 ### 2.3 Constraint Definition
 
@@ -200,3 +202,4 @@ The framework contributes a foundational constraint layer that integrates direct
 | $\Delta S$ | State deviation magnitude |
 | $E(S,t)$ | Exposure frequency to state $S$ at time $t$ |
 | $A(S)$ | Adaptation function applied to state $S$ |
+| $N(S(t))$ | Domain-defined neighborhood of state $S(t)$ |
