@@ -3,33 +3,49 @@ File: gui/widgets.py
 
 Purpose
 -------
-Hold the small Tk pieces more than one tab uses: a vertically scrollable content area, the
-  muted text color, opening an export folder in the system file manager, and the Build
-  Complete message. Tabs call tkinter.messagebox directly for every other dialog.
+Hold the small Tk pieces more than one tab uses: a vertically scrollable content area whose
+  scrollbar appears only when the content is taller than the window, a text box synced to a
+  StringVar, the muted text color, opening an export folder in the system file manager, and
+  the Build Complete message. Tabs call tkinter.messagebox directly for every other dialog.
 
 Communication / relationships
 -----------------------------
 Imports export/pipeline.py (BuildResult). Imported by gui/build_tab.py (open_folder,
-  show_build_complete, MUTED), gui/options_tab.py and gui/extras_tab.py
-  (create_scrollable_area, MUTED), gui/about_tab.py (open_folder), and gui/window.py (MUTED).
+  show_build_complete, MUTED), gui/options_tab.py (create_scrollable_area,
+  create_text_field, MUTED),
+  gui/extras_tab.py (create_scrollable_area, MUTED, open_folder), and gui/view_tab.py and
+  gui/window.py (MUTED).
 
 Settings / parameters
 ---------------------
 create_scrollable_area(parent) returns the frame to fill; the frame stretches to the canvas
-  width. Mouse-wheel scrolling uses MouseWheel (delta/120 per step) on Windows and macOS and
-  Button-4/5 on Linux, bound only while the pointer is over the area.
+  width. The scroll region is the content's requested height (never less than the view), and
+  scrollbar_needed() decides whether the scrollbar is packed: only when that height exceeds
+  the visible height. Mouse-wheel scrolling uses MouseWheel (delta/120 per step) on Windows
+  and macOS and Button-4/5 on Linux, bound only while the pointer is over the area, and does
+  nothing while the scrollbar is hidden.
 
 Edge cases
 ----------
-open_folder uses os.startfile; where that does not exist (macOS, Linux) it shows the path in
+The layout is recomputed when the content resizes (a section is hidden or shown), when the
+  area resizes, and when the area is mapped, so a tab that was hidden while sections changed
+  is correct the moment it is shown. When the scrollbar goes away the view returns to the
+  top. An area Tk has not sized yet (height 1 or less) never shows a scrollbar. Showing the
+  scrollbar narrows the area by its own width, which cannot change the content's height
+  because the labels use fixed wrap widths, so the layout settles in one step.
+  open_folder uses os.startfile; where that does not exist (macOS, Linux) it shows the path in
   a message instead, and any other failure shows an error. The Build Complete message omits
   the Git line when there is no branch or commit and the ZIP line when no ZIP was made, and
   shows an unknown dirty state as "unverified", never "clean".
 
 Known limitations
 -----------------
-Wheel bindings use bind_all and unbind_all, so they replace any other global wheel handler
+A text box changed by code (a profile loaded) replaces its content and clears its undo history,
+  so Ctrl+Z cannot bring back the previous profile's list. Wheel bindings use bind_all and
+  unbind_all, so they replace any other global wheel handler
   while the pointer is inside the area. Small trackpad deltas (under 120) can round to zero.
+  Not verified on a real display: the tests drive this code through a recording stand-in for
+  tkinter, so how the scrollbar and layout look needs a manual check on each platform.
 
 Examples
 --------
@@ -55,6 +71,15 @@ from export.pipeline import BuildResult
 MUTED = "#666666"
 
 
+def scrollbar_needed(content_height: int, view_height: int) -> bool:
+    """
+    True when the content is taller than the visible area. A view of 1 pixel or less is a
+    window Tk has not sized yet (a tab that has never been shown), where no scrollbar should
+    appear.
+    """
+    return view_height > 1 and content_height > view_height
+
+
 def create_scrollable_area(parent: tk.Frame) -> tk.Frame:
     container = tk.Frame(parent)
     container.pack(fill="both", expand=True)
@@ -65,27 +90,44 @@ def create_scrollable_area(parent: tk.Frame) -> tk.Frame:
 
     content = tk.Frame(canvas)
     content_window_id = canvas.create_window((0, 0), window=content, anchor="nw")
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar_shown = False
 
-    def on_content_configure(_event=None) -> None:
-        canvas.configure(scrollregion=canvas.bbox("all"))
+    def update_layout(_event=None) -> None:
+        """Fit the scroll region to the content, and show the scrollbar only if it is needed."""
+        nonlocal scrollbar_shown
+        view = canvas.winfo_height()
+        wanted = content.winfo_reqheight()
+        canvas.configure(scrollregion=(0, 0, canvas.winfo_width(), max(wanted, view)))
+        needed = scrollbar_needed(wanted, view)
+        if needed and not scrollbar_shown:
+            scrollbar.pack(side="right", fill="y", before=canvas)
+            scrollbar_shown = True
+        elif not needed and scrollbar_shown:
+            scrollbar.pack_forget()
+            scrollbar_shown = False
+            canvas.yview_moveto(0)
 
     def on_canvas_configure(event) -> None:
         canvas.itemconfig(content_window_id, width=event.width)
+        update_layout()
 
-    content.bind("<Configure>", on_content_configure)
+    content.bind("<Configure>", update_layout)
     canvas.bind("<Configure>", on_canvas_configure)
-
-    canvas.pack(side="left", fill="both", expand=True)
-    scrollbar.pack(side="right", fill="y")
+    # A tab that was hidden while sections changed has no Configure to report that; showing it does.
+    canvas.bind("<Map>", update_layout)
 
     def on_mousewheel(event) -> None:
-        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        if scrollbar_shown:
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def on_mousewheel_linux_up(_event) -> None:
-        canvas.yview_scroll(-1, "units")
+        if scrollbar_shown:
+            canvas.yview_scroll(-1, "units")
 
     def on_mousewheel_linux_down(_event) -> None:
-        canvas.yview_scroll(1, "units")
+        if scrollbar_shown:
+            canvas.yview_scroll(1, "units")
 
     def bind_wheel(_event=None) -> None:
         canvas.bind_all("<MouseWheel>", on_mousewheel)
@@ -101,6 +143,32 @@ def create_scrollable_area(parent: tk.Frame) -> tk.Frame:
     canvas.bind("<Leave>", unbind_wheel)
 
     return content
+
+
+def create_text_field(parent: tk.Widget, variable: tk.StringVar, height: int = 3) -> tk.Text:
+    """
+    A small word-wrapped text box kept in step with a StringVar in both directions, for lists
+    too long for one line. Tk raises <<Modified>> for every change however it was made (typing,
+    paste, cut, undo), and the flag is cleared after each sync so the event fires again.
+    """
+    box = tk.Text(parent, height=height, wrap="word", undo=True)
+
+    def show(*_args) -> None:
+        if box.get("1.0", "end-1c") != variable.get():
+            box.delete("1.0", "end")
+            box.insert("1.0", variable.get())
+            box.edit_reset()
+
+    def store(_event=None) -> None:
+        if box.edit_modified():
+            variable.set(box.get("1.0", "end-1c"))
+            box.edit_modified(False)
+
+    variable.trace_add("write", show)
+    box.bind("<<Modified>>", store)
+    show()
+    box.edit_modified(False)
+    return box
 
 
 def open_folder(path: Path) -> None:

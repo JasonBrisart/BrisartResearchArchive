@@ -11,15 +11,17 @@ Start Project Context Helper, a Brisart Research Archive tool that packages a pr
 Communication / relationships
 -----------------------------
 Imports cli (main) and calls it when run as a script. Python puts this file's folder on the
-  import path when it is run, which is how cli, app, storage, export/, and gui/ resolve from
+  import path when it is run, which is how cli, application/, export/, and gui/ resolve from
   any working folder.
 
 Application layout (dependencies point down; nothing imports anything above itself):
-  run.py              entry point
-  cli.py, gui/        interfaces: command line and desktop window
-  storage.py          everything remembered between runs
-  export/             the engine: settings -> scan, git_state -> render -> pipeline (+ events)
-  app.py              identity and every file name the app writes
+  run.py, cli.py            entry point and command line
+  gui/                      the desktop window
+  application/storage.py    everything remembered between runs
+  export/                   the engine: settings -> scan, git_state -> render, snapshot -> pipeline (+ events)
+  application/identity.py   the name, version, and every file name the app writes (imports nothing)
+  application/ holds both ends on purpose: storage sits above the engine and identity below it,
+  so the engine can read the shared names without ever loading storage.
 
 Settings / parameters
 ---------------------

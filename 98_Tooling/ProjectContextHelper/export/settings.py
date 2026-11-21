@@ -9,12 +9,12 @@ Own everything about export settings: the ScanSettings record, the standard and 
 
 Communication / relationships
 -----------------------------
-Imports app (output and state file names for the default exclusions). Imported by
+Imports application/identity.py (output and state file names for the default exclusions). Imported by
   export/scan.py (ScanSettings, resolve_workers), export/render.py and export/pipeline.py
-  (ScanSettings, validate_settings, settings_for_profile), storage.py (ScanSettings for
+  (ScanSettings, validate_settings, settings_for_profile), application/storage.py (ScanSettings for
   last-used settings and profiles), cli.py (presets, normalize_extension, AUTO_WORKERS,
-  MAX_WORKERS), gui/state.py and gui/options_tab.py (presets, core detection, worker
-  limits), gui/build_tab.py (the profile list), and gui/extras_tab.py (reserved names).
+  MAX_WORKERS), gui/state.py and gui/extras_tab.py (presets, core detection, worker
+  limits, reserved names), and gui/build_tab.py (the profile list).
 
 Settings / parameters
 ---------------------
@@ -43,14 +43,16 @@ from_jsonable never raises for bad field values: wrong types are dropped and fal
 
 validate_settings returns a validated deep copy and raises ValueError for an unsupported
   profile, a nonpositive or non-int size limit, a workers value other than 'auto' or 1-32
-  (including True, 2.0, and '4'), or an empty output folder name. Core detection never
-  returns less than 1.
+  (including True, 2.0, and '4'), an empty output folder name, an empty extension list, an
+  extension or suffix without a leading dot, and a folder or file exclusion containing a path
+  separator. Those last three would otherwise be accepted and silently do nothing. Core
+  detection never returns less than 1.
 
 Known limitations
 -----------------
-Raw ScanSettings() is not a preset: its extension and exclusion sets are empty. Use
-  settings_for_profile. Validation checks types and ranges, not whether extensions are
-  normalized or the output folder is safe (export/pipeline.py checks the folder).
+Raw ScanSettings() is not a preset: its extension and exclusion sets are empty, so it fails
+  validation. Use settings_for_profile. Validation does not lowercase extensions (the scanner
+  compares case-insensitively) and does not check the output folder (export/pipeline.py does).
 
 Core counts are logical processors (hyper-threads count individually). On Windows and macOS
   before Python 3.13, the count is machine-wide and ignores CPU affinity.
@@ -76,7 +78,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 import os
 
-from app import EXPORTS_DIRNAME, OUTPUT_FILENAMES, STATE_FILENAMES
+from application.identity import EXPORTS_DIRNAME, OUTPUT_FILENAMES, STATE_FILENAMES
 
 AUTO_WORKERS = "auto"
 MAX_WORKERS = 32
@@ -89,7 +91,7 @@ VALID_PROFILES = frozenset({PROFILE_STANDARD, PROFILE_ARCHIVE})
 STANDARD_EXTENSIONS = frozenset({
     ".py", ".json", ".csv", ".txt", ".md", ".toml", ".ini", ".cfg",
     ".yaml", ".yml", ".html", ".css", ".js", ".ts", ".tsx", ".jsx",
-    ".sql", ".xml", ".bat", ".ps1", ".sh", ".gitignore", ".dockerignore",
+    ".sql", ".xml", ".bat", ".ps1", ".sh", ".gitignore", ".dockerignore", ".bcc",
 })
 ARCHIVE_EXTENSIONS = STANDARD_EXTENSIONS | {
     ".rst", ".log", ".env.example", ".sample", ".template", ".lock",
@@ -237,6 +239,20 @@ def validate_settings(settings: ScanSettings) -> ScanSettings:
     workers = settings.workers
     if workers != AUTO_WORKERS and (type(workers) is not int or not 1 <= workers <= MAX_WORKERS):
         raise ValueError(f"workers must be 'auto' or a whole number from 1 to {MAX_WORKERS} (got {workers!r}).")
+    # Each of these would otherwise be accepted and then silently do nothing (or export nothing).
+    if not settings.include_extensions:
+        raise ValueError("include_extensions is empty, so nothing would be exported. Add at least one extension such as .py.")
+    for name in ("include_extensions", "exclude_suffixes"):
+        for item in sorted(getattr(settings, name)):
+            if not item.startswith("."):
+                raise ValueError(f"{name} entry {item!r} must start with a dot (for example '.py').")
+    for name in ("exclude_dirs", "exclude_files"):
+        for item in sorted(getattr(settings, name)):
+            if "/" in item or "\\" in item:
+                raise ValueError(
+                    f"{name} entry {item!r} must be a single name, not a path: the scanner compares one "
+                    "folder or file name at a time, so a path would never match."
+                )
     if not isinstance(settings.output_dir_name, str) or not settings.output_dir_name.strip():
         raise ValueError("Output folder name cannot be empty.")
     settings.output_dir_name = settings.output_dir_name.strip()

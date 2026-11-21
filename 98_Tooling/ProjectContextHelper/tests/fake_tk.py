@@ -18,12 +18,24 @@ Settings / parameters
 REGISTRY holds every widget, MESSAGES every (kind, title, text) dialog, ASK_ANSWER[0] the
   answer to askyesno, and FOLDER[0] what askdirectory returns. Tk.run_pending() runs queued
   after() callbacks until none remain or the timeout passes. buttons(text) finds buttons by
-  label; Widget.invoke() honors state="disabled".
+  label; Widget.invoke() honors state="disabled". Widget.visible is True after pack() or
+  grid(), False after pack_forget() or grid_remove(), and None if never placed.
+  Widget.calls records every other method call as (name, args, kwargs), for example the
+  Notebook's tab(frame, state="hidden") or a Canvas's yview_moveto(0). Widget.dimensions
+  holds the width, height, and requested height that winfo_width(), winfo_height(), and
+  winfo_reqheight() report (1 until a test sets them, like an unplaced Tk window).
+  Widget.bind() stores callbacks and Widget.fire(sequence, **event) runs one. Text keeps its
+  content, tracks the modified flag, and Text.user_edit(text) plays a person typing.
+  Layout model: Widget.requested_height() stacks the heights and pady of a frame's placed
+  children (Widget.children, Widget.visible) and is what winfo_reqheight() reports unless a test
+  sets dimensions['reqheight']. It copies one real Tk rule: a frame whose last placed child is
+  removed keeps its previous height. A test that hides a section must therefore measure the
+  frame that holds it, not recompute the expected height itself.
 
 Edge cases
 ----------
-Any widget method it does not implement is accepted and does nothing, so layout calls
-  (pack, grid, bind, and so on) never fail.
+Any widget method it does not implement is accepted and recorded in Widget.calls, so other
+  layout and binding calls never fail.
 
 Known limitations
 -----------------
@@ -80,18 +92,69 @@ class IntVar(_Var):
     pass
 
 
+CONTAINERS = ('Frame', 'LabelFrame')
+LEAF_HEIGHT = 20
+
+
+def _pad(options, key='pady'):
+    value = options.get(key) or 0
+    return sum(value) if isinstance(value, (tuple, list)) else value
+
+
 class Widget:
     def __init__(self, master=None, **options):
+        self.calls = []
+        self.bindings = {}
+        self.dimensions = {'width': 1, 'height': 1, 'reqheight': None}
         self.master = master
         self.options = dict(options)
         self.kind = type(self).__name__
         self.items = {}
         self.order = []
         self.selected = ()
+        self.visible = None
+        self.children = []
+        self.pack_options = {}
+        self.last_request = 1
+        if master is not None:
+            master.children.append(self)
+        if self.kind in CONTAINERS and (options.get('height') or 0) > 0:
+            self.last_request = options['height']
         REGISTRY.append(self)
 
     def config(self, **options):
         self.options.update(options)
+        if self.kind in CONTAINERS and (options.get('height') or 0) > 0 and not self.placed_children():
+            self.last_request = options['height']
+            self.arrange_master()
+
+    # Layout model. Every placed child of a frame adds its own height and pady (a stack: enough
+    # to tell whether space is released, not pixel-accurate). The one rule copied from Tk
+    # itself: a frame whose LAST placed child is removed stops managing its size and keeps its
+    # previous requested height, so a frame that is not given another child never shrinks.
+    def placed_children(self):
+        return [child for child in self.children if child.visible]
+
+    def requested_height(self):
+        if self.kind in CONTAINERS:
+            return self.last_request
+        if self.kind == 'Text':
+            return 16 * (self.options.get('height') or 1)
+        if self.kind == 'Treeview':
+            return 18 * (self.options.get('height') or 1)
+        return self.options.get('height') or LEAF_HEIGHT
+
+    def arrange(self):
+        placed = self.placed_children()
+        if not placed:
+            return
+        label = 18 if self.kind == 'LabelFrame' else 0
+        self.last_request = label + 2 * _pad(self.options) + sum(child.requested_height() + _pad(child.pack_options) for child in placed)
+        self.arrange_master()
+
+    def arrange_master(self):
+        if self.master is not None and self.visible:
+            self.master.arrange()
 
     configure = config
 
@@ -105,7 +168,46 @@ class Widget:
         return self.options.get(key)
 
     def __getattr__(self, name):
-        return lambda *args, **kwargs: None
+        if name.startswith('__'):
+            raise AttributeError(name)
+
+        def record(*args, **kwargs):
+            self.calls.append((name, args, kwargs))
+        return record
+
+    # Sizes a test can set: Tk reports 1 until a window has been placed.
+    def winfo_width(self):
+        return self.dimensions['width']
+
+    def winfo_height(self):
+        return self.dimensions['height']
+
+    def winfo_reqheight(self):
+        override = self.dimensions['reqheight']
+        return override if override is not None else self.requested_height()
+
+    def bind(self, sequence, callback, add=None):
+        self.bindings[sequence] = callback
+
+    def fire(self, sequence, **event):
+        """Run the callback bound to sequence with a fake event carrying the given fields."""
+        return self.bindings[sequence](types.SimpleNamespace(**event))
+
+    # Geometry: record whether the widget is currently placed, for show/hide checks.
+    def pack(self, *args, **kwargs):
+        self.visible = True
+        self.pack_options = kwargs
+        if self.master is not None:
+            self.master.arrange()
+
+    grid = pack
+
+    def pack_forget(self):
+        self.visible = False
+        if self.master is not None:
+            self.master.arrange()
+
+    grid_remove = pack_forget
 
     def invoke(self):
         if self.options.get('state') == 'disabled':
@@ -134,7 +236,8 @@ class Widget:
     def bbox(self, *_args):
         return (0, 0, 1, 1)
 
-    def create_window(self, *_args, **_kwargs):
+    def create_window(self, *args, **kwargs):
+        self.calls.append(('create_window', args, kwargs))
         return 1
 
 
@@ -170,7 +273,37 @@ class Tk(Widget):
             time.sleep(0.01)
 
 
-for _name in ('Frame', 'Label', 'Button', 'Entry', 'LabelFrame', 'Scrollbar', 'Canvas', 'Checkbutton', 'Text', 'Spinbox'):
+class Text(Widget):
+    """Holds text like a Tk Text; user_edit() plays a person typing, which raises <<Modified>>."""
+
+    def __init__(self, master=None, **options):
+        super().__init__(master, **options)
+        self.content = ''
+        self.modified = False
+
+    def get(self, *_args):
+        return self.content
+
+    def insert(self, _index, text):
+        self.content = text + self.content if _index == '1.0' else self.content + text
+        self.modified = True
+
+    def delete(self, *_args):
+        self.content = ''
+        self.modified = True
+
+    def edit_modified(self, flag=None):
+        if flag is None:
+            return self.modified
+        self.modified = bool(flag)
+
+    def user_edit(self, text):
+        self.content = text
+        self.modified = True
+        self.fire('<<Modified>>')
+
+
+for _name in ('Frame', 'Label', 'Button', 'Entry', 'LabelFrame', 'Scrollbar', 'Canvas', 'Checkbutton', 'Spinbox'):
     globals()[_name] = type(_name, (Widget,), {})
 
 ttk = types.ModuleType('tkinter.ttk')

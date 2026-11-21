@@ -13,9 +13,11 @@ Communication / relationships
 -----------------------------
 Imports export/pipeline.py (create_context, BuildResult), export/settings.py (profile names,
   ScanSettings), gui/state.py (GuiState, apply_profile_defaults, build_settings_from_state),
-  gui/widgets.py (open_folder, show_build_complete, MUTED), and storage (save_last_settings,
+  gui/widgets.py (open_folder, show_build_complete, MUTED), and application/storage.py (save_last_settings,
   record_export). Imported by gui/window.py. Calls state.history_refresh, registered by
-  gui/about_tab.py, after each successful build.
+  gui/extras_tab.py, after each successful build. The profile description and the list of
+  generated files are optional sections (build_profile_help, build_outputs) the View tab
+  can hide.
 
 Settings / parameters
 ---------------------
@@ -33,7 +35,7 @@ Validation errors (no folder, bad sizes) appear before any thread starts. During
 Known limitations
 -----------------
 There is no Cancel button; closing the window cancels. The last export folder is remembered
-  only for this session (history on the About tab persists). Edits made during a build apply
+  only for this session (Recent Exports on the Extras tab persists). Edits made during a build apply
   to the next one. execute_build runs on the worker thread and must never touch Tk.
 
 Examples
@@ -59,9 +61,9 @@ from tkinter import filedialog, messagebox, ttk
 
 from export.pipeline import BuildResult, create_context
 from export.settings import PROFILE_ARCHIVE, PROFILE_STANDARD, VALID_PROFILES, ScanSettings
-from gui.state import GuiState, apply_profile_defaults, build_settings_from_state
+from gui.state import GuiState, apply_profile_defaults, bind_visibility, build_settings_from_state, optional_section
 from gui.widgets import MUTED, open_folder, show_build_complete
-import storage
+from application import storage
 
 
 def profile_description(profile: str) -> str:
@@ -126,17 +128,22 @@ def create_build_tab(
     )
     profile_menu.grid(row=0, column=1, sticky="w", pady=4)
     profile_description_var = tk.StringVar(value=profile_description(state.profile_var.get()))
-    tk.Label(
+    description = tk.Label(
         quick_frame, textvariable=profile_description_var, justify="left", anchor="w", fg=MUTED, wraplength=700,
-    ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0))
+    )
+    bind_visibility(
+        state, "build_profile_help",
+        lambda: description.grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0)), description.grid_remove,
+    )
 
     def refresh_profile_description(*_args) -> None:
         apply_profile_defaults(state)
         profile_description_var.set(profile_description(state.profile_var.get()))
     state.profile_var.trace_add("write", refresh_profile_description)
 
+    outputs = optional_section(state, "build_outputs", parent, padx=18, pady=(10, 0))
     tk.Label(
-        parent, justify="left", anchor="w", font=("Segoe UI", 10),
+        outputs, justify="left", anchor="w", font=("Segoe UI", 10),
         text=(
             "Generated outputs:\n"
             "\u2022 PROJECT_CONTEXT.md\n"
@@ -145,7 +152,7 @@ def create_build_tab(
             "\u2022 PROJECT_CONTEXT_SETTINGS.json\n"
             "\u2022 PROJECT_SNAPSHOT.zip (optional)"
         ),
-    ).pack(fill="x", padx=18, pady=(10, 0))
+    ).pack(fill="x")
 
     build_button = tk.Button(
         parent, text="Build Project Context", height=2, font=("Segoe UI", 12, "bold"),

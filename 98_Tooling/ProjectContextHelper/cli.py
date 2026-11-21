@@ -10,9 +10,9 @@ Run Project Context Helper from the command line: parse arguments, build export 
 
 Communication / relationships
 -----------------------------
-Imports app (banner), export/settings.py (presets and flag parsing), export/pipeline.py
-  (create_context), export/events.py (--progress), and storage (profiles, last settings,
-  record_export). Imported by run.py (main) and tests/test_cli.py. gui/window.py is imported
+Imports application/identity.py (banner), export/settings.py (presets and flag parsing),
+  export/pipeline.py (create_context), export/events.py (--progress), and
+  application/storage.py (profiles, last settings, record_export). Imported by run.py (main) and tests/test_cli.py. gui/window.py is imported
   only when the window opens, so command-line exports load neither tkinter nor any network
   module.
 
@@ -32,7 +32,13 @@ Expected failures (bad settings, missing folder, completeness stop, filesystem e
   "Build failed: ..." and exit 1; Ctrl+C exits 130 with nothing published; unknown flags,
   including the removed --check-updates, --install-updates, and --open-releases, exit 2.
   --no-git-state beats --git-state. A missing --load-profile prints a warning and continues.
-  A failed --save-profile is reported without failing the finished export. Without a project
+  A failed --save-profile is reported without failing the finished export. On the first
+  run after upgrading from v4.2.0 or earlier, saved settings are moved from beside run.py to
+  the per-user folder before anything reads them; if that fails, a warning names both
+  folders and the originals are left in place. Settings that would silently do nothing fail
+  with "Build failed: ..." instead: an empty extension list (--extensions ","), and a path
+  given to --exclude-dir or --exclude-file, which take bare names because the scanner compares
+  one folder or file name at a time. Without a project
   folder, --list-profiles and --delete-profile run and return instead of opening the window.
 
 Known limitations
@@ -58,7 +64,7 @@ from pathlib import Path
 import argparse
 import sys
 
-from app import APP_NAME, APP_VERSION
+from application.identity import APP_NAME, APP_VERSION
 from export.events import Progress
 from export.pipeline import create_context
 from export.settings import (
@@ -69,7 +75,7 @@ from export.settings import (
     normalize_extension,
     settings_for_profile,
 )
-import storage
+from application import storage
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -200,9 +206,25 @@ def run_profile_delete(name: str) -> None:
         print(f"No custom profile named '{name}' was found.")
 
 
+def move_legacy_state() -> None:
+    """Bring settings saved beside run.py by v4.2.0 or earlier into the per-user folder, once."""
+    try:
+        moved = storage.migrate_legacy_state()
+    except (OSError, TimeoutError) as exc:
+        print(
+            f"Warning: could not move saved settings to {storage.application_dir()}: {exc}\n"
+            f"Your existing files in {storage.legacy_state_dir()} were left untouched.",
+            file=sys.stderr,
+        )
+        return
+    if moved:
+        print(f"Moved saved settings ({', '.join(moved)}) to {storage.application_dir()}.", file=sys.stderr)
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+    move_legacy_state()
 
     if args.list_profiles:
         run_profile_list()

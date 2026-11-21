@@ -3,27 +3,31 @@ File: export/render.py
 
 Purpose
 -------
-Turn a finished scan into the export's files: PROJECT_CONTEXT.md, the PROJECT_MANIFEST.json
-  dictionary, PROJECT_SUMMARY.txt, the source-completeness report, and the optional
-  PROJECT_SNAPSHOT.zip. Also owns the text handling only rendering needs: reading captured
-  text with optional secret-line redaction, Markdown escaping and fences, and fence language
-  hints.
+Turn a finished scan into the export's text files: PROJECT_CONTEXT.md (streamed to an open
+  file one embedded file at a time), the PROJECT_MANIFEST.json dictionary,
+  PROJECT_SUMMARY.txt, and the source-completeness report. Also owns the text handling only
+  rendering needs: reading captured text with optional secret-line redaction, Markdown
+  escaping and fences, and fence language hints. The ZIP is export/snapshot.py's job.
 
 Communication / relationships
 -----------------------------
-Imports app (attribution and manifest name), export/git_state.py (GitState), export/scan.py
+Imports application/identity.py (attribution and manifest name), export/git_state.py (GitState), export/scan.py
   (ScanResult, build_tree, SOURCE_COMPLETENESS_FAILURE_REASONS), and export/settings.py
-  (ScanSettings, AUTO_WORKERS). Imported only by export/pipeline.py, which writes the
-  returned text to disk.
+  (ScanSettings, AUTO_WORKERS). Imported only by export/pipeline.py, which opens
+  PROJECT_CONTEXT.md for write_context_markdown and writes the returned manifest and
+  summary.
 
 Settings / parameters
 ---------------------
-Sections follow the ScanSettings toggles. File contents and ZIP members come from
+Sections follow the ScanSettings toggles. File contents come from
   ScanResult.captured_paths when present (always, under the pipeline), otherwise from the
   original files. The manifest keeps settings.workers as requested and adds
   summary.capture_workers, the count actually used; the Markdown and summary show both, for
   example "8 (auto)" or "4 (requested 16, limited to available CPU cores)". Redaction replaces
   any line where password, token, secret, api_key, and similar keys are followed by : or =.
+  For speed, one whole-text search decides whether any line can match, and ASCII text is
+  searched lowercased with a case-sensitive copy of the pattern (has_secret); both give
+  exactly the line-by-line result. source_fence finds backtick runs with a regex.
 
 Edge cases
 ----------
@@ -58,11 +62,10 @@ Usage from the directory containing run.py:
 from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
-import zipfile
-
+from typing import TextIO
 import re
 
-from app import AFFILIATION, APP_NAME, APP_VERSION, AUTHOR, MANIFEST_FILENAME
+from application.identity import AFFILIATION, APP_NAME, APP_VERSION, AUTHOR, MANIFEST_FILENAME
 from export.git_state import GitState
 from export.scan import SOURCE_COMPLETENESS_FAILURE_REASONS, ScanResult, build_tree
 from export.settings import AUTO_WORKERS, ScanSettings
@@ -70,6 +73,17 @@ from export.settings import AUTO_WORKERS, ScanSettings
 _SECRET_PATTERN = re.compile(
     r"(?i)(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret)\s*[:=]"
 )
+# The same pattern without (?i), for ASCII text that has been lowercased. For ASCII the
+# two are equivalent, and Python's re runs this one about nine times faster.
+_SECRET_PATTERN_LOWER = re.compile(
+    r"(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret)\s*[:=]"
+)
+
+
+def has_secret(text: str) -> bool:
+    if text.isascii():
+        return _SECRET_PATTERN_LOWER.search(text.lower()) is not None
+    return _SECRET_PATTERN.search(text) is not None
 
 
 def safe_read(path: Path, redact_sensitive_lines: bool = True) -> str:
@@ -84,13 +98,12 @@ def safe_read(path: Path, redact_sensitive_lines: bool = True) -> str:
         return f"[[Could not read file: {exc}]]"
     if not redact_sensitive_lines:
         return text
-    redacted_lines: list[str] = []
-    for line in text.splitlines():
-        if _SECRET_PATTERN.search(line):
-            redacted_lines.append("[[REDACTED POSSIBLE SECRET LINE]]")
-        else:
-            redacted_lines.append(line)
-    return "\n".join(redacted_lines)
+    lines = text.splitlines()
+    # One search over the whole text rules out nearly every file; any line that matches
+    # on its own also matches here, so only files with a hit are checked line by line.
+    if has_secret(text):
+        lines = ["[[REDACTED POSSIBLE SECRET LINE]]" if has_secret(line) else line for line in lines]
+    return "\n".join(lines)
 
 
 def language_hint(path: Path) -> str:
@@ -104,7 +117,7 @@ def language_hint(path: Path) -> str:
         ".ps1": "powershell", ".sh": "bash", ".java": "java", ".c": "c",
         ".cpp": "cpp", ".h": "c", ".hpp": "cpp", ".cs": "csharp", ".go": "go",
         ".rs": "rust", ".rb": "ruby", ".php": "php", ".swift": "swift",
-        ".kt": "kotlin", ".kts": "kotlin", ".r": "r", ".pl": "perl", ".lua": "lua",
+        ".kt": "kotlin", ".kts": "kotlin", ".r": "r", ".pl": "perl", ".lua": "lua", ".bcc": "bcc",
     }
     if path.name.lower() in {".gitignore", ".dockerignore"}:
         return "text"
@@ -244,20 +257,20 @@ def append_source_completeness_markdown(chunks: list[str], scan: ScanResult, set
     chunks.append("")
 
 
+_BACKTICK_RUN = re.compile(r"`+")
+
+
 def source_fence(text: str) -> str:
     """
     Return a backtick fence longer than any backtick run in the text (minimum
     three), so an embedded file containing ``` cannot close its block early.
     """
-    longest = 0
-    run = 0
-    for char in text:
-        run = run + 1 if char == "`" else 0
-        longest = max(longest, run)
+    longest = max((len(run) for run in _BACKTICK_RUN.findall(text)), default=0)
     return "`" * max(3, longest + 1)
 
 
-def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings, created: str, git_state: GitState | None = None, output_dir: Path | None = None) -> str:
+def write_context_markdown(handle: TextIO, root: Path, scan: ScanResult, settings: ScanSettings, created: str, git_state: GitState | None = None, output_dir: Path | None = None) -> None:
+    """Write PROJECT_CONTEXT.md to handle; embedded file contents are streamed one file at a time."""
     chunks: list[str] = []
     skip_counts = Counter(r.reason for r in scan.skipped_records)
     chunks.append("# Project Context")
@@ -340,21 +353,18 @@ def build_context_markdown(root: Path, scan: ScanResult, settings: ScanSettings,
         else:
             chunks.append("_No files were included._")
             chunks.append("")
-    if settings.include_file_contents:
-        chunks.append("## Included File Contents")
-        chunks.append("")
-        sources = scan.captured_paths or scan.included_paths
-        for path, source in zip(scan.included_paths, sources):
-            rel = path.relative_to(root)
-            text = safe_read(source, redact_sensitive_lines=settings.redact_sensitive_lines)
-            fence = source_fence(text)
-            chunks.append(f"### `{escape_table_cell(str(rel))}`")
-            chunks.append("")
-            chunks.append(f"{fence}{language_hint(path)}")
-            chunks.append(text)
-            chunks.append(fence)
-            chunks.append("")
-    return "\n".join(chunks)
+    if not settings.include_file_contents:
+        handle.write("\n".join(chunks))
+        return
+    chunks.append("## Included File Contents")
+    chunks.append("")
+    handle.write("\n".join(chunks))
+    sources = scan.captured_paths or scan.included_paths
+    for path, source in zip(scan.included_paths, sources):
+        rel = path.relative_to(root)
+        text = safe_read(source, redact_sensitive_lines=settings.redact_sensitive_lines)
+        fence = source_fence(text)
+        handle.write("\n".join(("", f"### `{escape_table_cell(str(rel))}`", "", f"{fence}{language_hint(path)}", text, fence, "")))
 
 
 def build_summary_text(root: Path, scan: ScanResult, settings: ScanSettings, created: str, git_state: GitState | None = None) -> str:
@@ -415,15 +425,3 @@ def build_summary_text(root: Path, scan: ScanResult, settings: ScanSettings, cre
     for reason, count in sorted(skip_counts.items()):
         lines.append(f"{reason}: {count}")
     return "\n".join(lines)
-
-
-def create_snapshot_zip(zip_path: Path, context_path: Path, manifest_path: Path, summary_path: Path, settings_path: Path, scan: ScanResult, root: Path) -> None:
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.write(context_path, context_path.name)
-        archive.write(manifest_path, manifest_path.name)
-        archive.write(summary_path, summary_path.name)
-        archive.write(settings_path, settings_path.name)
-        sources = scan.captured_paths or scan.included_paths
-        for path, source in zip(scan.included_paths, sources):
-            rel = path.relative_to(root)
-            archive.write(source, f"project_files/{rel.as_posix()}")

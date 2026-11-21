@@ -1,8 +1,8 @@
 # Changelog
 
 All notable changes to CanonSync are documented here.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
 
 ## [1.2.0] - 2026-08-09
 
@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Notes
 - Allow/block is purely a targeting filter; it does not touch a repo's files
   in any way when blocked. Safe to leave repos blocked indefinitely.
+
+---
 
 ## [1.1.0] - 2026-08-09
 
@@ -52,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   existing managed blocks in downstream repos are still recognized — no
   duplicate blocks on upgrade.
 - `license` remains `"enabled": false` by default; whole mode is destructive.
+
+---
 
 ## [1.0.0] - 2026-08-09
 

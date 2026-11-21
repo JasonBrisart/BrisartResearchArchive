@@ -10,7 +10,8 @@ Read optional Git context for an export (branch, HEAD commit, clean or dirty wor
 Communication / relationships
 -----------------------------
 Imports nothing from the application. Imported by export/pipeline.py (build_git_state) and
-  export/render.py (GitState).
+  export/render.py (GitState). The working-tree walk uses os.walk and prunes .git and
+  excluded folders, so a large node_modules is never entered.
 
 Settings / parameters
 ---------------------
@@ -49,6 +50,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 import hashlib
+import os
 import zlib
 
 GIT_DIRNAME = ".git"
@@ -250,8 +252,9 @@ def compute_working_tree_status(
     root: Path, git_dir: Path, tree_sha: str, exclude_dirs: set[str], exclude_files: set[str]
 ) -> tuple[bool | None, str, list[str], list[str], list[str]]:
     """
-    Compare the working tree against HEAD's tree. Exclusions are case-insensitive,
-    matching export/scan.py, so a Node_Modules folder is not listed as untracked.
+    Compare the working tree against HEAD's tree. Excluded folders and .git are pruned
+    from the walk, never entered. Exclusions are case-insensitive, matching
+    export/scan.py, so a Node_Modules folder is not listed as untracked.
     """
     tracked_blobs, warnings = walk_tree(git_dir, tree_sha)
     if not tracked_blobs and warnings:
@@ -260,31 +263,30 @@ def compute_working_tree_status(
     seen_relative_paths: set[str] = set()
     exclude_dirs_lower = {d.lower() for d in exclude_dirs}
     exclude_files_lower = {f.lower() for f in exclude_files}
-    for path in sorted(root.rglob("*")):
-        if not path.is_file():
-            continue
-        try:
-            relative_parts = path.relative_to(root).parts
-        except ValueError:
-            continue
-        if GIT_DIRNAME in relative_parts:
-            continue
-        if any(part.lower() in exclude_dirs_lower for part in relative_parts[:-1]):
-            continue
-        if relative_parts[-1].lower() in exclude_files_lower:
-            continue
-        relative_posix = "/".join(relative_parts)
-        seen_relative_paths.add(relative_posix)
-        expected_sha = tracked_blobs.get(relative_posix)
-        if expected_sha is None:
-            continue
-        try:
-            actual_sha = git_blob_sha1(path.read_bytes())
-        except Exception:
-            warnings.append(f"could not read '{relative_posix}' to verify against HEAD.")
-            continue
-        if actual_sha != expected_sha:
-            modified.append(relative_posix)
+    for directory, dirnames, filenames in os.walk(root):
+        # Prune .git and excluded folders instead of walking every file beneath them.
+        dirnames[:] = sorted(d for d in dirnames if d != GIT_DIRNAME and d.lower() not in exclude_dirs_lower)
+        relative_dir = os.path.relpath(directory, root)
+        prefix = "" if relative_dir == os.curdir else relative_dir.replace(os.sep, "/") + "/"
+        for name in sorted(filenames):
+            if name == GIT_DIRNAME or name.lower() in exclude_files_lower:
+                continue
+            full = os.path.join(directory, name)
+            if not os.path.isfile(full):
+                continue
+            relative_posix = prefix + name
+            seen_relative_paths.add(relative_posix)
+            expected_sha = tracked_blobs.get(relative_posix)
+            if expected_sha is None:
+                continue
+            try:
+                with open(full, "rb") as handle:
+                    actual_sha = git_blob_sha1(handle.read())
+            except Exception:
+                warnings.append(f"could not read '{relative_posix}' to verify against HEAD.")
+                continue
+            if actual_sha != expected_sha:
+                modified.append(relative_posix)
     missing = sorted(set(tracked_blobs) - seen_relative_paths)
     for path in missing:
         modified.append(f"{path} (deleted)")

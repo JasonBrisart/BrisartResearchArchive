@@ -11,11 +11,11 @@ Run one export from start to finish: validate the project folder, settings, and 
 
 Communication / relationships
 -----------------------------
-Imports app (output names, staging prefix), export/events.py, export/git_state.py,
-  export/render.py, export/scan.py, and export/settings.py. Imported by cli.py and
-  gui/build_tab.py (create_context, BuildResult), and gui/widgets.py (BuildResult); storage.py
+Imports application/identity.py (output names, staging prefix), export/events.py, export/git_state.py,
+  export/render.py, export/scan.py, export/snapshot.py, and export/settings.py. Imported by cli.py and
+  gui/build_tab.py (create_context, BuildResult), and gui/widgets.py (BuildResult); application/storage.py
   names BuildResult in type annotations only. Export history is recorded by the callers through
-  storage.record_export, not here.
+  application/storage.py's record_export, not here.
 
 Settings / parameters
 ---------------------
@@ -24,7 +24,8 @@ create_context(root, settings=None, cancel=None, progress=None). Omitted setting
   phases; progress receives export.events.Progress. Exports go to
   <root>/<output_dir_name>/project_context_<YYYYMMDD_HHMMSS>, with _2, _3, ... added when
   that name is taken, or straight into the output folder when timestamped_export_folder is
-  off (flat output). BuildResult.capture_workers is the thread count actually used.
+  off (flat output). BuildResult.capture_workers is the thread count actually used, for
+  capture and for compressing the ZIP. PROJECT_CONTEXT.md is streamed straight to its file.
 
 Edge cases
 ----------
@@ -66,7 +67,7 @@ import os
 import shutil
 import tempfile
 
-from app import (
+from application.identity import (
     CONTEXT_FILENAME,
     INTERNAL_NAME_PREFIX,
     MANIFEST_FILENAME,
@@ -77,8 +78,9 @@ from app import (
 )
 from export.events import Progress, checkpoint
 from export.git_state import build_git_state
-from export.render import build_context_markdown, build_manifest, build_summary_text, create_snapshot_zip
+from export.render import build_manifest, build_summary_text, write_context_markdown
 from export.scan import collect_included_files
+from export.snapshot import create_snapshot_zip
 from export.settings import DEFAULT_PROFILE, ScanSettings, settings_for_profile, validate_settings
 
 STAGING_PREFIX = f"{INTERNAL_NAME_PREFIX}build-"
@@ -193,10 +195,10 @@ def create_context(
         )
 
         emit(Progress("rendering", message="Writing context, manifest, summary, and settings"))
-        context_text = build_context_markdown(
-            root=root, scan=scan, settings=settings, created=created, git_state=git_state, output_dir=base_export_dir,
-        )
-        (stage / CONTEXT_FILENAME).write_text(context_text, encoding="utf-8")
+        with open(stage / CONTEXT_FILENAME, "w", encoding="utf-8") as handle:
+            write_context_markdown(
+                handle, root=root, scan=scan, settings=settings, created=created, git_state=git_state, output_dir=base_export_dir,
+            )
         manifest = build_manifest(root=root, scan=scan, settings=settings, created=created, git_state=git_state)
         (stage / MANIFEST_FILENAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         summary_text = build_summary_text(root=root, scan=scan, settings=settings, created=created, git_state=git_state)
@@ -207,9 +209,9 @@ def create_context(
         if settings.include_snapshot_zip:
             emit(Progress("zipping", message=f"Writing {SNAPSHOT_FILENAME}"))
             create_snapshot_zip(
-                zip_path=stage / SNAPSHOT_FILENAME, context_path=stage / CONTEXT_FILENAME,
-                manifest_path=stage / MANIFEST_FILENAME, summary_path=stage / SUMMARY_FILENAME,
-                settings_path=stage / SETTINGS_FILENAME, scan=scan, root=root,
+                zip_path=stage / SNAPSHOT_FILENAME,
+                generated=[stage / CONTEXT_FILENAME, stage / MANIFEST_FILENAME, stage / SUMMARY_FILENAME, stage / SETTINGS_FILENAME],
+                scan=scan, root=root, workers=scan.workers_used,
             )
         checkpoint(cancel)
         shutil.rmtree(spool, ignore_errors=True)
