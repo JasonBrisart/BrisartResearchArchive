@@ -1,32 +1,55 @@
 """
 File: v1/tests/test_path.py
+
 Purpose
 -------
+
 Verify v1/brisart_path.py against pathlib (CPython 3.12): for both flavours
 and thousands of generated segment lists, every lexical property, method,
 operator and exception (type and message) must equal pathlib's; match()
 must give pathlib's answer on generated paths and patterns, including
 sets, ranges, newlines, drives and case options; the concrete Path content
-methods must read and write like pathlib's; and the module must import
-nothing.
+methods must read and write like pathlib's; the public names must be the
+ones pathlib 3.12 exports; and the module must import nothing.
+
 Communication / relationships
 -----------------------------
-Standard library: unittest, pathlib, os, ast, tempfile, warnings (reference
-only), plus support.py in this folder.
+
+Standard library: unittest, pathlib, os, sys, ast, tempfile, warnings
+(reference only), plus support.py in this folder.
 Verifies: v1/brisart_path.py.
+
 Settings / parameters
 ---------------------
-Fuzz volume follows BRISART_FUZZ_SCALE and BRISART_SEED (see support.py).
+
+- Fuzz volume follows BRISART_FUZZ_SCALE and BRISART_SEED (see support.py).
+- REFERENCE_VERSION -- The CPython version whose pathlib is the reference,
+  (3, 12). The tests that compare results with the running pathlib are
+  skipped on any other version.
+- PATHLIB_312_NAMES, PATHLIB_312_MEMBERS -- The public names and pure-path
+  members of pathlib 3.12, written out so the contract test does not
+  depend on the running interpreter.
+
 Edge cases
 ----------
+
 Segment lists mix drives, UNC and device prefixes, doubled separators,
 dots, wildcard characters, reserved device names, combining characters and
 newlines. Outcomes compare exception type and message as well as values.
+Deprecation warnings raised by newer pathlib versions are silenced while
+outcomes are collected. Private pathlib attributes are never compared;
+match(), equality and hashing cover that behaviour through public calls.
+
 Known limitations
 -----------------
-Agreement with pathlib is tested on generated input, not proven. Native
+
+Agreement with pathlib is tested on generated input, not proven, and only
+on CPython 3.12: pathlib changed after 3.12 (UnsupportedOperation,
+full_match and a rewritten match() arrived in 3.13), so the comparison
+tests are skipped elsewhere and report as skipped, not as passed. Native
 platform detection is tested through its helper function, not by running
 on Windows.
+
 Examples
 --------
 ::
@@ -35,12 +58,24 @@ Examples
 import ast
 import os
 import pathlib
+import sys
 import tempfile
 import unittest
 import warnings
 
 import support
 import brisart_path as bp
+
+REFERENCE_VERSION = (3, 12)
+ON_REFERENCE = sys.version_info[:2] == REFERENCE_VERSION
+REFERENCE_ONLY = unittest.skipUnless(
+    ON_REFERENCE, "results are compared with pathlib 3.12 and pathlib changed in later versions")
+
+PATHLIB_312_NAMES = ["Path", "PosixPath", "PurePath", "PurePosixPath", "PureWindowsPath", "WindowsPath"]
+PATHLIB_312_MEMBERS = [
+    "anchor", "as_posix", "as_uri", "drive", "is_absolute", "is_relative_to", "is_reserved", "joinpath", "match",
+    "name", "parent", "parents", "parts", "relative_to", "root", "stem", "suffix", "suffixes", "with_name",
+    "with_segments", "with_stem", "with_suffix"]
 
 FLAVOURS = {
     "posix": (bp.PurePosixPath, pathlib.PurePosixPath, bp.PureWindowsPath, pathlib.PureWindowsPath),
@@ -67,10 +102,12 @@ def convert(value):
 
 
 def outcome(function):
-    try:
-        return ("ok", convert(function()))
-    except Exception as error:
-        return ("err", type(error).__name__, str(error))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            return ("ok", convert(function()))
+        except Exception as error:
+            return ("err", type(error).__name__, str(error))
 
 
 def segments(r):
@@ -91,11 +128,12 @@ PLAIN = {
     "suffix": lambda p: p.suffix, "suffixes": lambda p: p.suffixes, "stem": lambda p: p.stem,
     "parent": lambda p: p.parent, "parents": lambda p: p.parents,
     "is_absolute": lambda p: p.is_absolute(), "is_reserved": lambda p: p.is_reserved(),
-    "as_uri": lambda p: p.as_uri(), "lines": lambda p: p._lines, "normcase": lambda p: p._str_normcase,
+    "as_uri": lambda p: p.as_uri(),
 }
 
 
 class LexicalTests(unittest.TestCase):
+    @REFERENCE_ONLY
     def test_properties_and_methods_equal_pathlib(self):
         for label, (ours, theirs, other_ours, other_theirs) in FLAVOURS.items():
             r = support.rng("path-lexical-" + label)
@@ -214,6 +252,7 @@ def match_mutation(r, part):
 
 
 class MatchTests(unittest.TestCase):
+    @REFERENCE_ONLY
     def test_generated_paths_and_patterns_equal_pathlib(self):
         for label, (ours, theirs, _, _) in FLAVOURS.items():
             r = support.rng("path-match-" + label)
@@ -237,6 +276,7 @@ class MatchTests(unittest.TestCase):
                 trues += want == ("ok", True)
             self.assertGreater(trues, 1000)
 
+    @REFERENCE_ONLY
     def test_random_pattern_alphabet(self):
         pool = ["a", "b", "*", "?", "[ab]", "[!a]", "[a-c]", "[]]", "[!]]", "[z-a]", "[", "[a", "*.py", "a*", "*a", "a*b",
                 "**", "/", "\\", "//", "c:", "c:/", "x", "X", "A*", "*.TXT", "a?b", ".", "..", "[a-]", "[!-a]", "[^a]",
@@ -354,16 +394,14 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(namespace["_HERE"], "")
         self.assertIs(namespace["PurePath"]("a").__class__, namespace["PurePosixPath"])
 
-    def test_public_names_equal_pathlibs(self):
-        self.assertEqual(sorted(bp.__all__), sorted(pathlib.__all__))
+    def test_public_names_equal_pathlib_3_12(self):
+        self.assertEqual(sorted(bp.__all__), PATHLIB_312_NAMES)
         for name in bp.__all__:
             self.assertTrue(hasattr(bp, name))
         for name in ("PurePath", "PurePosixPath", "PureWindowsPath"):
-            ours, theirs = getattr(bp, name), getattr(pathlib, name)
-            for member in dir(theirs):
-                if member.startswith("_") or member in ("is_junction", "from_uri"):
-                    continue
-                self.assertTrue(hasattr(ours, member), "%s lacks %s" % (name, member))
+            cls = getattr(bp, name)
+            for member in PATHLIB_312_MEMBERS:
+                self.assertTrue(hasattr(cls, member), "%s lacks %s" % (name, member))
 
     def test_deprecated_extra_arguments_are_accepted_silently(self):
         with warnings.catch_warnings():

@@ -3,6 +3,7 @@ File: v1/tests/test_frozen.py
 
 Purpose
 -------
+
 Hold v1 to its frozen state: every v1 module must be byte-identical to
 the release recorded here, and its import list must be exactly what v1
 shipped with. Also checks that every file in v1/tests is ASCII and has a
@@ -11,33 +12,37 @@ so the change is a decision rather than an accident.
 
 Communication / relationships
 -----------------------------
+
 Standard library: unittest, ast, hashlib, pathlib, plus support.py in
 this folder.
-Verifies: the nine files in v1/.
+Verifies: the ten files in v1/.
 
 Settings / parameters
 ---------------------
+
 - RELEASE_SHA256 -- SHA-256 of the seven originals from 2026-10-21, plus
-  CSV and DEFLATE with their corrected v1 header paths.
+  CSV and DEFLATE with their corrected v1 header paths, plus path (added
+  2026-11-22).
 - RELEASE_IMPORTS -- The top-level imports each v1 module declares.
 
 Edge cases
 ----------
+
 Hashes are taken over the raw bytes, so a line-ending conversion (for
 example by a Git autocrlf setting) also counts as a change.
 
 Known limitations
 -----------------
+
 This test cannot tell a deliberate patch from an accident; update
 RELEASE_SHA256 only together with a changelog entry for v1.
 
 Examples
 --------
-::
 
+::
     python -B -m unittest discover -s v1/tests -p test_frozen.py
 """
-
 import ast
 import hashlib
 import unittest
@@ -52,6 +57,7 @@ RELEASE_SHA256 = {
     "brisart_inflate.py": "8ce596255663e36f984523c88a71553fb7b87163530daf7d74d00a2db1ff0276",
     "brisart_json.py": "7caed6f9ee0541f01db6cb918fe7d6eda7062a5ab012ac2539c3450b38c4aabf",
     "brisart_markup.py": "a45561c2ba16cfbded01e64a97cd2f7d1143cfdc5a00044d9b15d25ea3286ed5",
+    "brisart_path.py": "8db898ebe95e8010f2c297e8d99c45561327ca266690ffce7bf0d49cf9346641",
     "brisart_robots.py": "4c6286d28d494f320ab01291c2c5620a3f0b21a23662c1a3b2e5063c376ccbeb",
     "brisart_url.py": "15b8131ee603cabe7724a5e5aa367f47e256a8d6433b2a39c58d9c8c23f9653f",
 }
@@ -64,6 +70,7 @@ RELEASE_IMPORTS = {
     "brisart_inflate.py": ["__future__", "typing"],
     "brisart_json.py": ["__future__", "typing"],
     "brisart_markup.py": ["__future__", "re", "typing"],
+    "brisart_path.py": [],
     "brisart_robots.py": ["__future__", "brisart_ai.native.brisart_url", "typing"],
     "brisart_url.py": ["__future__", "typing"],
 }
