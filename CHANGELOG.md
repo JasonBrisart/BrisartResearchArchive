@@ -11,7 +11,7 @@ multiple projects within the archive.
 
 ## Cryptography migration status
 
-*Kept current. Last updated 2026-11-12.*
+*Kept current. Last updated 2026-11-23.*
 
 ### Why BSR2 was updated
 
@@ -33,12 +33,110 @@ Moving data to the new encryption is a one-way re-encryption, which is why each 
 
 | Project | Status |
 |---|---|
-| Identity Tools Official (`95_Identity_Tools/Official`) | **Migrated** in 1.10.0 (2026-11-08). Linked to `97_Encryption/Official` with no local copy; migrates existing data in place. Migration record: its `docs/ENCRYPTION_MIGRATION.md`; details in its `docs/CHANGELOG.md`. |
-| Identity Tools LTS-2028 1.4.x (`95_Identity_Tools/LTS-2028 1.4.x`) | **Migrated** in 1.4.0 (2026-11-08), with the same code as Official 1.10.0. 1.4.x is the LTS-2028 line that adopts the shared implementation and shares Official's architecture. It keeps reading the previous encryption, and keeps its migration path, until at least 8 February 2027. Migration record: its `docs/ENCRYPTION_MIGRATION.md`; details in its `docs/CHANGELOG.md`. |
-| Identity Tools LTS-2028 1.3.x (`95_Identity_Tools/LTS-2028 1.3.x`) | **Not migrating**, by designation, under the LTS rule in the 2026-10-23 entry. 1.3.x keeps its original LTS contract and vendored BSR2 Alpha 3 until its end of life on 31 December 2028, and still receives security updates. It keeps all three weaknesses above (KI-008 to KI-010 in its `docs/KNOWN_ISSUES.md`). Labs running 1.3.x in snapshotted or cloned VMs should move to LTS-2028 1.4.x. |
+| Identity Tools Official (`98_Tooling/Identity_Tools/Official`) | **Migrated** in 1.10.0 (2026-11-08). Linked to `97_Encryption/Official` with no local copy; migrates existing data in place. Migration record: its `docs/ENCRYPTION_MIGRATION.md`; details in its `docs/CHANGELOG.md`. |
+| Identity Tools LTS-2028 1.4.x (`98_Tooling/Identity_Tools/LTS-2028 1.4.x`) | **Migrated** in 1.4.0 (2026-11-08), with the same code as Official 1.10.0. 1.4.x is the LTS-2028 line that adopts the shared implementation and shares Official's architecture. It keeps reading the previous encryption, and keeps its migration path, until at least 8 February 2027. Migration record: its `docs/ENCRYPTION_MIGRATION.md`; details in its `docs/CHANGELOG.md`. |
+| Identity Tools LTS-2028 1.3.x (`98_Tooling/Identity_Tools/LTS-2028 1.3.x`) | **Not migrating**, by designation, under the LTS rule in the 2026-10-23 entry. 1.3.x keeps its original LTS contract and vendored BSR2 Alpha 3 until its end of life on 31 December 2028, and still receives security updates. It keeps all three weaknesses above (KI-008 to KI-010 in its `docs/KNOWN_ISSUES.md`). Labs running 1.3.x in snapshotted or cloned VMs should move to LTS-2028 1.4.x. |
 | Entitle (`98_Tooling/Entitle`) | **Migrated** in 0.5.0 (2026-11-10); current release 0.7.1, verified against `97_Encryption/Official` 0.4.1-alpha. Linked to `97_Encryption/Official` with no local copy, and writes only the current sealed format (`BSR2-S64-SIV`). Entitlement files written before 0.5.0 still verify, and `run.py migrate` re-seals each one in place, one file at a time, after checking that the new copy opens to the same entitlement. Since 0.7.0, Entitle can also issue signed entitlements, which use Ed25519 instead of BSR2 and need no migration; `run.py migrate --signing-key` converts a shared-key file to one. Details in its `docs/CHANGELOG.md`. |
 
 Every other applicable project remains pending migration until it is listed here as migrated.
+
+---
+
+## 2026-11-23 — Archive-Wide Application Data Migration
+
+### Overview
+
+Brisart Research Archive tooling is beginning an archive-wide transition toward
+storing persistent application data in the current user's application-data
+directory rather than alongside the software itself.
+
+On Windows, applicable Brisart tooling will progressively move persistent user
+and runtime data into `%APPDATA%`.
+
+This is a continuing migration across the archive. Individual projects may adopt
+the new storage location at different times as their storage architecture is
+updated.
+
+### Why
+
+Application-generated data does not generally belong beside program source
+files, executables, or other distributed application files.
+
+Separating persistent data from the software that operates on it provides a
+clearer boundary between:
+
+- program files maintained by the Brisart Research Archive;
+- application configuration and persistent state;
+- user-generated or user-specific application data;
+- caches, indexes, profiles, and other runtime-maintained data;
+- and files that actually belong to the project's distributed installation.
+
+This also allows Brisart tooling to share a consistent per-user storage model
+without requiring writable application or archive directories.
+
+### Migration
+
+Applicable Brisart tooling will be migrated progressively rather than requiring
+every project to change storage locations simultaneously.
+
+As individual tools are updated, files previously stored inside their project
+directories may be moved to the Brisart application-data hierarchy.
+
+On Windows, this means data may move beneath `%APPDATA%`, with individual
+Brisart applications maintaining their own appropriate locations within that
+hierarchy.
+
+Where existing persistent data must be retained, the individual application is
+responsible for implementing the migration behavior appropriate to its existing
+storage format and compatibility requirements.
+
+### Important File-Location Notice
+
+**If a file previously maintained by Brisart tooling appears to have
+disappeared from its old project or application directory, check `%APPDATA%`
+before assuming that the file was deleted or lost.**
+
+As this migration progresses, application data may intentionally no longer
+exist beside the program that created it.
+
+Documentation, diagnostics, support procedures, migration tools, and future
+development work should therefore account for both historical project-local
+storage locations and the application's current storage location while the
+archive-wide transition remains in progress.
+
+This distinction is especially important when examining older documentation,
+preserved versions, backups, or existing installations created before a
+particular tool adopted the new storage architecture.
+
+### Scope
+
+This is the intended storage direction for Brisart tooling across the Brisart
+Research Archive.
+
+The policy applies to persistent application data where application-data
+storage is appropriate. It does not mean that source code, project
+documentation, distributed assets, tests, preserved versions, or files that
+are intentionally part of the archive itself should be moved into
+application-data storage.
+
+Project-specific changelogs should document the exact files and directories
+moved when each application adopts this architecture.
+
+### Compatibility
+
+Existing data should not be treated as disposable solely because a new storage
+location has been adopted.
+
+Applications that already have persistent data in historical locations should
+define migration or compatibility behavior appropriate to that data before the
+old location is abandoned.
+
+Preserved versions may continue using their historical storage architecture
+where required for reproducibility or compatibility.
+
+The root changelog records the archive-wide direction. Individual project
+changelogs remain authoritative for when a particular tool migrated, what data
+was moved, and what compatibility behavior that tool provides.
 
 ---
 

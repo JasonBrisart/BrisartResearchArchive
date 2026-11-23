@@ -45,7 +45,7 @@
 # --------
 # Ignored: PROJECT_CONTEXT_EXPORTS/<timestamp>/PROJECT_CONTEXT.md
 # Ignored: 98_Tooling/ProjectContextHelper/last_export_settings.json
-# Ignored: 95_Identity_Tools/main/vault/data/private_record.json
+# Ignored: 98_Tooling/Identity_Tools/Official/vault/data/private_record.json
 # Preserved: 97_Encryption/results/research_test_results.json
 # Preserved: 98_Tooling/CanonSync/canon/gitignore.master
 # Preserved: authored audio/, docs/, tests/, fixtures/, and curriculum.
@@ -354,18 +354,18 @@ airgapped-web-backup-*.json
 # ==================================================
 
 # ---------------------------------------------------------------------------
-# 95_Identity_Tools
+# 98_Tooling/Identity_Tools
 #
-# Covers main, LTS-2028, and nested runtime data locations.
+# Covers Official, both LTS-2028 lines, and nested runtime data locations.
 # Do not ignore the biometrics/, packages/, vault/, reports/, or
 # vendor/ implementation directories themselves.
 # ---------------------------------------------------------------------------
-/95_Identity_Tools/**/data/
+/98_Tooling/Identity_Tools/**/data/
 
 # Keyrings, device keys, and plaintext passphrase artifacts.
-/95_Identity_Tools/**/keyring.json
-/95_Identity_Tools/**/device_key.json
-/95_Identity_Tools/**/*_passphrase.txt
+/98_Tooling/Identity_Tools/**/keyring.json
+/98_Tooling/Identity_Tools/**/device_key.json
+/98_Tooling/Identity_Tools/**/*_passphrase.txt
 
 # Sealed identity records and identity packages.
 # Retained globally because custom output paths can leave the project.
@@ -373,10 +373,10 @@ airgapped-web-backup-*.json
 *.ibp
 
 # Demo packages created outside the normal runtime data directory.
-/95_Identity_Tools/**/DEMO_DO_NOT_USE_*/
+/98_Tooling/Identity_Tools/**/DEMO_DO_NOT_USE_*/
 
 # Synthetic capture artifacts.
-/95_Identity_Tools/**/*.brvid
+/98_Tooling/Identity_Tools/**/*.brvid
 
 # ==================================================
 # 6. BRISARTOS
