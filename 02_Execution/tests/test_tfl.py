@@ -187,7 +187,9 @@ class ReferenceParityTests(unittest.TestCase):
         self.assertEqual((run["trials_per_block"], run["probe_interval"], run["delayed_reentry_interval"],
                           run["perturbation_interval"], run["random_seed"]), (40, 4, 6, 5, 2026))
         self.assertEqual([run[k] for k in TOGGLES], [False, False, True, True])
-        self.assertFalse(run["enable_response_timer"] or run["shuffle_blocks"])
+        self.assertTrue(run["enable_response_timer"])
+        self.assertEqual(run["trial_duration_sec"], 12)
+        self.assertFalse(run["shuffle_blocks"])
         self.assertEqual(run["run_mode"], "default_tfl")
         self.assertEqual(len(build_trials(run, apply_stimulus_limit(load_stimuli(), run))), 120)
 
@@ -206,7 +208,7 @@ class OptionTests(unittest.TestCase):
     def test_every_protocol_option_marks_the_run_modified_and_label_does_not(self):
         changes = {
             "enable_perturbations": True, "enable_extra_stimuli": True, "enable_probes": False,
-            "enable_delayed_reentry": False, "enable_response_timer": True, "trial_duration_sec": 20,
+            "enable_delayed_reentry": False, "enable_response_timer": False, "trial_duration_sec": 20,
             "trials_per_block": 10, "blocks": "affect", "shuffle_blocks": True, "probe_interval": 3,
             "delayed_reentry_interval": 5, "perturbation_interval": 7, "random_seed": 5,
         }
@@ -305,12 +307,23 @@ class ProcedureTests(unittest.TestCase):
         self.assertTrue(engine.submit_affect(" 50 "))
 
     def test_untimed_runs_have_no_deadline_and_measure_rt(self):
-        engine, timer = single_trial_engine()
+        engine, timer = single_trial_engine(options={"enable_response_timer": False})
         engine.continue_cue()
         self.assertIsNone(engine.seconds_remaining())
         timer.advance(10_000)
         self.assertTrue(engine.submit_prediction("A"))
         self.assertEqual(engine.response["prediction_rt"], 10_000.0)
+
+    def test_default_run_enforces_the_twelve_second_timer(self):
+        engine, timer = single_trial_engine()
+        self.assertTrue(engine.timer_enabled)
+        self.assertEqual(engine.timer_seconds, 12)
+        engine.continue_cue()
+        self.assertEqual(engine.seconds_remaining(), 12)
+        timer.advance(12)
+        self.assertFalse(engine.submit_prediction("A"))
+        self.assertTrue(engine.response["prediction_timed_out"])
+        self.assertEqual(engine.active_stage(), "affect")
 
     def test_timer_timeout_deadline_and_stale_callbacks(self):
         engine, timer = single_trial_engine(options={"enable_response_timer": True, "trial_duration_sec": 5})
@@ -501,7 +514,7 @@ class CommandLineTests(unittest.TestCase):
 
     def test_options_menu_drives_the_option_table(self):
         numbers = {spec.key: str(i) for i, spec in enumerate(OPTION_SPECS, start=2)}
-        script = ["O", numbers["enable_perturbations"], numbers["enable_response_timer"],
+        script = ["O", numbers["enable_perturbations"],
                   numbers["trial_duration_sec"], "20", numbers["trials_per_block"], "5",
                   numbers["session_label"], "pilot02", numbers["trials_per_block"], "999", "S", ""]
 
@@ -610,3 +623,4 @@ class IsolationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

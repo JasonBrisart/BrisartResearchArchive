@@ -44,7 +44,7 @@ def render(app):
     app.add_card(
         root, 2, "Run",
         "Opens the TFL window. Choose run options there, or start straight away with the reference defaults "
-        "(Default TFL: 3 blocks of 40 trials, probes and delayed reentry on, perturbations and timer off).",
+        "(Default TFL: 3 blocks of 40 trials, probes and delayed reentry on, perturbations off, 12-second response timer on).",
         [("Run TFL", app.start_tfl, True), ("Results", lambda: app.show_page("Results"), False)],
     )
     app.add_card(
@@ -59,3 +59,4 @@ def render(app):
         "(0\u2013100), an optional perturbation step, a final behavioral choice (A/B), feedback, and on probe "
         "or delayed-reentry trials a content probe (A/B/U).",
     )
+

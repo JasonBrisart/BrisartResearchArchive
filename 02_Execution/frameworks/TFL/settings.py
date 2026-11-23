@@ -4,9 +4,9 @@ File: frameworks/TFL/settings.py
 Purpose
 -------
 Hold every fixed TFL constant and every option default in one place. The
-defaults reproduce the 02_Execution TFL Baseline Reference Implementation
-v2.6 exactly; every Archive option is off or at its reference value by
-default.
+trial structure reproduces the 02_Execution TFL Baseline Reference
+Implementation v2.6; the Archive additionally enables its 12-second
+response timer by default for operational research runs.
 
 Communication / relationships
 -----------------------------
@@ -17,8 +17,8 @@ Communication / relationships
 
 Settings / parameters
 ---------------------
-- Reference structure: 3 blocks (affect, belief, contradiction) x 40
-  trials; probes every 4th trial; delayed reentry every 6th trial within
+- Default run: 3 blocks (affect, belief, contradiction) x 40 trials;
+  the Archive response timer is enabled at 12 seconds; probes every 4th trial; delayed reentry every 6th trial within
   a block; perturbations every 5th trial when enabled; seed 2026; first
   20 stimuli.
 - Option limits: trials per block 1-200; intervals 1-50; timer 3-120 s;
@@ -82,7 +82,7 @@ DEFAULT_ENABLE_EXTRA_STIMULI = False
 DEFAULT_ENABLE_PERTURBATIONS = False
 DEFAULT_ENABLE_PROBES = True
 DEFAULT_ENABLE_DELAYED_REENTRY = True
-DEFAULT_ENABLE_RESPONSE_TIMER = False
+DEFAULT_ENABLE_RESPONSE_TIMER = True
 DEFAULT_SHUFFLE_BLOCKS = False
 
 TRIAL_DURATION_SEC = 12
@@ -110,3 +110,4 @@ SESSION_LABEL_MAX_LENGTH = 40
 # ============================================================
 OUTPUT_FILE_PREFIX = "tfl_output"
 OUTPUT_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
+

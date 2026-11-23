@@ -3,6 +3,35 @@ All notable changes to Brisart Research Archive are documented here.
 
 ---
 
+## [0.9.6 ALPHA] - 2026-11-23
+
+### Release overview
+
+This release makes the existing 12-second response timer part of the default TFL research run. It does not add a second timer or a second persistence layer: the engine remains the single owner of deadlines, and `SessionWriter` remains the single owner of session files.
+
+### Changed: default research timing
+
+- `frameworks/TFL/settings.py` enables the response timer by default and retains the existing 12-second duration. Prediction and behavioral-choice stages therefore time out after 12 seconds unless the operator changes the run options.
+- `frameworks/TFL/config.py` and `gui/pages/tfl_page.py` now describe the timed default accurately.
+
+### Verified: storage and per-answer saving
+
+- The default output remains `%APPDATA%/Brisart Research Archive/outputs/TFL` on Windows, with one timestamped CSV per run.
+- No interval autosave was added because the engine already saves the complete session snapshot after every accepted answer and every timeout. The writer uses a same-directory temporary CSV, flushes and fsyncs it, and atomically replaces only that run's file.
+- `tests/test_tfl.py` verifies the default 12-second deadline and its boundary timeout. Existing regressions continue to verify per-answer persistence, interrupted-run recovery, same-second filename collisions, and AppData placement.
+
+### Architecture and file audit
+
+- Timing remains owned by `frameworks/TFL/timing.py` and protocol transitions by `frameworks/TFL/engine.py`; GUI and CLI code do not duplicate timeout logic.
+- Output remains owned by `frameworks/TFL/output.py`; no autosave service, compatibility shim, settings duplicate, new directory, or planning document was added.
+- Touched source headers were updated where their description of the default protocol changed.
+
+### Compatibility limits
+
+- A run started without changing options is now timed and therefore differs from an untimed 02_Execution reference run. Existing CSV files remain readable, the 33-column schema is unchanged, and the timer can still be disabled before a run.
+
+---
+
 ## [0.9.5 ALPHA] - 2026-10-25
 
 ### Changed: application entry point
@@ -509,3 +538,4 @@ Archive architecture, with the full headless engine / GUI split,
 autosave, identity/timestamp fields, and hardened updater already in place.
 
 No changes tracked prior to this version.
+

@@ -280,7 +280,7 @@ def default_mode_description() -> list[str]:
         "Perturbations OFF",
         "Probes ON",
         "Delayed reentry ON",
-        "Response timer OFF",
+        f"Response timer ON ({defaults['trial_duration_sec']} seconds)",
         f"Random seed {defaults['random_seed']}",
     ]
 
@@ -307,3 +307,4 @@ def resolve_run_config(config: dict) -> dict:
     if resolved["random_seed_mode"] == "random":
         resolved["run_mode"] = settings.MODIFIED_RUN_MODE
     return resolved
+
