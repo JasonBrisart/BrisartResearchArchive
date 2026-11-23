@@ -17,6 +17,8 @@
 # Settings / parameters
 # ---------------------
 # Python 3.14 on Ubuntu; project-scoped working directory and PYTHONPATH.
+# Pushes and pull requests run the project's fast suite. Manual dispatch can
+# select fast, slow, or all tests.
 # Triggers on Identity Tools Official changes, BSR2
 # (97_Encryption/Official) changes (the linked dependency), this workflow, or manual dispatch.
 #
@@ -28,7 +30,9 @@
 #
 # Known limitations
 # -----------------
-# Installs pytest for CI only; application dependencies are not inferred.
+# Uses the project's standard-library runner; no CI-only Python package is installed.
+# Fast CI excludes production-cost KDF tests. Run the slow or all suite manually
+# before a release that changes key derivation, keyring, or unlock behavior.
 # Syntax checks are not behavioral tests. No coverage or security certification.
 # Tk GUI tests use a virtual display; no platform matrix or build validation.
 #
@@ -55,7 +59,17 @@ name: 98 | Identity Tools | Official | Python Tests
       - 98_Tooling/Identity_Tools/Official/**
       - 97_Encryption/Official/**
       - .github/workflows/test-98-identity-tools-official.yml
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Test suite to run
+        required: true
+        default: fast
+        type: choice
+        options:
+          - fast
+          - slow
+          - all
 
 permissions:
   contents: read
@@ -87,12 +101,6 @@ jobs:
           printf 'REPORT_DIR=%s\n' "$REPORT_DIR" >> "$GITHUB_ENV"
           mkdir -p "$REPORT_DIR"
           python --version
-
-      - name: Install CI test runner
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest
-          python -m pytest --version
 
       - name: Install virtual display infrastructure
         run: |
@@ -139,47 +147,79 @@ jobs:
               raise SystemExit(1)
           PY
 
-      - name: Collect tests and reject missing or broken suites
-        id: collection
-        run: |
-          export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
-          set -o pipefail
-          xvfb-run --auto-servernum python -m pytest --collect-only -q 2>&1 | tee "$REPORT_DIR/collection.log"
-
-      - name: Run all discovered tests with names, skip reasons, and timings
+      - name: Run selected project test suite with names and timings
         id: tests
+        env:
+          REQUESTED_SUITE: ${{ github.event.inputs.suite || 'fast' }}
         run: |
           export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+          printf 'TEST_SUITE=%s\n' "$REQUESTED_SUITE" >> "$GITHUB_ENV"
+          case "$REQUESTED_SUITE" in
+            fast) SUITE_ARGS=(--fast) ;;
+            slow) SUITE_ARGS=(--slow) ;;
+            all) SUITE_ARGS=() ;;
+            *) echo "Unsupported suite: $REQUESTED_SUITE" >&2; exit 2 ;;
+          esac
           set -o pipefail
-          xvfb-run --auto-servernum python -m pytest -vv -ra --tb=short --durations=20 --color=no \
-            --junitxml="$REPORT_DIR/junit.xml" 2>&1 | tee "$REPORT_DIR/tests.log"
+          xvfb-run --auto-servernum python -S tests/run_tests.py "${SUITE_ARGS[@]}" -v \
+            2>&1 | tee "$REPORT_DIR/tests.log"
 
-      - name: Publish result counts and reject all-skipped suites
+      - name: Publish result counts and reject incomplete suites
         if: ${{ always() && steps.tests.outcome != 'skipped' }}
         run: |
           python - <<'PY'
           import os
-          import xml.etree.ElementTree as ET
+          import re
           from pathlib import Path
 
-          path = Path(os.environ['REPORT_DIR']) / 'junit.xml'
+          path = Path(os.environ['REPORT_DIR']) / 'tests.log'
           if not path.exists():
-              raise SystemExit('Test report missing; inspect the test step log.')
-          root = ET.parse(path).getroot()
-          cases = list(root.iter('testcase'))
-          counts = {'tests': len(cases)}
-          for tag in ('failure', 'error', 'skipped'):
-              counts[tag] = sum(case.find(tag) is not None for case in cases)
-          counts['passed'] = counts['tests'] - counts['failure'] - counts['error'] - counts['skipped']
-          lines = ['## ' + os.environ['PROJECT_LABEL'], '',
-                   '| Result | Count |', '| --- | ---: |']
+              raise SystemExit('Test log missing; inspect the test step.')
+          text = path.read_text(encoding='utf-8', errors='replace')
+          completed = re.findall(r'^Ran (\d+) tests? in ', text, re.MULTILINE)
+          if not completed:
+              raise SystemExit(
+                  'The selected suite did not reach a unittest completion summary.'
+              )
+          tests = int(completed[-1])
+          failure_match = re.findall(r'^FAILED \(([^)]*)\)', text, re.MULTILINE)
+          values = {'failures': 0, 'errors': 0, 'skipped': 0}
+          if failure_match:
+              for item in failure_match[-1].split(','):
+                  key, _, value = item.strip().partition('=')
+                  if key in values and value.isdigit():
+                      values[key] = int(value)
+          else:
+              skipped = re.findall(r'^OK \(skipped=(\d+)\)', text, re.MULTILINE)
+              if skipped:
+                  values['skipped'] = int(skipped[-1])
+              elif not re.search(r'^OK$', text, re.MULTILINE):
+                  raise SystemExit('The selected suite has no final OK or FAILED result.')
+          passed = tests - sum(values.values())
+          counts = {
+              'tests': tests,
+              'passed': passed,
+              **values,
+          }
+          lines = [
+              '## ' + os.environ['PROJECT_LABEL'],
+              '',
+              f"Suite: {os.environ.get('TEST_SUITE', 'fast')}",
+              '',
+              '| Result | Count |',
+              '| --- | ---: |',
+          ]
           lines += [f'| {key} | {value} |' for key, value in counts.items()]
-          lines += ['', 'Skipped includes pytest expected-failure outcomes, if present.',
-                    'See the test log for names, reasons, and timings.']
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as handle:
+          lines += [
+              '',
+              'See the test log for names, skip reasons, and timings.',
+          ]
+          with open(
+              os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8'
+          ) as handle:
               handle.write('\n'.join(lines) + '\n')
-          if not cases or counts['tests'] == counts['skipped']:
-              raise SystemExit('No non-skipped tests reported: refusing to report success.')
+          if tests == values['skipped']:
+              raise SystemExit('All tests were skipped: refusing to report success.')
           PY
 
       - name: Save test logs and reports (including failures)
@@ -190,3 +230,4 @@ jobs:
           path: ${{ env.REPORT_DIR }}
           if-no-files-found: warn
           retention-days: 7
+
