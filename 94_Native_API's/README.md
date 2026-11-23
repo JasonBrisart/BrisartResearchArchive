@@ -23,14 +23,18 @@ A folder number is not a collection-wide release number. New APIs start at v1 ev
 | inflate | v1, v2, v3 | v3/brisart_inflate.py |
 | json | v1, v2, v3 | v3/brisart_json.py |
 | markup | v1, v2 | v2/brisart_markup.py |
+| path | v1 | v1/brisart_path.py |
 | robots | v1, v2, v3 | v3/brisart_robots.py |
 | url | v1, v2, v3 | v3/brisart_url.py |
 
 ## Changelogs and audit
 
+- [Official changelog](Official/CHANGELOG.md): the combined log of the collection, newest first.
 - [v1 changelog](v1/CHANGELOG.md): initial capabilities and original behavior.
 - [v2 changelog](v2/CHANGELOG.md): changes from the first generation of the same API.
 - [v3 changelog](v3/CHANGELOG.md): changes from the second generation of the same API.
+
+When a new `brisart_*.py` API or a new generation of one is added, record it in two places: a new entry at the top of the Official changelog (the whole change: files, registration edits, compatibility) and a section in the changelog of the generation folder that holds the implementation (the API itself, listed alphabetically). Register a new API in the inventory above, in `EXPECTED` in `tests/test_api_generations.py`, and, for a v1 module, in `v1/tests/test_frozen.py`.
 
 ## Running checks
 

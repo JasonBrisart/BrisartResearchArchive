@@ -186,6 +186,48 @@ APIs are listed alphabetically.
 
 ---
 
+## path
+
+**File:** `brisart_path.py`
+
+### Release overview
+
+First implementation of the Brisart path API: a standalone reimplementation of the CPython 3.12 `pathlib` path model that imports nothing, so the file can be copied into any tool on its own.
+
+v1 is a behavioural copy, not a redesign. Names, return types, results, and exception types and messages follow `pathlib` 3.12 wherever that can be reproduced without importing anything. Operating-system queries and file-system changes are outside v1 because they cannot be written without an import.
+
+Recorded in `Official/CHANGELOG.md` as v3.1.0.
+
+### Added
+
+- Pure path classes `PurePath`, `PurePosixPath`, and `PureWindowsPath`. `PurePath(...)` returns the native flavour, and both flavours work on any platform.
+- Lexical members shared by every path: `drive`, `root`, `anchor`, `parts`, `name`, `suffix`, `suffixes`, `stem`, `parent`, `parents`, `as_posix()`, `as_uri()`, `is_absolute()`, `is_reserved()`, `is_relative_to()`, `relative_to()` (including `walk_up`), `with_name()`, `with_stem()`, `with_suffix()`, `with_segments()`, `joinpath()`, `match()` (including `case_sensitive`), the `/` operator, `repr()`, hashing, equality, ordering, `__fspath__`, `bytes()`, and pickling.
+- Concrete classes `Path`, `PosixPath`, and `WindowsPath`. Content access (`open()`, `read_text()`, `read_bytes()`, `write_text()`, and `write_bytes()`) goes through the built-in `open()`. Creating a `PosixPath` on Windows, or a `WindowsPath` elsewhere, raises `NotImplementedError`, as in `pathlib`.
+- Two internal flavour objects, `_PosixFlavour` and `_NtFlavour`, stand in for `posixpath` and `ntpath`. They supply separators, `splitroot`, `splitdrive`, `join`, and case folding, including UNC and device drives and drive-relative paths such as `c:x`.
+- A backtracking pattern matcher stands in for the `fnmatch` and `re` machinery behind `match()`. It keeps the one-character-minimum `*` component, fnmatch sets and ranges, `?`, anchored matching for patterns with a drive or root, right-to-left matching for relative patterns, and the atomic "star then fixed text" groups of `fnmatch.translate()`. Failed (node, position) pairs are remembered, so matching cannot go exponential.
+- A built-in percent-encoding table for `as_uri()`, and a `_PathParents` sequence with `pathlib`'s indexing, slicing, `len`, iteration, `in`, `index`, and `count`.
+
+### Public API
+
+- `PurePath`
+- `PurePosixPath`
+- `PureWindowsPath`
+- `Path`
+- `PosixPath`
+- `WindowsPath`
+
+### Compatibility
+
+- Imports nothing and uses only the built-in `open()`. No `os`, `io`, `sys`, `re`, `fnmatch`, `functools`, `warnings`, or `urllib` code is used.
+- Behaviour is cross-checked against `pathlib` on both flavours, including exception types and messages, by `v1/tests/test_path.py` (17 tests). The module header states verification on CPython 3.12 only; execution on native Windows and on other Python versions is unverified, and agreement with `pathlib` is checked on generated input, not proven.
+- The native flavour cannot be read from `os.name`. Windows is inferred from the location of `__file__` (a drive letter and colon, or a leading `\\`), and the native flavour is POSIX when `__file__` does not exist. Use `PurePosixPath` or `PureWindowsPath` explicitly where that matters.
+- `Path` provides only `open()`, `read_text()`, `read_bytes()`, `write_text()`, and `write_bytes()`. The other `pathlib` methods that ask the operating system are not provided and raise `AttributeError`: `stat`, `exists`, `is_dir`, `is_file`, `iterdir`, `glob`, `rglob`, `walk`, `mkdir`, `rmdir`, `unlink`, `rename`, `replace`, `touch`, `chmod`, `resolve`, `absolute`, `cwd`, `home`, `expanduser`, `owner`, `group`, `readlink`, `symlink_to`, and similar.
+- No deprecation warnings are issued. `Path` accepts no keyword arguments and is not a context manager. `relative_to()` and `is_relative_to()` accept the deprecated extra positional arguments silently.
+- `path.parents` is not registered as a `collections.abc.Sequence`, and `isinstance(path, os.PathLike)` is true only because `PathLike` recognises `__fspath__`.
+- Windows case folding uses `str.lower()`, and `match()` uses simple upper and lower comparison. Sets in `match()` patterns that contain non-ASCII characters are compared by code point after case folding. Rare non-ASCII names can compare differently from `pathlib`.
+
+---
+
 ## robots
 
 **File:** `brisart_robots.py`

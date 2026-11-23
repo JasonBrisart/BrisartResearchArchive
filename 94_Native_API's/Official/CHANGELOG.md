@@ -4,6 +4,62 @@ This changelog records substantial changes to the Brisart APIs, including new ca
 
 ---
 
+## v3.1.0
+
+### Release overview
+
+Added the `path` API (`brisart_path.py`) at generation v1.
+
+`path` is the first API added since v3.0.0. New APIs start at v1 however far other APIs have progressed, so it lands in `v1/` and, because `Official/` holds the latest generation of every API, as a byte-identical copy in `Official/`. This entry does not modify any existing API module. It is numbered as a minor release for that reason: it adds an API and changes none.
+
+v1 of `path` is a behavioural copy of the CPython 3.12 `pathlib` path model that imports nothing. It covers path construction, inspection and comparison, pattern matching, and reading and writing file content. It does not cover anything that asks the operating system about the file system.
+
+The `path` section of `v1/CHANGELOG.md` describes the API itself. This entry records the whole change.
+
+### Added
+
+- **`v1/brisart_path.py` and `Official/brisart_path.py`: the path API (v1).** A from-spec reimplementation of the CPython 3.12 `pathlib` path model. It imports nothing, so the file can be copied into any tool on its own.
+  - Classes: `PurePath`, `PurePosixPath`, `PureWindowsPath`, `Path`, `PosixPath` and `WindowsPath`, with `pathlib` 3.12's lexical members and the content methods `open()`, `read_text()`, `read_bytes()`, `write_text()` and `write_bytes()`. The full member list is in `v1/CHANGELOG.md`.
+  - The `pathlib` pieces that live in other modules are written out inside the file: two platform flavours standing in for `posixpath` and `ntpath`, a backtracking matcher standing in for `fnmatch` and `re` behind `match()`, a percent-encoding table for `as_uri()`, and the `parents` sequence.
+  - The two copies are byte-identical: 1,176 lines, 41,269 bytes, SHA-256 `8db898ebe95e8010f2c297e8d99c45561327ca266690ffce7bf0d49cf9346641`, as recorded by the 2026-11-22 project export. `tests/test_api_generations.py` requires `Official/` to equal the latest generation byte for byte.
+
+- **`v1/tests/test_path.py`: 17 tests that compare `path` with `pathlib`.**
+  - `LexicalTests` (4): for both flavours, generated segment lists must give the same properties, methods, operators, and exception type and message as `pathlib`, including `parents` indexing and slicing, `with_*`, `relative_to`, joins, comparison, and cross-flavour joins. Also fixed cases, path-like arguments and pickling, and closed `__slots__`.
+  - `MatchTests` (4): generated paths and patterns (sets, ranges, newlines, drives, `case_sensitive`) must get `pathlib`'s answer, and patterns built to cause backtracking must not blow up (growth is checked to be roughly linear).
+  - `ConcretePathTests` (5): native-platform detection, `NotImplementedError` for the foreign concrete class, content reads and writes and their errors compared with `pathlib` on real files in a temporary folder, and absence of the OS-dependent methods.
+  - `ContractTests` (4): the module imports nothing (checked on its AST), runs alone in an empty namespace, exports exactly `pathlib.__all__`, has every public member of the three pure classes, and accepts the deprecated extra arguments of `relative_to()` and `is_relative_to()` silently.
+  - Volume at `BRISART_FUZZ_SCALE=1`: 2,500 generated segment lists, and 12,000 plus 15,000 generated match cases, per flavour.
+
+### Changed
+
+- **`README.md`:** the API inventory gains `| path | v1 | v1/brisart_path.py |`; the changelog list gains this file; and the rule for keeping the Official and per-generation changelogs in step is written down.
+
+- **`tests/test_api_generations.py`:** `EXPECTED` gains `"path": (1,)`. `test_exact_api_inventory` and `test_official_matches_latest_generation` compare the module set with `EXPECTED`, so an unregistered module fails both.
+
+- **`v1/tests/test_frozen.py`:** `RELEASE_SHA256` and `RELEASE_IMPORTS` gain `brisart_path.py` (no imports), and its header counts ten files. `test_module_set_is_unchanged` requires every v1 module to be recorded.
+
+- **`v1/CHANGELOG.md`:** gains the `path` section.
+
+### Compatibility
+
+- **Additive.** `brisart_path` is a new module name. No existing import path, function, or behaviour changes in this entry.
+
+- **Partial `pathlib` parity by design.** `Path` provides only `open()`, `read_text()`, `read_bytes()`, `write_text()` and `write_bytes()`. The `pathlib` methods that ask the operating system (`stat`, `exists`, `is_dir`, `is_file`, `iterdir`, `glob`, `rglob`, `walk`, `mkdir`, `rmdir`, `unlink`, `rename`, `replace`, `touch`, `chmod`, `resolve`, `absolute`, `cwd`, `home`, `expanduser` and similar) are not provided and raise `AttributeError`. They cannot be written without an import.
+
+- **Native platform detection.** `os.name` is unavailable without an import, so Windows is inferred from the location of `__file__`; where `__file__` does not exist the native flavour is POSIX. Use `PurePosixPath` or `PureWindowsPath` explicitly where that matters.
+
+- **Warnings and protocols.** No deprecation warnings are issued, `Path` accepts no keyword arguments and is not a context manager, and `path.parents` is not registered as a `collections.abc.Sequence`.
+
+- **Case folding.** Windows paths fold case with `str.lower()` and `match()` uses simple upper and lower comparison, so rare non-ASCII names can compare differently from `pathlib`.
+
+- **Not verified.** The module header states verification on CPython 3.12 only. Execution on native Windows and on other Python versions is unverified, and agreement with `pathlib` is checked on generated input, not proven. This entry records what `v1/tests/test_path.py` asserts, not a test run.
+
+- **Official follows the latest generation.** `Official/brisart_path.py` is the v1 implementation until a v2 of `path` exists.
+
+- **Dependencies.** No external dependencies were introduced. The module requires only a Python interpreter.
+
+---
+
 ## v3.0.0
 
 ### Release overview
