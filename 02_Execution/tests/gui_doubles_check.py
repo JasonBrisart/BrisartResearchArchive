@@ -5,9 +5,10 @@ Purpose
 -------
 Drive the GUI end to end with stand-in widget classes on machines without
 Tk: the Archive window and every page, the TFL options screen, a complete
-run answered only from the keyboard, the held-key guard, Esc to stop a run,
-completion, closing the Archive during a run, the Results page's single
-and multi-session analysis, and the scrolling helpers.
+run answered only from the keyboard, the hand-off to the Results page when
+a run finishes, the held-key guard, Esc to stop a run, closing the Archive
+during a run, the Results page's single and multi-session analysis, and
+the scrolling helpers.
 
 Communication / relationships
 -----------------------------
@@ -23,6 +24,9 @@ Settings / parameters
 - Widget: accepts any call and returns None (winfo_exists returns True,
   winfo_children returns []).
 - Var: stores a value like a Tk variable.
+- APP: a stand-in for the Archive window exposing only what a TFL session
+  may use (log, tfl_output_dir, show_page, analyze_tfl); calls to the last
+  two are recorded in hand_offs.
 - Output goes to a temporary folder; APPDATA is set by the caller.
 - Prints "GUI adapter double check passed", then the Results and
   scrolling confirmations; test_tfl.py looks for the first.
@@ -115,11 +119,17 @@ def key(session, keysym):
     return result
 
 
+hand_offs = []
+APP = SimpleNamespace(
+    log=lambda text: None, tfl_output_dir=lambda: OUTPUT,
+    show_page=lambda name: hand_offs.append(("page", name)),
+    analyze_tfl=lambda path: hand_offs.append(("analyze", path)),
+)
+
+
 def new_session():
-    session = TFLGuiSession()
-    session.log = lambda text: None
+    session = TFLGuiSession(APP)
     session.win = Widget()
-    session._output_dir = lambda: OUTPUT
     gui_options.render_options(session)
     return session
 
@@ -161,6 +171,7 @@ while not engine.completed:
         assert (len(engine.rows), engine.active_stage()) != before, stage
 assert seen == set(expected_keys), seen
 assert session.finished and session.writer.closed and session.writer.rows_saved == 20
+assert hand_offs == [("page", "Results"), ("analyze", session.writer.path)], hand_offs  # finished run -> Results
 assert set(session.key_actions) == {"return"}  # completion screen: Enter closes
 import csv  # noqa: E402
 saved = list(csv.DictReader(session.writer.path.open(encoding="utf-8")))
@@ -202,7 +213,6 @@ app.start_tfl()
 first = app.tfl_session
 app.start_tfl()
 assert app.tfl_session is first
-first._output_dir = lambda: OUTPUT
 gui_options._start(first)
 first.engine.continue_cue()
 first.engine.submit_prediction("A")

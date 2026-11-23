@@ -10,7 +10,8 @@ Communication / relationships
 -----------------------------
 - Reads APP_DIR from config/runtime.py, so the log lives in the Archive's
   AppData folder and does not move when the Output Directory setting
-  changes.
+  changes, and reuses runtime.read_json_file() / write_json_file() so the
+  application has one way to read and atomically write JSON.
 - Only writer: controllers/log_controller.py, through
   append_activity_log_entry(), on every LogController.log() call.
 - Only reader: gui/pages/settings_page.py, through load_activity_log(),
@@ -32,8 +33,9 @@ Edge cases
   raises, so a damaged log can never stop the Settings page rendering.
 - A failed append (an OSError while writing) is swallowed and the temp
   file is removed, so logging can never crash the action being logged.
-- Writes go to the temp file, are flushed and fsynced, and then replace
-  the real file, so a crash mid-write loses at most the newest entry.
+- Writes go to the temp file (flushed and fsynced by
+  runtime.write_json_file()) and then replace the real file, so a crash
+  mid-write loses at most the newest entry.
 - Blank entries are ignored. A file holding more than the cap is trimmed
   when loaded.
 
@@ -56,10 +58,8 @@ Examples
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
-from config.runtime import APP_DIR
+from config.runtime import APP_DIR, read_json_file, write_json_file
 
 MAX_PERSISTED_ENTRIES = 100
 
@@ -67,24 +67,11 @@ ACTIVITY_LOG_FILE = APP_DIR / "activity_log.json"
 ACTIVITY_LOG_TEMP_FILE = APP_DIR / "activity_log.json.tmp"
 
 
-def _read_entries(path: Path) -> list[str]:
-    with open(path, "r", encoding="utf-8-sig") as file:
-        data = json.load(file)
+def _read_entries() -> list[str]:
+    data = read_json_file(ACTIVITY_LOG_FILE)
     if not isinstance(data, list):
         raise TypeError("Activity log JSON must contain a list.")
     return [str(item) for item in data]
-
-
-def _write_entries(path: Path, entries: list[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8", newline="\n") as file:
-        json.dump(entries, file, indent=2, ensure_ascii=False)
-        file.write("\n")
-        file.flush()
-        try:
-            os.fsync(file.fileno())
-        except OSError:
-            pass
 
 
 def load_activity_log() -> list[str]:
@@ -99,7 +86,7 @@ def load_activity_log() -> list[str]:
     if not ACTIVITY_LOG_FILE.exists():
         return []
     try:
-        entries = _read_entries(ACTIVITY_LOG_FILE)
+        entries = _read_entries()
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
         return []
     return entries[-MAX_PERSISTED_ENTRIES:]
@@ -122,7 +109,7 @@ def append_activity_log_entry(entry: str) -> None:
         entries.append(text)
         if len(entries) > MAX_PERSISTED_ENTRIES:
             entries = entries[-MAX_PERSISTED_ENTRIES:]
-        _write_entries(ACTIVITY_LOG_TEMP_FILE, entries)
+        write_json_file(ACTIVITY_LOG_TEMP_FILE, entries)
         ACTIVITY_LOG_TEMP_FILE.replace(ACTIVITY_LOG_FILE)
     except OSError:
         try:

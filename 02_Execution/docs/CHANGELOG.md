@@ -1,6 +1,71 @@
 # Changelog
 
-All notable changes to 02_Execution are documented here.
+All notable changes to Brisart Research Archive are documented here, newest
+first. Each entry describes the release as it shipped and is not rewritten
+afterward; a later entry says so when it corrects an earlier one. Releases
+before 0.9.4 describe a multi-framework layout, and releases before 0.9.7 an
+in-application updater; both have been removed. File-level documentation
+lives in each Python file's six-section header, not in separate documents.
+
+---
+
+## [0.9.11 ALPHA] - 2026-11-23
+
+### Release overview
+
+An architecture and documentation pass. The TFL core no longer depends on the host application, one owner now exists for each thing that had two (the application name, the colour palette, JSON file writing, the description of the defaults), and write-only and unused code is removed. Behavior is unchanged: a deterministic session produces the same session CSV, the same single-session report, the same pooled report, and the same defaults description in this release as in 0.9.10, byte for byte. Fifteen tests were added (59 to 74), including tests that fail if the boundaries below are broken.
+
+### Changed: the TFL core is independent of the host (`frameworks/TFL/`)
+
+- **Why.** The only module in the TFL core that imported the host was `output.py`, which reached into `config.runtime` to supply a default folder to `SessionWriter()`, `list_session_files()`, and `latest_session_file()` (and, through the last, to `analyze_output()` with no path). The only callers that relied on those defaults were one test and `cli.py analyze`; every other caller already knew the folder, because the Output Directory setting belongs to the host.
+- **`output.py`.** `SessionWriter(output_dir, ...)`, `list_session_files(output_dir)`, and `latest_session_file(output_dir)` now require the folder, and `default_output_dir()` is gone. A missing folder still lists as empty, and the writer still creates the folder it is given.
+- **`analysis.py`.** `analyze_output(path)` requires a path. It no longer decides which session is "the latest"; the host picks files and passes them in. It no longer imports `output.py`.
+- **`cli_runner.py`.** `run_cli(..., *, output_dir, ...)` requires `output_dir` as a keyword. Every existing call already passed it that way.
+- **`cli.py`.** `analyze` with no options now finds the newest session itself. Its message when there are none changes from "No TFL session files exist yet. Run TFL first." to "No TFL sessions yet in <folder>", which matches `sessions` and `analyze --all`. The Archive window's message for the same case is unchanged.
+- **`gui_session.py`: standalone mode removed.** `TFLGuiSession(app)` requires the Archive window. The hidden Tk root, its own mainloop, and the print-to-console logging fallback were reachable only by constructing the session without an app, which nothing outside one test did. The session now reaches the host only through four members of the app object: `log`, `tfl_output_dir`, `show_page`, and `analyze_tfl`.
+- **`config/runtime.py` header.** It now states that the TFL core never imports it.
+
+### Changed: one owner for each thing that had two
+
+- **Application name.** `APP_NAME` lived in both `config/runtime.py` and `gui/theme.py`, with a header note saying to change both together. `config/runtime.py` owns it (it needs it for the AppData folder), and `gui/theme.py` imports it.
+- **Colours.** The sidebar background `#050812` was written out five times (four in `sidebar.py`, one in `main_window.py`), the on-accent text colour `#031514` four times (three in `theme.py`, one in `results_page.py`), and `theme.py` carried two styles (`Side.TFrame`, `Top.TFrame`) that nothing used. `COLORS` gains `sidebar` and `on_accent`, every use refers to them, and the unused styles are deleted. No colour literal now exists outside the palette.
+- **JSON files.** `config/activity_log.py` had its own copy of the read, atomic-write, and fsync code that `config/runtime.py` already provides. It now uses `read_json_file()` and `write_json_file()`; the bytes written are the same.
+- **Description of the defaults.** `default_mode_description()` spelled out "Perturbations OFF", "Probes ON", "Delayed reentry ON", and "Response timer ON" in fixed text, and the Run card of the TFL page repeated the same facts in its own words. Both can now go stale only if the defaults change, and then they change with them: the function reads the toggles, the timer, the stimulus limit, and the seed from the defaults, and the TFL page shows its result. For the current defaults the text is identical.
+
+### Removed: write-only and unused code
+
+- **`status_text`** (`gui/main_window.py`, `controllers/log_controller.py`): `app.log()` set a text variable on every call, and no widget displayed it.
+- **The settings `.bak` file** (`config/runtime.py`): every save copied the previous settings to `user_settings.json.bak`, and nothing ever read it. A failed or interrupted save already leaves the previous file untouched, so the copy protected nothing.
+- **Legacy settings migration** (`config/runtime.py`): the code that copied `config/user_settings.json`, a file kept beside the code by a very early release, into AppData. It had no test and no recorded requirement, and the only setting it could carry over is the output folder.
+- **`NullSchedulerTimer.fire()`** (`timing.py`): nothing called it; tests invoke the recorded callbacks directly.
+- **`TFLSessionEngine.completion_count()`** (`engine.py`): used by one test to check an implementation detail. The test now checks that the engine completed.
+- A redundant `try/except` around `load_activity_log()` in `settings_page.py` (the function never raises), a `getattr` for an attribute that always exists in `gui_screens.py`, and three unused imports in `tests/test_tfl.py`.
+
+### Fixed: fixed wrap widths
+
+- The folder note on the Settings page (950 pixels), the default-settings line (1000) and each option description (480) on the TFL options screen, and the path label of the document viewer (860) wrapped at widths that did not follow the window, so they could be cut off at the 800 pixel minimum. They now use `bind_dynamic_wraplength()`, like the rest of the application. Not checked on a real display.
+
+### Changed: documentation (22 file headers)
+
+- Headers were updated for every file whose behavior or neighbours changed: the folder and path rules, the app-object contract of the GUI session, the removed settings files, the palette, and the defaults description. Statements that were true in 0.9.10 and are now false were removed, not left beside the new text.
+- **Recorded limitations from 0.9.10 that are resolved:** `status_text` never displayed; the defaults described in fixed wording in two places; the fixed 950 and 1000 pixel wrap widths; `APP_NAME` defined twice; the two unused styles; and the sidebar colour written in three modules. **Still open:** sidebar entries respond to the mouse only, the document viewer has no scrollbar, the Keyboard card of the TFL page lists the keys by hand, and the touchpad scrolling limitation.
+
+### Tests
+
+- **`tests/test_app.py` (8 to 20 tests).**
+  - `ArchitectureTests` (new, 4): no non-GUI module in `frameworks/TFL/` imports `config`, `controllers`, `gui`, or `tkinter`; the three TFL GUI modules import neither `config` nor `controllers`; no module under `config/`, `controllers/`, `gui/components/`, or `gui/theme.py` imports a page or the main window; and no colour literal exists outside the `COLORS` table.
+  - `SourceStandardTests` gains a test that every file path a header cites exists.
+  - `SettingsFileTests` (new, 4): save then load round trips and leaves only the settings file; an unreadable file is moved aside and defaults are used; an interrupted save is finished when the main file is missing; a failed save keeps the previous file and returns False.
+  - `ActivityLogTests` (new, 3): entries stay oldest first and capped at 100 with blanks ignored; a corrupt log loads empty and the next entry recovers it; JSON that is not a list is ignored.
+- **`tests/test_tfl.py` (51 to 54 tests).** The defaults description equals the expected text and follows changed defaults; the writer creates a missing folder and a missing folder lists empty; `analyze` picks the newest of two sessions and says so when there are none.
+- **`tests/gui_doubles_check.py`.** Sessions are now created with a stand-in app that exposes only the four members a session may use, and the run now asserts that a finished run shows the Results page and analyzes that run's file, a hand-off that no test exercised before.
+- **Results.** `python run.py --test`: 74 tests, OK. The new boundary tests were each shown to fail when the rule they guard is broken: a `config` import added to `output.py`, a nonexistent file cited in a header, a page imported by `theme.py`, and a stray colour literal in `results_page.py`. Native Tk rendering was not exercised; check the three wrap-width changes and the sidebar colours by hand.
+
+### Compatibility limits
+
+- **Python API.** `SessionWriter`, `list_session_files`, and `latest_session_file` require a folder; `analyze_output` requires a path; `run_cli` requires `output_dir` as a keyword; `TFLGuiSession` requires the app. Nothing in the Archive called them any other way.
+- **Files in AppData.** `user_settings.json.bak` is no longer written. An existing one is harmless and can be deleted. A `config/user_settings.json` beside the code is no longer read; choose the output folder again with Browse.
+- **Unchanged.** Session files, the 33-column schema, timing, the 12-second default timer, analysis, and the pooled report. Settings files from 0.9.10 load as before.
 
 ---
 

@@ -14,7 +14,6 @@ Communication / relationships
   and by gui/main_window.py when a page fails to render.
 - Persists through config/activity_log.append_activity_log_entry().
 - Writes into app.log_box, which gui/pages/settings_page.py creates.
-- Also sets app.status_text (see Known limitations).
 
 Settings / parameters
 ---------------------
@@ -28,15 +27,13 @@ Edge cases
 ----------
 - The log box is rebuilt on every navigation; a missing or destroyed box
   is skipped, and the line is still persisted.
-- A TclError or AttributeError while writing to the box or the status
-  variable is swallowed, so logging can never crash the action it logs.
+- A TclError or AttributeError while writing to the box is swallowed, so
+  logging can never crash the action it logs.
 - Lines logged while another page is showing reach the Settings page only
   through the persisted file, the next time that page is built.
 
 Known limitations
 -----------------
-- status_text is updated on every call, but no widget in the application
-  currently displays it.
 - Local time with no timezone offset.
 - The on-screen box holds up to 3000 lines in one session, but the file
   keeps only 100, so a rebuilt Settings page shows fewer than the session
@@ -83,12 +80,7 @@ class LogController:
             pass
 
     def log(self, text: str) -> None:
-        message = str(text)
-        try:
-            self.status_text.set(message)
-        except (AttributeError, tk.TclError):
-            pass
-        stamped = f"[{timestamp()}] {message}"
+        stamped = f"[{timestamp()}] {text}"
         self._write_log_box(stamped + "\n")
         append_activity_log_entry(stamped)
 

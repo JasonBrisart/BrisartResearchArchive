@@ -14,7 +14,8 @@ Communication / relationships
   Experiment calls session.begin_session(); Cancel calls session.cancel().
 - Publishes the Enter key in session.key_actions; TFLGuiSession owns the
   key bindings, including Esc (cancel) and F11 (full screen).
-- Uses gui/components/card.py, gui/components/scroll_frame.py, and the
+- Uses gui/components/card.py, gui/components/scroll_frame.py,
+  bind_dynamic_wraplength() from gui/components/page_helpers.py, and the
   styles in gui/theme.py.
 
 Settings / parameters
@@ -39,10 +40,9 @@ Edge cases
 Known limitations
 -----------------
 - The option body scrolls vertically; the action buttons stay outside it.
-- The default-settings line wraps at a fixed 1000 pixels and each option
-  description at 480, so the first can be cut off in a window narrower than
-  that; the window opens at 1000x700 and can shrink to 800x600. Not
-  checked on a real display.
+- The default-settings line and each option description wrap to the width
+  of their container, so they follow the window as it shrinks to 800x600;
+  not checked on a real display.
 - Native rendering and touchpad delivery need testing on the target OS.
 
 Examples
@@ -56,6 +56,7 @@ from tkinter import ttk
 from typing import Any
 
 from gui.components.card import Card
+from gui.components.page_helpers import bind_dynamic_wraplength
 from gui.components.scroll_frame import ScrollFrame
 
 from . import settings
@@ -131,8 +132,9 @@ def _build_control(session, parent, spec, row: int) -> None:
             widget.bind("<FocusOut>", on_change, add="+")
             widget.bind("<KeyRelease>", on_change, add="+")
             widgets.append(widget)
-    ttk.Label(parent, text=spec.description, style="CardMuted.TLabel", wraplength=480,
-              justify="left").grid(row=row + 1, column=0, columnspan=2, sticky="w")
+    description = ttk.Label(parent, text=spec.description, style="CardMuted.TLabel", justify="left")
+    description.grid(row=row + 1, column=0, columnspan=2, sticky="w")
+    bind_dynamic_wraplength(description, parent, margin=36)
     session.option_vars[spec.key] = variable
     session.option_widgets[spec.key] = widgets
 
@@ -145,8 +147,10 @@ def render_options(session: Any) -> None:
     root = ttk.Frame(session.win, style="Bg.TFrame", padding=18)
     root.pack(fill="both", expand=True)
     ttk.Label(root, text=settings.VERSION_LABEL, style="Title.TLabel").pack(anchor="w")
-    ttk.Label(root, text="Default settings: " + " \u00b7 ".join(default_mode_description()),
-              style="Muted.TLabel", wraplength=1000, justify="left").pack(anchor="w", pady=(4, 10))
+    defaults_note = ttk.Label(root, text="Default settings: " + " \u00b7 ".join(default_mode_description()),
+                              style="Muted.TLabel", justify="left")
+    defaults_note.pack(anchor="w", fill="x", pady=(4, 10))
+    bind_dynamic_wraplength(defaults_note, root, margin=36)
 
     viewport = ScrollFrame(root)
     viewport.pack(fill="both", expand=True)

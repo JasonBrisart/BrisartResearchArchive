@@ -5,18 +5,21 @@ Purpose
 -------
 Define the visual theme: APP_NAME, APP_VERSION, the COLORS palette, font
 constants, and apply_theme(), which configures every ttk style the GUI
-and the TFL screens use.
+and the TFL screens use. Every colour the application draws comes from
+COLORS; no other module writes a colour literal for the main surfaces.
 
 Communication / relationships
 -----------------------------
 - Imported by gui/main_window.py, gui/components/, gui/pages/, and the
   frameworks/TFL/gui_*.py screens.
-- APP_VERSION is DISPLAY_VERSION from version.py and is shown on the
-  Settings page.
+- APP_NAME is imported from config/runtime.py, its single owner, and
+  re-exported here for the GUI; APP_VERSION is DISPLAY_VERSION from
+  version.py and is shown on the Settings page.
 
 Settings / parameters
 ---------------------
-- COLORS: bg, panel, panel2, panel3, text, muted, border, accent, accent2,
+- COLORS: bg, sidebar, panel, panel2, panel3, text, muted, border, accent,
+  accent2, on_accent (the dark text drawn on an accent-coloured surface),
   success, warning, danger.
 - FONT Segoe UI 10; FONT_SMALL 9; FONT_TITLE 20 bold; FONT_HEAD 13 bold;
   FONT_MONO Consolas 10.
@@ -36,9 +39,8 @@ Known limitations
 -----------------
 - Only the dark palette exists.
 - Segoe UI and Consolas are Windows fonts; other systems substitute.
-- APP_NAME repeats config/runtime.APP_NAME; change both together.
-- The "Side.TFrame" and "Top.TFrame" styles are defined but no module uses
-  them, and the sidebar writes its own colours.
+- The selected-entry highlight colour of the sidebar is COLORS["panel2"];
+  there is no separate hover colour.
 
 Examples
 --------
@@ -48,12 +50,13 @@ Examples
 import tkinter as tk
 from tkinter import ttk
 
+from config.runtime import APP_NAME
 from version import DISPLAY_VERSION
 
-APP_NAME = "Brisart Research Archive"
 APP_VERSION = DISPLAY_VERSION
 COLORS = {
     "bg": "#070b14",
+    "sidebar": "#050812",
     "panel": "#0c1320",
     "panel2": "#101827",
     "panel3": "#162235",
@@ -62,6 +65,7 @@ COLORS = {
     "border": "#223047",
     "accent": "#14b8a6",
     "accent2": "#2dd4bf",
+    "on_accent": "#031514",
     "success": "#22c55e",
     "warning": "#f59e0b",
     "danger": "#ef4444",
@@ -85,8 +89,6 @@ def apply_theme(root: tk.Tk):
     except tk.TclError:
         pass
     style.configure("Bg.TFrame", background=COLORS["bg"])
-    style.configure("Side.TFrame", background="#050812")
-    style.configure("Top.TFrame", background=COLORS["panel"])
     style.configure("Card.TFrame", background=COLORS["panel"], relief="flat")
     style.configure("TLabel", background=COLORS["bg"], foreground=COLORS["text"], font=FONT)
     style.configure("Muted.TLabel", background=COLORS["bg"], foreground=COLORS["muted"], font=FONT_SMALL)
@@ -104,7 +106,7 @@ def apply_theme(root: tk.Tk):
         foreground=[("disabled", COLORS["muted"])],
     )
     style.configure(
-        "Accent.TButton", background=COLORS["accent"], foreground="#031514",
+        "Accent.TButton", background=COLORS["accent"], foreground=COLORS["on_accent"],
         padding=(12, 8), font=("Segoe UI", 10, "bold"),
     )
     style.map(
@@ -127,7 +129,7 @@ def apply_theme(root: tk.Tk):
     style.map(
         "Choice.TButton",
         background=[("active", COLORS["accent"]), ("pressed", COLORS["accent2"])],
-        foreground=[("active", "#031514"), ("pressed", "#031514")],
+        foreground=[("active", COLORS["on_accent"]), ("pressed", COLORS["on_accent"])],
     )
     style.configure(
         "Trial.Horizontal.TProgressbar", troughcolor=COLORS["panel"], background=COLORS["accent"],

@@ -22,27 +22,28 @@ Settings / parameters
 - DeadlineOnlyTimer: real clock, never calls back; deadlines are checked
   when an answer is submitted.
 - NullSchedulerTimer: starts at 0.0; advance(seconds) moves the clock;
-  fire(handle) runs a scheduled callback.
+  schedule() records callbacks in .callbacks without ever running them.
 
 Edge cases
 ----------
 - MonotonicTimer.schedule() without a schedule_fn raises RuntimeError.
 - cancel(None) is a no-op everywhere.
-- fire() on a cancelled or unknown handle does nothing.
+- A cancelled handle is dropped from .callbacks.
 - The engine measures reaction times as differences of now(), so any
   timer with a consistent now() works.
 
 Known limitations
 -----------------
 - No repeating timers.
-- NullSchedulerTimer never fires callbacks by itself when advance() passes a
-  deadline; callers use fire().
+- NullSchedulerTimer never runs callbacks by itself, even when advance()
+  passes a deadline; a test that wants a timeout calls the recorded
+  callback (or submits an answer, which the engine rejects as late).
 - Tk's after() is not exact; a GUI timeout can fire slightly after the
   deadline, and the engine then records it as a timeout either way.
 
 Examples
 --------
-- timer = NullSchedulerTimer(); handle = timer.schedule(12000, cb); timer.fire(handle)
+- timer = NullSchedulerTimer(); timer.advance(12); engine.submit_prediction("A")
 """
 from __future__ import annotations
 
@@ -114,11 +115,6 @@ class NullSchedulerTimer(MonotonicTimer):
 
     def _cancel(self, handle):
         self.callbacks.pop(handle, None)
-
-    def fire(self, handle):
-        callback = self.callbacks.pop(handle, None)
-        if callback is not None:
-            callback()
 
 
 __all__ = ["TimerInterface", "MonotonicTimer", "DeadlineOnlyTimer", "NullSchedulerTimer"]

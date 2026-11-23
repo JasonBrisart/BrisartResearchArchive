@@ -11,7 +11,8 @@ Communication / relationships
 - Calls app.show_page() when an entry is clicked.
 - Stores the entry widgets in app.nav; gui/main_window.show_page() uses
   them to highlight the active page.
-- Reads app.app_name for the title and COLORS and FONT from gui/theme.py.
+- Reads app.app_name for the title and COLORS (including the sidebar
+  background) and FONT from gui/theme.py.
 
 Settings / parameters
 ---------------------
@@ -30,8 +31,6 @@ Known limitations
   reached with the Tab key or activated from the keyboard.
 - The sidebar does not collapse.
 - Icons depend on the system font supporting the characters.
-- The sidebar background (#050812) is written out here and in
-  gui/main_window.py instead of coming from the theme.
 
 Examples
 --------
@@ -54,7 +53,7 @@ def _build_nav_button(
     button = tk.Label(
         sidebar,
         text=f"  {icon}   {name}",
-        bg="#050812",
+        bg=COLORS["sidebar"],
         fg=COLORS["muted"],
         font=FONT,
         anchor="w",
@@ -74,7 +73,7 @@ def _build_nav_button(
 def build_sidebar(app) -> None:
     sidebar = tk.Frame(
         app,
-        bg="#050812",
+        bg=COLORS["sidebar"],
         width=210,
     )
     sidebar.grid(
@@ -90,7 +89,7 @@ def build_sidebar(app) -> None:
     tk.Label(
         sidebar,
         text=app.app_name,
-        bg="#050812",
+        bg=COLORS["sidebar"],
         fg=COLORS["accent"],
         font=("Segoe UI", 13, "bold"),
         wraplength=180,
@@ -119,7 +118,7 @@ def build_sidebar(app) -> None:
 
     spacer = tk.Frame(
         sidebar,
-        bg="#050812",
+        bg=COLORS["sidebar"],
     )
     spacer.pack(
         fill="both",

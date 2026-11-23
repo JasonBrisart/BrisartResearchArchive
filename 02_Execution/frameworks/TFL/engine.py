@@ -113,7 +113,6 @@ class TFLSessionEngine:
         self._deadline_at: float | None = None
         self._timer_handle: object | None = None
         self._generation = 0
-        self._completion_count = 0
 
     # ---------------------------------------------------------- state
     @property
@@ -127,9 +126,6 @@ class TFLSessionEngine:
 
     def progress_label(self) -> str:
         return f"{min(self.index + 1, len(self.trials))} / {len(self.trials)}"
-
-    def completion_count(self) -> int:
-        return self._completion_count
 
     def perturbation_instruction(self) -> str:
         trial = self.current_trial or {}
@@ -165,7 +161,6 @@ class TFLSessionEngine:
         self._invalidate_timer()
         self.completed = True
         self.stage = "completion"
-        self._completion_count += 1
 
     def _active(self, stage: str) -> bool:
         return not (self.completed or self.cancelled) and self.stage == stage

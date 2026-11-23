@@ -102,7 +102,7 @@ def _card(parent, title: str, body: Any, body_style: str = "CardMuted.TLabel") -
 
 def _submit(session, method: Callable, value=None) -> None:
     accepted = method() if value is None else method(value)
-    if accepted or session.engine.active_stage() != getattr(session, "rendered_stage", None):
+    if accepted or session.engine.active_stage() != session.rendered_stage:
         session.after_input()
 
 

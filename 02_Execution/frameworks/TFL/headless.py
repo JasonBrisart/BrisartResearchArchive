@@ -25,8 +25,8 @@ Edge cases
 - An invalid override raises ValueError with the same message the options
   menus show.
 - The engine is returned on the first trial's "cue" stage; the virtual
-  clock only moves when the caller calls timer.advance(), and callbacks
-  fire only when the caller calls timer.fire().
+  clock only moves when the caller calls timer.advance(), and scheduled
+  timeout callbacks never run on their own (see NullSchedulerTimer).
 - Default options include the 12-second response timer, so a test that
   wants an untimed run passes {"enable_response_timer": False}.
 

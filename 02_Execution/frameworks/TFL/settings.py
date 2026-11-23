@@ -32,9 +32,9 @@ Edge cases
 - Changing a default here changes what "Default TFL" means; runs are
   labelled default_tfl only when every protocol option matches these
   values. Turning the timer off, for instance, makes a run modified_tfl.
-- Defaults are not mirrored automatically in prose: config.py's
-  default_mode_description() and gui/pages/tfl_page.py describe them in
-  fixed wording, so edit those too.
+- The "Default TFL" description shown on the options screens and the TFL
+  page is generated from these values by config.default_mode_description(),
+  so changing a default here updates every place that describes it.
 
 Known limitations
 -----------------

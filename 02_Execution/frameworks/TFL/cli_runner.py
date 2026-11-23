@@ -19,11 +19,12 @@ Communication / relationships
 
 Settings / parameters
 ---------------------
-- run_cli(input_fn=input, print_fn=print, output_dir=None, timer=None,
-  options=None) -> Path | None. It returns the session file, or None when
-  the run was left at the startup menu or stopped. options pre-sets values
-  through set_option() and raises ValueError for an invalid one; tests and
-  automation use it.
+- run_cli(input_fn=input, print_fn=print, *, output_dir, timer=None,
+  options=None) -> Path | None. output_dir is required: the caller
+  (cli.py) resolves the Output Directory setting. It returns the session
+  file, or None when the run was left at the startup menu or stopped.
+  options pre-sets values through set_option() and raises ValueError for an
+  invalid one; tests and automation use it.
 - Startup menu: ENTER starts, O opens the options menu, Q returns.
 - Options menu: 1 restores defaults; 2 onward follow OPTION_SPECS (2 to 5
   are perturbations, extra stimuli, probes, and delayed reentry, as in the
@@ -228,7 +229,8 @@ class ConsoleDriver:
 def run_cli(
     input_fn: Callable[[str], str] = input,
     print_fn: Callable[..., None] = print,
-    output_dir: Path | str | None = None,
+    *,
+    output_dir: Path | str,
     timer: TimerInterface | None = None,
     options: dict | None = None,
 ) -> Path | None:

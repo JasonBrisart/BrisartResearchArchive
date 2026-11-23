@@ -9,8 +9,11 @@ completion, cancellation, and the hand-off back to the Archive window.
 
 Communication / relationships
 -----------------------------
-- Created by controllers/system_controller.start_tfl(); the controller also
-  calls end_run() when the Archive closes mid-run.
+- Created by controllers/system_controller.start_tfl(), which passes the
+  Archive window; the controller also calls end_run() when the Archive
+  closes mid-run. The session reaches the host only through that app
+  object (log, tfl_output_dir, show_page, analyze_tfl), never through
+  imports of config/ or controllers/.
 - Renders through frameworks/TFL/gui_options.render_options() and
   frameworks/TFL/gui_screens.render_trial().
 - Saves through frameworks/TFL/output.SessionWriter; writer.save is the
@@ -24,9 +27,8 @@ Communication / relationships
 
 Settings / parameters
 ---------------------
-- TFLGuiSession(app=None).
-- Output folder: app.tfl_output_dir() (the live Output Directory setting)
-  when an app is present, otherwise config/runtime's saved setting.
+- TFLGuiSession(app): app is required.
+- Output folder: app.tfl_output_dir(), the live Output Directory setting.
 - Window 1000x700, minimum 800x600; the options screen scrolls
   vertically.
 - Keys: Esc stops the run (with the usual confirmation); F11 toggles full
@@ -41,8 +43,6 @@ Edge cases
   (marked in_progress).
 - A failed save is logged immediately and shown in the screen footer; the
   run continues, and the next successful save rewrites the whole session.
-- With app=None a hidden Tk root is created and the session runs its own
-  mainloop.
 - A key held down acts once: further presses of the same key are ignored
   until it is released, so keyboard auto-repeat cannot answer the next
   question. Losing window focus forgets held keys. Esc and F11 are never
@@ -79,7 +79,7 @@ from .trial_builder import build_trials
 
 
 class TFLGuiSession:
-    def __init__(self, app=None):
+    def __init__(self, app):
         self.app = app
         self.config = get_default_config()
         self.option_vars: dict = {}
@@ -91,18 +91,13 @@ class TFLGuiSession:
         self.finished = False
         self.rendered_stage = None
         self._reported_errors = 0
-        self._own_root = None
         self.key_actions: dict = {}
         self.focus_target = None
         self._held_keys: set[str] = set()
 
     # ---------------------------------------------------------- lifecycle
     def start(self) -> None:
-        parent = self.app
-        if parent is None:
-            parent = self._own_root = tk.Tk()
-            parent.withdraw()
-        self.win = tk.Toplevel(parent)
+        self.win = tk.Toplevel(self.app)
         self.win.title("Temporal Feedback Loop")
         self.win.geometry("1000x700")
         self.win.minsize(800, 600)
@@ -114,20 +109,12 @@ class TFLGuiSession:
         self.win.lift()
         self.win.focus_force()
         render_options(self)
-        if self._own_root is not None:
-            parent.mainloop()
-
-    def _output_dir(self):
-        if self.app is not None and hasattr(self.app, "tfl_output_dir"):
-            return self.app.tfl_output_dir()
-        from config.runtime import get_tfl_output_dir
-        return get_tfl_output_dir()
 
     def begin_session(self) -> None:
         try:
             run = resolve_run_config(self.config)
             trials = build_trials(run, apply_stimulus_limit(load_stimuli(), run))
-            self.writer = SessionWriter(self._output_dir(), label=run["session_label"])
+            self.writer = SessionWriter(self.app.tfl_output_dir(), label=run["session_label"])
         except Exception as exc:
             self._error("TFL Setup Failed", f"TFL could not prepare this run.\n\n{type(exc).__name__}: {exc}")
             return
@@ -166,12 +153,11 @@ class TFLGuiSession:
         path = self.writer.close()
         self.completion_message = f"Saved {self.writer.rows_saved} trials to:\n{path}"
         self.log(f"TFL run complete: {self.writer.rows_saved} trials saved to {path.name}")
-        if self.app is not None:
-            try:
-                self.app.show_page("Results")
-                self.app.analyze_tfl(path)
-            except (AttributeError, tk.TclError) as exc:
-                self.log(f"Could not show the results for this run: {exc}")
+        try:
+            self.app.show_page("Results")
+            self.app.analyze_tfl(path)
+        except (AttributeError, tk.TclError) as exc:
+            self.log(f"Could not show the results for this run: {exc}")
 
     def end_run(self, reason: str) -> None:
         """Stop an unfinished run. Answers already given are on disk."""
@@ -258,12 +244,6 @@ class TFLGuiSession:
             except tk.TclError:
                 pass
         self.win = None
-        if self._own_root is not None:
-            try:
-                self._own_root.destroy()
-            except tk.TclError:
-                pass
-            self._own_root = None
 
     def _error(self, title: str, message: str) -> None:
         self.log(message.splitlines()[0])
@@ -273,10 +253,7 @@ class TFLGuiSession:
             pass
 
     def log(self, text: str) -> None:
-        if self.app is not None and hasattr(self.app, "log"):
-            self.app.log(text)
-        else:
-            print(text)
+        self.app.log(text)
 
 
 __all__ = ["TFLGuiSession"]

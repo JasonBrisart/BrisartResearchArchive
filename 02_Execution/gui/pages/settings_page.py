@@ -14,8 +14,8 @@ Communication / relationships
   variable owned by gui/main_window.py.
 - Buttons call app.browse_output_folder(), app.open_output_folder(), and
   app.open_tfl_folder().
-- Reads config/activity_log.load_activity_log() and registers app.log_box,
-  which controllers/log_controller.py writes into.
+- Reads config/activity_log.load_activity_log() (which never raises) and
+  registers app.log_box, which controllers/log_controller.py writes into.
 
 Settings / parameters
 ---------------------
@@ -39,9 +39,8 @@ Known limitations
   when the Archive closes.
 - Output-folder text typed by hand is validated when saved; unsafe values
   fall back to "outputs".
-- The folder description wraps at a fixed 950 pixels, wider than the 800
-  pixel minimum window, so it may be cut off at that size. Not checked on
-  a real display.
+- Wrapping follows the card width (bind_dynamic_wraplength()); not checked
+  on a real display.
 
 Examples
 --------
@@ -54,15 +53,12 @@ from tkinter import ttk
 
 from config.activity_log import load_activity_log
 from gui.components.card import Card
-from gui.components.page_helpers import bind_scroll_passthrough
+from gui.components.page_helpers import bind_dynamic_wraplength, bind_scroll_passthrough
 from gui.theme import COLORS, FONT_MONO
 
 
 def _populate_activity_log(log_box: tk.Text) -> None:
-    try:
-        history = load_activity_log()
-    except Exception:
-        history = []
+    history = load_activity_log()
     if history:
         log_box.insert("end", "\n".join(reversed(history)) + "\n")
     else:
@@ -89,14 +85,16 @@ def render(app):
     ttk.Label(output_card, text="Output Directory", style="CardTitle.TLabel").grid(
         row=0, column=0, columnspan=3, sticky="w"
     )
-    ttk.Label(
+    folder_note = ttk.Label(
         output_card,
         text=(
             "Relative folders are kept inside the Archive's AppData folder. "
             f"TFL sessions are currently saved to:\n{app.tfl_output_dir()}"
         ),
-        style="CardMuted.TLabel", wraplength=950,
-    ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(7, 10))
+        style="CardMuted.TLabel", justify="left",
+    )
+    folder_note.grid(row=1, column=0, columnspan=3, sticky="w", pady=(7, 10))
+    bind_dynamic_wraplength(folder_note, output_card, margin=32)
     ttk.Entry(output_card, textvariable=app.output_folder).grid(
         row=2, column=0, columnspan=2, sticky="ew", pady=(0, 4)
     )

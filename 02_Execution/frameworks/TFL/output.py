@@ -12,27 +12,31 @@ Communication / relationships
 -----------------------------
 - frameworks/TFL/gui_session.py and frameworks/TFL/cli_runner.py create a
   SessionWriter and pass writer.save as the engine's on_progress hook.
-- frameworks/TFL/analysis.py uses latest_session_file(); cli.py and
-  gui/pages/results_page.py use list_session_files().
-- default_output_dir() resolves the folder through config/runtime.py:
-  %APPDATA%/Brisart Research Archive/outputs/TFL unless the user picked
-  another Output Directory in Settings.
+- cli.py, controllers/system_controller.py, and gui/pages/results_page.py
+  use list_session_files() and latest_session_file().
+- This module never decides where sessions live: every caller passes the
+  folder, which the host resolves through config/runtime.get_tfl_output_dir()
+  (by default %APPDATA%/Brisart Research Archive/outputs/TFL, or the
+  Output Directory chosen in Settings). That keeps the TFL core free of any
+  dependency on the host application.
 - Columns come from frameworks/TFL/schema.TRIAL_FIELDNAMES.
 
 Settings / parameters
 ---------------------
 - File name: tfl_output_[<label>_]YYYY-MM-DD_HH-MM-SS.csv. If two runs
   start in the same second, a counter is added: ..._HH-MM-SS_2.csv.
-- SessionWriter(output_dir=None, label="", started_at=None); path is the
-  run's file and rows_saved is the row count of the last snapshot,
-  including an in-progress row.
+- SessionWriter(output_dir, label="", started_at=None); output_dir is
+  required and is created if missing. path is the run's file and
+  rows_saved is the row count of the last snapshot, including an
+  in-progress row.
 - save(rows): writes the full snapshot to a hidden temporary file in the
   same folder, flushes and fsyncs it, then os.replace()s it over this run's
   own file. close() marks the run finished; the file already holds
   everything.
-- list_session_files() returns every tfl_output*.csv in the folder, oldest
-  first by last-saved time (then name); latest_session_file() returns the
-  last. The pattern also matches the legacy tfl_output.csv of 0.9.3.
+- list_session_files(output_dir) returns every tfl_output*.csv in the
+  folder, oldest first by last-saved time (then name);
+  latest_session_file(output_dir) returns the last. The pattern also
+  matches the legacy tfl_output.csv of 0.9.3.
 
 Edge cases
 ----------
@@ -46,6 +50,7 @@ Edge cases
   locked), the temporary file is removed and the error propagates to the
   engine, which records it and continues; the next successful save writes
   the complete session again.
+- A missing folder gives an empty session list, not an error.
 - A row with a key outside the schema raises at save time; a missing key is
   written blank.
 - save() after close() raises RuntimeError.
@@ -63,9 +68,9 @@ Known limitations
 
 Examples
 --------
-- writer = SessionWriter(output_dir, label="pilot01")
+- writer = SessionWriter(get_tfl_output_dir(), label="pilot01")
 - writer.save(engine.snapshot())
-- latest_session_file(output_dir)
+- latest_session_file(get_tfl_output_dir())
 """
 from __future__ import annotations
 
@@ -78,28 +83,23 @@ from . import settings
 from .schema import TRIAL_FIELDNAMES
 
 
-def default_output_dir() -> Path:
-    from config.runtime import get_tfl_output_dir
-    return get_tfl_output_dir()
-
-
-def list_session_files(output_dir: Path | str | None = None) -> list[Path]:
+def list_session_files(output_dir: Path | str) -> list[Path]:
     """All TFL CSVs in the folder, oldest first by last save time."""
-    folder = Path(output_dir) if output_dir is not None else default_output_dir()
+    folder = Path(output_dir)
     if not folder.is_dir():
         return []
     files = [path for path in folder.glob(f"{settings.OUTPUT_FILE_PREFIX}*.csv") if path.is_file()]
     return sorted(files, key=lambda path: (path.stat().st_mtime, path.name))
 
 
-def latest_session_file(output_dir: Path | str | None = None) -> Path | None:
+def latest_session_file(output_dir: Path | str) -> Path | None:
     files = list_session_files(output_dir)
     return files[-1] if files else None
 
 
 class SessionWriter:
-    def __init__(self, output_dir: Path | str | None = None, label: str = "", started_at: datetime | None = None):
-        self.output_dir = Path(output_dir) if output_dir is not None else default_output_dir()
+    def __init__(self, output_dir: Path | str, label: str = "", started_at: datetime | None = None):
+        self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         stamp = (started_at or datetime.now()).strftime(settings.OUTPUT_TIMESTAMP_FORMAT)
         stem = f"{settings.OUTPUT_FILE_PREFIX}_{label + '_' if label else ''}{stamp}"
@@ -142,5 +142,5 @@ class SessionWriter:
         return self.path
 
 
-__all__ = ["SessionWriter", "default_output_dir", "list_session_files", "latest_session_file"]
+__all__ = ["SessionWriter", "list_session_files", "latest_session_file"]
 

@@ -13,9 +13,11 @@ Communication / relationships
 -----------------------------
 - controllers/system_controller.py calls analyze_outputs() for the Results
   page; cli.py calls analyze_output() and analyze_outputs() for "analyze".
-- Finds the newest session through frameworks/TFL/output.latest_session_file()
-  when no path is given, which uses the saved Output Directory setting.
 - Reads FRAMEWORK_ID from frameworks/TFL/settings.py for the report title.
+- Does not decide which session is "the latest": the host picks files
+  (controllers/system_controller.py through the Results page, cli.py through
+  frameworks/TFL/output.latest_session_file()) and passes them in, so this
+  module depends on neither the output folder nor the host application.
 
 Settings / parameters
 ---------------------
@@ -26,8 +28,8 @@ Settings / parameters
 - Pooled report: Sessions, Per Session, then every section above except the
   gate, computed over all pooled trials. report_sections() builds those
   sections for both reports, so they cannot drift apart.
-- analyze_outputs(paths): one path is exactly analyze_output(path); two or
-  more are pooled, in the order given.
+- analyze_output(path) analyzes one file; analyze_outputs(paths) is exactly
+  that for one path and pools two or more, in the order given.
 - Summaries report count, mean, std (sample, n-1), min, 25%, 50%, 75%, and
   max, with linear-interpolated quartiles, matching pandas describe().
 - Completion gate: complete rows with an A/B prediction, an A/B behavioral
@@ -67,7 +69,6 @@ Known limitations
 
 Examples
 --------
-- print(analyze_output())
 - analyze_output(Path("tfl_output_2026-10-24_18-45-12.csv"))
 - analyze_outputs([Path("a.csv"), Path("b.csv")])
 """
@@ -78,7 +79,6 @@ import math
 from pathlib import Path
 
 from . import settings
-from .output import latest_session_file
 
 SUMMARY_KEYS = ("count", "mean", "std", "min", "25%", "50%", "75%", "max")
 REQUIRED_COLUMNS = {"prediction", "behavioral_choice", "affect"}
@@ -351,11 +351,7 @@ def report_sections(rows, columns) -> list[str]:
     return lines
 
 
-def analyze_output(path: Path | str | None = None) -> str:
-    if path is None:
-        path = latest_session_file()
-        if path is None:
-            return "No TFL session files exist yet. Run TFL first."
+def analyze_output(path: Path | str) -> str:
     path = Path(path)
     if not path.exists():
         return f"CSV file does not exist: {path}"

@@ -53,10 +53,11 @@ Edge cases
 
 Known limitations
 -----------------
-- default_mode_description() hardcodes its wording ("Perturbations OFF",
-  "Probes ON", "Delayed reentry ON", "Response timer ON") instead of
-  reading the defaults, so it must be edited by hand if a default changes.
-  Its trial counts, timer seconds, and seed are read from the defaults.
+- default_mode_description() lists only what the reference startup summary
+  listed (stimulus count, trials per block, perturbations, probes, delayed
+  reentry, the response timer, the seed); it reads every value from the
+  defaults, so it follows a changed default, but a new option would not
+  appear in it until added.
 - Interval options cannot be 0; the matching toggle turns a feature off.
 - Options are per run and are not persisted between launches.
 
@@ -282,17 +283,24 @@ def describe_current_options(config: dict) -> list[str]:
     return lines
 
 
+def _default_toggle_line(defaults: dict, key: str) -> str:
+    return f"{SPECS_BY_KEY[key].label.capitalize()} {'ON' if defaults[key] else 'OFF'}"
+
+
 def default_mode_description() -> list[str]:
-    """Reference startup summary of what Default TFL means."""
+    """Reference startup summary of what Default TFL means, read from the defaults."""
     defaults = get_default_config()
+    timer = _default_toggle_line(defaults, "enable_response_timer")
+    if defaults["enable_response_timer"]:
+        timer += f" ({defaults['trial_duration_sec']} seconds)"
     return [
         "Default TFL",
-        f"First {settings.BASE_STIMULUS_LIMIT} stimuli only",
+        "All stimuli" if defaults["enable_extra_stimuli"] else f"First {settings.BASE_STIMULUS_LIMIT} stimuli only",
         f"{defaults['trials_per_block']} trials in each of: {', '.join(defaults['blocks'])}",
-        "Perturbations OFF",
-        "Probes ON",
-        "Delayed reentry ON",
-        f"Response timer ON ({defaults['trial_duration_sec']} seconds)",
+        _default_toggle_line(defaults, "enable_perturbations"),
+        _default_toggle_line(defaults, "enable_probes"),
+        _default_toggle_line(defaults, "enable_delayed_reentry"),
+        timer,
         f"Random seed {defaults['random_seed']}",
     ]
 

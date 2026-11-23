@@ -110,7 +110,7 @@ def render(app):
     session_list = tk.Listbox(
         list_frame, selectmode="extended", exportselection=False, height=SESSION_LIST_ROWS,
         bg=COLORS["panel2"], fg=COLORS["text"], selectbackground=COLORS["accent"],
-        selectforeground="#031514", relief="flat", font=FONT_MONO, activestyle="none",
+        selectforeground=COLORS["on_accent"], relief="flat", font=FONT_MONO, activestyle="none",
         highlightthickness=0,
     )
     list_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=session_list.yview)

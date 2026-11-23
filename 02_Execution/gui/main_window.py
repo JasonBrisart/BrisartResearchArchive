@@ -9,8 +9,8 @@ layout, and handle page navigation and mouse-wheel scrolling.
 Communication / relationships
 -----------------------------
 - Mixes UIController, SystemController, and LogController into the Tk root.
-- Loads settings through config/runtime.py and owns the two live Tk
-  variables the pages bind to: status_text and output_folder.
+- Loads settings through config/runtime.py and owns the one live Tk
+  variable the pages bind to: output_folder.
 - Builds the sidebar with gui/components/sidebar.py and resolves pages
   with gui/navigation.py; applies gui/theme.apply_theme().
 - run.py calls main() for the GUI.
@@ -36,7 +36,6 @@ Edge cases
 Known limitations
 -----------------
 - Window size and position are not remembered between launches.
-- status_text is created and updated by app.log(), but no page shows it.
 - Touchpad two-finger scrolling over the general page area does not work (a
   physical mouse wheel does). To diagnose, log every <MouseWheel>,
   <Button-4>, <Button-5>, and <Shift-MouseWheel> event while scrolling with
@@ -76,7 +75,6 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.minsize(WINDOW_WIDTH, WINDOW_HEIGHT)
         self.configure(bg=COLORS["bg"])
-        self.status_text = tk.StringVar(master=self, value="Ready.")
         self.output_folder = tk.StringVar(master=self, value=self.settings["output_folder"])
         self.nav: dict[str, tk.Widget] = {}
         self.main: ttk.Frame | None = None
@@ -135,7 +133,7 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         for nav_name, button in self.nav.items():
             active = nav_name == page_name
             try:
-                button.configure(bg=COLORS["panel2"] if active else "#050812",
+                button.configure(bg=COLORS["panel2"] if active else COLORS["sidebar"],
                                  fg=COLORS["text"] if active else COLORS["muted"])
             except tk.TclError:
                 pass

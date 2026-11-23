@@ -12,7 +12,8 @@ Communication / relationships
 - Rendered by gui/main_window.show_page("TFL") through gui/navigation.py.
 - Buttons call app.start_tfl(), app.show_page("Results"), and
   app.open_tfl_folder().
-- Reads frameworks/TFL/settings.py for the identity text and
+- Reads frameworks/TFL/settings.py for the identity text,
+  frameworks/TFL/config.default_mode_description() for the default run, and
   app.tfl_output_dir() for the folder.
 
 Settings / parameters
@@ -22,16 +23,15 @@ Settings / parameters
 Edge cases
 ----------
 - The save folder is recomputed on every visit from the live Output
-  Directory setting.
+  Directory setting, and the default run is described from the current
+  defaults, so neither can go stale.
 
 Known limitations
 -----------------
 - Run options are chosen in the TFL window that Run opens, not on this
   page.
-- The Run card describes the default run in fixed wording (3 blocks of 40
-  trials, probes and delayed reentry on, perturbations off, 12-second
-  timer) and the Keyboard card lists the keys by hand; edit them if a
-  default or a key changes.
+- The Keyboard card lists the keys by hand; edit it if a key changes. The
+  Procedure card describes the fixed trial sequence in prose.
 
 Examples
 --------
@@ -40,14 +40,15 @@ Examples
 from __future__ import annotations
 
 from frameworks.TFL import settings
+from frameworks.TFL.config import default_mode_description
 
 
 def render(app):
     root = app.page_shell(settings.FRAMEWORK_NAME, settings.VERSION_LABEL)
     app.add_card(
         root, 2, "Run",
-        "Opens the TFL window. Choose run options there, or start straight away with the reference defaults "
-        "(Default TFL: 3 blocks of 40 trials, probes and delayed reentry on, perturbations off, 12-second response timer on).",
+        "Opens the TFL window. Choose run options there, or start straight away with the defaults: "
+        + " \u00b7 ".join(default_mode_description()) + ".",
         [("Run TFL", app.start_tfl, True), ("Results", lambda: app.show_page("Results"), False)],
     )
     app.add_card(

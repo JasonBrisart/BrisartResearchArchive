@@ -10,14 +10,15 @@ Communication / relationships
 -----------------------------
 - open_local_doc(app) is called through SystemController.open_local_doc(),
   wired to the Archive page button.
-- Uses COLORS and FONT_MONO from gui/theme.py.
+- Uses COLORS and FONT_MONO from gui/theme.py and bind_dynamic_wraplength()
+  from gui/components/page_helpers.py.
 
 Settings / parameters
 ---------------------
 - ALLOWED_SUFFIXES: .txt and .md.
 - MAX_DOCUMENT_BYTES: 5,000,000.
 - The file dialog starts in app.execution_dir; the viewer opens at 900x680
-  with the file's full path above the text.
+  with the file's full path above the text, wrapped to the window width.
 
 Edge cases
 ----------
@@ -45,6 +46,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from gui.components.page_helpers import bind_dynamic_wraplength
 from gui.theme import COLORS, FONT_MONO
 
 ALLOWED_SUFFIXES = {".txt", ".md"}
@@ -80,7 +82,9 @@ def open_local_doc(app) -> None:
 
     frame = ttk.Frame(viewer, style="Bg.TFrame", padding=16)
     frame.pack(fill="both", expand=True)
-    ttk.Label(frame, text=str(path), style="Muted.TLabel", wraplength=860).pack(anchor="w", pady=(0, 10))
+    path_label = ttk.Label(frame, text=str(path), style="Muted.TLabel", justify="left")
+    path_label.pack(anchor="w", fill="x", pady=(0, 10))
+    bind_dynamic_wraplength(path_label, frame, margin=32)
 
     text_box = tk.Text(
         frame, bg=COLORS["panel"], fg=COLORS["text"], insertbackground=COLORS["accent"],

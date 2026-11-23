@@ -16,7 +16,9 @@ Communication / relationships
   the GUI uses.
 - Analyzes through frameworks/TFL/analysis: analyze_output() for the
   newest session, analyze_outputs() for named files or every session.
-- Lists sessions with frameworks/TFL/output.list_session_files().
+- Picks the newest session and lists sessions with
+  frameworks/TFL/output.latest_session_file() and list_session_files() in
+  the folder from get_tfl_output_dir().
 - Prints DISPLAY_VERSION from version.py in the menu banner.
 
 Settings / parameters
@@ -79,7 +81,7 @@ if str(ROOT) not in sys.path:
 from config.runtime import get_tfl_output_dir  # noqa: E402
 from frameworks.TFL.analysis import analyze_output, analyze_outputs  # noqa: E402
 from frameworks.TFL.cli_runner import run_cli  # noqa: E402
-from frameworks.TFL.output import list_session_files  # noqa: E402
+from frameworks.TFL.output import latest_session_file, list_session_files  # noqa: E402
 from version import DISPLAY_VERSION  # noqa: E402
 
 
@@ -111,7 +113,11 @@ def command_analyze(files: list[str] | None = None, all_sessions: bool = False) 
             return 1
         print(analyze_outputs([Path(name) for name in files]))
         return 0
-    print(analyze_output())
+    latest = latest_session_file(get_tfl_output_dir())
+    if latest is None:
+        print(f"No TFL sessions yet in {get_tfl_output_dir()}")
+        return 0
+    print(analyze_output(latest))
     return 0
 
 

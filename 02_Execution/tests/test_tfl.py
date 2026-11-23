@@ -25,9 +25,9 @@ Settings / parameters
   using the process-wide random module; it is the oracle.
 - REFERENCE_STIMULI_SHA256: digest of the reference tfl_stimuli.csv rows
   serialized as sorted-key JSON.
-- Fifty-one tests: ReferenceParityTests (6), OptionTests (6),
-  ProcedureTests (6), SavingTests (8), AnalysisTests (6),
-  MultiSessionAnalysisTests (7), CommandLineTests (6), RegressionTests
+- Fifty-four tests: ReferenceParityTests (6), OptionTests (7),
+  ProcedureTests (6), SavingTests (9), AnalysisTests (6),
+  MultiSessionAnalysisTests (7), CommandLineTests (7), RegressionTests
   (4), IsolationTests (2).
 
 Edge cases
@@ -50,14 +50,12 @@ Examples
 """
 from __future__ import annotations
 
-import ast
 import csv
 import hashlib
 import itertools
 import json
 import os
 import random
-import re
 import subprocess
 import sys
 import tempfile
@@ -74,7 +72,8 @@ os.environ["APPDATA"] = APPDATA
 from config.runtime import get_tfl_output_dir  # noqa: E402
 from frameworks.TFL import analysis, cli_runner, feedback  # noqa: E402
 from frameworks.TFL.config import (  # noqa: E402
-    OPTION_SPECS, get_default_config, resolve_run_config, restore_defaults, set_option, update_run_mode,
+    DEFAULT_OPTIONS, OPTION_SPECS, default_mode_description, get_default_config, resolve_run_config,
+    restore_defaults, set_option,
 )
 from frameworks.TFL.engine import TFLSessionEngine  # noqa: E402
 from frameworks.TFL.headless import build_engine  # noqa: E402
@@ -285,6 +284,21 @@ class OptionTests(unittest.TestCase):
         self.assertIsInstance(engine.rows[0]["random_seed"], int)
         self.assertEqual(engine.rows[0]["run_mode"], "modified_tfl")
 
+    def test_default_description_is_read_from_the_defaults(self):
+        self.assertEqual(default_mode_description(), [
+            "Default TFL", "First 20 stimuli only", "40 trials in each of: affect, belief, contradiction",
+            "Perturbations OFF", "Probes ON", "Delayed reentry ON", "Response timer ON (12 seconds)",
+            "Random seed 2026",
+        ])
+        changed = {"enable_perturbations": True, "enable_probes": False, "enable_response_timer": False,
+                   "enable_extra_stimuli": True, "trials_per_block": 9, "random_seed": 7}
+        with mock.patch.dict(DEFAULT_OPTIONS, changed):
+            text = default_mode_description()
+        self.assertEqual(text[1:], [
+            "All stimuli", "9 trials in each of: affect, belief, contradiction",
+            "Perturbations ON", "Probes OFF", "Delayed reentry ON", "Response timer OFF", "Random seed 7",
+        ])
+
     def test_restore_defaults_keeps_label(self):
         config = get_default_config()
         set_option(config, "trials_per_block", 9)
@@ -357,7 +371,7 @@ class ProcedureTests(unittest.TestCase):
         engine, _ = build_engine()
         drive(engine)
         self.assertEqual([row["trial_id"] for row in engine.rows], list(range(1, 121)))
-        self.assertEqual(engine.completion_count(), 1)
+        self.assertTrue(engine.completed)
 
 
 class SavingTests(unittest.TestCase):
@@ -410,10 +424,19 @@ class SavingTests(unittest.TestCase):
     def test_default_output_is_in_appdata(self):
         expected = Path(APPDATA) / "Brisart Research Archive" / "outputs" / "TFL"
         self.assertEqual(get_tfl_output_dir(), expected)
-        writer = SessionWriter()
+        writer = SessionWriter(get_tfl_output_dir())
         self.assertEqual(writer.path.parent, expected)
         writer.close()
         writer.path.unlink()
+
+    def test_writer_creates_the_folder_it_is_given_and_a_missing_folder_lists_empty(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory) / "new" / "place"
+            self.assertEqual(list_session_files(folder), [])
+            self.assertIsNone(latest_session_file(folder))
+            writer = SessionWriter(folder)
+            self.assertEqual(writer.path.parent, folder)
+            self.assertEqual(latest_session_file(folder), writer.path)
 
     def test_failed_save_is_recovered_by_the_next_save(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -692,6 +715,30 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(cli.main(["sessions"]), 0)
         self.assertEqual(cli.main(["analyze"]), 0)
         self.assertEqual(cli.main(["analyze", "--file", str(Path(APPDATA) / "missing.csv")]), 1)
+
+    def test_analyze_defaults_to_the_newest_session_and_says_so_when_there_is_none(self):
+        import cli
+        import contextlib
+        import io
+
+        def run(folder):
+            buffer = io.StringIO()
+            with mock.patch.object(cli, "get_tfl_output_dir", return_value=Path(folder)), \
+                    contextlib.redirect_stdout(buffer):
+                code = cli.main(["analyze"])
+            return code, buffer.getvalue()
+        with tempfile.TemporaryDirectory() as directory:
+            code, text = run(directory)
+            self.assertEqual((code, text.strip()), (0, f"No TFL sessions yet in {directory}"))
+            older = saved_session(directory, "older", 1)
+            newer = saved_session(directory, "newer", 2)
+            os.utime(older, (1_000, 1_000))
+            os.utime(newer, (2_000, 2_000))
+            code, text = run(directory)
+            self.assertEqual(code, 0)
+            self.assertTrue(text.startswith("TFL Analysis"))
+            self.assertIn(newer.name, text)
+            self.assertNotIn(older.name, text)
 
     def test_analyze_several_files_or_all_sessions(self):
         import cli

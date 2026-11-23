@@ -13,8 +13,10 @@ Communication / relationships
 - gui/main_window.py calls load_settings() at startup.
 - controllers/system_controller.py uses normalize_settings(),
   save_settings(), get_output_folder(), and get_tfl_output_dir().
-- frameworks/TFL/output.py calls get_tfl_output_dir() when no folder is
-  given, and cli.py calls it for runs, listing, and "where".
+- cli.py calls get_tfl_output_dir() for runs, analysis, listing, and
+  "where". The TFL core (frameworks/TFL/) never imports this module: the
+  host resolves the folder and passes it in, so config/ can change without
+  touching the framework.
 - config/activity_log.py reads APP_DIR.
 
 Settings / parameters
@@ -22,10 +24,12 @@ Settings / parameters
 - APP_DIR: %APPDATA%/Brisart Research Archive (on Windows,
   C:/Users/<name>/AppData/Roaming/Brisart Research Archive). When APPDATA
   is not set (macOS, Linux) the base is the home folder instead.
-- SETTINGS_FILE: APP_DIR/user_settings.json, with .tmp and .bak
-  companions. DEFAULT_SETTINGS holds settings_version and output_folder
+- SETTINGS_FILE: APP_DIR/user_settings.json, written through a .tmp
+  companion. DEFAULT_SETTINGS holds settings_version and output_folder
   ("outputs"); the output folder is the only persisted application
   setting.
+- APP_NAME is the single owner of the application name; gui/theme.py
+  imports it.
 - Output Directory: a relative value stays inside APP_DIR; an absolute
   value (chosen with Browse) moves output elsewhere. TFL sessions go in its
   TFL subfolder, by default APP_DIR/outputs/TFL.
@@ -45,10 +49,8 @@ Edge cases
 - A stale .tmp file is promoted when the main file is missing and the temp
   file is valid; otherwise it is deleted.
 - save_settings() validates its temp file before replacing the real one,
-  and first copies the last valid settings file to .bak. It returns False
-  and prints the reason on failure instead of raising.
-- A legacy config/user_settings.json is copied to APP_DIR once, when no
-  settings file exists yet, and is left in place.
+  so a failed or interrupted save leaves the previous file untouched. It
+  returns False and prints the reason on failure instead of raising.
 - get_tfl_output_dir() creates the folder if it does not exist.
 
 Known limitations
@@ -58,7 +60,9 @@ Known limitations
   %LOCALAPPDATA%/Packages/PythonSoftwareFoundation.Python.*/LocalCache/
   Roaming instead. The Settings page shows the real resolved path.
 - Output-path validation applies Windows filename rules on every OS.
-- APP_NAME repeats gui/theme.APP_NAME; change both together.
+- A settings file left by a very early release at config/user_settings.json
+  (next to the code) is no longer read or copied; only its output folder
+  could have carried over, so choose it again with Browse.
 - Problems are reported with print(), which a windowed launch does not
   show; the Activity Log does not receive them.
 
@@ -72,7 +76,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
@@ -85,8 +88,6 @@ SETTINGS_VERSION = 1
 APP_DIR = Path(os.getenv("APPDATA", str(Path.home()))) / APP_NAME
 SETTINGS_FILE = APP_DIR / "user_settings.json"
 SETTINGS_TEMP_FILE = APP_DIR / "user_settings.json.tmp"
-SETTINGS_BACKUP_FILE = APP_DIR / "user_settings.json.bak"
-LEGACY_SETTINGS_FILE = Path(__file__).resolve().parent / "user_settings.json"
 DEFAULT_SETTINGS = {
     "settings_version": SETTINGS_VERSION,
     "output_folder": "outputs",
@@ -277,23 +278,6 @@ def cleanup_stale_temp_settings() -> None:
         pass
 
 
-def migrate_legacy_settings() -> bool:
-    if SETTINGS_FILE.exists():
-        return True
-    if not LEGACY_SETTINGS_FILE.exists():
-        return True
-    if not settings_file_is_valid(LEGACY_SETTINGS_FILE):
-        print("Legacy settings were not migrated because the file is invalid.")
-        return False
-    try:
-        APP_DIR.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(LEGACY_SETTINGS_FILE, SETTINGS_FILE)
-        return True
-    except OSError as exc:
-        print(f"Could not migrate legacy settings: {exc}")
-        return False
-
-
 def backup_invalid_settings_file() -> Path | None:
     if not SETTINGS_FILE.exists():
         return None
@@ -314,7 +298,6 @@ def backup_invalid_settings_file() -> Path | None:
 # ============================================================
 def load_settings() -> dict:
     cleanup_stale_temp_settings()
-    migrate_legacy_settings()
     if not SETTINGS_FILE.exists():
         return normalize_settings(DEFAULT_SETTINGS)
     try:
@@ -337,11 +320,6 @@ def save_settings(settings: dict) -> bool:
     normalized = normalize_settings(settings)
     try:
         APP_DIR.mkdir(parents=True, exist_ok=True)
-        if settings_file_is_valid(SETTINGS_FILE):
-            try:
-                shutil.copy2(SETTINGS_FILE, SETTINGS_BACKUP_FILE)
-            except OSError as exc:
-                print(f"Settings backup could not be refreshed: {exc}")
         write_json_file(SETTINGS_TEMP_FILE, normalized)
         if not settings_file_is_valid(SETTINGS_TEMP_FILE):
             raise ValueError("Temporary settings validation failed.")
@@ -358,13 +336,13 @@ def save_settings(settings: dict) -> bool:
 
 __all__ = [
     "APP_NAME", "SETTINGS_VERSION", "APP_DIR", "SETTINGS_FILE", "SETTINGS_TEMP_FILE",
-    "SETTINGS_BACKUP_FILE", "LEGACY_SETTINGS_FILE", "DEFAULT_SETTINGS",
+    "DEFAULT_SETTINGS",
     "normalize_text",
     "normalize_output_folder", "normalize_settings",
     "is_safe_output_folder_text", "get_default_output_dir",
     "resolve_output_folder", "get_output_folder",
     "get_tfl_output_dir", "read_json_file", "write_json_file", "settings_file_is_valid",
-    "cleanup_stale_temp_settings", "migrate_legacy_settings", "backup_invalid_settings_file",
+    "cleanup_stale_temp_settings", "backup_invalid_settings_file",
     "load_settings", "save_settings",
 ]
 
