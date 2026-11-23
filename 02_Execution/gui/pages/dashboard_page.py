@@ -51,9 +51,10 @@ def render(app):
     )
     app.add_card(
         root, 3, "Archive",
-        "Read local documentation, or change output and update settings.",
+        "Read local documentation, or change application settings.",
         [
             ("Open Archive", lambda: app.show_page("Archive"), False),
             ("Open Settings", lambda: app.show_page("Settings"), False),
         ],
     )
+

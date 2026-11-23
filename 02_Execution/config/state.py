@@ -10,10 +10,8 @@ Communication / relationships
 -----------------------------
 - Created once by gui/main_window.py after load_settings().
 - Exposed through BrisartSuiteApp proxy properties: status_text,
-  output_folder, enable_update_checks, notify_on_update,
-  auto_install_updates, and theme.
-- Read by controllers/system_controller.py, gui/pages/settings_page.py,
-  and services/updater/.
+  output_folder, and theme.
+- Read by controllers/system_controller.py and gui/pages/settings_page.py.
 
 Settings / parameters
 ---------------------
@@ -53,10 +51,8 @@ class AppState:
         self.execution_dir = execution_dir
         self.status_text = tk.StringVar(master=root, value="Ready.")
         self.output_folder = tk.StringVar(master=root, value=str(value("output_folder")))
-        self.enable_update_checks = tk.BooleanVar(master=root, value=bool(value("enable_update_checks")))
-        self.notify_on_update = tk.BooleanVar(master=root, value=bool(value("notify_on_update")))
-        self.auto_install_updates = tk.BooleanVar(master=root, value=bool(value("auto_install_updates")))
         self.theme = tk.StringVar(master=root, value=str(value("theme")))
 
 
 __all__ = ["AppState"]
+

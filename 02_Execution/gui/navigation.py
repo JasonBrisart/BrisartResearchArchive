@@ -74,3 +74,4 @@ def get_page_renderer(name: str):
 
 
 __all__ = ["NAV_ITEMS", "SETTINGS_NAV_ITEM", "DEFAULT_PAGE", "PAGE_ALIASES", "normalize_page_name", "get_page_renderer"]
+

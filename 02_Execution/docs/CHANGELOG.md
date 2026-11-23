@@ -3,6 +3,43 @@ All notable changes to Brisart Research Archive are documented here.
 
 ---
 
+## [0.9.7 ALPHA] - 2026-11-23
+
+### Release overview
+
+This release removes update management from the Archive application. The program no longer checks for, downloads, verifies, stages, installs, or notifies about software updates. Releases are installed manually from the project's official GitHub distribution. This leaves the research runner offline by default and gives update responsibility one future, standalone owner instead of embedding it in the experiment application.
+
+### Removed: in-application updater
+
+- Removed the complete `services/updater/` subsystem, the Archive-specific RSA signing and trust-anchor modules, and the `signing/sign_release.py` publisher utility.
+- Removed startup update checks and their network-capable import from `gui/main_window.py`.
+- Removed `SystemController.check_updates()` and the updater bridge import.
+- Removed `enable_update_checks`, `notify_on_update`, and `auto_install_updates` from persisted application settings and `AppState`. Old copies of those keys are discarded the next time settings are normalized and saved.
+- Removed the update controls, update-output text box, download/install preferences, and Check Updates button from Settings.
+- Removed obsolete `version.txt`; `version.py` remains the sole application version source.
+
+### Changed: manual update boundary
+
+- Settings now contains only a passive Updates card stating that updates are installed manually from the official GitHub distribution. It performs no remote request and has no install action.
+- `cli.py` documents the same manual-update boundary. The CLI continues to have no update command.
+
+### Architecture and file audit
+
+- Update distribution no longer belongs to the research execution application. The removed updater had twelve modules plus three signing/trust files and introduced network, package-install, backup, executable-swap, and UI-notification responsibilities unrelated to running or analyzing TFL.
+- No compatibility shim or disabled updater layer remains. A future standalone updater can own that responsibility without coupling to the TFL process.
+- TFL execution, AppData output, every-answer saving, timing, analysis, GUI, and CLI ownership are unchanged.
+
+### Verification
+
+- Automated tests verify that the updater, signing folder, trust-anchor code, and obsolete version file are absent; that retired updater preferences disappear during settings normalization; and that runtime Python files contain no `services.updater` imports.
+- Existing TFL tests continue to cover the 12-second default timer, per-answer saving, interrupted runs, AppData output, analysis, CLI behavior, and GUI wiring.
+
+### Compatibility limits
+
+- Existing user settings containing the three retired update keys are accepted; normalization drops those unknown keys. There is no automatic migration or installation path in the application after this release.
+
+---
+
 ## [0.9.6 ALPHA] - 2026-11-23
 
 ### Release overview
@@ -538,4 +575,5 @@ Archive architecture, with the full headless engine / GUI split,
 autosave, identity/timestamp fields, and hardened updater already in place.
 
 No changes tracked prior to this version.
+
 

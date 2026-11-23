@@ -4,8 +4,7 @@ File: controllers/system_controller.py
 Purpose
 -------
 Coordinate every GUI action: launching TFL, analyzing sessions, opening
-output, saving settings, update checks, the document viewer, and
-shutdown. Every failure is reported in a dialog and the Activity Log and
+output, saving settings, the document viewer, and shutdown. Every failure is reported in a dialog and the Activity Log and
 never escapes into the Tk event loop.
 
 Communication / relationships
@@ -15,7 +14,6 @@ Communication / relationships
 - Launches frameworks/TFL/gui_session.TFLGuiSession (imported lazily).
 - Analysis: frameworks/TFL/analysis.py and frameworks/TFL/output.py.
 - Settings and output paths: config/runtime.py.
-- Updates: services/updater/gui_integration.check_updates().
 - Documents: gui/components/document_viewer.py.
 
 Settings / parameters
@@ -61,7 +59,6 @@ from tkinter import filedialog, messagebox
 
 from config.runtime import get_output_folder, get_tfl_output_dir, normalize_settings, save_settings as persist_settings
 from gui.components.document_viewer import open_local_doc as open_document_viewer
-from services.updater.gui_integration import check_updates as run_gui_update_check
 
 
 def open_with_system(path: Path) -> None:
@@ -90,7 +87,7 @@ class SystemController:
 
     def _collect_settings(self) -> dict:
         settings = dict(getattr(self, "settings", {}) or {})
-        for key in ("output_folder", "enable_update_checks", "notify_on_update", "auto_install_updates", "theme"):
+        for key in ("output_folder", "theme"):
             settings[key] = self._read(key, settings.get(key))
         for key, method in (("window_width", self.winfo_width), ("window_height", self.winfo_height)):
             try:
@@ -251,9 +248,6 @@ class SystemController:
             pass
 
     # ---------------------------------------------------------- other
-    def check_updates(self) -> None:
-        run_gui_update_check(self)
-
     def open_local_doc(self) -> None:
         try:
             open_document_viewer(self)
@@ -262,3 +256,4 @@ class SystemController:
 
 
 __all__ = ["SystemController", "open_with_system"]
+

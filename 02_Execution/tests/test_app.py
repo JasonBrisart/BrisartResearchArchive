@@ -4,14 +4,13 @@ File: tests/test_app.py
 Purpose
 -------
 Test the Archive around TFL: the six-section header on every Python
-file, the standard-library-only rule, the removal of the multi-framework
-layer, version.py, settings normalization, navigation, documentation,
-and the updater's safety guards.
+file, the standard-library-only rule, architecture cleanup, version.py,
+settings normalization, navigation, documentation, and manual-only update
+boundaries.
 
 Communication / relationships
 -----------------------------
-- Imports config/runtime.py, gui/navigation.py, version.py, and the
-  non-GUI updater modules.
+- Imports config/runtime.py, gui/navigation.py, and version.py.
 - Never imports Tkinter.
 
 Settings / parameters
@@ -23,7 +22,7 @@ Edge cases
 ----------
 - The header test parses every .py file, so a syntax error anywhere
   fails the suite.
-- Updater tests never touch the network.
+- The suite verifies that no in-application updater remains.
 
 Known limitations
 -----------------
@@ -114,14 +113,13 @@ class StructureTests(unittest.TestCase):
                          ["Dashboard", "TFL", "Results", "Archive", "Settings"])
         self.assertEqual(normalize_page_name("Frameworks"), "TFL")
 
-    def test_removed_files_are_absent_and_listed_for_cleanup(self):
-        from services.updater.constants import OBSOLETE_RELEASE_PATHS
-        for relative in OBSOLETE_RELEASE_PATHS:
+    def test_removed_architecture_is_absent(self):
+        for relative in (
+            "version.txt", "services/updater", "services/rsa_signing.py",
+            "services/trust_anchor.py", "signing",
+            "config/registries.py", "frameworks/TFL/framework.py",
+        ):
             self.assertFalse((ROOT / relative).exists(), relative)
-        for relative in ("version.txt", "config/registries.py", "frameworks/TFL/framework.py"):
-            self.assertIn(relative, OBSOLETE_RELEASE_PATHS)
-        live = {p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*.py")}
-        self.assertEqual(live & set(OBSOLETE_RELEASE_PATHS), set())
 
     def test_changelog_exists_and_no_architecture_document_is_referenced(self):
         self.assertTrue((ROOT / "docs" / "CHANGELOG.md").is_file())
@@ -136,13 +134,10 @@ class StructureTests(unittest.TestCase):
 
 
 class VersionTests(unittest.TestCase):
-    def test_version_py_is_read_by_the_updater(self):
+    def test_version_py_is_the_only_version_file(self):
         import version
-        from services.updater.versioning import read_local_version, version_from_source
-        self.assertEqual(read_local_version(lambda _line: None), version.VERSION)
         self.assertEqual(version.DISPLAY_VERSION, f"{version.VERSION} {version.RELEASE_LABEL}")
-        with self.assertRaises(ValueError):
-            version_from_source("VERSION = compute()")
+        self.assertFalse((ROOT / "version.txt").exists())
 
 
 class SettingsTests(unittest.TestCase):
@@ -158,53 +153,32 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(get_tfl_output_dir({"output_folder": "lab/run"}), APP_DIR / "lab" / "run" / "TFL")
 
 
-class UpdaterTests(unittest.TestCase):
-    def test_registry_url_passes_the_host_allowlist(self):
-        from services.updater.constants import REGISTRY_PAGE_URL
-        from services.updater.http_utils import validate_remote_url
-        self.assertEqual(validate_remote_url(REGISTRY_PAGE_URL), REGISTRY_PAGE_URL)
+class ManualUpdateBoundaryTests(unittest.TestCase):
+    def test_in_application_updater_is_absent(self):
+        self.assertFalse((ROOT / "services" / "updater").exists())
+        self.assertFalse((ROOT / "services" / "rsa_signing.py").exists())
+        self.assertFalse((ROOT / "services" / "trust_anchor.py").exists())
+        self.assertFalse((ROOT / "signing").exists())
 
-    def test_unconfigured_trust_anchor_blocks_updates_before_network(self):
-        from services import trust_anchor
-        from services.updater import orchestration
-        self.assertFalse(trust_anchor.is_configured())
+    def test_update_preferences_are_not_application_settings(self):
+        from config.runtime import DEFAULT_SETTINGS, normalize_settings
+        retired = {"enable_update_checks", "notify_on_update", "auto_install_updates"}
+        self.assertTrue(retired.isdisjoint(DEFAULT_SETTINGS))
+        normalized = normalize_settings({key: True for key in retired})
+        self.assertTrue(retired.isdisjoint(normalized))
 
-        def must_not_fetch():
-            raise AssertionError("registry must not be contacted")
-        original = orchestration.fetch_registry_entry
-        orchestration.fetch_registry_entry = must_not_fetch
-        try:
-            result = orchestration.check_and_maybe_install(lambda _line: None, auto_install=True)
-        finally:
-            orchestration.fetch_registry_entry = original
-        self.assertEqual(result["status"], "trust_anchor_unconfigured")
-
-    def test_configured_trust_anchor_is_accepted(self):
-        from services import rsa_signing, trust_anchor
-        public_key, _private_key = rsa_signing.generate_keypair(bits=2048)
-        original = dict(trust_anchor.PUBLIC_KEY_DICT)
-        trust_anchor.PUBLIC_KEY_DICT.update(rsa_signing.public_key_to_dict(public_key))
-        try:
-            self.assertTrue(trust_anchor.is_configured())
-        finally:
-            trust_anchor.PUBLIC_KEY_DICT.clear()
-            trust_anchor.PUBLIC_KEY_DICT.update(original)
-
-    def test_obsolete_removal_is_confined_to_the_app_folder(self):
-        from services.updater.install import remove_obsolete_files
-        with tempfile.TemporaryDirectory() as outer:
-            outside = Path(outer) / "outside.py"
-            outside.write_text("keep", encoding="utf-8")
-            app_dir = Path(outer) / "app"
-            (app_dir / "frameworks" / "TFL").mkdir(parents=True)
-            obsolete = app_dir / "frameworks" / "TFL" / "engine.py"
-            obsolete.write_text("old", encoding="utf-8")
-            kept = app_dir / "version.py"
-            kept.write_text("VERSION = '0.9.4'", encoding="utf-8")
-            removed = remove_obsolete_files(app_dir, ("frameworks/TFL/engine.py", "../outside.py", str(outside), "frameworks"))
-            self.assertEqual(removed, [obsolete.resolve()])
-            self.assertTrue(outside.exists() and kept.exists())
+    def test_runtime_source_has_no_network_or_updater_imports(self):
+        for path in python_files():
+            if path.relative_to(ROOT).as_posix() == "tests/test_app.py":
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    self.assertFalse(node.module.startswith("services.updater"), path)
+                if isinstance(node, ast.Import):
+                    self.assertFalse(any(alias.name.startswith("services.updater") for alias in node.names), path)
 
 
 if __name__ == "__main__":
     unittest.main()
+

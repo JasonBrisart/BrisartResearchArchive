@@ -51,3 +51,4 @@ REFERENCE_FIELDNAMES = [
 TIMER_FIELDNAMES = ["response_timer_sec", "prediction_timed_out", "behavioral_timed_out"]
 SESSION_FIELDNAMES = ["session_label", "random_seed", "trial_status"]
 TRIAL_FIELDNAMES = REFERENCE_FIELDNAMES + TIMER_FIELDNAMES + SESSION_FIELDNAMES
+

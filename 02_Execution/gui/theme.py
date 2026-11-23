@@ -106,3 +106,4 @@ def apply_theme(root: tk.Tk):
         foreground=[("active", COLORS["text"]), ("pressed", COLORS["text"])],
     )
 
+

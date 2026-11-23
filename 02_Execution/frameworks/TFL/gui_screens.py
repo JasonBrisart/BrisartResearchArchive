@@ -205,3 +205,4 @@ def render_trial(session: Any) -> None:
 
 
 __all__ = ["render_trial", "info_block"]
+

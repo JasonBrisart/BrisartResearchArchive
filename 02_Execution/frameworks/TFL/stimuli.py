@@ -147,3 +147,4 @@ def apply_stimulus_limit(stimuli: list[dict], config: dict) -> list[dict]:
     if config.get("enable_extra_stimuli", False):
         return validated
     return validated[:settings.BASE_STIMULUS_LIMIT]
+

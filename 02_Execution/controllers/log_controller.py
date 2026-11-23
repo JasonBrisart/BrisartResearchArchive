@@ -85,3 +85,4 @@ class LogController:
 
 
 __all__ = ["LogController", "timestamp", "trim_text_widget_lines", "MAX_LOG_LINES"]
+

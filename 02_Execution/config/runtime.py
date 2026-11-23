@@ -25,8 +25,7 @@ Settings / parameters
 - SETTINGS_FILE: APP_DIR/user_settings.json with .tmp and .bak
   companions.
 - DEFAULT_SETTINGS: theme "dark", output_folder "outputs" (relative to
-  APP_DIR), enable_update_checks, notify_on_update, and
-  auto_install_updates all True, window 800x600.
+  APP_DIR), and window 800x600.
 - MIN_WINDOW_WIDTH/MIN_WINDOW_HEIGHT (800x600) must match the minsize()
   in gui/main_window.py.
 
@@ -86,9 +85,6 @@ DEFAULT_SETTINGS = {
     "settings_version": SETTINGS_VERSION,
     "theme": "dark",
     "output_folder": "outputs",
-    "enable_update_checks": True,
-    "notify_on_update": True,
-    "auto_install_updates": True,
     "window_width": 800,
     "window_height": 600,
 }
@@ -232,15 +228,6 @@ def normalize_settings(data: Any) -> dict:
     settings["settings_version"] = SETTINGS_VERSION
     settings["theme"] = normalize_theme(settings.get("theme"))
     settings["output_folder"] = normalize_output_folder(settings.get("output_folder"))
-    settings["enable_update_checks"] = normalize_bool(
-        settings.get("enable_update_checks"), DEFAULT_SETTINGS["enable_update_checks"]
-    )
-    settings["notify_on_update"] = normalize_bool(
-        settings.get("notify_on_update"), DEFAULT_SETTINGS["notify_on_update"]
-    )
-    settings["auto_install_updates"] = normalize_bool(
-        settings.get("auto_install_updates"), DEFAULT_SETTINGS["auto_install_updates"]
-    )
     settings["window_width"] = normalize_int(
         settings.get("window_width"), DEFAULT_SETTINGS["window_width"], MIN_WINDOW_WIDTH, MAX_WINDOW_WIDTH
     )
@@ -434,4 +421,5 @@ __all__ = [
     "cleanup_stale_temp_settings", "migrate_legacy_settings", "backup_invalid_settings_file",
     "load_settings", "save_settings",
 ]
+
 

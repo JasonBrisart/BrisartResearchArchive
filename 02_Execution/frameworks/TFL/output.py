@@ -128,3 +128,4 @@ class SessionWriter:
 
 
 __all__ = ["SessionWriter", "default_output_dir", "list_session_files", "latest_session_file"]
+

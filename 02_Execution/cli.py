@@ -32,7 +32,7 @@ Edge cases
 
 Known limitations
 -----------------
-- The self-updater is GUI-only; the CLI never checks for updates.
+- Updates are installed manually outside the application.
 
 Examples
 --------
@@ -132,3 +132,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

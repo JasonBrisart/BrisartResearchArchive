@@ -36,3 +36,4 @@ def render(app):
         "Open a local .txt or .md file, such as docs/CHANGELOG.md or a protocol draft.",
         [("Open Document", app.open_local_doc, True)],
     )
+

@@ -59,3 +59,4 @@ def render(app):
     app.analysis_box.grid(row=3, column=0, sticky="ew", padx=26, pady=10)
     app.analysis_box.insert("end", "No analysis yet. Choose Analyze Latest Session, or run TFL first.\n")
     bind_text_widget_scroll_passthrough(app.analysis_box, app)
+

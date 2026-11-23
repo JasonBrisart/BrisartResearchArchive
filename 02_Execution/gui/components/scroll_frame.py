@@ -77,3 +77,4 @@ class ScrollFrame(ttk.Frame):
                 if binding:
                     self._top.unbind(sequence, binding)
             self._bindings = []
+

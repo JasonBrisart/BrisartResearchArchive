@@ -4,8 +4,7 @@ File: gui/main_window.py
 Purpose
 -------
 Create the Brisart Research Archive window: load settings, build the
-layout, handle page navigation and mouse-wheel scrolling, and schedule
-the startup update check.
+layout, and handle page navigation and mouse-wheel scrolling.
 
 Communication / relationships
 -----------------------------
@@ -14,13 +13,11 @@ Communication / relationships
 - Loads settings through config/runtime.py into config/state.AppState.
 - Builds the sidebar with gui/components/sidebar.py and resolves pages
   with gui/navigation.py.
-- Schedules services/updater/gui_integration.startup_check().
 
 Settings / parameters
 ---------------------
 - Opens at 800x600; minimum size 800x600 (must match
   config/runtime.MIN_WINDOW_WIDTH/HEIGHT).
-- STARTUP_UPDATE_CHECK_DELAY_MS: 1500.
 - DEFAULT_PAGE comes from gui/navigation.py.
 
 Edge cases
@@ -56,10 +53,8 @@ from gui.components.page_helpers import UIController, mousewheel_units, widget_i
 from gui.components.sidebar import build_sidebar
 from gui.navigation import DEFAULT_PAGE, get_page_renderer, normalize_page_name
 from gui.theme import APP_NAME, APP_VERSION, COLORS, apply_theme
-from services.updater.gui_integration import startup_check
 
 EXECUTION_DIR = Path(__file__).resolve().parents[1]
-STARTUP_UPDATE_CHECK_DELAY_MS = 1500
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 
@@ -86,7 +81,6 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
             self.bind_all(sequence, self._on_global_mousewheel)
         self.show_page(DEFAULT_PAGE)
-        self.after(STARTUP_UPDATE_CHECK_DELAY_MS, lambda: startup_check(self))
 
     # ---------------------------------------------------------- state proxies
     @property
@@ -96,18 +90,6 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
     @property
     def output_folder(self):
         return self.app_state.output_folder
-
-    @property
-    def enable_update_checks(self):
-        return self.app_state.enable_update_checks
-
-    @property
-    def notify_on_update(self):
-        return self.app_state.notify_on_update
-
-    @property
-    def auto_install_updates(self):
-        return self.app_state.auto_install_updates
 
     @property
     def theme(self):
@@ -184,3 +166,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

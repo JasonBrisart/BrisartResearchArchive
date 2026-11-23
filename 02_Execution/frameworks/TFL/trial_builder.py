@@ -127,3 +127,4 @@ def build_trials(config: dict, stimuli: list[dict]) -> list[dict]:
             })
             trial_id += 1
     return trials
+

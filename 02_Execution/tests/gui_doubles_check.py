@@ -198,3 +198,4 @@ app.winfo_containing = lambda *args: SimpleNamespace(master=None)
 app._on_global_mousewheel(SimpleNamespace(x_root=0, y_root=0, delta=-120))
 app._page_canvas.yview_scroll.assert_not_called()
 print("Scrollbar routing and binding cleanup checks passed")
+
