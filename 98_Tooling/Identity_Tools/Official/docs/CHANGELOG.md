@@ -6,137 +6,207 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ## [1.10.3] - 2026-11-23
 
-A one-fix release: bulk encryption and bulk attachment now reject a chunk size
-that is not a positive integer, and `biometrics attach-paths` checks
-`--chunk-mb` before it asks for the passphrase. Closes KI-006. Forward-ported
-from LTS-2028 1.3.13, where the fix started, with the same code and tests;
-Official stays backward compatible with the LTS lines. The change is compatible
-with the LTS lines: input validation only, no stored-format, feature, or
-dependency change. This is a data-integrity fault, not a confidentiality one:
-nothing was disclosed, but a bundle could be stored and reported as a success
-while holding none of its data. LTS-2028 1.4.3 receives the same change, and
-LTS-2028 1.3.x keeps its vendored BSR2 Alpha 3 and its own wording about the
+A correctness release for bulk encryption and bulk biometric attachments. Bulk
+operations now reject chunk sizes that are not positive integers, and
+`biometrics attach-paths` validates `--chunk-mb` before loading the keyring or
+asking for a passphrase. This closes KI-006.
+
+The correction originated in LTS-2028 1.3.13 and was forward-ported to Official
+with the same implementation and regression coverage. LTS-2028 1.4.3 receives
+the same correction. LTS-2028 1.3.x continues to use its vendored BSR2 Alpha 3
+implementation and retains its line-specific documentation concerning the
 envelope payload limit.
 
----
+This was a data-integrity defect rather than a confidentiality defect. No data
+was disclosed. However, a negative chunk size could make a bulk operation report
+success after storing a manifest with no data chunks, leaving the content
+unrecoverable from that bundle.
 
-### Fix 1 of 1 — Bulk chunk size was never validated
+### Fixed
 
-| Field | Details |
-|---|---|
-| **ID** | `LTS-2028-COR-10` |
-| **Severity** | Medium |
-| **Component** | `vault/` (bulk file encryption), `biometrics/` (bulk attachments and the `attach-paths` command) |
-| **Affected versions** | 1.10.2 and every earlier Official release that includes the bulk modules. The same fault is in LTS-2028 1.3.0 – 1.3.12 and 1.4.0 – 1.4.2, fixed in 1.3.13 and 1.4.3. |
-| **Files changed** | `vault/store/bulk_file_service.py`; `biometrics/engine/bulk_attachments.py`; `biometrics/app.py`; `vault/tests/test_bulk_file_service.py`; `biometrics/tests/test_bulk_attachments.py`; `docs/KNOWN_ISSUES.md`; `docs/FILE_AND_BUNDLE_ENCRYPTION.md`; `version.py` |
+- **Bulk file encryption and bulk biometric attachments now reject invalid
+  chunk sizes.** `BulkFileService`, `attach_large_bytes()`, and
+  `attach_paths()` previously passed `chunk_bytes` directly to the chunk
+  iterator, which calls `range(0, len(data), chunk_size)`. No validation
+  occurred before that call.
 
-**Gap.** `BulkFileService`, `attach_large_bytes()`, and `attach_paths()` took a
-`chunk_bytes` and passed it straight to the chunk iterator, which calls
-`range(0, len(data), chunk_size)`. Nothing checked it. `vault encrypt-paths`
-already limited `--chunk-mb` to 1 to 15, but `biometrics attach-paths` passed
-its value through unchecked, so the faults were reachable from the command
-line as well as from code. Reproduced before the fix through
-`BulkFileService` and `attach_large_bytes()` (on 1.3.x and Official); the
-command line passes `--chunk-mb` straight through to them:
+  The previous behavior depended on the supplied value:
 
-| `chunk_bytes` | Before |
-|---|---|
-| `0` | Bare `ValueError: range() arg 3 must not be zero` |
-| negative | **Reported success.** A manifest was written with `chunk_count` 0 and no data chunks. Restoring it failed the size check (`reassembled size 0 does not match manifest's recorded size 11`), so the content was not recoverable, and the error appeared only at restore time |
-| `1.5`, `"8"` | Bare `TypeError` from `range()` |
-| `True` | Accepted as 1-byte chunks: 11 sealed records for 11 bytes |
+  - A chunk size of `0` raised the bare exception
+    `ValueError: range() arg 3 must not be zero`.
+  - A negative integer reported success after writing a manifest with
+    `chunk_count` set to `0` and no data chunks. Restoration later failed
+    because the reassembled size was `0` instead of the size recorded in the
+    manifest.
+  - A float such as `1.5` or a string such as `"8"` raised a bare `TypeError`
+    from `range()`.
+  - `True` was accepted as a one-byte chunk size because `bool` inherits from
+    `int`. An 11-byte input therefore produced 11 sealed records.
 
-**Fix.** Each bulk module gets one small `_validate_chunk_bytes()` helper
-(duplicated rather than shared, as with `_unique_arcname()`, so the two tools
-keep no import dependency on each other). It accepts only a positive `int` and
-raises the module's own error, `BulkFileServiceError` or `BulkAttachmentError`,
-which is a `ValueError`. A `bool` is refused explicitly because `True` is an
-`int`. The upper bound is not checked in the API; the 15 MiB ceiling applies to the
-two commands only, as it already did for `vault encrypt-paths`.
-`biometrics attach-paths` now accepts `--chunk-mb` from 1 to 15, the same range
-as `vault encrypt-paths`, and checks it before it loads the keyring or prompts
-for a passphrase. Valid sizes behave exactly as before.
+  Each bulk module now owns a small `_validate_chunk_bytes()` helper. The
+  helper accepts only a positive `int` and explicitly rejects `bool`. Invalid
+  values raise the error belonging to the affected module:
+  `BulkFileServiceError` for Vault bulk operations or `BulkAttachmentError`
+  for Biometrics bulk attachments. Both errors inherit from `ValueError`.
 
-**Changes by file.**
+  The validation helpers remain duplicated intentionally, following the
+  existing `_unique_arcname()` ownership pattern. Vault and Biometrics
+  therefore keep their validation behavior locally owned and do not gain an
+  import dependency on each other.
 
-- **`vault/store/bulk_file_service.py`.** `BulkFileService.__init__()` validates
-  `chunk_bytes`. `upsert_large_bytes()` checks `self.chunk_bytes` again, so an
-  attribute changed after construction cannot store a bundle with no data
-  chunks. The header's Edge cases and Known limitations describe the new error.
-- **`biometrics/engine/bulk_attachments.py`.** `attach_large_bytes()` validates
-  first; `attach_paths()` validates before it zips or reads any path, so an
-  invalid size is reported ahead of a missing-file error.
-- **`biometrics/app.py`.** New `MAX_CHUNK_MB = 15`. `command_attach_paths()`
-  rejects an out-of-range `--chunk-mb` with an `AppError` before the keyring is
-  loaded. The CLI message matches `vault encrypt-paths` on this line. The
-  option now has a help string.
-- **`vault/tests/test_bulk_file_service.py`, `biometrics/tests/test_bulk_attachments.py`.**
-  Regression tests; see Tests.
-- **`docs/KNOWN_ISSUES.md`.** KI-006 moves to Resolved and its row leaves the
-  open-issues table. **`docs/FILE_AND_BUNDLE_ENCRYPTION.md`.** "Chunk-size
-  validation" states what is now checked and what is not.
-- **`version.py`.** `__version__` is `1.10.3`.
+- **`BulkFileService` now validates its configured chunk size when the service
+  is created and before every bulk write.** `BulkFileService.__init__()`
+  validates `chunk_bytes` during construction. `upsert_large_bytes()` checks
+  `self.chunk_bytes` again before storing anything, preventing callers from
+  bypassing the constructor validation by changing the attribute afterward.
 
-LTS-2028 1.4.3 and LTS-2028 1.3.13 carry the same change; only the version
-strings (and, in 1.3.13, the wording about the envelope payload limit) differ.
+- **`attach_large_bytes()` and `attach_paths()` validate the chunk size before
+  processing input.** `attach_large_bytes()` checks the value before creating
+  sealed attachment records. `attach_paths()` validates before reading any
+  path or building an archive, so an invalid chunk size is reported before a
+  missing-file or archive-processing error.
+
+- **`biometrics attach-paths` now enforces the same command-line chunk-size
+  range as `vault encrypt-paths`.** The command accepts `--chunk-mb` values
+  from 1 through 15 and rejects values outside that range before loading the
+  keyring or asking for a passphrase. The default remains 8 MiB.
+
+  The 15 MiB maximum applies only to the command-line interfaces. The direct
+  Python APIs require a positive integer but do not impose an upper bound.
+
+### Changed
+
+- **`vault/store/bulk_file_service.py`.**
+  - Added `_validate_chunk_bytes()`.
+  - Added constructor validation in `BulkFileService.__init__()`.
+  - Added write-time validation in `upsert_large_bytes()`.
+  - Updated the standardized header's Edge cases and Known limitations to
+    describe the validation behavior and its error.
+
+- **`biometrics/engine/bulk_attachments.py`.**
+  - Added `_validate_chunk_bytes()`.
+  - Added validation to `attach_large_bytes()`.
+  - Added validation to `attach_paths()` before paths are read or archived.
+  - Updated the standardized header's Edge cases and Known limitations.
+
+- **`biometrics/app.py`.**
+  - Added `MAX_CHUNK_MB = 15`.
+  - Updated `command_attach_paths()` to reject `--chunk-mb` values outside the
+    supported command-line range.
+  - Moved chunk-size validation ahead of keyring loading and passphrase
+    collection.
+  - Added help text for the option.
+  - Matched the corresponding `vault encrypt-paths` error behavior.
+
+- **`docs/KNOWN_ISSUES.md`.**
+  - Moved KI-006 to Resolved.
+  - Removed KI-006 from the open-issues table.
+
+- **`docs/FILE_AND_BUNDLE_ENCRYPTION.md`.**
+  - Updated "Chunk-size validation" to describe the corrected API and
+    command-line behavior.
+  - Clarified that the 15 MiB upper bound belongs to the commands rather than
+    the direct APIs.
+
+- **`version.py`.**
+  - Updated `__version__` to `1.10.3`.
 
 ### Tests
 
-- **Regression tests, 3 in `vault/tests/test_bulk_file_service.py` and 4 in
-  `biometrics/tests/test_bulk_attachments.py`.** Zero and negative sizes are
-  rejected and nothing is stored; non-integers and `True` are rejected; a size
-  changed after construction is rechecked and the vault holds no records;
-  `attach_paths()` reports the chunk size before a missing path; and
-  `attach-paths` rejects `--chunk-mb` of 0, -1, and 16 before the keyring
-  function is called (it fails the test if called).
-- **Results.** The new tests are the same as in LTS-2028 1.3.13, and fail
-  against that line's unfixed code. With the fix here, `python
-  tests/run_tests.py --fast` ran 477 tests, OK, 43 skipped (GUI tests, which
-  need a display; this environment has none). The two bulk test modules ran 28
-  tests, OK.
-- The slow suite (production-cost key derivation) was not run to completion
-  for this release.
+- **`vault/tests/test_bulk_file_service.py`.** Three regression tests verify
+  that:
+  - zero and negative chunk sizes are rejected without storing records;
+  - non-integer values and `True` are rejected;
+  - changing `self.chunk_bytes` after construction is detected before a write,
+    leaving the Vault without partial records.
 
-### Known issues recorded
+- **`biometrics/tests/test_bulk_attachments.py`.** Four regression tests verify
+  that:
+  - invalid chunk sizes are rejected without storing attachment chunks;
+  - non-integer values and `True` are rejected;
+  - `attach_paths()` reports the invalid chunk size before reporting a missing
+    path;
+  - `biometrics attach-paths` rejects `--chunk-mb` values of `0`, `-1`, and
+    `16` before the keyring function is called.
 
-Two new open issues, found while reading the bulk code for this fix, are
-recorded in `docs/KNOWN_ISSUES.md`. Neither is fixed in this release. Both
-are present in all three lines and are worded identically in each.
+- The regression tests match the tests introduced in LTS-2028 1.3.13 and fail
+  against that line's unfixed implementation.
 
-- **KI-011: Deleting or replacing a Vault bulk bundle leaves its old chunk
-  records behind.** `VaultService.delete()` removes only the record it is
-  given, and `upsert_large_bytes()` with an existing `record_id` does not
-  remove the previous bundle's chunks. Reproduced through the service API on
-  all three lines: a 4-record bundle (one manifest, three chunks) became 5
-  records after being replaced by a one-chunk bundle, and still held 4 chunk
-  records after its manifest was deleted. The desktop interface has no
-  delete for bundles, so `python cli.py vault delete` is the only path. The
-  CLI and desktop paths were read, not run end to end.
-- **KI-012: Replacing a Biometrics bulk attachment with a smaller one leaves
-  stale chunks behind.** Re-attaching under the same name overwrites only the
-  chunk names the new bundle uses, and `remove_bulk_attachment()` removes only
-  the chunks the current manifest lists. Reproduced through the attachment
-  API on all three lines: after a four-chunk bundle was replaced by a
-  one-chunk bundle and then removed, `doc.chunk1` to `doc.chunk3` were still
-  in the record.
-- **Python headers.** `vault/store/bulk_file_service.py` and
-  `biometrics/engine/bulk_attachments.py` list them under Known limitations.
-  This is a comment-only change.
+- `python tests/run_tests.py --fast` ran 477 tests successfully, with 43 GUI
+  tests skipped because the verification environment had no display.
+
+- The two affected bulk test modules ran 28 tests successfully.
+
+- The slow suite, which includes production-cost key derivation, was not run to
+  completion for this release.
+
+### Known issues
+
+The code review that produced this correction identified two related cleanup
+defects. Both remain open in this release and are recorded in
+`docs/KNOWN_ISSUES.md`. They affect Official, LTS-2028 1.4.x, and LTS-2028
+1.3.x.
+
+- **KI-011: Deleting or replacing a Vault bulk bundle leaves its previous
+  chunk records behind.** `VaultService.delete()` removes only the record it
+  is given. Calling `upsert_large_bytes()` with an existing `record_id`
+  replaces the manifest and overlapping chunks but does not remove chunks used
+  only by the previous bundle.
+
+  The defect was reproduced through the service API on all three supported
+  lines. Replacing a bundle containing one manifest and three chunks with a
+  one-chunk bundle left five records. Deleting the replacement manifest then
+  left four chunk records behind.
+
+  The desktop interface does not provide bundle deletion, so
+  `python cli.py vault delete` is the only exposed deletion path. The CLI and
+  desktop call paths were inspected but were not exercised end to end as part
+  of this release.
+
+- **KI-012: Replacing a Biometrics bulk attachment with a smaller attachment
+  leaves stale chunks behind.** Reattaching content under an existing
+  attachment name overwrites only the chunk names used by the new bundle.
+  `remove_bulk_attachment()` subsequently removes only the chunks listed by
+  the current manifest.
+
+  The defect was reproduced through the attachment API on all three supported
+  lines. After a four-chunk attachment was replaced by a one-chunk attachment
+  and then removed, `doc.chunk1`, `doc.chunk2`, and `doc.chunk3` remained in
+  the identity record.
+
+- The Known limitations sections in
+  `vault/store/bulk_file_service.py` and
+  `biometrics/engine/bulk_attachments.py` now identify KI-011 and KI-012.
+  These header updates do not change runtime behavior.
 
 ### Compatibility
 
-- No change to cryptographic primitives, stored formats, or dependencies. A
-  bundle stored with a valid chunk size, by any earlier release, opens
+- No cryptographic primitive, stored format, dependency, or valid-data behavior
+  changes in this release.
+
+- Bundles created by earlier releases with valid chunk sizes continue to open
   unchanged.
-- A bundle that an earlier release stored with a negative chunk size has no
-  data chunks. This release does not repair it, and restoring it still fails
-  the size check, as before.
-- `biometrics attach-paths --chunk-mb` above 15 was not range-checked before
-  and is now rejected, matching `vault encrypt-paths`. The default (8) is
-  unchanged.
-- Direct callers that passed a non-`int` `chunk_bytes` (for example a float)
-  used to get a bare `TypeError`; they now get `BulkFileServiceError` or
-  `BulkAttachmentError`, both `ValueError` subclasses.
+
+- A bundle previously created with a negative chunk size contains no data
+  chunks. This release cannot reconstruct the missing content. Restoration
+  continues to fail the existing reassembled-size check.
+
+- `biometrics attach-paths --chunk-mb` now rejects values above 15. Earlier
+  releases did not enforce that upper bound for this command. The new behavior
+  matches `vault encrypt-paths`.
+
+- The default command-line chunk size remains 8 MiB.
+
+- Direct callers that supplied a non-`int` `chunk_bytes` value previously
+  received a bare `TypeError` from `range()`. They now receive
+  `BulkFileServiceError` or `BulkAttachmentError`, both of which inherit from
+  `ValueError`.
+
+- LTS-2028 1.3.13 and LTS-2028 1.4.3 carry the same correction. Their version
+  strings differ from Official, and the 1.3.x documentation retains its
+  line-specific description of the legacy envelope payload limit.
+
+---
 
 ---
 
