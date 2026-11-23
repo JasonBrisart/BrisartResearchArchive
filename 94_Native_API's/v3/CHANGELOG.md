@@ -19,6 +19,8 @@ Only APIs with a genuine v3 implementation are listed below. APIs are listed alp
 
 v2 provided strict and configurable Base64 handling but did not cover the other RFC 4648 base encodings. v3 fills that gap without creating separate modules or a different validation model for each encoding.
 
+Probe A1 in `v3/tests/v2_probe.py` shows that v2 has no Base32 or Base16 functions.
+
 ### How
 
 - Base32 decoding validates legal final-group lengths and matching padding.
@@ -60,6 +62,8 @@ v2 provided strict and configurable Base64 handling but did not cover the other 
 
 v2 supplied SHA-256 hashing but lacked a shorter SHA-2 digest, keyed message authentication, and a dedicated digest-comparison helper. Sharing the existing SHA-256 core allows those capabilities to be added without duplicating the underlying block-processing implementation.
 
+Probe A2 in `v3/tests/v2_probe.py` shows that v2 has no HMAC or digest-comparison function.
+
 ### How
 
 - SHA-224 uses the SHA-256 processing core with SHA-224 initial values and digest truncation.
@@ -97,6 +101,8 @@ v2 supplied SHA-256 hashing but lacked a shorter SHA-2 digest, keyed message aut
 ### Why
 
 v2 supported raw DEFLATE and zlib but could not decode gzip framing. Adding gzip required CRC-32 support and header/trailer validation. The literal-write change also brings the output-limit implementation into line with its documented pre-write enforcement rule.
+
+Probe A3 in `v3/tests/v2_probe.py` shows that v2 has no CRC-32 or gzip decoding. The literal-write change is not externally observable and has no probe.
 
 ### How
 
@@ -139,6 +145,8 @@ v2 supported raw DEFLATE and zlib but could not decode gzip framing. Adding gzip
 
 v2 applied `max_length` after decoding bytes to text. An oversized bytes input could therefore be fully decoded, or fail with a UTF-8 error, before the configured document-size policy was considered. v3 rejects bytes input that cannot possibly fit within the character limit before decoding it.
 
+Probe V1 in `v3/tests/v2_probe.py` passes oversized bytes input that ends in an invalid byte: v2 reports the UTF-8 error and v3 reports the size limit.
+
 ### How
 
 - When `max_length` is set, bytes-like input longer than `4 * max_length` is rejected before UTF-8 decoding.
@@ -165,6 +173,8 @@ v2 applied `max_length` after decoding bytes to text. An oversized bytes input c
 ### Why
 
 v2 counted bytes for bytes-like input but characters for text input, allowing multi-byte text to consume more encoded data than the stated budget. It could also parse an incomplete final rule after truncation. A partially retained `Allow` or `Disallow` line can describe a different policy than the source document intended.
+
+Probe V2 in `v3/tests/v2_probe.py` shows v2 keeping more multi-byte rules than the stated byte budget allows. Probe V3 shows v2 allowing `/public/x` under a `Disallow: /` policy after a cut-off `Allow` line was parsed as a shorter rule.
 
 ### How
 
@@ -198,6 +208,8 @@ v2 counted bytes for bytes-like input but characters for text input, allowing mu
 ### Why
 
 v2 made `BrisartSplitResult` hashable while still allowing its attributes to be changed. Mutating an object after using it as a dictionary key or set member could invalidate the lookup relationship. v2 also accepted non-string constructor components and could surface the resulting type problem later in an unrelated operation.
+
+Probe V4 in `v3/tests/v2_probe.py` shows v2 accepting attribute assignment on a hashable result. Probe V5 shows v2 accepting a non-str component.
 
 ### How
 

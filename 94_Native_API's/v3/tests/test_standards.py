@@ -12,31 +12,34 @@ backslash sequences; and v3/CHANGELOG.md names every v3 module and cites every a
 
 Communication / relationships
 -----------------------------
+
 Standard library: unittest, ast, os, re, pathlib, plus support.py and
 v2_probe.py in this folder.
 Verifies: every file under v3/ and v3/CHANGELOG.md.
 
 Settings / parameters
 ---------------------
+
 - PRODUCT -- The six actual v3 product modules.
 - JSON_BACKSLASH_ALLOWLIST -- Reviewed code string constants in
   brisart_json.py that legitimately contain a backslash.
 
 Edge cases
 ----------
+
 The generated entity table in brisart_markup.py is the one code string
 longer than 1000 characters and is exempt from the backslash check: it
 holds the real backslash that the &bsol; reference decodes to.
 
 Known limitations
 -----------------
+
 Parsing with feature_version=(3, 8) checks syntax only, not that every
 library behaviour exists on Python 3.8.
 
 Examples
 --------
 ::
-
     python -B -m unittest discover -s v3/tests -p test_standards.py
 """
 
@@ -181,7 +184,7 @@ class ChangelogTests(unittest.TestCase):
         return (V3 / "CHANGELOG.md").read_text()
 
     def test_newest_entry_is_v3(self):
-        self.assertTrue(self.text().startswith("# v3 changelog"))
+        self.assertTrue(self.text().startswith("# v3 Changelog"))
 
     def test_entry_names_every_module_and_probe(self):
         entry = self.text()
