@@ -16,20 +16,24 @@ Settings / parameters
 ---------------------
 - ALLOWED_SUFFIXES: .txt and .md.
 - MAX_DOCUMENT_BYTES: 5,000,000.
-- The file dialog starts in app.execution_dir; the viewer opens at
-  900x680.
+- The file dialog starts in app.execution_dir; the viewer opens at 900x680
+  with the file's full path above the text.
 
 Edge cases
 ----------
 - Cancelling the file dialog does nothing.
-- Unsupported suffixes, oversized files, and decode errors show an
-  error dialog.
+- An unsupported suffix, an oversized file, or a file that cannot be read
+  or decoded shows an error dialog and opens no window.
 - UTF-8 files with a byte-order mark are accepted.
+- Each call opens a new window; nothing limits how many.
 
 Known limitations
 -----------------
 - Markdown is shown as raw text, not rendered.
 - Files that are not UTF-8 are rejected.
+- The text box has no scrollbar; it scrolls with the mouse wheel or the
+  keyboard.
+- The text is read-only (the widget is disabled); there is no search.
 
 Examples
 --------

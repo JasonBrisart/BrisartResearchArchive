@@ -10,18 +10,22 @@ Communication / relationships
 -----------------------------
 - Mixed into gui/main_window.BrisartSuiteApp.
 - Every module in gui/pages/ calls app.page_shell() and app.add_card().
-- gui/main_window.py uses mousewheel_units() and
-  widget_is_or_contains_text() in its global wheel handler.
+- gui/main_window.py uses mousewheel_units() and widget_scrolls_itself() in
+  its global wheel handler.
 - gui/pages/settings_page.py and gui/pages/results_page.py call
-  bind_text_widget_scroll_passthrough().
+  bind_scroll_passthrough() for their Text and Listbox widgets.
+- gui/components/scroll_frame.py uses mousewheel_units().
+- frameworks/TFL/gui_screens.py uses bind_dynamic_wraplength().
 - Uses Card from gui/components/card.py.
 
 Settings / parameters
 ---------------------
 - MIN_DYNAMIC_WRAPLENGTH (220): lowest wraplength while a container
   briefly reports a near-zero width during layout.
-- page_shell() stores the scrollable canvas on app._page_canvas so the
-  global wheel handler knows what to scroll.
+- page_shell(title, subtitle) stores the scrollable canvas on
+  app._page_canvas so the global wheel handler knows what to scroll; the
+  returned frame is the grid parent for cards (title in row 0, subtitle in
+  row 1, cards from row 2).
 - add_card(root, row, title, body, actions): actions is a list of
   (label, command, is_primary) tuples.
 
@@ -29,19 +33,21 @@ Edge cases
 ----------
 - mousewheel_units() returns at least one unit for any nonzero delta,
   because trackpads send deltas below 120.
-- The Text passthrough forwards the wheel to the page only when the
-  Text content already fits; otherwise Tk's own Text scrolling runs.
+- The passthrough forwards the wheel to the page only when the Text or
+  Listbox content already fits; otherwise Tk's own scrolling runs.
 - Wraplength is recalculated after idle, so rebuilt pages wrap
   immediately.
+- A label whose container is destroyed mid-update is skipped quietly.
 
 Known limitations
 -----------------
-- Touchpad two-finger scrolling over the general page area does not
-  work, although a physical mouse wheel does. Per-widget bindings, small-
-  delta handling, and a global handler resolving the widget under the
-  cursor (the current mechanism) have been tried. Next step: log every
-  wheel event Tk receives during a touchpad scroll; if none arrive, the
-  fix is outside the Archive.
+- Touchpad two-finger scrolling over the general page area does not work,
+  although a physical mouse wheel does. Per-widget bindings, small-delta
+  handling, and a global handler resolving the widget under the cursor (the
+  current mechanism) have been tried. Next step: log every wheel event Tk
+  receives during a touchpad scroll; if none arrive, the fix is outside the
+  Archive.
+- Only vertical scrolling is supported.
 
 Examples
 --------
@@ -62,15 +68,15 @@ from gui.components.card import Card
 MIN_DYNAMIC_WRAPLENGTH = 220
 
 
-def widget_is_or_contains_text(widget: tk.Misc | None) -> bool:
+def widget_scrolls_itself(widget: tk.Misc | None) -> bool:
     """
-    True if `widget` is a tk.Text widget, or is nested inside one. Used
-    so the page-level scroll handler defers to a Text widget's own native
-    scrolling (Activity Log, Update Output, Results analysis box) instead
-    of competing with it.
+    True if `widget` is a tk.Text or tk.Listbox, or is nested inside one.
+    Used so the page-level scroll handler defers to the native scrolling
+    of the Activity Log, the Results analysis box, and the Results session
+    list instead of competing with it.
     """
     while widget is not None:
-        if isinstance(widget, tk.Text):
+        if isinstance(widget, (tk.Text, tk.Listbox)):
             return True
         widget = getattr(widget, "master", None)
     return False
@@ -124,29 +130,29 @@ def bind_dynamic_wraplength(label: ttk.Label, container: tk.Misc, margin: int = 
         pass
 
 
-def bind_text_widget_scroll_passthrough(text_widget: tk.Text, app: tk.Misc) -> None:
+def bind_scroll_passthrough(scrolling_widget: tk.Text | tk.Listbox, app: tk.Misc) -> None:
     """
-    Forward the mouse wheel to the page canvas when this Text widget's
-    own content is already fully visible.
+    Forward the mouse wheel to the page canvas when this Text or Listbox
+    widget's own content is already fully visible.
 
-    A tk.Text widget has a built-in class-level <MouseWheel> binding that
-    intercepts the wheel event and stops its propagation even when the
-    widget has nothing to scroll, which would otherwise block the event
+    A tk.Text or tk.Listbox has a built-in class-level <MouseWheel> binding
+    that intercepts the wheel event and stops its propagation even when
+    the widget has nothing to scroll, which would otherwise block the event
     from reaching the page-level scroll handler in gui/main_window.py.
     This binds an instance-level handler (instance bindings run before
-    class bindings) that, when the Text content is fully in view, scrolls
-    app._page_canvas instead and returns "break"; when the Text genuinely
-    has overflow, it returns None and lets Tk's normal Text scrolling
-    behave as usual.
+    class bindings) that, when the content is fully in view, scrolls
+    app._page_canvas instead and returns "break"; when the widget genuinely
+    has overflow, it returns None and lets Tk's normal scrolling behave as
+    usual.
 
-    Call once, right after creating the Text widget -- see
-    gui/pages/settings_page.py (update_box, log_box) and
-    gui/pages/results_page.py (analysis_box) for the call sites.
+    Call once, right after creating the widget -- see
+    gui/pages/settings_page.py (log_box) and gui/pages/results_page.py
+    (analysis_box and the session list) for the call sites.
     """
 
     def _handler(event):
         try:
-            top_fraction, bottom_fraction = text_widget.yview()
+            top_fraction, bottom_fraction = scrolling_widget.yview()
         except tk.TclError:
             return None
         content_fully_visible = top_fraction <= 0.0001 and bottom_fraction >= 0.9999
@@ -169,9 +175,9 @@ def bind_text_widget_scroll_passthrough(text_widget: tk.Text, app: tk.Misc) -> N
         except tk.TclError:
             pass
         return "break"
-    text_widget.bind("<MouseWheel>", _handler)
-    text_widget.bind("<Button-4>", _handler)
-    text_widget.bind("<Button-5>", _handler)
+    scrolling_widget.bind("<MouseWheel>", _handler)
+    scrolling_widget.bind("<Button-4>", _handler)
+    scrolling_widget.bind("<Button-5>", _handler)
 
 
 class UIController:
@@ -250,7 +256,7 @@ class UIController:
 
 __all__ = [
     "UIController", "bind_dynamic_wraplength",
-    "widget_is_or_contains_text", "mousewheel_units", "bind_text_widget_scroll_passthrough",
+    "widget_scrolls_itself", "mousewheel_units", "bind_scroll_passthrough",
 ]
 
 

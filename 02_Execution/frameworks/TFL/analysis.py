@@ -3,49 +3,73 @@ File: frameworks/TFL/analysis.py
 
 Purpose
 -------
-Analyze TFL session CSVs with the standard library only. The report
-follows the 02_Execution reference analysis section by section,
-including its completion gate, with no pandas.
+Analyze TFL session CSVs with the standard library only. One session gives
+the 02_Execution reference report, section by section including its
+completion gate, with no pandas. Several sessions give the same sections
+pooled across all of them, plus a per-session comparison in which each
+session keeps its own completion gate.
 
 Communication / relationships
 -----------------------------
-- controllers/system_controller.py calls analyze_output() for the
-  Results page; cli.py prints it for "analyze".
-- Finds the newest session through frameworks/TFL/output.latest_session_file().
+- controllers/system_controller.py calls analyze_outputs() for the Results
+  page; cli.py calls analyze_output() and analyze_outputs() for "analyze".
+- Finds the newest session through frameworks/TFL/output.latest_session_file()
+  when no path is given, which uses the saved Output Directory setting.
+- Reads FRAMEWORK_ID from frameworks/TFL/settings.py for the report title.
 
 Settings / parameters
 ---------------------
-- Sections: Session, Run Metadata, Trial Counts, Prediction and
-  Behavior, Affect and Reaction Time, Prior Consistency, Contradiction,
+- Single-session sections: Session, Run Metadata, Trial Counts, Prediction
+  and Behavior, Affect and Reaction Time, Prior Consistency, Contradiction,
   Probes, Delayed Reentry, Perturbations, Response Timer (only when a
   timer was used), Completion Gate.
-- Summaries report count, mean, std (sample, n-1), min, 25%, 50%, 75%,
-  and max with linear-interpolated quartiles, matching pandas'
-  describe().
-- Completion gate: complete rows with an A/B prediction, an A/B
-  behavioral choice, and a non-blank affect, against
-  int(complete_rows * 0.8), as in the reference.
+- Pooled report: Sessions, Per Session, then every section above except the
+  gate, computed over all pooled trials. report_sections() builds those
+  sections for both reports, so they cannot drift apart.
+- analyze_outputs(paths): one path is exactly analyze_output(path); two or
+  more are pooled, in the order given.
+- Summaries report count, mean, std (sample, n-1), min, 25%, 50%, 75%, and
+  max, with linear-interpolated quartiles, matching pandas describe().
+- Completion gate: complete rows with an A/B prediction, an A/B behavioral
+  choice, and a non-blank affect, against int(complete_rows * 0.8), as in
+  the reference. A pooled report shows each session's gate and never a
+  pooled one, so one good session cannot hide a failed one.
 
 Edge cases
 ----------
-- Rows marked trial_status "in_progress" (the partly answered last trial
-  of an interrupted run) are excluded from every figure and counted in
-  the Session section.
-- CSVs without a trial_status column (0.9.3 and earlier) are treated as
-  all complete.
-- A missing, empty, or header-less file returns a readable message
-  instead of raising.
+- Rows marked trial_status "in_progress" (the partly answered last trial of
+  an interrupted run) are excluded from every figure and counted.
+- CSVs without a trial_status column (0.9.3 and earlier) are treated as all
+  complete; columns missing from older files count as blank when pooled.
+- A single missing, empty, or header-less file returns a readable message
+  instead of raising. A file that lacks the prediction, behavioral_choice,
+  or affect column is reported with its missing columns.
+- In a pooled analysis an unusable file is listed under "Left out" with its
+  reason and excluded from every figure while the others are analyzed; if
+  none can be analyzed, the reasons are shown. The same path listed twice
+  is analyzed once.
+- Contradiction, Probes, Delayed Reentry, and Perturbations print a "No
+  <column> column found" line when their column is absent.
 - Blank values are counted as "<blank>" where pandas shows NaN.
+- Trials whose prediction timed out still appear in the Contradiction
+  counts, because the engine records the feedback level for them (see
+  frameworks/TFL/feedback.py).
 
 Known limitations
 -----------------
-- Text layout differs from pandas' printed tables; the figures and the
-  gate rule are the reference's.
+- Text layout differs from pandas' printed tables; the figures and the gate
+  rule are the reference's.
+- Pooling treats every trial from every selected session as one data set.
+  It does not separate run modes, seeds, or participants; Run Metadata and
+  the Per Session blocks show what was pooled.
+- There are no statistics across sessions (no between-session tests or
+  confidence intervals), and no charts.
 
 Examples
 --------
 - print(analyze_output())
 - analyze_output(Path("tfl_output_2026-10-24_18-45-12.csv"))
+- analyze_outputs([Path("a.csv"), Path("b.csv")])
 """
 from __future__ import annotations
 
@@ -312,6 +336,21 @@ def report_completion_gate(rows) -> list[str]:
     ]
 
 
+def report_sections(rows, columns) -> list[str]:
+    """Every section of the reference report except the session header and the gate."""
+    lines = report_metadata(rows, columns)
+    lines += report_trial_counts(rows, columns)
+    lines += report_prediction_behavior(rows)
+    lines += report_affect_rt(rows, columns)
+    lines += report_prior_consistency(rows)
+    lines += report_contradiction(rows, columns)
+    lines += report_probes(rows, columns)
+    lines += report_delayed_reentry(rows, columns)
+    lines += report_perturbations(rows, columns)
+    lines += report_response_timer(rows, columns)
+    return lines
+
+
 def analyze_output(path: Path | str | None = None) -> str:
     if path is None:
         path = latest_session_file()
@@ -330,19 +369,86 @@ def analyze_output(path: Path | str | None = None) -> str:
     columns = set(rows[0].keys())
     lines = [f"{settings.FRAMEWORK_ID} Analysis", "-" * 40]
     lines += report_session(path, complete, in_progress, columns)
-    lines += report_metadata(complete, columns)
-    lines += report_trial_counts(complete, columns)
-    lines += report_prediction_behavior(complete)
-    lines += report_affect_rt(complete, columns)
-    lines += report_prior_consistency(complete)
-    lines += report_contradiction(complete, columns)
-    lines += report_probes(complete, columns)
-    lines += report_delayed_reentry(complete, columns)
-    lines += report_perturbations(complete, columns)
-    lines += report_response_timer(complete, columns)
+    lines += report_sections(complete, columns)
     lines += report_completion_gate(complete)
     return "\n".join(lines)
 
 
-__all__ = ["load_output", "split_by_status", "describe", "value_counts", "completion_gate", "analyze_output"]
+# ============================================================
+# Several sessions at once
+# ============================================================
+def mean_text(values: list[float], unit: str = "") -> str:
+    return f"{sum(values) / len(values):.2f}{unit}" if values else "n/a"
+
+
+def session_block(number: int, path: Path, complete: list[dict]) -> list[str]:
+    usable, minimum, passed = completion_gate(complete)
+    timeouts = sum(is_true(r.get("prediction_timed_out")) + is_true(r.get("behavioral_timed_out"))
+                   for r in complete)
+    seeds = sorted({str(r.get("random_seed", "")) for r in complete if r.get("random_seed", "")})
+    labels = sorted({r.get("session_label", "") for r in complete if r.get("session_label", "")})
+    modes = sorted({r.get("run_mode", "") for r in complete if r.get("run_mode", "")})
+    return [
+        f"{number}. {path.name}",
+        f"   Complete trials: {len(complete)}   Usable: {usable}   Gate: {'PASS' if passed else 'FAIL'}",
+        f"   Mean affect: {mean_text(numbers(complete, 'affect'))}"
+        f"   Mean prediction RT: {mean_text(numbers(complete, 'prediction_rt'), ' s')}"
+        f"   Timeouts: {timeouts}",
+        f"   Seed: {', '.join(seeds) or '<blank>'}   Label: {', '.join(labels) or '(none)'}"
+        f"   Run mode: {', '.join(modes) or '<blank>'}",
+    ]
+
+
+def analyze_outputs(paths) -> str:
+    """Analyze one session, or pool several. One path is exactly analyze_output()."""
+    unique: list[Path] = []
+    for item in paths:
+        path = Path(item)
+        if path not in unique:
+            unique.append(path)
+    if not unique:
+        return "No sessions were selected."
+    if len(unique) == 1:
+        return analyze_output(unique[0])
+
+    sessions, skipped, in_progress_total = [], [], 0
+    for path in unique:
+        try:
+            rows = load_output(path)
+        except Exception as exc:
+            skipped.append(f"{path.name}: {type(exc).__name__}: {exc}")
+            continue
+        complete, in_progress = split_by_status(rows)
+        in_progress_total += len(in_progress)
+        if not complete:
+            skipped.append(f"{path.name}: no completed trials")
+            continue
+        sessions.append((path, complete))
+    if not sessions:
+        return "None of the selected sessions could be analyzed.\n\n" + "\n".join(skipped)
+
+    pooled = [row for _, complete in sessions for row in complete]
+    columns = set().union(*(row.keys() for row in pooled))
+    lines = [f"{settings.FRAMEWORK_ID} Combined Analysis", "-" * 40]
+    lines += section("Sessions") + [
+        f"Files selected: {len(unique)}",
+        f"Files analyzed: {len(sessions)}",
+        f"Complete trials pooled: {len(pooled)}",
+    ]
+    if in_progress_total:
+        lines.append(f"Incomplete trials excluded: {in_progress_total} (interrupted runs)")
+    if skipped:
+        lines += ["", "Left out:"] + [f"  {item}" for item in skipped]
+    lines += ["", "Figures below pool every trial from the analyzed sessions. Each session's",
+              "own completion gate is shown under Per Session; a pooled gate is not reported."]
+    lines += section("Per Session")
+    for number, (path, complete) in enumerate(sessions, start=1):
+        lines += session_block(number, path, complete) + [""]
+    lines.pop()
+    lines += report_sections(pooled, columns)
+    return "\n".join(lines)
+
+
+__all__ = ["load_output", "split_by_status", "describe", "value_counts", "completion_gate",
+           "analyze_output", "analyze_outputs"]
 

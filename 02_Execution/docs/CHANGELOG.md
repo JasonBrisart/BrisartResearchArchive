@@ -1,5 +1,144 @@
 # Changelog
-All notable changes to Brisart Research Archive are documented here.
+
+All notable changes to Brisart Research Archive are documented here, newest
+first. Each entry describes the release as it shipped and is not rewritten
+afterward; a later entry says so when it corrects an earlier one. Releases
+before 0.9.4 describe a multi-framework layout, and releases before 0.9.7 an
+in-application updater; both have been removed. File-level documentation
+lives in each Python file's six-section header, not in separate documents.
+
+---
+
+## [0.9.10 ALPHA] - 2026-11-23
+
+### Release overview
+
+A documentation release: the header of every Python file was rewritten against the code it describes, and the changelog gained an orientation note. No code, setting, stored format, or behavior changed. This was checked mechanically: for all 38 Python files, the syntax tree with the module docstring removed is identical before and after the pass. The rewrite also corrected two statements that were wrong and two that were misleading or incomplete, and recorded several limitations that had gone unwritten.
+
+### Changed: source headers (all 38 Python files)
+
+- **Every header was rewritten from the code, not edited from the old text.** Each keeps the six sections in the required order (Purpose; Communication / relationships; Settings / parameters; Edge cases; Known limitations; Examples). Each now lists the real callers and callees, the actual parameters and their limits, how each edge case behaves, and runnable examples.
+- **Corrected statements.**
+  - **`frameworks/TFL/trial_builder.py`: delayed reentry is not confined to a block.** The first eligible trial of each block has `block_trial_num` equal to the interval, so its source is the last trial of the previous block: with the defaults, trial 46 re-presents trial 40 and trial 86 re-presents trial 80. The old header attributed cross-block sources to blocks shorter than the interval, which was wrong, and the 0.9.3 entry's "block-local" is wrong for the same reason. The behavior is unchanged and is the reference rule, proved by the existing parity test.
+  - **`frameworks/TFL/output.py`: the cost of saving after every answer.** The header said a few hundred kilobytes in total per answer. Measured with the built-in stimuli, a 120-trial session with perturbations is about 31 KB and is rewritten 422 times, roughly 6.5 MB written over a whole session.
+  - **`frameworks/TFL/cli_runner.py`:** the header said the DeadlineOnlyTimer is used when the timer is on; it is always passed to the engine, which uses it only when the timer is on.
+  - **`config/runtime.py`:** the header did not say that `get_tfl_output_dir()` creates the folder, that settings problems are reported with `print()` only, or that a legacy settings file is copied and left in place.
+- **Behavior that was not written down before, now documented.** `cli.py` exit statuses (including that `run` always exits 0); how a timed-out prediction is recorded and counted in Contradiction (`feedback.py`, `analysis.py`, `engine.py`); that `rows_saved` includes an in-progress row; that the session listing pattern also matches the legacy `tfl_output.csv`; why the controller splits the file dialog result; which keys the options and results screens publish; and that each page visit rebuilds the page.
+- **Limitations recorded, not fixed.** These are candidates for a future code pass:
+  - `status_text` is updated by `app.log()` but no widget displays it (`log_controller.py`, `main_window.py`).
+  - `default_mode_description()` in `config.py` and the Run card in `gui/pages/tfl_page.py` describe the defaults in fixed wording, so they do not follow a changed default.
+  - Fixed wrap widths of 950 and 1000 pixels in `settings_page.py` and `gui_options.py` exceed the 800 pixel minimum window; not checked on a real display.
+  - `APP_NAME` is defined in both `gui/theme.py` and `config/runtime.py`; `gui/theme.py` defines the `Side.TFrame` and `Top.TFrame` styles but nothing uses them; the sidebar background colour is written out in three places.
+  - Sidebar entries respond to the mouse only; the document viewer has no scrollbar.
+- **Test headers** (`tests/test_app.py`, `tests/test_tfl.py`, `tests/gui_doubles_check.py`) now state their test counts per class, what the header test can and cannot prove, and that parity is proved against a port of the reference algorithm, not the reference program.
+
+### Changed: `docs/CHANGELOG.md`
+
+- Added the orientation note above, so a reader knows that older entries describe removed layers. No existing entry was edited.
+
+### Tests
+
+- `python run.py --test`: 59 tests, OK, unchanged from 0.9.9. The header test passes for all 38 files.
+- The claims in the corrected headers were checked against the running code rather than the old text: delayed-reentry sources from a generated default run, the apostrophe set from the embedded stimuli, session size from a measured 120-trial run, and the unused styles and unread `status_text` by searching the source.
+
+### Compatibility limits
+
+- None. There is no change to behavior, settings, session files, or the CSV schema.
+- The header test checks structure only; it cannot tell whether the words are accurate, so these headers are only as current as the last pass that read the code.
+
+---
+
+## [0.9.9 ALPHA] - 2026-11-23
+
+### Release overview
+
+Results can now analyze one session or several. The Results page shows every saved session in a list you can multi-select, and several sessions are pooled into one combined report, with each session's own completion gate shown beside the pooled figures. The command line gains the same ability. A single selected session still produces exactly the report it did before. Protocol behavior, timing, saving, and the CSV format are unchanged.
+
+### Added: multi-session analysis (`frameworks/TFL/analysis.py`)
+
+- **`analyze_outputs(paths)`** is the one entry point. One path returns exactly `analyze_output(path)`: a test compares the two, and the 154-line report from a real 120-trial session was byte-identical before and after this release's refactor. Two or more paths are pooled.
+- **Pooled report.** A Sessions section (files selected, files analyzed, complete trials pooled, incomplete trials excluded), a Per Session section, then every section of the single-session report computed over all pooled trials: run metadata, trial counts, prediction and behavior, affect and reaction time, prior consistency, contradiction, probes, delayed reentry, perturbations, and response timer.
+- **Per Session** gives each file its number, complete and usable trial counts, its own **PASS/FAIL completion gate**, mean affect, mean prediction reaction time, timeout count, seed, label, and run mode.
+- **No pooled gate, on purpose.** The reference gate asks whether one run produced enough usable trials. Pooling would let a good session hide a failed one, so each session is judged alone, and the report says so.
+- **Bad input does not stop the rest.** A missing, unreadable, or empty file is listed under "Left out" with its reason and excluded from every figure; the other sessions are still analyzed. If none can be analyzed, the reasons are shown. The same file listed twice counts once. Interrupted runs contribute only their complete trials, and the excluded in-progress rows are counted.
+- **Older files pool by column name.** A session from a release without the seed, label, or status columns counts those as blank (`Seed: <blank>`).
+- **Shared structure.** `report_sections()` now builds every non-gate section for both the single and the pooled report, so they cannot drift apart.
+
+### Changed: Results page (`gui/pages/results_page.py`)
+
+- A session list (newest first, saved date and file name) replaces the Analyze Latest and Choose Session buttons. Click one, Ctrl+click to add, or Shift+click for a range. The newest session is selected when the page opens, so one click on **Analyze Selected** analyzes the latest run, as before.
+- **Keys.** Enter analyzes the selection, Ctrl+A selects all, and double-click analyzes that one session.
+- **Buttons.** Analyze Selected, Select All, Select None, Refresh, Choose Files... (any CSV, several at once, for files outside the output folder), Open Selected (up to 5 CSVs at once, with a message above that), and Open TFL Folder. A "3 of 12 selected" line tracks the selection.
+- Selected files are handed over oldest first whatever order they were clicked in, so a pooled report lists sessions in the order they were run.
+- After a TFL run finishes, the page opens with that run selected and analyzed, as before.
+
+### Changed: controller (`controllers/system_controller.py`)
+
+- `analyze_tfl(paths=None)` takes nothing (newest session), one path, or a list. An empty list shows guidance instead of failing. `choose_tfl_session()` becomes `choose_tfl_sessions()` (multi-select dialog), and `open_latest_tfl_csv()` becomes `open_tfl_csvs(paths)`. The Dashboard's Analyze Latest Session and the end-of-run hand-off call `analyze_tfl()` unchanged.
+
+### Added: command line (`cli.py`)
+
+- `python cli.py analyze --file A --file B` pools the named sessions; `python cli.py analyze --all` pools every saved session. `--file` and `--all` cannot be combined. If any named file is missing, every missing file is reported, nothing is analyzed, and the exit status is 1. `analyze` and `analyze --file P` behave as before.
+
+### Changed: scroll helpers (`gui/components/page_helpers.py`)
+
+- The page-level wheel handler and the passthrough helper now cover list boxes as well as text boxes, so wheeling over the session list does not also scroll the page behind it. They are renamed to say so: `widget_is_or_contains_text()` becomes `widget_scrolls_itself()` and `bind_text_widget_scroll_passthrough()` becomes `bind_scroll_passthrough()`. All callers are updated.
+
+### Tests
+
+- **`tests/test_tfl.py`: 7 multi-session tests and 1 command-line test.** One chosen session equals the single-session report (including a duplicated path); nothing selected; pooled counts add up (24 trials from two 12-trial sessions) with each session's seed and label shown and no pooled gate; a session below the gate shows FAIL beside a passing one; an interrupted run is excluded and counted; unreadable, empty, and missing files are listed while the rest are analyzed, and an all-bad selection explains why; an older-format file pools with a current one; `--file` repeated, `--all`, a missing file among several, and the mutually exclusive flags.
+- **`tests/gui_doubles_check.py`** now exercises the controller against real saved sessions: newest session, one chosen file, two files pooled, an empty selection, the oldest-first ordering of a selection, opening several CSVs, and the nothing-selected and too-many-selected messages.
+- `python run.py --test`: 59 tests, OK. Native Tk rendering was not exercised: check the list, selection by mouse, Ctrl+A, Enter, and the layout at 800x600 by hand.
+
+### Compatibility limits
+
+- `analyze_output()` is unchanged. Code that called `app.choose_tfl_session()` or `app.open_latest_tfl_csv()` must use `choose_tfl_sessions()` or `open_tfl_csvs()`.
+- Pooling treats all selected trials as one data set. It does not separate run modes, seeds, or participants, and reports no statistics across sessions; check Run Metadata and Per Session to see what was pooled.
+
+---
+
+## [0.9.8 ALPHA] - 2026-11-23
+
+### Release overview
+
+This release makes a TFL session faster and calmer to take, and removes leftover settings plumbing. Every answer can now be given from the keyboard, the trial screen is rebuilt around large type and big answer targets with a progress bar and a live countdown, the Settings page no longer has an Updates card, and the whole test suite runs with one command. Protocol behavior, timing, saving, and the CSV format are unchanged.
+
+### Changed: test-taking screen (`frameworks/TFL/gui_screens.py`, `gui/theme.py`)
+
+- **Layout.** Each trial screen now has a header (trial *n* of *N* and, on timed stages, the seconds remaining), a thin progress bar, the stimulus in 20-point type, Interpretations A and B side by side with a large letter on each, the question, and large answer buttons. A footer shows the keyboard hint and the save status. The countdown turns amber in the last 3 seconds.
+- **New styles** in `gui/theme.py`: `Stimulus`, `Option`, `OptionKey`, `Prompt`, `Hint`, `Countdown`, `CountdownLow`, `Choice.TButton`, and `Trial.Horizontal.TProgressbar`. Existing pages keep their styles.
+- Answer buttons do not take keyboard focus, so Space cannot press a button left focused from an earlier screen.
+- Wording on screen is shortened (for example "Which interpretation do you predict?"); the CSV columns, the stored answers, and the feedback sentences are unchanged.
+
+### Added: keyboard input (`frameworks/TFL/gui_session.py`, `gui_screens.py`, `gui_options.py`)
+
+- A, B, and U answer every choice question; Enter views the stimulus, submits the affect rating, confirms a perturbation, starts the experiment from the options screen, and closes the completion screen. Mouse clicks still work everywhere.
+- Esc stops a run (with the existing confirmation, and every answer already saved); F11 toggles full screen.
+- **Ownership.** `TFLGuiSession` owns the window's key bindings; each screen publishes only the keys valid on it in `session.key_actions`. A key that is not valid on the current screen does nothing.
+- **Held keys.** A key held down acts once until it is released, so keyboard auto-repeat cannot answer the next question. Losing window focus forgets held keys. On X11, auto-repeat sends release/press pairs, so the guard only suppresses repeats on Windows and macOS.
+- The TFL page has a new Keyboard card listing the keys.
+
+### Removed: Updates card and unused settings
+
+- **`gui/pages/settings_page.py`:** the Updates card is gone. Settings now shows General, Output Directory, and the Activity Log.
+- **`theme`, `window_width`, and `window_height`** are no longer settings. Only the dark theme existed and nothing could change it, and the saved window size was never applied. `config/runtime.py` drops them with `normalize_bool()`, `normalize_int()`, `normalize_theme()`, `ALLOWED_THEMES`, and the window-size limits. The output folder is now the only persisted setting.
+- **`config/state.py` is removed.** With two live variables left (`status_text`, `output_folder`), `gui/main_window.py` owns them directly and the proxy properties are gone. `controllers/system_controller.py` reads only the output folder.
+
+### Changed: running the tests (`run.py`)
+
+- `python run.py --test` runs every automated test and exits 0 or 1. `python -m unittest discover -s tests` also works, and single files still run directly.
+
+### Tests
+
+- **`tests/gui_doubles_check.py`** now answers a complete 20-trial run with perturbations and probes from the keyboard only. On every screen it checks that exactly the right keys are published, and that an unmapped key does nothing. It also checks the held-key guard, focus-loss reset, Enter on the options screen, and Esc stopping a run with its answers saved.
+- **`tests/test_app.py`** is pruned to tests of real behavior. New: no application module imports a network-capable module (`urllib`, `http`, `socket`, `ssl`, and similar); only the output folder is persisted and old keys from earlier releases are dropped; unsafe output folders fall back; the newest changelog heading matches `version.py`. Removed: checks that historical files and phrases are absent, which tested past architecture instead of behavior.
+- `python run.py --test`: 51 tests, OK. Native Tk rendering, fonts, and full screen were not exercised; check them by hand on the target machine.
+
+### Compatibility limits
+
+- Existing `user_settings.json` files load unchanged; `theme`, window size, and the retired updater keys are dropped on the next save.
+- Session files, the 33-column CSV schema, timing, and the analysis are unchanged.
+- The empty `services/` folder left by 0.9.7 holds no files and should be deleted from the repository.
 
 ---
 
@@ -29,7 +168,7 @@ This release removes update management from the Archive application. The program
 - No compatibility shim or disabled updater layer remains. A future standalone updater can own that responsibility without coupling to the TFL process.
 - TFL execution, AppData output, every-answer saving, timing, analysis, GUI, and CLI ownership are unchanged.
 
-### Verification
+### Tests
 
 - Automated tests verify that the updater, signing folder, trust-anchor code, and obsolete version file are absent; that retired updater preferences disappear during settings normalization; and that runtime Python files contain no `services.updater` imports.
 - Existing TFL tests continue to cover the 12-second default timer, per-answer saving, interrupted runs, AppData output, analysis, CLI behavior, and GUI wiring.

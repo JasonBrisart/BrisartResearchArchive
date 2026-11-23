@@ -3,49 +3,66 @@ File: controllers/system_controller.py
 
 Purpose
 -------
-Coordinate every GUI action: launching TFL, analyzing sessions, opening
-output, saving settings, the document viewer, and shutdown. Every failure is reported in a dialog and the Activity Log and
-never escapes into the Tk event loop.
+Coordinate every GUI action: launching TFL, analyzing one or several
+sessions, opening session files and folders, saving settings, the
+document viewer, and shutdown. Every failure is reported in a dialog and
+in the Activity Log and never escapes into the Tk event loop.
 
 Communication / relationships
 -----------------------------
-- Mixed into gui/main_window.BrisartSuiteApp; pages call these methods
-  as app.<method>().
-- Launches frameworks/TFL/gui_session.TFLGuiSession (imported lazily).
-- Analysis: frameworks/TFL/analysis.py and frameworks/TFL/output.py.
-- Settings and output paths: config/runtime.py.
-- Documents: gui/components/document_viewer.py.
+- Mixed into gui/main_window.BrisartSuiteApp; pages call these methods as
+  app.<method>().
+- Launches frameworks/TFL/gui_session.TFLGuiSession (imported lazily) and
+  calls its end_run() when the Archive closes mid-run.
+- Analysis: frameworks/TFL/analysis.analyze_outputs() and
+  frameworks/TFL/output.latest_session_file().
+- The Results page owns the session list and its selection; it hands the
+  chosen files to analyze_tfl() and open_tfl_csvs().
+- Settings and output paths: config/runtime.py. Documents:
+  gui/components/document_viewer.py.
 
 Settings / parameters
 ---------------------
-- _collect_settings() builds a settings dictionary from the live Tk
-  variables and window size; frameworks/TFL/gui_session.py uses it so a run writes
-  to the output folder currently shown in Settings, even if unsaved.
-- tfl_output_dir() is the folder TFL writes to:
-  <output folder>/TFL, by default
+- analyze_tfl(paths=None): None analyzes the newest session; one path or a
+  list of paths analyzes exactly those (two or more are pooled); an empty
+  list shows guidance instead.
+- choose_tfl_sessions(): a multi-select file dialog that starts in the TFL
+  folder and analyzes what is chosen.
+- open_tfl_csvs(paths), MAX_CSVS_AT_ONCE (5): opens each file with the
+  operating system's default application.
+- _collect_settings() builds the settings dictionary from the live
+  output-folder variable, so a run writes to the folder currently shown in
+  Settings even if it has not been saved yet.
+- tfl_output_dir() is <Output Directory>/TFL, by default
   %APPDATA%/Brisart Research Archive/outputs/TFL.
 
 Edge cases
 ----------
-- Only one TFL window can be open; a second Run brings the existing
-  window to the front.
+- Only one TFL window can be open; a second Run brings it to the front.
 - Closing the Archive during a run asks first; every answer given so far
-  is already saved.
-- A failed settings save does not close the application without
-  confirmation.
+  is already saved. A failed settings save asks before closing anyway.
+- Browse saves the new folder immediately and restores the previous value
+  if that save fails.
+- More than MAX_CSVS_AT_ONCE selected files, or none, is refused with a
+  message instead of opening anything.
+- The file dialog can return a single string on some platforms; the
+  result is split with tk.splitlist() before use.
+- A report is written only if the Results page is showing; otherwise the
+  action is still logged.
 - Opening a folder creates it first.
 
 Known limitations
 -----------------
-- Opening folders and CSVs uses the operating system's default
-  application (os.startfile, open, or xdg-open).
-- Analysis runs on the UI thread; a 120-trial session takes well under a
-  second.
+- Opening folders and CSVs uses the operating system default (os.startfile,
+  open, or xdg-open); it is not tested end to end.
+- Analysis runs on the UI thread; a pooled analysis of a few dozen
+  120-trial sessions stays well under a second.
 
 Examples
 --------
 - app.start_tfl()
 - app.analyze_tfl()
+- app.analyze_tfl([first_csv, second_csv])
 - app.open_tfl_folder()
 """
 from __future__ import annotations
@@ -59,6 +76,16 @@ from tkinter import filedialog, messagebox
 
 from config.runtime import get_output_folder, get_tfl_output_dir, normalize_settings, save_settings as persist_settings
 from gui.components.document_viewer import open_local_doc as open_document_viewer
+
+
+MAX_CSVS_AT_ONCE = 5
+
+
+def as_path_list(paths) -> list[Path]:
+    """A single path or any iterable of paths, as a list of Paths."""
+    if isinstance(paths, (str, Path)):
+        return [Path(paths)]
+    return [Path(item) for item in paths]
 
 
 def open_with_system(path: Path) -> None:
@@ -87,15 +114,7 @@ class SystemController:
 
     def _collect_settings(self) -> dict:
         settings = dict(getattr(self, "settings", {}) or {})
-        for key in ("output_folder", "theme"):
-            settings[key] = self._read(key, settings.get(key))
-        for key, method in (("window_width", self.winfo_width), ("window_height", self.winfo_height)):
-            try:
-                size = int(method())
-                if size > 1:
-                    settings[key] = size
-            except (TypeError, ValueError, tk.TclError):
-                pass
+        settings["output_folder"] = self._read("output_folder", settings.get("output_folder"))
         return normalize_settings(settings)
 
     def tfl_output_dir(self) -> Path:
@@ -133,42 +152,60 @@ class SystemController:
         except tk.TclError:
             pass
 
-    def analyze_tfl(self, path: Path | str | None = None) -> None:
+    def analyze_tfl(self, paths=None) -> None:
         try:
-            from frameworks.TFL.analysis import analyze_output
+            from frameworks.TFL.analysis import analyze_outputs
             from frameworks.TFL.output import latest_session_file
-            target = Path(path) if path else latest_session_file(self.tfl_output_dir())
-            report = analyze_output(target) if target else (
-                f"No TFL session files exist yet in:\n{self.tfl_output_dir()}\n\nRun TFL first."
-            )
+            if paths is None:
+                latest = latest_session_file(self.tfl_output_dir())
+                if latest is None:
+                    self.set_analysis_text(
+                        f"No TFL session files exist yet in:\n{self.tfl_output_dir()}\n\nRun TFL first.")
+                    self.log("TFL analysis: no sessions yet")
+                    return
+                targets = [latest]
+            else:
+                targets = as_path_list(paths)
+            if not targets:
+                self.set_analysis_text("Select one or more sessions in the list, then choose Analyze Selected.")
+                return
+            report = analyze_outputs(targets)
         except Exception as exc:
             self._fail("Analysis Failed", f"TFL analysis failed: {type(exc).__name__}: {exc}")
             return
         self.set_analysis_text(report)
-        self.log(f"TFL analysis: {target.name if target else 'no sessions yet'}")
+        self.log(f"TFL analysis: {targets[0].name}" if len(targets) == 1
+                 else f"TFL analysis: {len(targets)} sessions pooled")
 
-    def choose_tfl_session(self) -> None:
+    def choose_tfl_sessions(self) -> None:
         try:
-            selected = filedialog.askopenfilename(
-                title="Choose a TFL session CSV", initialdir=str(self.tfl_output_dir()),
+            selected = filedialog.askopenfilenames(
+                title="Choose one or more TFL session CSVs", initialdir=str(self.tfl_output_dir()),
                 filetypes=[("TFL session CSV", "*.csv")], parent=self,
             )
+            chosen = list(self.tk.splitlist(selected)) if selected else []
         except tk.TclError as exc:
-            self._fail("Choose Session Failed", f"The file dialog could not open: {exc}")
+            self._fail("Choose Sessions Failed", f"The file dialog could not open: {exc}")
             return
-        if selected:
-            self.analyze_tfl(selected)
+        if chosen:
+            self.analyze_tfl(chosen)
 
-    def open_latest_tfl_csv(self) -> None:
-        from frameworks.TFL.output import latest_session_file
-        path = latest_session_file(self.tfl_output_dir())
-        if path is None:
-            self._fail("No Sessions", f"No TFL session files exist yet in:\n{self.tfl_output_dir()}")
+    def open_tfl_csvs(self, paths) -> None:
+        targets = as_path_list(paths)
+        if not targets:
+            self._fail("Nothing Selected", "Select one or more sessions in the list first.")
             return
-        try:
-            open_with_system(path)
-        except Exception as exc:
-            self._fail("Open CSV Failed", f"Could not open {path.name}: {type(exc).__name__}: {exc}")
+        if len(targets) > MAX_CSVS_AT_ONCE:
+            self._fail("Too Many Files",
+                       f"{len(targets)} sessions are selected. Select at most {MAX_CSVS_AT_ONCE} to open "
+                       "at once, or use Open TFL Folder.")
+            return
+        for path in targets:
+            try:
+                open_with_system(path)
+            except Exception as exc:
+                self._fail("Open CSV Failed", f"Could not open {path.name}: {type(exc).__name__}: {exc}")
+                return
 
     def open_tfl_folder(self) -> None:
         self._open_folder(self.tfl_output_dir())

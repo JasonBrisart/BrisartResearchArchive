@@ -5,36 +5,43 @@ Purpose
 -------
 Hold every fixed TFL constant and every option default in one place. The
 trial structure reproduces the 02_Execution TFL Baseline Reference
-Implementation v2.6; the Archive additionally enables its 12-second
-response timer by default for operational research runs.
+Implementation v2.6; the Archive additionally turns its 12-second response
+timer on by default for operational research runs.
 
 Communication / relationships
 -----------------------------
-- Imported by every other frameworks/TFL/ module; imports nothing itself, so it can
-  never create a circular import.
-- frameworks/TFL/config.py turns these defaults into run configurations and the
-  option table shared by the GUI and the CLI.
+- Imported by every other frameworks/TFL/ module and by
+  gui/pages/tfl_page.py; imports nothing itself, so it can never create a
+  circular import.
+- frameworks/TFL/config.py turns these defaults into run configurations
+  and the option table shared by the GUI and the CLI.
 
 Settings / parameters
 ---------------------
-- Default run: 3 blocks (affect, belief, contradiction) x 40 trials;
-  the Archive response timer is enabled at 12 seconds; probes every 4th trial; delayed reentry every 6th trial within
-  a block; perturbations every 5th trial when enabled; seed 2026; first
-  20 stimuli.
+- Default run: 3 blocks (affect, belief, contradiction) of 40 trials;
+  response timer on at 12 seconds; probes every 4th trial; delayed
+  reentry every 6th trial within a block; perturbations every 5th trial
+  when enabled; seed 2026; the first 20 stimuli.
 - Option limits: trials per block 1-200; intervals 1-50; timer 3-120 s;
   seed 0-2147483647; session label up to 40 characters.
+- Reference wording: VERSION_LABEL, the session intro, and the CLI prompts.
 - Output file names: tfl_output_[label_]YYYY-MM-DD_HH-MM-SS.csv.
 
 Edge cases
 ----------
 - Changing a default here changes what "Default TFL" means; runs are
   labelled default_tfl only when every protocol option matches these
-  values.
+  values. Turning the timer off, for instance, makes a run modified_tfl.
+- Defaults are not mirrored automatically in prose: config.py's
+  default_mode_description() and gui/pages/tfl_page.py describe them in
+  fixed wording, so edit those too.
 
 Known limitations
 -----------------
 - Reference wording is reproduced verbatim, including the en dash in the
   affect prompt; non-UTF-8 consoles may render it differently.
+- The CLI uses these prompts; the GUI screens use their own shorter
+  question text (frameworks/TFL/gui_screens.py).
 
 Examples
 --------

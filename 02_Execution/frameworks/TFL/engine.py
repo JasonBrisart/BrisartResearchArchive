@@ -4,55 +4,64 @@ File: frameworks/TFL/engine.py
 Purpose
 -------
 Run one TFL session as a front-end-independent state machine that
-reproduces the 02_Execution trial procedure, and hand a complete
-snapshot of the session to the save hook after every single answer.
-The GUI and the CLI both drive this one engine; neither owns protocol
-logic.
+reproduces the 02_Execution trial procedure, and hand a complete snapshot
+of the session to the save hook after every single answer. The GUI and the
+CLI both drive this one engine; neither owns protocol logic.
 
 Communication / relationships
 -----------------------------
-- Uses TimerInterface from frameworks/TFL/timing.py and frameworks/TFL/feedback.py.
-- Driven by frameworks/TFL/gui_screens.py through frameworks/TFL/gui_session.py, by
-  frameworks/TFL/cli_runner.py, and by frameworks/TFL/headless.py in tests.
+- Uses TimerInterface from frameworks/TFL/timing.py and the wording in
+  frameworks/TFL/feedback.py.
+- Driven by frameworks/TFL/gui_screens.py through
+  frameworks/TFL/gui_session.py, by frameworks/TFL/cli_runner.py, and by
+  frameworks/TFL/headless.py in tests.
 - on_progress(rows) is normally frameworks/TFL/output.SessionWriter.save.
 - on_stage_advanced() lets the GUI redraw after a timer expiry.
+- Row keys match frameworks/TFL/schema.TRIAL_FIELDNAMES exactly.
 
 Settings / parameters
 ---------------------
 - Stage order per trial: cue -> prediction -> affect ->
   [perturbation -> post_perturbation_probe] -> behavioral_choice ->
-  [content_probe] -> row complete -> next cue or completion.
+  [content_probe] -> row complete -> next cue or completion. The content
+  probe runs on probe trials and delayed-reentry trials.
 - Feedback is computed after the behavioral choice and exposed as
-  current_feedback (shown with the content probe) and last_feedback
-  (shown on the next cue or completion screen). There is no
-  acknowledgement step, as in the reference.
+  current_feedback (shown with the content probe) and last_feedback (shown
+  on the next cue or the completion screen). There is no acknowledgement
+  step, as in the reference.
 - Saving: after every accepted answer and every timeout, on_progress
-  receives all completed rows plus the current trial as an
-  "in_progress" row.
+  receives all completed rows plus the current trial as an "in_progress"
+  row (snapshot()).
 - Timer: only with enable_response_timer; applies to prediction and
-  behavioral_choice for trial_duration_sec seconds.
+  behavioral_choice for trial_duration_sec seconds; seconds_remaining()
+  drives the GUI countdown.
 
 Edge cases
 ----------
-- Invalid choices and invalid affect return False, do not advance, and
-  do not save.
+- Invalid choices and invalid affect return False, do not advance, and do
+  not save. Answers sent to a stage that is not active are refused.
 - Affect follows the reference: int(text.strip()) from 0 to 100; "50.5",
   blanks, and booleans are rejected.
 - A submission at or after the deadline is recorded as a timeout.
 - Timer generations increase for the engine's lifetime, so a stale
   callback can never act on a later stage.
 - Save-hook exceptions are recorded in save_errors and never stop the
-  session. Because every save is a full snapshot, the next successful
-  save restores anything a failed save missed.
-- finish_session() is idempotent.
-- last_save_error clears on recovery; save_errors retains failure history.
+  session. Every save is a full snapshot, so the next successful save
+  restores anything a failed save missed; last_save_error clears on
+  recovery while save_errors keeps the history.
+- finish_session() is idempotent. cancel() stops the timer and refuses
+  further answers; it does not save, because the last answer already did.
+- perturbation_match_prediction is filled only when both the probe answer
+  and the prediction are A or B.
 
 Known limitations
 -----------------
-- Reaction times use the injected timer (monotonic clock), rounded to
-  four decimals; the reference used time.time().
+- Reaction times use the injected timer (monotonic clock), rounded to four
+  decimals; the reference used time.time().
 - Cue and perturbation "continue" steps are not answers and do not
   trigger a save.
+- When a prediction times out, the feedback sentence says no prediction
+  was recorded, but the row still carries the trial's contradiction level.
 
 Examples
 --------

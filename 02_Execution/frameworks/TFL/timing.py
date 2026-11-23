@@ -5,14 +5,13 @@ Purpose
 -------
 Provide the timer contract for the TFL engine: TimerInterface,
 MonotonicTimer (GUI scheduling), DeadlineOnlyTimer (console), and
-NullSchedulerTimer (deterministic virtual clock for tests and
-automation).
+NullSchedulerTimer (deterministic virtual clock for tests and automation).
 
 Communication / relationships
 -----------------------------
 - frameworks/TFL/engine.py consumes any TimerInterface.
-- frameworks/TFL/gui_session.py builds a MonotonicTimer bound to its window's
-  after() and after_cancel().
+- frameworks/TFL/gui_session.py builds a MonotonicTimer bound to its
+  window's after() and after_cancel().
 - frameworks/TFL/cli_runner.py uses DeadlineOnlyTimer.
 - frameworks/TFL/headless.py and the tests use NullSchedulerTimer.
 
@@ -22,19 +21,24 @@ Settings / parameters
   time.monotonic().
 - DeadlineOnlyTimer: real clock, never calls back; deadlines are checked
   when an answer is submitted.
-- NullSchedulerTimer: starts at 0.0; advance(seconds); fire(handle).
+- NullSchedulerTimer: starts at 0.0; advance(seconds) moves the clock;
+  fire(handle) runs a scheduled callback.
 
 Edge cases
 ----------
 - MonotonicTimer.schedule() without a schedule_fn raises RuntimeError.
 - cancel(None) is a no-op everywhere.
 - fire() on a cancelled or unknown handle does nothing.
+- The engine measures reaction times as differences of now(), so any
+  timer with a consistent now() works.
 
 Known limitations
 -----------------
 - No repeating timers.
-- NullSchedulerTimer never fires callbacks on its own when advance()
-  passes a deadline; callers use fire().
+- NullSchedulerTimer never fires callbacks by itself when advance() passes a
+  deadline; callers use fire().
+- Tk's after() is not exact; a GUI timeout can fire slightly after the
+  deadline, and the engine then records it as a timeout either way.
 
 Examples
 --------

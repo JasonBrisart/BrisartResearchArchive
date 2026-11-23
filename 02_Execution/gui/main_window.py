@@ -8,32 +8,39 @@ layout, and handle page navigation and mouse-wheel scrolling.
 
 Communication / relationships
 -----------------------------
-- Mixes UIController, SystemController, and LogController into the Tk
-  root.
-- Loads settings through config/runtime.py into config/state.AppState.
+- Mixes UIController, SystemController, and LogController into the Tk root.
+- Loads settings through config/runtime.py and owns the two live Tk
+  variables the pages bind to: status_text and output_folder.
 - Builds the sidebar with gui/components/sidebar.py and resolves pages
-  with gui/navigation.py.
+  with gui/navigation.py; applies gui/theme.apply_theme().
+- run.py calls main() for the GUI.
 
 Settings / parameters
 ---------------------
-- Opens at 800x600; minimum size 800x600 (must match
-  config/runtime.MIN_WINDOW_WIDTH/HEIGHT).
+- WINDOW_WIDTH x WINDOW_HEIGHT: opens at, and cannot shrink below, 800x600.
+- EXECUTION_DIR: the folder holding run.py; the Settings page shows it and
+  the document viewer's file dialog starts there.
 - DEFAULT_PAGE comes from gui/navigation.py.
 
 Edge cases
 ----------
 - A page that fails to render shows an error dialog and is logged; the
   window stays usable.
-- The wheel is left to Text widgets under the cursor; destroyed page
-  canvases are checked before scrolling.
+- An unknown page name shows a "Missing Page" dialog.
+- The global wheel handler leaves the wheel to Text and Listbox widgets
+  under the cursor and checks that the page canvas still exists before
+  scrolling it.
+- Each page visit destroys and rebuilds the page, so in-page state (a
+  report, a selection) is not kept when you navigate away.
 
 Known limitations
 -----------------
-- Always opens at 800x600 instead of the saved size.
-- Touchpad two-finger scrolling over the general page area does not work
-  (a physical mouse wheel does). To diagnose, log every <MouseWheel>,
-  <Button-4>, <Button-5>, and <Shift-MouseWheel> event while scrolling
-  with the touchpad; if Tk receives none, the fix is outside the Archive.
+- Window size and position are not remembered between launches.
+- status_text is created and updated by app.log(), but no page shows it.
+- Touchpad two-finger scrolling over the general page area does not work (a
+  physical mouse wheel does). To diagnose, log every <MouseWheel>,
+  <Button-4>, <Button-5>, and <Shift-MouseWheel> event while scrolling with
+  the touchpad; if Tk receives none, the fix is outside the Archive.
 
 Examples
 --------
@@ -46,10 +53,9 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from config.runtime import load_settings
-from config.state import AppState
 from controllers.log_controller import LogController
 from controllers.system_controller import SystemController
-from gui.components.page_helpers import UIController, mousewheel_units, widget_is_or_contains_text
+from gui.components.page_helpers import UIController, mousewheel_units, widget_scrolls_itself
 from gui.components.sidebar import build_sidebar
 from gui.navigation import DEFAULT_PAGE, get_page_renderer, normalize_page_name
 from gui.theme import APP_NAME, APP_VERSION, COLORS, apply_theme
@@ -70,7 +76,8 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.minsize(WINDOW_WIDTH, WINDOW_HEIGHT)
         self.configure(bg=COLORS["bg"])
-        self.app_state = AppState(root=self, execution_dir=EXECUTION_DIR, settings=self.settings)
+        self.status_text = tk.StringVar(master=self, value="Ready.")
+        self.output_folder = tk.StringVar(master=self, value=self.settings["output_folder"])
         self.nav: dict[str, tk.Widget] = {}
         self.main: ttk.Frame | None = None
         self._page_canvas: tk.Canvas | None = None
@@ -81,19 +88,6 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
             self.bind_all(sequence, self._on_global_mousewheel)
         self.show_page(DEFAULT_PAGE)
-
-    # ---------------------------------------------------------- state proxies
-    @property
-    def status_text(self):
-        return self.app_state.status_text
-
-    @property
-    def output_folder(self):
-        return self.app_state.output_folder
-
-    @property
-    def theme(self):
-        return self.app_state.theme
 
     # ---------------------------------------------------------- layout
     def _build_layout(self) -> None:
@@ -114,7 +108,7 @@ class BrisartSuiteApp(UIController, SystemController, LogController, tk.Tk):
         ancestor = target
         while ancestor is not None and ancestor is not canvas:
             ancestor = getattr(ancestor, "master", None)
-        if ancestor is None or widget_is_or_contains_text(target) or canvas is None:
+        if ancestor is None or widget_scrolls_itself(target) or canvas is None:
             return
         try:
             if not canvas.winfo_exists():

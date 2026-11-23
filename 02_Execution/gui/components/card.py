@@ -8,15 +8,15 @@ screens.
 
 Communication / relationships
 -----------------------------
-- Used by gui/components/page_helpers.add_card(),
-  gui/pages/settings_page.py, gui/pages/tfl_page.py,
-  frameworks/TFL/gui_options.py, and frameworks/TFL/gui_screens.py.
+- Used by gui/components/page_helpers.add_card(), gui/pages/settings_page.py,
+  gui/pages/results_page.py, frameworks/TFL/gui_options.py, and
+  frameworks/TFL/gui_screens.py.
 - The "Card.TFrame" style is defined in gui/theme.apply_theme().
 
 Settings / parameters
 ---------------------
-- Default style "Card.TFrame" and padding (16, 14); caller keyword
-  arguments override both.
+- Default style "Card.TFrame" and padding (16, 14); keyword arguments from
+  the caller override both.
 
 Edge cases
 ----------
@@ -24,7 +24,8 @@ Edge cases
 
 Known limitations
 -----------------
-- A plain container with no built-in title or action row.
+- A plain container with no built-in title, action row, or layout; callers
+  place their own labels and buttons.
 
 Examples
 --------

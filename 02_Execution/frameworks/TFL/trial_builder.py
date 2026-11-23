@@ -9,35 +9,45 @@ default options the sequence is identical to the reference.
 
 Communication / relationships
 -----------------------------
-- Called by frameworks/TFL/headless.py, frameworks/TFL/gui_session.py, and frameworks/TFL/cli_runner.py
-  with a configuration from frameworks/TFL/config.resolve_run_config().
-- Reads constants from frameworks/TFL/settings.py.
+- Called by frameworks/TFL/headless.py, frameworks/TFL/gui_session.py, and
+  frameworks/TFL/cli_runner.py with a configuration from
+  frameworks/TFL/config.resolve_run_config().
+- Reads constants from frameworks/TFL/settings.py; stimuli come from
+  frameworks/TFL/stimuli.py.
 
 Settings / parameters
 ---------------------
 - Per trial, in order: stimulus = choice(stimuli); prior = choice(A, B);
   probe flag; delayed-reentry substitution; perturbation type on
   perturbation trials; contradiction-block feedback level.
-- Probe: trial_id % probe_interval == 0 while probes are on.
-- Delayed reentry: block_trial_num % interval == 0 and trial_id >
-  interval; copies the stimulus from interval trials back.
-- Feedback level: affect neutral, belief confirmatory, contradiction
-  random.
+- Probe: trial_id % probe_interval == 0 while probes are on. Perturbation:
+  trial_id % perturbation_interval == 0 while perturbations are on. Both
+  count trials across the whole run, not within a block.
+- Delayed reentry: block_trial_num % interval == 0 and trial_id > interval;
+  the stimulus is replaced by the one from interval trials earlier by
+  trial_id, and recurrence_source_trial records that trial.
+- Feedback level: affect neutral, belief confirmatory, contradiction a
+  random choice of the three reference levels.
 - shuffle_blocks: block order is shuffled by a separate generator seeded
   from the run seed, so the trial draws themselves are unchanged.
 
 Edge cases
 ----------
+- Delayed reentry is not confined to a block. The first eligible trial of a
+  block has block_trial_num equal to the interval, so its source is the
+  last trial of the previous block: with the defaults, trial 46 re-presents
+  trial 40 and trial 86 re-presents trial 80. Later ones stay in the block.
+  This is the reference rule, proved by test.
 - Trial draws use a private random.Random(seed), which yields the same
   sequence as the reference's process-wide random.seed()/random.choice()
-  (proved by test) without disturbing random state elsewhere.
-- Delayed reentry can copy from the previous block when a block is
-  shorter than the interval allows; this matches the reference rule.
+  without disturbing random state elsewhere.
 
 Known limitations
 -----------------
 - Feedback levels inside the contradiction block are fixed to the three
   reference levels; they are not an option.
+- Trials are drawn with replacement, so a stimulus can repeat, and the
+  seed alone fixes the whole sequence.
 
 Examples
 --------

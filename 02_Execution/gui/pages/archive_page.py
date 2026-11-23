@@ -23,7 +23,8 @@ Edge cases
 
 Known limitations
 -----------------
-- No document index; documents are picked through the file dialog.
+- No document index; documents are picked through the file dialog, and
+  only .txt and .md files can be opened.
 
 Examples
 --------

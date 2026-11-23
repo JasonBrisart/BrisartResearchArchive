@@ -3,38 +3,39 @@ File: version.py
 
 Purpose
 -------
-Single source of truth for the Brisart Research Archive version. Replaces
-version.txt so the version is importable, testable, and cannot drift
-between the GUI, the CLI, and the updater.
+Single source of truth for the Brisart Research Archive version, shown by
+the GUI and the CLI.
 
 Communication / relationships
 -----------------------------
 - gui/theme.py imports DISPLAY_VERSION for the Settings page.
 - cli.py imports DISPLAY_VERSION for its banner.
-- services/updater/versioning.py reads VERSION from this file with ast,
-  without importing it, so the updater always sees the version on disk
-  even after an in-place update in the same process.
+- docs/CHANGELOG.md records each VERSION, and tests/test_app.py checks that
+  its newest heading matches DISPLAY_VERSION.
 
 Settings / parameters
 ---------------------
-- VERSION: MAJOR.MINOR.PATCH, compared by the updater.
-- RELEASE_LABEL: stage label shown next to the number; not compared.
+- VERSION: MAJOR.MINOR.PATCH.
+- RELEASE_LABEL: stage label shown next to the number.
 - DISPLAY_VERSION: "VERSION RELEASE_LABEL".
 
 Edge cases
 ----------
-- VERSION must stay a plain string literal; the updater parses it
-  statically and treats anything else as 0.0.0.
+- Change VERSION and add the matching docs/CHANGELOG.md entry in the same
+  release; the test fails if the newest changelog heading differs.
 
 Known limitations
 -----------------
-- Pre-release labels (ALPHA, BETA) are not ordered by the updater.
+- Only the newest changelog heading is checked against DISPLAY_VERSION;
+  older entries are not validated.
+- Nothing compares versions: the number is for display and for the
+  changelog only.
 
 Examples
 --------
 - from version import DISPLAY_VERSION
 """
-VERSION = "0.9.7"
+VERSION = "0.9.10"
 RELEASE_LABEL = "ALPHA"
 DISPLAY_VERSION = f"{VERSION} {RELEASE_LABEL}"
 

@@ -10,28 +10,32 @@ columns.
 Communication / relationships
 -----------------------------
 - frameworks/TFL/engine.py builds rows with exactly these keys.
-- frameworks/TFL/output.py writes them; frameworks/TFL/analysis.py reads them by name.
+- frameworks/TFL/output.py writes them (an unknown key raises); the
+  reference columns match the 02_Execution reference's own
+  shared/output_schema.py. frameworks/TFL/analysis.py reads them by name.
 
 Settings / parameters
 ---------------------
-- REFERENCE_FIELDNAMES: 27 columns, identical to the reference
-  shared/output_schema.py.
+- REFERENCE_FIELDNAMES: 27 columns, in the reference's order.
 - TIMER_FIELDNAMES: response_timer_sec, prediction_timed_out,
   behavioral_timed_out.
-- SESSION_FIELDNAMES: session_label, random_seed, trial_status
-  ("complete" or "in_progress").
+- SESSION_FIELDNAMES: session_label, random_seed, trial_status ("complete"
+  or "in_progress").
+- TRIAL_FIELDNAMES: the three lists joined; 33 columns.
 
 Edge cases
 ----------
 - In untimed runs response_timer_sec is blank and both timeout flags are
   False.
-- A trial_status of "in_progress" marks the partially answered trial of
-  an interrupted run; analysis excludes it.
+- A trial_status of "in_progress" marks the partially answered trial of an
+  interrupted run; analysis excludes it.
 
 Known limitations
 -----------------
 - Tools that compare whole headers byte-for-byte against the reference
   will see six extra columns; reading by column name is unaffected.
+- Column order is a file-format promise: reordering it changes every future
+  session file, and analysis reads old files by name only.
 
 Examples
 --------

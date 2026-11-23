@@ -6,11 +6,14 @@ Purpose
 Prove that TFL reproduces the 02_Execution reference procedure with
 default options, and test everything the Archive adds: the run options,
 saving after every answer, never overwriting a file, AppData output,
-standard-library analysis, the command line, and the GUI adapter.
+standard-library analysis of one or several sessions, the command line,
+and the GUI adapter.
 
 Communication / relationships
 -----------------------------
-- Imports frameworks/TFL/ headless modules, cli.py, and config/runtime.py.
+- Imports the frameworks/TFL/ headless modules, cli.py, and
+  config/runtime.py.
+- Run with the rest of the suite by python run.py --test.
 - Runs tests/gui_doubles_check.py in a separate interpreter.
 - Never imports Tkinter itself.
 
@@ -18,23 +21,32 @@ Settings / parameters
 ---------------------
 - APPDATA is redirected to a temporary folder before any project import,
   so tests never touch real settings or sessions.
-- reference_build_trials() is a verbatim port of the reference
-  algorithm using the process-wide random module; it is the oracle.
+- reference_build_trials() is a verbatim port of the reference algorithm
+  using the process-wide random module; it is the oracle.
 - REFERENCE_STIMULI_SHA256: digest of the reference tfl_stimuli.csv rows
   serialized as sorted-key JSON.
+- Fifty-one tests: ReferenceParityTests (6), OptionTests (6),
+  ProcedureTests (6), SavingTests (8), AnalysisTests (6),
+  MultiSessionAnalysisTests (7), CommandLineTests (6), RegressionTests
+  (4), IsolationTests (2).
 
 Edge cases
 ----------
 - Console runs are scripted through input_fn/print_fn; timers use the
   virtual NullSchedulerTimer clock.
+- saved_session() runs a small session headlessly and returns its CSV, so
+  the multi-session tests analyze real files.
 
 Known limitations
 -----------------
 - No native GUI rendering coverage.
+- Parity is proved against a port of the reference algorithm, not against
+  the reference program itself.
 
 Examples
 --------
-- python tests/test_tfl.py
+- python run.py --test
+- python -m unittest discover -s tests -p "test_tfl.py"
 """
 from __future__ import annotations
 
@@ -50,6 +62,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime
 from pathlib import Path
 
@@ -491,6 +504,114 @@ class AnalysisTests(unittest.TestCase):
             self.assertIn("no completed trials", analysis.analyze_output(writer.path))
 
 
+def saved_session(directory, label, seed, stop_after=None, **options):
+    """Run a small session headlessly, saving as it goes; return its CSV path."""
+    writer = SessionWriter(directory, label=label)
+    engine, _ = build_engine({"session_label": label, "random_seed": seed, "trials_per_block": 4, **options},
+                             on_progress=writer.save)
+    while not engine.completed and not (stop_after is not None and len(engine.rows) >= stop_after):
+        step(engine)
+    writer.close()
+    return writer.path
+
+
+def line_after(report: str, heading: str) -> str:
+    lines = report.splitlines()
+    return lines[lines.index(heading) + 1]
+
+
+class MultiSessionAnalysisTests(unittest.TestCase):
+    def test_one_chosen_session_is_exactly_the_single_session_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = saved_session(directory, "solo", 1)
+            self.assertEqual(analysis.analyze_outputs([path]), analysis.analyze_output(path))
+            self.assertEqual(analysis.analyze_outputs([path, str(path)]), analysis.analyze_output(path))
+
+    def test_nothing_selected(self):
+        self.assertEqual(analysis.analyze_outputs([]), "No sessions were selected.")
+
+    def test_pooled_figures_add_up_and_each_session_keeps_its_own_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            first = saved_session(directory, "pilotA", 1)
+            second = saved_session(directory, "pilotB", 2, enable_response_timer=False)
+            report = analysis.analyze_outputs([first, second])
+        self.assertTrue(report.startswith("TFL Combined Analysis"))
+        self.assertIn("Files selected: 2", report)
+        self.assertIn("Files analyzed: 2", report)
+        self.assertIn("Complete trials pooled: 24", report)
+        self.assertEqual(line_after(report, "Total trials:"), "24")
+        for path, label, seed in ((first, "pilotA", 1), (second, "pilotB", 2)):
+            self.assertIn(f"{1 + (path == second)}. {path.name}", report)
+            self.assertIn(f"Seed: {seed}   Label: {label}", report)
+        self.assertEqual(report.count("Gate: PASS"), 2)
+        self.assertIn("a pooled gate is not reported", report)
+        self.assertNotIn("Completion Gate", report)
+        self.assertLess(report.index(first.name), report.index(second.name))   # order given is order shown
+
+    def test_a_failing_session_is_flagged_not_hidden_by_the_others(self):
+        with tempfile.TemporaryDirectory() as directory:
+            good = saved_session(directory, "good", 1)
+            weak = saved_session(directory, "weak", 2)
+            rows = read_csv(weak)
+            for row in rows[: len(rows) // 2 + 1]:
+                row["prediction"] = ""                       # more than 20% unusable
+            with open(weak, "w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=TRIAL_FIELDNAMES)
+                writer.writeheader()
+                writer.writerows(rows)
+            report = analysis.analyze_outputs([good, weak])
+        self.assertIn("Gate: PASS", report)
+        self.assertIn("Gate: FAIL", report)
+
+    def test_interrupted_sessions_are_excluded_and_counted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            whole = saved_session(directory, "whole", 1)
+            writer = SessionWriter(directory, label="cut")
+            engine, _ = build_engine({"trials_per_block": 4, "random_seed": 2}, on_progress=writer.save)
+            while len(engine.rows) < 3:
+                step(engine)
+            engine.continue_cue()
+            engine.submit_prediction("A")                    # answered, trial not finished
+            writer.close()
+            report = analysis.analyze_outputs([whole, writer.path])
+        self.assertIn("Complete trials pooled: 15", report)
+        self.assertIn("Incomplete trials excluded: 1", report)
+
+    def test_unusable_files_are_listed_and_the_rest_still_analyzed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            good = saved_session(directory, "good", 1)
+            empty = SessionWriter(directory, label="empty").path
+            broken = Path(directory) / "broken.csv"
+            broken.write_text("not,a,tfl,file\n1,2,3,4\n", encoding="utf-8")
+            missing = Path(directory) / "gone.csv"
+            report = analysis.analyze_outputs([good, empty, broken, missing])
+            self.assertIn("Files selected: 4", report)
+            self.assertIn("Files analyzed: 1", report)
+            self.assertIn("Left out:", report)
+            self.assertIn(f"{empty.name}: no completed trials", report)
+            self.assertIn("broken.csv: ValueError", report)
+            self.assertIn("gone.csv: FileNotFoundError", report)
+            self.assertIn("Complete trials pooled: 12", report)
+            nothing = analysis.analyze_outputs([empty, broken])
+        self.assertTrue(nothing.startswith("None of the selected sessions could be analyzed."))
+        self.assertIn("broken.csv", nothing)
+
+    def test_sessions_from_an_older_release_pool_with_current_ones(self):
+        with tempfile.TemporaryDirectory() as directory:
+            current = saved_session(directory, "current", 1)
+            legacy = Path(directory) / "tfl_output.csv"
+            with open(legacy, "w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=REFERENCE_FIELDNAMES)
+                writer.writeheader()
+                for number in range(3):
+                    writer.writerow({k: "" for k in REFERENCE_FIELDNAMES}
+                                    | {"trial_id": number, "prediction": "A", "behavioral_choice": "B",
+                                       "affect": "40", "run_mode": "default_tfl"})
+            report = analysis.analyze_outputs([legacy, current])
+        self.assertIn("Complete trials pooled: 15", report)
+        self.assertIn("Seed: <blank>   Label: (none)   Run mode: default_tfl", report)
+
+
 class CommandLineTests(unittest.TestCase):
     @staticmethod
     def answer(prompt):
@@ -572,6 +693,33 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(cli.main(["analyze"]), 0)
         self.assertEqual(cli.main(["analyze", "--file", str(Path(APPDATA) / "missing.csv")]), 1)
 
+    def test_analyze_several_files_or_all_sessions(self):
+        import cli
+        import contextlib
+        import io
+        with tempfile.TemporaryDirectory() as directory:
+            first = saved_session(directory, "one", 1)
+            second = saved_session(directory, "two", 2)
+            def run(*arguments):
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    code = cli.main(list(arguments))
+                return code, buffer.getvalue()
+            code, text = run("analyze", "--file", str(first), "--file", str(second))
+            self.assertEqual(code, 0)
+            self.assertIn("TFL Combined Analysis", text)
+            code, text = run("analyze", "--file", str(first))
+            self.assertEqual((code, text.startswith("TFL Analysis")), (0, True))
+            code, text = run("analyze", "--file", str(first), "--file", str(Path(directory) / "nope.csv"))
+            self.assertEqual(code, 1)
+            self.assertIn("File not found:", text)
+            self.assertNotIn("Analysis", text)               # nothing is analyzed when any file is missing
+            with mock.patch.object(cli, "get_tfl_output_dir", return_value=Path(directory)):
+                code, text = run("analyze", "--all")
+            self.assertEqual((code, "Files analyzed: 2" in text), (0, True))
+            with self.assertRaises(SystemExit):
+                run("analyze", "--all", "--file", str(first))     # mutually exclusive
+
 
 class RegressionTests(unittest.TestCase):
     def test_zero_affect_is_usable_in_memory(self):
@@ -602,8 +750,7 @@ class RegressionTests(unittest.TestCase):
             self.assertEqual(list(Path(directory).iterdir()), [])
         self.assertIn("Invalid choice. Press ENTER, O, or Q.", output)
 
-    def test_renamed_entrypoint_supports_cli_without_tk(self):
-        self.assertFalse((ROOT / "main.py").exists())
+    def test_entrypoint_supports_cli_without_tk(self):
         result = subprocess.run([sys.executable, "run.py", "--cli", "where"],
                                 cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)

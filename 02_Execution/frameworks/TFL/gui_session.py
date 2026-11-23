@@ -4,27 +4,34 @@ File: frameworks/TFL/gui_session.py
 Purpose
 -------
 Provide TFLGuiSession, which connects the TFL engine to a Tk window:
-options screen, run setup, per-answer saving, completion, cancellation,
-and the hand-off back to the Archive window.
+options screen, run setup, per-answer saving, keyboard input, full screen,
+completion, cancellation, and the hand-off back to the Archive window.
 
 Communication / relationships
 -----------------------------
-- Created by controllers/system_controller.start_tfl().
+- Created by controllers/system_controller.start_tfl(); the controller also
+  calls end_run() when the Archive closes mid-run.
 - Renders through frameworks/TFL/gui_options.render_options() and
   frameworks/TFL/gui_screens.render_trial().
-- Saves through frameworks/TFL/output.SessionWriter; writer.save is the engine's
-  on_progress hook, so the CSV is rewritten after every answer.
+- Saves through frameworks/TFL/output.SessionWriter; writer.save is the
+  engine's on_progress hook, so the CSV is rewritten after every answer.
 - After a finished run, shows the Results page and analyzes that run's
   file through app.show_page() and app.analyze_tfl(path).
 - Logs through app.log().
+- Owns the window's <KeyPress>, <KeyRelease>, and <FocusOut> bindings.
+  Each screen publishes its valid keys in key_actions; handle_key() runs
+  the matching action.
 
 Settings / parameters
 ---------------------
 - TFLGuiSession(app=None).
-- Output folder: app.tfl_output_dir() (the live Output Directory
-  setting) when an app is present, otherwise config/runtime's saved
-  setting.
-- Window 1000x700, minimum 800x600; options scroll vertically.
+- Output folder: app.tfl_output_dir() (the live Output Directory setting)
+  when an app is present, otherwise config/runtime's saved setting.
+- Window 1000x700, minimum 800x600; the options screen scrolls
+  vertically.
+- Keys: Esc stops the run (with the usual confirmation); F11 toggles full
+  screen; every other key is looked up in key_actions, normalized to lower
+  case ("a", "b", "u", "return"; the keypad Enter counts as "return").
 
 Edge cases
 ----------
@@ -32,16 +39,23 @@ Edge cases
 - Cancelling or closing the window ends the run; every answer already
   given stays in that run's CSV, including the partly answered trial
   (marked in_progress).
-- A failed save is logged immediately and shown in the screen footer;
-  the run continues, and the next successful save rewrites the whole
-  session.
+- A failed save is logged immediately and shown in the screen footer; the
+  run continues, and the next successful save rewrites the whole session.
 - With app=None a hidden Tk root is created and the session runs its own
   mainloop.
+- A key held down acts once: further presses of the same key are ignored
+  until it is released, so keyboard auto-repeat cannot answer the next
+  question. Losing window focus forgets held keys. Esc and F11 are never
+  held-key filtered.
+- A setup failure (for example an unwritable folder) shows an error dialog
+  and stays on the options screen.
 
 Known limitations
 -----------------
 - Native Tk rendering is not exercised by the automated tests; wiring is
   tested with widget doubles (tests/gui_doubles_check.py).
+- On X11, auto-repeat sends release/press pairs, so the held-key guard only
+  suppresses repeats on Windows and macOS.
 
 Examples
 --------
@@ -78,6 +92,9 @@ class TFLGuiSession:
         self.rendered_stage = None
         self._reported_errors = 0
         self._own_root = None
+        self.key_actions: dict = {}
+        self.focus_target = None
+        self._held_keys: set[str] = set()
 
     # ---------------------------------------------------------- lifecycle
     def start(self) -> None:
@@ -91,6 +108,9 @@ class TFLGuiSession:
         self.win.minsize(800, 600)
         self.win.configure(bg=COLORS["bg"])
         self.win.protocol("WM_DELETE_WINDOW", self.cancel)
+        self.win.bind("<KeyPress>", self.handle_key)
+        self.win.bind("<KeyRelease>", self.release_key)
+        self.win.bind("<FocusOut>", self.forget_held_keys)
         self.win.lift()
         self.win.focus_force()
         render_options(self)
@@ -160,6 +180,44 @@ class TFLGuiSession:
             path = self.writer.close()
             self.log(f"TFL run ended ({reason}) after {len(self.engine.rows)} complete trial(s); kept in {path.name}")
 
+    # ---------------------------------------------------------- keyboard
+    @staticmethod
+    def key_name(event) -> str:
+        keysym = str(getattr(event, "keysym", "") or "")
+        if keysym == "KP_Enter":
+            return "return"
+        return keysym.lower()
+
+    def handle_key(self, event):
+        key = self.key_name(event)
+        if key == "escape":
+            self.cancel()
+            return "break"
+        if key == "f11":
+            self.toggle_fullscreen()
+            return "break"
+        action = self.key_actions.get(key)
+        if action is None or key in self._held_keys:
+            return None
+        self._held_keys.add(key)
+        action()
+        return "break"
+
+    def release_key(self, event) -> None:
+        self._held_keys.discard(self.key_name(event))
+
+    def forget_held_keys(self, event=None) -> None:
+        if event is None or getattr(event, "widget", None) is self.win:
+            self._held_keys.clear()
+
+    def toggle_fullscreen(self) -> None:
+        if not self.window_exists():
+            return
+        try:
+            self.win.attributes("-fullscreen", not bool(self.win.attributes("-fullscreen")))
+        except tk.TclError:
+            pass
+
     # ---------------------------------------------------------- windows
     def window_exists(self) -> bool:
         try:
@@ -168,6 +226,7 @@ class TFLGuiSession:
             return False
 
     def clear(self) -> None:
+        self.key_actions = {}
         if not self.window_exists():
             return
         for child in self.win.winfo_children():

@@ -11,29 +11,35 @@ Communication / relationships
 -----------------------------
 - frameworks/TFL/engine.py calls determine_feedback(), feedback_text(), and
   make_perturbation_instruction().
-- The GUI and CLI only display text the engine stores; neither composes
+- The GUI and the CLI only display text the engine stores; neither composes
   feedback itself.
 
 Settings / parameters
 ---------------------
 - Levels: neutral, confirmatory, mildly_contradictory,
   strongly_contradictory.
-- Perturbation types: head_turn, posture_shift, scene_shift,
-  breath_reset.
+- Contradiction values: none, mild, strong.
+- Perturbation types: head_turn, posture_shift, scene_shift, breath_reset;
+  an unknown type gets a generic instruction.
 
 Edge cases
 ----------
 - Neutral and unknown levels return ("", "none"), as in the reference.
-- feedback_text() returns "" for an unknown level, as the reference
-  prints nothing then.
-- A blank prediction only exists after a response-timer timeout; the
-  feedback then says no prediction was recorded instead of printing an
-  empty interpretation letter.
+- feedback_text() returns "" for an unknown level, as the reference prints
+  nothing then.
+- A blank prediction only exists after a response-timer timeout. The
+  feedback sentence then says no prediction was recorded instead of
+  printing an empty interpretation letter, and determine_feedback() still
+  returns the level's contradiction value with a blank correct answer
+  (("", "mild"), ("", "strong"), or ("", "none")).
 
 Known limitations
 -----------------
 - The timeout sentence is an Archive addition and never appears in an
   untimed run.
+- Because contradiction is derived from the level and not from whether a
+  prediction exists, a timed-out trial in a contradiction block is
+  recorded as contradicted.
 
 Examples
 --------

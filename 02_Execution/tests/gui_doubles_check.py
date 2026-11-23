@@ -3,33 +3,40 @@ File: tests/gui_doubles_check.py
 
 Purpose
 -------
-Drive the GUI end to end with stand-in widget classes: the Archive
-window and every page, then the TFL options screen, every trial screen,
-completion, cancel, and closing the Archive during a run. This exercises
-the GUI wiring on machines without Tk.
+Drive the GUI end to end with stand-in widget classes on machines without
+Tk: the Archive window and every page, the TFL options screen, a complete
+run answered only from the keyboard, the held-key guard, Esc to stop a run,
+completion, closing the Archive during a run, the Results page's single
+and multi-session analysis, and the scrolling helpers.
 
 Communication / relationships
 -----------------------------
-- Run in its own interpreter by tests/test_tfl.py, because it replaces
-  tkinter in sys.modules.
-- Imports gui/main_window.py (and through it every page and controller)
-  and frameworks/TFL/gui_session.py, frameworks/TFL/gui_options.py, and frameworks/TFL/gui_screens.py.
+- Run in its own interpreter by tests/test_tfl.py (IsolationTests), because
+  it replaces tkinter in sys.modules.
+- Imports gui/main_window.py (and through it every page and controller),
+  gui/pages/results_page.py, frameworks/TFL/gui_session.py,
+  frameworks/TFL/gui_options.py, frameworks/TFL/gui_screens.py, and
+  frameworks/TFL/headless.py.
 
 Settings / parameters
 ---------------------
 - Widget: accepts any call and returns None (winfo_exists returns True,
   winfo_children returns []).
 - Var: stores a value like a Tk variable.
-- Output goes to a temporary folder.
+- Output goes to a temporary folder; APPDATA is set by the caller.
+- Prints "GUI adapter double check passed", then the Results and
+  scrolling confirmations; test_tfl.py looks for the first.
 
 Edge cases
 ----------
 - Exits non-zero on any failed assertion.
+- Opening files goes through a recorded stand-in, so no application is
+  launched.
 
 Known limitations
 -----------------
 - Proves wiring and state flow only; it does not render pixels or test
-  native focus, key bindings, or window management.
+  native focus, key bindings, selection by mouse, or window management.
 
 Examples
 --------
@@ -78,21 +85,34 @@ class Var:
 
 tk, ttk, messagebox, filedialog = MagicMock(), MagicMock(), MagicMock(), MagicMock()
 tk.TclError = RuntimeError
-tk.Toplevel = tk.Text = tk.Canvas = tk.Frame = tk.Label = Widget
+tk.Toplevel = tk.Text = tk.Listbox = tk.Canvas = tk.Frame = tk.Label = Widget
 tk.Tk = Root
 tk.BooleanVar = tk.StringVar = tk.IntVar = Var
-for name in ("Frame", "Label", "Button", "Checkbutton", "Spinbox", "Entry", "Style", "Scrollbar"):
+for name in ("Frame", "Label", "Button", "Checkbutton", "Spinbox", "Entry", "Style", "Scrollbar", "Progressbar"):
     setattr(ttk, name, Widget)
 messagebox.askyesno.return_value = True
 tk.ttk, tk.messagebox, tk.filedialog = ttk, messagebox, filedialog
 sys.modules.update({"tkinter": tk, "tkinter.ttk": ttk, "tkinter.messagebox": messagebox,
                     "tkinter.filedialog": filedialog})
 
+from types import SimpleNamespace  # noqa: E402
+
 from gui.main_window import BrisartSuiteApp  # noqa: E402
+from gui.pages.results_page import chronological_selection  # noqa: E402
 from frameworks.TFL import gui_options  # noqa: E402
 from frameworks.TFL.gui_session import TFLGuiSession  # noqa: E402
 
 OUTPUT = Path(tempfile.mkdtemp())
+KEY_ANSWERS = {"cue": "Return", "prediction": "a", "perturbation": "Return", "post_perturbation_probe": "u",
+               "behavioral_choice": "B", "content_probe": "U"}
+
+
+def key(session, keysym):
+    """Press and release one key, as the window would deliver it."""
+    event = SimpleNamespace(keysym=keysym, widget=session.win)
+    result = session.handle_key(event)
+    session.release_key(event)
+    return result
 
 
 def new_session():
@@ -116,26 +136,46 @@ session.option_vars["enable_response_timer"].set(True)
 session.option_vars["trial_duration_sec"].set("15")
 session.option_vars["blocks"]["affect"].set(False)
 session.option_vars["session_label"].set("gui check")
-gui_options._start(session)
+key(session, "Return")  # Enter on the options screen starts the run
 engine = session.engine
 assert engine is not None and engine.config["run_mode"] == "modified_tfl" and engine.timer_seconds == 15
 assert len(engine.trials) == 20 and {t["block"] for t in engine.trials} == {"belief", "contradiction"}
 assert session.writer.path.name.startswith("tfl_output_gui_check_")
 
-answers = {"prediction": ("submit_prediction", "A"), "affect": ("submit_affect", "55"),
-           "post_perturbation_probe": ("submit_post_perturbation_probe", "U"),
-           "behavioral_choice": ("submit_behavioral_choice", "B"), "content_probe": ("submit_content_probe", "U")}
+# Every screen publishes exactly the keys that answer it; the whole run is answered from the keyboard.
+expected_keys = {"cue": {"return"}, "prediction": {"a", "b"}, "affect": {"return"}, "perturbation": {"return"},
+                 "post_perturbation_probe": {"a", "b", "u"}, "behavioral_choice": {"a", "b"},
+                 "content_probe": {"a", "b", "u"}}
+seen = set()
 while not engine.completed:
     stage = engine.active_stage()
-    if stage == "cue":
-        engine.continue_cue()
-    elif stage == "perturbation":
-        engine.continue_perturbation()
+    seen.add(stage)
+    assert set(session.key_actions) == expected_keys[stage], (stage, session.key_actions)
+    if stage == "affect":
+        assert key(session, "x") is None and engine.active_stage() == "affect"  # unmapped key does nothing
+        engine.submit_affect("55")
+        session.after_input()
     else:
-        method, value = answers[stage]
-        getattr(engine, method)(value)
-    session.after_input()
+        before = (len(engine.rows), stage)
+        assert key(session, KEY_ANSWERS[stage]) == "break"
+        assert (len(engine.rows), engine.active_stage()) != before, stage
+assert seen == set(expected_keys), seen
 assert session.finished and session.writer.closed and session.writer.rows_saved == 20
+assert set(session.key_actions) == {"return"}  # completion screen: Enter closes
+import csv  # noqa: E402
+saved = list(csv.DictReader(session.writer.path.open(encoding="utf-8")))
+assert {row["prediction"] for row in saved} <= {"A", ""} and {row["behavioral_choice"] for row in saved} <= {"B", ""}
+
+# Held-key guard: a held key acts once until released; focus loss forgets held keys.
+presses = []
+session.key_actions = {"a": lambda: presses.append("a")}
+held = SimpleNamespace(keysym="a", widget=session.win)
+assert session.handle_key(held) == "break" and session.handle_key(held) is None
+session.release_key(held)
+assert session.handle_key(held) == "break" and presses == ["a", "a"]
+assert session.handle_key(held) is None  # still held
+session.forget_held_keys(SimpleNamespace(widget=session.win))
+assert session.handle_key(held) == "break" and len(presses) == 3
 assert "Saved 20 trials" in session.completion_message
 
 # Restore defaults, answer partway, cancel: answers stay on disk.
@@ -144,10 +184,9 @@ session.option_vars["trials_per_block"].set("3")
 gui_options._restore(session)
 gui_options._start(session)
 assert session.engine.config["run_mode"] == "default_tfl" and len(session.engine.trials) == 120
-session.engine.continue_cue()
-session.engine.submit_prediction("B")
-session.after_input()
-session.cancel()
+key(session, "Return")
+key(session, "b")
+assert key(session, "Escape") == "break"  # Esc stops the run after confirmation
 assert session.engine.cancelled and session.writer.closed
 lines = session.writer.path.read_text(encoding="utf-8").splitlines()
 assert len(lines) == 2 and lines[1].endswith(",in_progress")
@@ -173,9 +212,48 @@ assert first.writer.closed and first.engine.cancelled
 assert len(first.writer.path.read_text(encoding="utf-8").splitlines()) == 2
 print("GUI adapter double check passed")
 
-from types import SimpleNamespace
-from gui.components.scroll_frame import ScrollFrame
-from unittest.mock import Mock
+# Results page: one session, several sessions (pooled), nothing selected, newest by default.
+from frameworks.TFL.headless import build_engine  # noqa: E402
+from frameworks.TFL.output import SessionWriter, list_session_files  # noqa: E402
+second = SessionWriter(OUTPUT, label="second")
+engine2, _ = build_engine({"trials_per_block": 2, "blocks": "belief"}, on_progress=second.save)
+while not engine2.completed:
+    stage = engine2.active_stage()
+    if stage == "cue":
+        engine2.continue_cue()
+    else:
+        method, value = {"prediction": ("submit_prediction", "B"), "affect": ("submit_affect", "10"),
+                         "behavioral_choice": ("submit_behavioral_choice", "A"),
+                         "content_probe": ("submit_content_probe", "U")}[stage]
+        getattr(engine2, method)(value)
+second.close()
+reports = []
+app.set_analysis_text = reports.append
+from frameworks.TFL import analysis  # noqa: E402
+complete = [p for p in list_session_files(OUTPUT) if analysis.split_by_status(analysis.load_output(p))[0]]
+assert len(complete) >= 2, complete
+app.analyze_tfl()
+assert reports[-1].startswith("TFL Analysis"), reports[-1][:80]            # newest session, reference report
+app.analyze_tfl([complete[0]])
+assert reports[-1].startswith("TFL Analysis")                              # one chosen file = reference report
+app.analyze_tfl(complete[:2])
+assert reports[-1].startswith("TFL Combined Analysis") and "Files analyzed: 2" in reports[-1]
+app.analyze_tfl([])
+assert "Select one or more sessions" in reports[-1]                         # nothing selected: guidance, no crash
+assert chronological_selection(["c", "b", "a"], (0, 2)) == ["a", "c"]       # newest-first list -> oldest first
+assert chronological_selection(["c", "b", "a"], (2, 0, 1)) == ["a", "b", "c"]
+shown = []
+import controllers.system_controller as sc  # noqa: E402
+sc.open_with_system = shown.append
+app.open_tfl_csvs(complete[:2])
+assert shown == complete[:2]
+app._fail = lambda title, message: shown.append(title)
+app.open_tfl_csvs([])
+app.open_tfl_csvs(complete * sc.MAX_CSVS_AT_ONCE)
+assert shown[-2:] == ["Nothing Selected", "Too Many Files"], shown
+print("Results page selection checks passed")
+
+from unittest.mock import Mock  # noqa: E402
 view = session.options_viewport
 view.canvas = Mock()
 view.canvas.yview.return_value = (0.0, 0.25)

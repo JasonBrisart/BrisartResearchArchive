@@ -4,41 +4,47 @@ File: frameworks/TFL/cli_runner.py
 Purpose
 -------
 Run TFL in a terminal with the 02_Execution console flow: startup menu,
-numbered options menu, session intro, and prompt-by-prompt trials, on
-top of the same engine and saving the GUI uses.
+numbered options menu, session intro, and prompt-by-prompt trials, on top
+of the same engine and per-answer saving the GUI uses.
 
 Communication / relationships
 -----------------------------
 - Called by cli.py ("run", or menu item 1).
 - Builds runs with frameworks/TFL/config.py, frameworks/TFL/stimuli.py, and
-  frameworks/TFL/trial_builder.py; drives frameworks/TFL/engine.TFLSessionEngine; saves with
+  frameworks/TFL/trial_builder.py; drives
+  frameworks/TFL/engine.TFLSessionEngine; saves with
   frameworks/TFL/output.SessionWriter after every answer.
-- Uses frameworks/TFL/timing.DeadlineOnlyTimer when the response timer is on.
+- Passes a frameworks/TFL/timing.DeadlineOnlyTimer to the engine (used only
+  when the response timer option is on) unless a timer is supplied.
 
 Settings / parameters
 ---------------------
 - run_cli(input_fn=input, print_fn=print, output_dir=None, timer=None,
-  options=None) -> Path | None. options pre-sets values through
-  set_option() (used by tests and automation).
-- Options menu: 1 restores defaults; 2 onward follow OPTION_SPECS, so 2
-  to 5 are perturbations, extra stimuli, probes, and delayed reentry as
-  in the reference, then the Archive options; S saves and returns.
+  options=None) -> Path | None. It returns the session file, or None when
+  the run was left at the startup menu or stopped. options pre-sets values
+  through set_option() and raises ValueError for an invalid one; tests and
+  automation use it.
+- Startup menu: ENTER starts, O opens the options menu, Q returns.
+- Options menu: 1 restores defaults; 2 onward follow OPTION_SPECS (2 to 5
+  are perturbations, extra stimuli, probes, and delayed reentry, as in the
+  reference); S saves and returns. Choices apply to this run only.
 
 Edge cases
 ----------
 - Invalid answers repeat the prompt with the reference messages; invalid
   option values print the reason and leave the option unchanged.
+- Unknown startup selections repeat the menu instead of starting a run.
 - With the timer on, an answer typed after the limit is recorded as a
   timeout, because blocking console input cannot be interrupted.
-- Unknown startup selections repeat the menu rather than starting a run.
-- Ctrl+C or end-of-input stops the run; every answer already given is
-  in the CSV.
+- Ctrl+C or end-of-input during a run stops it; every answer already given
+  is in the CSV. At the startup menu it cancels before anything is created.
 - A failed save is printed as a warning immediately; the run continues.
 
 Known limitations
 -----------------
-- No live countdown in the console; the limit is printed with each
-  timed prompt.
+- No live countdown in the console; the limit is printed with each timed
+  prompt.
+- Option choices are not remembered between runs.
 
 Examples
 --------

@@ -4,35 +4,44 @@ File: gui/pages/settings_page.py
 Purpose
 -------
 Render the Settings page: application identity, output location, and the
-persistent Activity Log. Update installation is intentionally outside this
-application; releases are obtained manually from the project distribution.
+persistent Activity Log.
 
 Communication / relationships
 -----------------------------
-- Rendered by gui/main_window.show_page("Settings") through gui/navigation.py.
-- Binds to AppState output_folder through the app proxy property.
+- Rendered by gui/main_window.show_page("Settings") through
+  gui/navigation.py.
+- Binds the Output Directory entry to app.output_folder, the live Tk
+  variable owned by gui/main_window.py.
 - Buttons call app.browse_output_folder(), app.open_output_folder(), and
   app.open_tfl_folder().
-- Reads config/activity_log.load_activity_log().
+- Reads config/activity_log.load_activity_log() and registers app.log_box,
+  which controllers/log_controller.py writes into.
 
 Settings / parameters
 ---------------------
 - Output Directory is stored in config/runtime.py and defaults to the
   Archive AppData folder.
 - The Activity Log shows up to 100 persisted entries, newest first.
+- Cards: General (name, version, execution folder), Output Directory,
+  Activity Log.
 
 Edge cases
 ----------
 - The TFL folder line is recomputed on every render from the live output
   folder value.
 - An empty activity history shows a single ready message.
+- Typing in the Output Directory entry changes the folder TFL writes to
+  right away, before anything is saved.
 
 Known limitations
 -----------------
-- There is no Save button; settings are written when the app closes or
-  when Browse saves a new folder.
+- There is no Save button; the folder is written when Browse picks one or
+  when the Archive closes.
 - Output-folder text typed by hand is validated when saved; unsafe values
   fall back to "outputs".
+- The folder description wraps at a fixed 950 pixels, wider than the 800
+  pixel minimum window, so it may be cut off at that size. Not checked on
+  a real display.
 
 Examples
 --------
@@ -45,7 +54,7 @@ from tkinter import ttk
 
 from config.activity_log import load_activity_log
 from gui.components.card import Card
-from gui.components.page_helpers import bind_text_widget_scroll_passthrough
+from gui.components.page_helpers import bind_scroll_passthrough
 from gui.theme import COLORS, FONT_MONO
 
 
@@ -102,13 +111,7 @@ def render(app):
     )
 
     app.add_card(
-        root, 4, "Updates",
-        "Updates are installed manually from the project's official GitHub distribution. "
-        "This application does not check for, download, or install updates.",
-    )
-
-    app.add_card(
-        root, 5, "Activity Log",
+        root, 4, "Activity Log",
         "Recent application activity: TFL runs, saves, analyses, and errors. "
         "Kept across sessions; the most recent 100 actions are shown, newest first.",
     )
@@ -116,7 +119,7 @@ def render(app):
         root, height=10, bg=COLORS["panel"], fg=COLORS["text"],
         insertbackground=COLORS["accent"], relief="flat", font=FONT_MONO, wrap="word",
     )
-    app.log_box.grid(row=6, column=0, sticky="ew", padx=26, pady=(0, 10))
+    app.log_box.grid(row=5, column=0, sticky="ew", padx=26, pady=(0, 10))
     _populate_activity_log(app.log_box)
     app.log_box.see("1.0")
-    bind_text_widget_scroll_passthrough(app.log_box, app)
+    bind_scroll_passthrough(app.log_box, app)

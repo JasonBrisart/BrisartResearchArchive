@@ -9,24 +9,29 @@ Communication / relationships
 -----------------------------
 - Reads NAV_ITEMS and SETTINGS_NAV_ITEM from gui/navigation.py.
 - Calls app.show_page() when an entry is clicked.
-- Stores entry widgets in app.nav so gui/main_window.py can highlight
-  the active page.
+- Stores the entry widgets in app.nav; gui/main_window.show_page() uses
+  them to highlight the active page.
+- Reads app.app_name for the title and COLORS and FONT from gui/theme.py.
 
 Settings / parameters
 ---------------------
-- Fixed width of 210 pixels.
-- NAV_ITEMS fill the upper group; SETTINGS_NAV_ITEM is pinned at the
-  bottom under a divider.
+- Fixed width of 210 pixels, pinned to the left of the window.
+- NAV_ITEMS fill the upper group; SETTINGS_NAV_ITEM is pinned at the bottom
+  under a divider.
 
 Edge cases
 ----------
-- An expanding spacer keeps Settings at the bottom whatever the number
-  of upper entries.
+- An expanding spacer keeps Settings at the bottom whatever the number of
+  upper entries.
 
 Known limitations
 -----------------
+- Entries are labels that respond to the mouse only; they cannot be
+  reached with the Tab key or activated from the keyboard.
 - The sidebar does not collapse.
 - Icons depend on the system font supporting the characters.
+- The sidebar background (#050812) is written out here and in
+  gui/main_window.py instead of coming from the theme.
 
 Examples
 --------

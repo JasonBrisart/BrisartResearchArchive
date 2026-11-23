@@ -4,36 +4,46 @@ File: frameworks/TFL/gui_options.py
 Purpose
 -------
 Render the pre-run TFL options screen. Every control is generated from
-frameworks/TFL/config.OPTION_SPECS, so the GUI offers exactly the options the CLI
-offers, with the same validation.
+frameworks/TFL/config.OPTION_SPECS, so the GUI offers exactly the options the
+CLI offers, with the same validation.
 
 Communication / relationships
 -----------------------------
 - render_options(session) is called by frameworks/TFL/gui_session.py.
-- Writes values into session.config through config.set_option();
-  Start Experiment calls session.begin_session(); Cancel calls
-  session.cancel().
-- Uses gui/components/card.py and gui/theme.py styles.
+- Writes values into session.config through config.set_option(); Start
+  Experiment calls session.begin_session(); Cancel calls session.cancel().
+- Publishes the Enter key in session.key_actions; TFLGuiSession owns the
+  key bindings, including Esc (cancel) and F11 (full screen).
+- Uses gui/components/card.py, gui/components/scroll_frame.py, and the
+  styles in gui/theme.py.
 
 Settings / parameters
 ---------------------
 - toggle options: Checkbutton. int options: Spinbox within the spec's
   limits. blocks: one Checkbutton per block. seed and text: Entry.
 - Options whose "requires" toggle is off are disabled until it is on.
-- Buttons: Restore Default Settings, Cancel, Start Experiment.
+- Buttons: Restore Default Settings, Cancel, Start Experiment. Enter does
+  what Start Experiment does.
 
 Edge cases
 ----------
-- Every change re-reads all controls and refreshes the Current Settings
-  panel, including the Default TFL / Modified TFL label.
-- Invalid values are listed under the buttons and Start Experiment
-  does not start until they are fixed; nothing is silently clamped.
-- Restore Default Settings keeps the session label.
+- Every change, including each keystroke in a field, re-reads all controls
+  and refreshes the Current Settings panel and its Default TFL / Modified
+  TFL label.
+- Invalid values are listed under the buttons and Start Experiment does
+  not start until they are fixed; nothing is silently clamped.
+- Restore Default Settings rebuilds the screen and keeps the session label.
+- Enter also starts from inside a text or number field, after that field's
+  value has been validated like every other.
 
 Known limitations
 -----------------
-- The option body scrolls vertically; action buttons remain outside it.
-- Native rendering and touchpad delivery require testing on the target OS.
+- The option body scrolls vertically; the action buttons stay outside it.
+- The default-settings line wraps at a fixed 1000 pixels and each option
+  description at 480, so the first can be cut off in a window narrower than
+  that; the window opens at 1000x700 and can shrink to 800x600. Not
+  checked on a real display.
+- Native rendering and touchpad delivery need testing on the target OS.
 
 Examples
 --------
@@ -160,6 +170,9 @@ def render_options(session: Any) -> None:
     ttk.Button(actions, text="Restore Default Settings", command=lambda: _restore(session)).pack(side="left")
     ttk.Button(actions, text="Cancel", command=session.cancel).pack(side="left", padx=(8, 0))
     ttk.Button(actions, text="Start Experiment", style="Accent.TButton", command=lambda: _start(session)).pack(side="right")
+    ttk.Label(actions, text="Enter: start  \u00b7  Esc: cancel  \u00b7  F11: full screen",
+              style="Hint.TLabel").pack(side="right", padx=(0, 12))
+    session.key_actions["return"] = lambda: _start(session)
     session.error_var = tk.StringVar(master=session.win)
     ttk.Label(root, textvariable=session.error_var, style="Muted.TLabel", justify="left").pack(anchor="w", pady=(8, 0))
     _refresh(session)

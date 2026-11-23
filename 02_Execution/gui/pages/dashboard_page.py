@@ -19,12 +19,14 @@ Settings / parameters
 
 Edge cases
 ----------
-- Analyze Latest Session switches to Results first so the report has a
-  box to appear in.
+- Analyze Latest Session switches to Results first so the report has a box
+  to appear in; the Results page then lists sessions and the report shows
+  the newest one.
 
 Known limitations
 -----------------
 - Holds no state; rebuilt on every visit.
+- To pick or pool sessions, use the Results page.
 
 Examples
 --------

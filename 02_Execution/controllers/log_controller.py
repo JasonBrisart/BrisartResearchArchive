@@ -3,35 +3,44 @@ File: controllers/log_controller.py
 
 Purpose
 -------
-Provide app.log(text), the single logging entry point for the GUI.
-Every call updates the status text, inserts a timestamped line at the
-top of the Settings page Activity Log when it is showing, and persists
-the same line to disk.
+Provide app.log(text), the single logging entry point for the GUI. Every
+call timestamps the message, adds it to the top of the Settings page
+Activity Log when that page is showing, and persists it to disk.
 
 Communication / relationships
 -----------------------------
 - Mixed into gui/main_window.BrisartSuiteApp.
-- Called by controllers/system_controller.py, frameworks/TFL/gui_session.py, and
-  page-render failures in gui/main_window.py.
+- Called by controllers/system_controller.py, frameworks/TFL/gui_session.py,
+  and by gui/main_window.py when a page fails to render.
 - Persists through config/activity_log.append_activity_log_entry().
-- Writes into app.log_box, created by gui/pages/settings_page.py.
+- Writes into app.log_box, which gui/pages/settings_page.py creates.
+- Also sets app.status_text (see Known limitations).
 
 Settings / parameters
 ---------------------
-- MAX_LOG_LINES (3000) caps the on-screen box, independently of the
+- MAX_LOG_LINES (3000): cap on the on-screen box, independent of the
   100-entry cap on the persisted file.
 - Timestamps use local time, format YYYY-MM-DD HH:MM:SS.
+- trim_text_widget_lines() removes the oldest lines, which are at the
+  bottom because new lines are inserted at the top.
 
 Edge cases
 ----------
-- The log box is rebuilt on every navigation; a destroyed box is
-  detected and skipped, and the line is still persisted.
-- TclError during a write is swallowed so logging can never crash the
-  action being logged.
+- The log box is rebuilt on every navigation; a missing or destroyed box
+  is skipped, and the line is still persisted.
+- A TclError or AttributeError while writing to the box or the status
+  variable is swallowed, so logging can never crash the action it logs.
+- Lines logged while another page is showing reach the Settings page only
+  through the persisted file, the next time that page is built.
 
 Known limitations
 -----------------
+- status_text is updated on every call, but no widget in the application
+  currently displays it.
 - Local time with no timezone offset.
+- The on-screen box holds up to 3000 lines in one session, but the file
+  keeps only 100, so a rebuilt Settings page shows fewer than the session
+  has logged.
 
 Examples
 --------

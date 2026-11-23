@@ -3,35 +3,41 @@ File: frameworks/TFL/stimuli.py
 
 Purpose
 -------
-Provide the embedded 60-item TFL stimulus library, character-for-
-character identical to the 02_Execution reference tfl_stimuli.csv, plus
-validation and the baseline 20-item limit.
+Provide the embedded 60-item TFL stimulus library, character-for-character
+identical to the 02_Execution reference tfl_stimuli.csv, plus validation
+and the baseline 20-item limit.
 
 Communication / relationships
 -----------------------------
-- Used by frameworks/TFL/headless.py, frameworks/TFL/gui_session.py, frameworks/TFL/cli_runner.py, and
-  the tests.
+- Used by frameworks/TFL/headless.py, frameworks/TFL/gui_session.py,
+  frameworks/TFL/cli_runner.py, and the tests.
 - Reads BASE_STIMULUS_LIMIT from frameworks/TFL/settings.py.
+- frameworks/TFL/trial_builder.py draws from the list this module returns.
 
 Settings / parameters
 ---------------------
 - Required fields: stimulus_id, cue, ambiguous_text, interpretation_a,
   interpretation_b.
-- The first 20 stimuli are used unless enable_extra_stimuli is on.
+- The first 20 stimuli (S001 to S020) are used unless enable_extra_stimuli
+  is on, which uses all 60.
 
 Edge cases
 ----------
-- validate_stimuli() rejects non-lists, empty lists, non-dictionary
-  rows, blank fields, and duplicate IDs.
-- load_stimuli() returns fresh dictionaries, so callers cannot mutate
-  the library.
-- Seven stimuli (S014, S024, S032, S037, S042, S050, S059) use
-  typographic apostrophes exactly as the reference does.
+- validate_stimuli() rejects non-lists, empty lists, non-dictionary rows,
+  blank fields, and duplicate IDs.
+- load_stimuli() returns fresh dictionaries, so callers cannot mutate the
+  library.
+- Seven stimuli (S014, S024, S032, S037, S042, S050, S059) use typographic
+  apostrophes exactly as the reference does; the other apostrophes in the
+  library are straight.
 
 Known limitations
 -----------------
-- Stimuli are edited in this file; there is no external stimulus file
-  to load or lose.
+- Stimuli are edited in this file; there is no external stimulus file to
+  load or lose. Editing any of the 60 breaks the test that compares the
+  library to the reference digest.
+- The order matters: the 20-item baseline is a prefix of the list, and
+  stimuli are drawn with replacement, so a trial sequence can repeat one.
 
 Examples
 --------

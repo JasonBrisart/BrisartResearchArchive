@@ -4,26 +4,30 @@ File: gui/navigation.py
 Purpose
 -------
 Define the sidebar entries and map page names to their render functions.
-Replaces the framework registry: TFL is the only framework, so there is
-nothing to discover.
+TFL is the only framework, so there is nothing to discover and the table is
+fixed.
 
 Communication / relationships
 -----------------------------
 - gui/components/sidebar.py reads NAV_ITEMS and SETTINGS_NAV_ITEM.
 - gui/main_window.py calls get_page_renderer() and normalize_page_name().
-- Page modules under gui/pages/ are imported lazily on first use.
+- Page modules under gui/pages/ are imported lazily on first use, so
+  importing this module does not load Tk widgets.
 
 Settings / parameters
 ---------------------
 - NAV_ITEMS: Dashboard, TFL, Results, Archive.
-- SETTINGS_NAV_ITEM: pinned at the bottom of the sidebar.
+- SETTINGS_NAV_ITEM: Settings, pinned at the bottom of the sidebar.
 - DEFAULT_PAGE: "Dashboard".
-- PAGE_ALIASES: older names ("Frameworks", "System", "Home", ...) that
-  still resolve, so a stale call cannot show a blank page.
+- PAGE_ALIASES: older names ("Frameworks", "Execution", "Analysis",
+  "Documentation", "System", "Home") that still resolve, so a stale call
+  cannot show a blank page.
 
 Edge cases
 ----------
 - An unknown name returns None; the main window shows an error dialog.
+- Adding a page means adding its module here and, for the sidebar, an entry
+  in NAV_ITEMS.
 
 Known limitations
 -----------------

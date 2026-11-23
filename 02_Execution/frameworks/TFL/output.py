@@ -10,47 +10,62 @@ answer.
 
 Communication / relationships
 -----------------------------
-- frameworks/TFL/gui_session.py and frameworks/TFL/cli_runner.py create a SessionWriter and
-  pass writer.save as the engine's on_progress hook.
-- frameworks/TFL/analysis.py uses latest_session_file() and list_session_files().
+- frameworks/TFL/gui_session.py and frameworks/TFL/cli_runner.py create a
+  SessionWriter and pass writer.save as the engine's on_progress hook.
+- frameworks/TFL/analysis.py uses latest_session_file(); cli.py and
+  gui/pages/results_page.py use list_session_files().
 - default_output_dir() resolves the folder through config/runtime.py:
   %APPDATA%/Brisart Research Archive/outputs/TFL unless the user picked
-  another output folder in Settings.
+  another Output Directory in Settings.
+- Columns come from frameworks/TFL/schema.TRIAL_FIELDNAMES.
 
 Settings / parameters
 ---------------------
 - File name: tfl_output_[<label>_]YYYY-MM-DD_HH-MM-SS.csv. If two runs
   start in the same second, a counter is added: ..._HH-MM-SS_2.csv.
-- SessionWriter(output_dir=None, label="", started_at=None).
-- save(rows): writes the full snapshot to a temporary file in the same
-  folder, flushes and fsyncs it, then os.replace()s it over this run's
-  own file.
-- close(): marks the run finished; the file already holds everything.
+- SessionWriter(output_dir=None, label="", started_at=None); path is the
+  run's file and rows_saved is the row count of the last snapshot,
+  including an in-progress row.
+- save(rows): writes the full snapshot to a hidden temporary file in the
+  same folder, flushes and fsyncs it, then os.replace()s it over this run's
+  own file. close() marks the run finished; the file already holds
+  everything.
+- list_session_files() returns every tfl_output*.csv in the folder, oldest
+  first by last-saved time (then name); latest_session_file() returns the
+  last. The pattern also matches the legacy tfl_output.csv of 0.9.3.
 
 Edge cases
 ----------
-- The file is created with exclusive mode ("x"), so a writer can never
-  open, truncate, or overwrite any existing file, including another
-  run's.
-- A crash or power loss during a save leaves either the previous
-  snapshot or the new one, never a half-written CSV.
+- The file is created with exclusive mode ("x") and its header written at
+  once, so a writer never opens, truncates, or overwrites any existing
+  file, including another run's, and an empty run still leaves a
+  header-only file.
+- A crash or power loss during a save leaves either the previous snapshot
+  or the new one, never a half-written CSV.
 - If a save fails (for example the CSV is open in Excel on Windows and
   locked), the temporary file is removed and the error propagates to the
-  engine, which records it and continues; the next successful save
-  writes the complete session again.
+  engine, which records it and continues; the next successful save writes
+  the complete session again.
+- A row with a key outside the schema raises at save time; a missing key is
+  written blank.
 - save() after close() raises RuntimeError.
 
 Known limitations
 -----------------
-- Each save rewrites the session file; at 120 trials this is a few
-  hundred kilobytes in total per answer and is not noticeable.
+- Each save rewrites the whole file. Measured with the built-in stimuli, a
+  120-trial session with perturbations is about 31 KB and is rewritten 422
+  times, roughly 6.5 MB written over a session. That is not noticeable on a
+  local disk but may be on a slow network or synced folder.
 - Nothing is ever deleted; old session files accumulate until removed by
   hand.
+- Durability against power loss is not claimed; the temp-and-replace
+  sequence protects against a killed process.
 
 Examples
 --------
 - writer = SessionWriter(output_dir, label="pilot01")
 - writer.save(engine.snapshot())
+- latest_session_file(output_dir)
 """
 from __future__ import annotations
 

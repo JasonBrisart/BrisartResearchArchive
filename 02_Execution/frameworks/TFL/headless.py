@@ -8,23 +8,27 @@ clock for tests and automation, with no Tkinter involvement.
 
 Communication / relationships
 -----------------------------
-- Uses frameworks/TFL/config.py, frameworks/TFL/stimuli.py, frameworks/TFL/trial_builder.py,
-  frameworks/TFL/engine.py, and NullSchedulerTimer from frameworks/TFL/timing.py.
-- Used by tests/test_tfl.py.
+- Uses frameworks/TFL/config.py, frameworks/TFL/stimuli.py,
+  frameworks/TFL/trial_builder.py, frameworks/TFL/engine.py, and
+  NullSchedulerTimer from frameworks/TFL/timing.py.
+- Used by tests/test_tfl.py and tests/gui_doubles_check.py.
 
 Settings / parameters
 ---------------------
-- build_engine(options=None, **engine_kwargs): applies option overrides
-  through set_option() (so they are validated exactly as the GUI and CLI
-  validate them), resolves the run configuration, and forwards
-  on_progress and on_stage_advanced.
+- build_engine(options=None, **engine_kwargs) -> (engine, timer). options
+  are applied through set_option(), so they are validated exactly as the GUI
+  and CLI validate them; engine_kwargs (on_progress, on_stage_advanced) go
+  to the engine.
 
 Edge cases
 ----------
-- An invalid override raises ValueError with the same message the
-  options menus show.
+- An invalid override raises ValueError with the same message the options
+  menus show.
 - The engine is returned on the first trial's "cue" stage; the virtual
-  clock only moves when the caller calls timer.advance().
+  clock only moves when the caller calls timer.advance(), and callbacks
+  fire only when the caller calls timer.fire().
+- Default options include the 12-second response timer, so a test that
+  wants an untimed run passes {"enable_response_timer": False}.
 
 Known limitations
 -----------------

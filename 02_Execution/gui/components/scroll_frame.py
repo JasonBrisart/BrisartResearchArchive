@@ -3,28 +3,45 @@ File: gui/components/scroll_frame.py
 
 Purpose
 -------
-Provide a vertically scrollable content frame with a visible scrollbar.
+Provide ScrollFrame, a vertically scrollable content area with a
+permanently visible scrollbar, for screens whose content can be taller
+than a small window.
 
 Communication / relationships
 -----------------------------
-Used by the TFL options screen; wheel bindings belong to its Toplevel.
+- Used by the TFL options screen (frameworks/TFL/gui_options.py), which
+  builds its option cards inside ScrollFrame.content.
+- Uses COLORS from gui/theme.py and mousewheel_units() from
+  gui/components/page_helpers.py.
+- Its wheel bindings belong to the window that contains it, not to the
+  application, so it never competes with the page-level scrolling in
+  gui/main_window.py.
 
 Settings / parameters
 ---------------------
-ScrollFrame(parent) exposes content and canvas; uses the Archive palette.
+- ScrollFrame(parent) exposes content (the frame to build into), canvas,
+  and scrollbar.
+- Handles <MouseWheel>, <Button-4>, and <Button-5> on its Toplevel.
 
 Edge cases
 ----------
-Wheel events are accepted only from descendants. Destroy removes only
-this instance's bindings, leaving other window handlers intact.
+- A wheel event is used only when it comes from a widget inside this frame.
+- A fully visible body does not move.
+- The content width follows the viewport width, and the scroll region
+  follows the content height.
+- Destroying the frame removes only the bindings it added, leaving other
+  window handlers in place.
 
 Known limitations
 -----------------
-Touchpad support depends on wheel events delivered by the local Tk build.
+- Vertical scrolling only.
+- Touchpad support depends on the wheel events the local Tk build delivers
+  (see the limitation in gui/components/page_helpers.py).
 
 Examples
 --------
-view = ScrollFrame(parent); view.pack(fill="both", expand=True)
+- view = ScrollFrame(parent); view.pack(fill="both", expand=True)
+- ttk.Label(view.content, text="Row").pack()
 """
 from __future__ import annotations
 import tkinter as tk

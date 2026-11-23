@@ -4,48 +4,60 @@ File: frameworks/TFL/config.py
 Purpose
 -------
 Define every TFL run option once (OPTION_SPECS) and provide the rules for
-defaults, validation, run-mode labelling, settings summaries, and
-resolving a configuration into the exact values a run will use. The GUI
-options screen and the CLI options menu are both generated from this
-table, so the two front ends cannot drift apart.
+defaults, validation, run-mode labelling, settings summaries, and resolving
+a configuration into the exact values a run will use. The GUI options
+screen and the CLI options menu are both generated from this table, so the
+two front ends cannot drift apart.
 
 Communication / relationships
 -----------------------------
 - Reads defaults and limits from frameworks/TFL/settings.py.
 - frameworks/TFL/gui_options.py builds widgets from OPTION_SPECS and calls
-  set_option().
-- frameworks/TFL/cli_runner.py builds its numbered menu from OPTION_SPECS and calls
-  set_option().
-- frameworks/TFL/trial_builder.py, frameworks/TFL/engine.py, and frameworks/TFL/headless.py consume the
-  dictionary returned by resolve_run_config().
+  set_option(); frameworks/TFL/cli_runner.py builds its numbered menu from
+  OPTION_SPECS and calls set_option().
+- frameworks/TFL/trial_builder.py, frameworks/TFL/engine.py, and
+  frameworks/TFL/headless.py consume the dictionary returned by
+  resolve_run_config().
+- frameworks/TFL/gui_screens.py and cli_runner.py use format_run_mode().
 
 Settings / parameters
 ---------------------
+- Fourteen options: enable_perturbations, enable_extra_stimuli,
+  enable_probes, enable_delayed_reentry, enable_response_timer,
+  trial_duration_sec, trials_per_block, blocks, shuffle_blocks,
+  probe_interval, delayed_reentry_interval, perturbation_interval,
+  random_seed, session_label. Defaults and limits come from settings.py.
 - Option kinds: "toggle" (bool), "int" (bounded whole number), "blocks"
   (non-empty subset of affect/belief/contradiction, kept in reference
   order), "seed" (whole number or "random"), "text" (session label).
-- requires: an option that only applies while another toggle is on
-  (for example the timer seconds need the response timer).
+- requires: an option that only applies while another toggle is on (the
+  timer seconds need the response timer).
 - affects_mode: options that change the protocol. Any of them differing
   from its default labels the run modified_tfl. The session label is
   metadata only and never changes the mode.
 
 Edge cases
 ----------
-- set_option() never raises; it returns (False, reason) for invalid
-  input and leaves the configuration unchanged.
-- A seed of "random" (or "r") is resolved to a fresh number per run by
-  resolve_run_config(), and that number is recorded in every CSV row.
+- set_option() never raises; it returns (False, reason) for invalid input
+  and leaves the configuration unchanged. resolve_run_config() does raise
+  ValueError if a configuration was filled in without going through it.
+- A seed of "random" (or "r") is replaced with a fresh number for each run
+  by resolve_run_config(), that number is written to every CSV row, and
+  the run is labelled modified_tfl even if nothing else changed.
 - Session labels are reduced to letters, digits, "-" and "_" so they are
   always safe inside a file name; a label that cleans to nothing is
   rejected.
-- An option whose "requires" toggle is off still keeps its value; it is
-  simply not used and still counts toward the run mode only if changed.
+- An option whose "requires" toggle is off keeps its value and is shown as
+  "(not used)", but still counts toward the run mode if it was changed.
+- restore_defaults() resets every option except the session label.
 
 Known limitations
 -----------------
-- Interval options cannot be 0; the matching toggle is the way to turn a
-  feature off.
+- default_mode_description() hardcodes its wording ("Perturbations OFF",
+  "Probes ON", "Delayed reentry ON", "Response timer ON") instead of
+  reading the defaults, so it must be edited by hand if a default changes.
+  Its trial counts, timer seconds, and seed are read from the defaults.
+- Interval options cannot be 0; the matching toggle turns a feature off.
 - Options are per run and are not persisted between launches.
 
 Examples
