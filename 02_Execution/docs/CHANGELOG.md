@@ -1,11 +1,6 @@
 # Changelog
 
-All notable changes to Brisart Research Archive are documented here, newest
-first. Each entry describes the release as it shipped and is not rewritten
-afterward; a later entry says so when it corrects an earlier one. Releases
-before 0.9.4 describe a multi-framework layout, and releases before 0.9.7 an
-in-application updater; both have been removed. File-level documentation
-lives in each Python file's six-section header, not in separate documents.
+All notable changes to 02_Execution are documented here.
 
 ---
 
