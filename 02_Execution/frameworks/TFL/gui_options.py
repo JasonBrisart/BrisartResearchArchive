@@ -146,7 +146,7 @@ def render_options(session: Any) -> None:
     session.option_vars, session.option_widgets = {}, {}
     root = ttk.Frame(session.win, style="Bg.TFrame", padding=18)
     root.pack(fill="both", expand=True)
-    ttk.Label(root, text=settings.VERSION_LABEL, style="Title.TLabel").pack(anchor="w")
+    ttk.Label(root, text=settings.PROTOCOL_LABEL, style="Title.TLabel").pack(anchor="w")
     defaults_note = ttk.Label(root, text="Default settings: " + " \u00b7 ".join(default_mode_description()),
                               style="Muted.TLabel", justify="left")
     defaults_note.pack(anchor="w", fill="x", pady=(4, 10))

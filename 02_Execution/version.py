@@ -35,7 +35,7 @@ Examples
 --------
 - from version import DISPLAY_VERSION
 """
-VERSION = "0.9.11"
+VERSION = "0.9.13"
 RELEASE_LABEL = "ALPHA"
 DISPLAY_VERSION = f"{VERSION} {RELEASE_LABEL}"
 

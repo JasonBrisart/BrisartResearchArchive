@@ -19,6 +19,7 @@ Communication / relationships
 Settings / parameters
 ---------------------
 - Cards occupy grid rows 2 to 5: Run, Saving, Keyboard, Procedure.
+- Title: settings.PROTOCOL_LABEL. The subtitle is fixed text.
 
 Edge cases
 ----------
@@ -44,7 +45,7 @@ from frameworks.TFL.config import default_mode_description
 
 
 def render(app):
-    root = app.page_shell(settings.FRAMEWORK_NAME, settings.VERSION_LABEL)
+    root = app.page_shell(settings.PROTOCOL_LABEL, "Run a session, see where it is saved, and review the trial procedure.")
     app.add_card(
         root, 2, "Run",
         "Opens the TFL window. Choose run options there, or start straight away with the defaults: "
@@ -59,14 +60,15 @@ def render(app):
     )
     app.add_card(
         root, 4, "Keyboard",
-        "Every answer can be given from the keyboard: A, B, and U answer the choice questions, Enter "
-        "views the stimulus and submits the affect rating, Esc stops the run, and F11 switches to full "
-        "screen. A key held down answers only once.",
+        "Every answer can be given from the keyboard: A, B, and U answer the choice questions, 1 to 5 "
+        "choose the affect value (0, 25, 50, 75, 100), Enter views the stimulus and confirms a "
+        "perturbation, Esc stops the run, and F11 switches to full screen. A key held down answers "
+        "only once.",
     )
     app.add_card(
         root, 5, "Procedure",
         "Each trial: cue and prior instruction, the ambiguous stimulus, a prediction (A/B), an affect rating "
-        "(0\u2013100), an optional perturbation step, a final behavioral choice (A/B), feedback, and on probe "
+        "(0, 25, 50, 75, or 100), an optional perturbation step, a final behavioral choice (A/B), feedback, and on probe "
         "or delayed-reentry trials a content probe (A/B/U).",
     )
 

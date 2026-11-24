@@ -295,6 +295,9 @@ def report_session(path, complete, in_progress, columns) -> list[str]:
     lines = section("Session") + [f"File: {path}", f"Complete trials: {len(complete)}"]
     if in_progress:
         lines.append(f"Incomplete trials excluded: {len(in_progress)} (run was interrupted mid-trial)")
+    if "protocol_edition" in columns:
+        editions = sorted({str(row.get("protocol_edition", "")) for row in complete if row.get("protocol_edition", "")})
+        lines.append("Protocol edition: " + (", ".join(editions) if editions else "<blank>"))
     if "random_seed" in columns:
         seeds = sorted({str(row.get("random_seed", "")) for row in complete if row.get("random_seed", "")})
         lines.append("Random seed: " + (", ".join(seeds) if seeds else "<blank>"))

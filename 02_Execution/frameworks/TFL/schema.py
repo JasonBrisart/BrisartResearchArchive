@@ -19,9 +19,9 @@ Settings / parameters
 - REFERENCE_FIELDNAMES: 27 columns, in the reference's order.
 - TIMER_FIELDNAMES: response_timer_sec, prediction_timed_out,
   behavioral_timed_out.
-- SESSION_FIELDNAMES: session_label, random_seed, trial_status ("complete"
-  or "in_progress").
-- TRIAL_FIELDNAMES: the three lists joined; 33 columns.
+- SESSION_FIELDNAMES: protocol_edition, session_label, random_seed, and
+  trial_status ("complete" or "in_progress").
+- TRIAL_FIELDNAMES: the three lists joined; 34 columns.
 
 Edge cases
 ----------
@@ -33,7 +33,7 @@ Edge cases
 Known limitations
 -----------------
 - Tools that compare whole headers byte-for-byte against the reference
-  will see six extra columns; reading by column name is unaffected.
+  will see seven extra columns; reading by column name is unaffected.
 - Column order is a file-format promise: reordering it changes every future
   session file, and analysis reads old files by name only.
 
@@ -53,6 +53,6 @@ REFERENCE_FIELDNAMES = [
     "post_perturbation_probe", "perturbation_match_prediction",
 ]
 TIMER_FIELDNAMES = ["response_timer_sec", "prediction_timed_out", "behavioral_timed_out"]
-SESSION_FIELDNAMES = ["session_label", "random_seed", "trial_status"]
+SESSION_FIELDNAMES = ["protocol_edition", "session_label", "random_seed", "trial_status"]
 TRIAL_FIELDNAMES = REFERENCE_FIELDNAMES + TIMER_FIELDNAMES + SESSION_FIELDNAMES
 

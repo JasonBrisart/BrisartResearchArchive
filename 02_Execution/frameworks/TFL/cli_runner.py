@@ -14,6 +14,8 @@ Communication / relationships
   frameworks/TFL/trial_builder.py; drives
   frameworks/TFL/engine.TFLSessionEngine; saves with
   frameworks/TFL/output.SessionWriter after every answer.
+- Prints settings.PROTOCOL_LABEL as the title of the startup menu and the
+  session intro, and asks the affect question with settings.AFFECT_PROMPT.
 - Passes a frameworks/TFL/timing.DeadlineOnlyTimer to the engine (used only
   when the response timer option is on) unless a timer is supplied.
 
@@ -34,6 +36,9 @@ Edge cases
 ----------
 - Invalid answers repeat the prompt with the reference messages; invalid
   option values print the reason and leave the option unchanged.
+- The affect question takes 0, 25, 50, 75, or 100 typed out; anything else,
+  including 10 or 60, prints "Please enter one of: 0, 25, 50, 75, 100." and
+  asks again.
 - Unknown startup selections repeat the menu instead of starting a run.
 - With the timer on, an answer typed after the limit is recorded as a
   timeout, because blocking console input cannot be interrupted.
@@ -86,7 +91,7 @@ VALUE_PROMPTS = {
 
 def startup_menu(ask, say) -> str:
     say("\n" + RULE)
-    say(settings.VERSION_LABEL)
+    say(settings.PROTOCOL_LABEL)
     say(RULE)
     say("Default settings:")
     for line in default_mode_description():
@@ -135,7 +140,7 @@ def options_menu(config: dict, ask, say) -> dict:
 
 def print_intro(config: dict, stimuli: list[dict], path: Path, say) -> None:
     say("\n" + RULE)
-    say(settings.VERSION_LABEL)
+    say(settings.PROTOCOL_LABEL)
     say(RULE)
     say(settings.SESSION_INTRO_TEXT)
     say("\nCurrent run configuration:")
@@ -202,7 +207,7 @@ class ConsoleDriver:
                 self.ask_choice(stage, settings.PREDICTION_PROMPT, engine.submit_prediction, ["A", "B"])
             elif stage == "affect":
                 if not engine.submit_affect(self.ask(settings.AFFECT_PROMPT)):
-                    say(f"Please enter a whole number from {settings.AFFECT_MIN} to {settings.AFFECT_MAX}.")
+                    say("Please enter one of: " + ", ".join(str(v) for v in settings.AFFECT_CHOICES) + ".")
             elif stage == "perturbation":
                 say("\nPerturbation step:")
                 say(engine.perturbation_instruction())

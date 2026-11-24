@@ -24,6 +24,8 @@ Communication / relationships
 - Owns the window's <KeyPress>, <KeyRelease>, and <FocusOut> bindings.
   Each screen publishes its valid keys in key_actions; handle_key() runs
   the matching action.
+- Owns the input guard: render_trial() calls mark_screen_drawn() after every
+  draw and every answer asks accepting_input() first.
 
 Settings / parameters
 ---------------------
@@ -33,7 +35,11 @@ Settings / parameters
   vertically.
 - Keys: Esc stops the run (with the usual confirmation); F11 toggles full
   screen; every other key is looked up in key_actions, normalized to lower
-  case ("a", "b", "u", "return"; the keypad Enter counts as "return").
+  case ("a", "b", "u", "return", "1" to "5"; the keypad Enter counts as
+  "return" and the keypad digits as the same digits).
+- INPUT_GUARD_SECONDS (0.3): after a screen is drawn, answers are ignored for
+  this long, so a double-click on a value that moves to the next screen
+  cannot also answer the next question, whose buttons sit in the same place.
 
 Edge cases
 ----------
@@ -43,6 +49,8 @@ Edge cases
   (marked in_progress).
 - A failed save is logged immediately and shown in the screen footer; the
   run continues, and the next successful save rewrites the whole session.
+- Ignored during the guard: an answer, or Enter on a cue or perturbation
+  screen. Not ignored: Esc, F11, and anything on the options screen.
 - A key held down acts once: further presses of the same key are ignored
   until it is released, so keyboard auto-repeat cannot answer the next
   question. Losing window focus forgets held keys. Esc and F11 are never
@@ -63,6 +71,7 @@ Examples
 """
 from __future__ import annotations
 
+import time
 import tkinter as tk
 from tkinter import messagebox
 
@@ -76,6 +85,8 @@ from .output import SessionWriter
 from .stimuli import apply_stimulus_limit, load_stimuli
 from .timing import MonotonicTimer
 from .trial_builder import build_trials
+
+INPUT_GUARD_SECONDS = 0.3
 
 
 class TFLGuiSession:
@@ -94,6 +105,7 @@ class TFLGuiSession:
         self.key_actions: dict = {}
         self.focus_target = None
         self._held_keys: set[str] = set()
+        self._ready_at = 0.0
 
     # ---------------------------------------------------------- lifecycle
     def start(self) -> None:
@@ -166,12 +178,21 @@ class TFLGuiSession:
             path = self.writer.close()
             self.log(f"TFL run ended ({reason}) after {len(self.engine.rows)} complete trial(s); kept in {path.name}")
 
+    # ---------------------------------------------------------- input guard
+    def mark_screen_drawn(self) -> None:
+        self._ready_at = time.monotonic() + INPUT_GUARD_SECONDS
+
+    def accepting_input(self) -> bool:
+        return time.monotonic() >= self._ready_at
+
     # ---------------------------------------------------------- keyboard
     @staticmethod
     def key_name(event) -> str:
         keysym = str(getattr(event, "keysym", "") or "")
         if keysym == "KP_Enter":
             return "return"
+        if keysym.startswith("KP_") and keysym[3:].isdigit():
+            return keysym[3:]
         return keysym.lower()
 
     def handle_key(self, event):

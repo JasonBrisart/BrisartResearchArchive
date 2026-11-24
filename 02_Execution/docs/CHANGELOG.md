@@ -1,11 +1,70 @@
 # Changelog
 
-All notable changes to Brisart Research Archive are documented here, newest
-first. Each entry describes the release as it shipped and is not rewritten
-afterward; a later entry says so when it corrects an earlier one. Releases
-before 0.9.4 describe a multi-framework layout, and releases before 0.9.7 an
-in-application updater; both have been removed. File-level documentation
-lives in each Python file's six-section header, not in separate documents.
+All notable changes to 02_Execution are documented here.
+
+---
+
+## [0.9.13 ALPHA] - 2026-11-24
+
+### Release overview
+TFL now has an explicit scientific protocol identity separate from the Archive application version. The current procedure is **Temporal Feedback Loop — Protocol Edition 3.0**. The edition is visible in the GUI and CLI, written into every new session CSV, and reported by analysis so laboratories can preserve and cite the exact protocol used.
+
+### Added: TFL Protocol Edition 3.0 (`frameworks/TFL/settings.py`)
+- `PROTOCOL_EDITION = "3.0"` is the single machine-readable protocol version.
+- `PROTOCOL_LABEL` combines the framework name and edition for participant and operator displays.
+- A chronological protocol-edition record now lives beside the constants it describes. Edition 2.6 records the baseline reference; Edition 3.0 records the Archive procedure with the 12-second default timer and fixed affect choices of 0, 25, 50, 75, and 100.
+
+### Changed: reproducibility identity (`schema.py`, `engine.py`, `analysis.py`)
+- New sessions append `protocol_edition` to the session metadata columns, increasing the CSV schema from 33 to 34 columns.
+- Every saved row records `3.0`, including in-progress rows, so interrupted studies remain identifiable.
+- Session analysis reports the protocol edition when the column exists. Earlier CSVs without it remain readable.
+- The CLI startup, session introduction, options window, and TFL page show the protocol label instead of only the framework name.
+
+### Compatibility limits
+- Protocol Edition 3.0 is not interchangeable with the 2.6 baseline because its default timer and affect scale differ.
+- Existing 33-column sessions remain readable but cannot be assigned an edition automatically; retain their application version and original files as provenance.
+- The application version and protocol edition are independent. Application-only fixes do not require a new protocol edition unless participant procedure, recorded measurement, protocol defaults, or interpretation changes.
+
+---
+
+## [0.9.12 ALPHA] - 2026-11-23
+
+### Release overview
+
+The affect rating is now one of five values (0, 25, 50, 75, 100), chosen with a single click or a single key press that moves straight to the next screen, and the name "TFL Baseline Reference Implementation v2.6" no longer appears on participant screens. The five values are a protocol change, not only a screen change: the engine accepts nothing else, so the GUI and the console record the same set of values. The trial sequence, the timer, the other questions, saving, and the CSV columns are unchanged.
+
+### Changed: affect rating (`frameworks/TFL/settings.py`, `engine.py`, `gui_screens.py`, `cli_runner.py`)
+
+- **The values.** `settings.AFFECT_CHOICES = (0, 25, 50, 75, 100)` is the single definition. It replaces `AFFECT_MIN` and `AFFECT_MAX`, which are removed.
+- **Engine.** `submit_affect()` accepts exactly those values (as integers or as text, so `" 50 "` still works) and rejects everything else, including `10`, `60`, `50.5`, `100.0`, blanks, and booleans. A rejected value does not advance the trial and does not trigger a save. This is the only place the rule lives, so a front end cannot record a value the other cannot.
+- **Screen.** The typed entry and its Continue button are replaced by five buttons labelled 0, 25, 50, 75, and 100, each with its key shown beneath it. Choosing one records it and shows the next screen at once. There is no confirmation and no way to change the answer afterwards.
+- **Keys.** 1 to 5 choose 0, 25, 50, 75, 100. The number-pad digits do the same. Enter and letters do nothing on this screen.
+- **Console.** The question reads "Affect intensity for this prediction (0, 25, 50, 75, or 100):". Anything else prints "Please enter one of: 0, 25, 50, 75, 100." and asks again. The session intro text says the same.
+- **TFL page.** The Keyboard and Procedure cards describe the new rating.
+
+### Added: input guard (`frameworks/TFL/gui_session.py`, `gui_screens.py`)
+
+- **Why.** Every choice screen now moves on when you click, and the affect buttons sit where the A and B buttons of the next question sit. A double-click, or a second press while the screen changes, could therefore answer the next question without being meant. This exists because of the change above.
+- **What.** After each screen is drawn, answers are ignored for `INPUT_GUARD_SECONDS` (0.3). A swallowed answer is not recorded and does not advance anything; the participant presses again. Esc, F11, and the options screen are not guarded. Reaction times are unaffected, because the engine still measures from the moment the question appeared.
+
+### Changed: the "TFL Baseline Reference Implementation v2.6" label
+
+- **Where it came from.** 0.9.3 rebuilt TFL from the 02_Execution program of that name and carried the name over as a constant, `VERSION_LABEL`. It was shown as the title of the options screen and the TFL page, and at the top of the console menu and session intro. It was never written to a session file or used by the analysis, so its only job was to tell the reader which program the procedure came from.
+- **Why it goes.** The participant-facing screens should name the task, not the program it was derived from, and after this release the label would also be wrong: the default run no longer matches that program, since 0.9.6 turned the response timer on and this release changes the affect scale. `VERSION_LABEL` is removed. The screens and the console now show `FRAMEWORK_NAME`, "Temporal Feedback Loop". The provenance is kept where it belongs, in the `settings.py` header and in this changelog.
+
+### Tests
+
+- `python run.py --test`: 76 tests, OK (74 before). Native Tk rendering was not exercised.
+- **`tests/test_tfl.py` (54 to 56 tests).** One test replaces the old affect validation and checks each of the five values, 14 rejected values (including 10, 24, 26, 60, 99, `"50.5"`, `50.0`, and `True`), that a rejected value leaves the trial on the affect stage with nothing recorded, and that surrounding spaces are tolerated. New: a rejected affect is not saved; the console asks again until it gets one of the five (four rejections in one run). The timer and save tests now use 25 and 75 where they used 10 and 70, which are no longer valid. The console run asserts the new title and that the old label is gone.
+- **`tests/gui_doubles_check.py`.** The keyboard-only run now answers affect with the key 3 and checks that 0, 6, Enter, a letter, and an unmapped key do nothing on that screen. New: each of 1 to 5 and the keypad digits 1 to 5 records its own value and moves to the next screen with no further step; and the guard swallows an answer right after a screen is drawn and accepts it afterwards, while F11 is never swallowed.
+- **Each new check was shown to fail when the code it guards is broken:** the guard removed from the answer path, a wrong value on key 4, the engine accepting any value from 0 to 100 again (four tests fail), and the keypad mapping removed.
+
+### Compatibility limits
+
+- **The default run no longer reproduces the 02_Execution reference.** It differs in two ways, the 12-second timer (0.9.6) and the five-value affect rating (this release). Runs are still labelled `default_tfl` when no option was changed, so that label now means "the Archive's default", not "identical to the reference". Trial generation, the stimulus library, and the feedback wording still match the reference and are still tested against it.
+- **Sessions from earlier releases** keep their typed affect values (any whole number from 0 to 100) and still open and analyze. The schema is unchanged. Pooling an older session with a newer one mixes the two scales, and the affect summary will not say so; check the Per Session blocks, which show each file.
+- **Choices are final.** There is no back button. A mis-click is recorded.
+- **The console accepts the five values only when typed out in full** (for example `25`, not `2`). The 1 to 5 shortcuts exist in the GUI only.
 
 ---
 

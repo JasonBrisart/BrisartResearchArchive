@@ -40,8 +40,10 @@ Edge cases
 ----------
 - Invalid choices and invalid affect return False, do not advance, and do
   not save. Answers sent to a stage that is not active are refused.
-- Affect follows the reference: int(text.strip()) from 0 to 100; "50.5",
-  blanks, and booleans are rejected.
+- Affect must be one of settings.AFFECT_CHOICES (0, 25, 50, 75, 100). It is
+  read as int(text.strip()), so " 50 " is accepted; "50.5", "10", "101",
+  blanks, and booleans are rejected. The reference accepted any whole number
+  from 0 to 100.
 - A submission at or after the deadline is recorded as a timeout.
 - Timer generations increase for the engine's lifetime, so a stale
   callback can never act on a later stage.
@@ -72,7 +74,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from . import feedback
+from . import feedback, settings
 from .timing import TimerInterface
 
 TIMED_STAGES = {"prediction", "behavioral_choice"}
@@ -275,7 +277,7 @@ class TFLSessionEngine:
             number = int(str(value).strip())
         except ValueError:
             return False
-        if not 0 <= number <= 100:
+        if number not in settings.AFFECT_CHOICES:
             return False
         self.response["affect"] = number
         self._begin_stage("perturbation" if self.current_trial.get("perturbation_trial") else "behavioral_choice")
@@ -358,6 +360,7 @@ class TFLSessionEngine:
             "response_timer_sec": self.timer_seconds if self.timer_enabled else "",
             "prediction_timed_out": r["prediction_timed_out"],
             "behavioral_timed_out": r["behavioral_timed_out"],
+            "protocol_edition": settings.PROTOCOL_EDITION,
             "session_label": self.config.get("session_label", ""),
             "random_seed": self.config.get("random_seed", ""),
             "trial_status": status,

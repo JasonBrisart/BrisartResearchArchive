@@ -4,9 +4,11 @@ File: frameworks/TFL/settings.py
 Purpose
 -------
 Hold every fixed TFL constant and every option default in one place. The
-trial structure reproduces the 02_Execution TFL Baseline Reference
-Implementation v2.6; the Archive additionally turns its 12-second response
-timer on by default for operational research runs.
+trial structure and the console wording come from the 02_Execution TFL
+Baseline Reference Implementation v2.6, which this framework was rebuilt
+from; the Archive differs from it by default in two ways: the 12-second
+response timer is on, and affect is rated on five fixed values instead of a
+typed 0 to 100.
 
 Communication / relationships
 -----------------------------
@@ -24,11 +26,18 @@ Settings / parameters
   when enabled; seed 2026; the first 20 stimuli.
 - Option limits: trials per block 1-200; intervals 1-50; timer 3-120 s;
   seed 0-2147483647; session label up to 40 characters.
-- Reference wording: VERSION_LABEL, the session intro, and the CLI prompts.
+- AFFECT_CHOICES: the five values an affect rating can take, 0, 25, 50, 75,
+  and 100. The engine accepts only these; the GUI shows them as buttons and
+  the console asks for one of them.
+- Protocol identity: PROTOCOL_EDITION is the reproducibility identifier written
+  to every new session and PROTOCOL_LABEL is shown by the GUI and CLI.
+- Reference wording: the session intro and the CLI prompts.
 - Output file names: tfl_output_[label_]YYYY-MM-DD_HH-MM-SS.csv.
 
 Edge cases
 ----------
+- Changing AFFECT_CHOICES changes what values new sessions contain; session
+  files already saved keep their values and still analyze.
 - Changing a default here changes what "Default TFL" means; runs are
   labelled default_tfl only when every protocol option matches these
   values. Turning the timer off, for instance, makes a run modified_tfl.
@@ -38,13 +47,15 @@ Edge cases
 
 Known limitations
 -----------------
-- Reference wording is reproduced verbatim, including the en dash in the
-  affect prompt; non-UTF-8 consoles may render it differently.
+- The affect rating differs from the reference, which accepted any whole
+  number from 0 to 100; sessions from this scale cannot be compared value
+  for value with typed ratings.
 - The CLI uses these prompts; the GUI screens use their own shorter
   question text (frameworks/TFL/gui_screens.py).
 
 Examples
 --------
+- settings.PROTOCOL_LABEL
 - settings.TRIALS_PER_BLOCK
 - settings.DEFAULT_ENABLE_RESPONSE_TIMER
 """
@@ -53,10 +64,18 @@ Examples
 # ============================================================
 FRAMEWORK_ID = "TFL"
 FRAMEWORK_NAME = "Temporal Feedback Loop"
-VERSION_LABEL = "TFL Baseline Reference Implementation v2.6"
+PROTOCOL_EDITION = "3.0"
+PROTOCOL_LABEL = f"{FRAMEWORK_NAME} — Protocol Edition {PROTOCOL_EDITION}"
+
+# Protocol edition history (oldest first). Keep this record in the owning file.
+# 2.6 — Baseline reference: untimed by default; typed whole-number affect 0-100.
+# 3.0 — Archive protocol: 12-second default response timer; fixed affect choices
+#       0, 25, 50, 75, and 100. The trial-generation algorithm, stimulus library,
+#       feedback wording, probes, delayed reentry, and perturbations retain the
+#       documented 2.6 reference lineage.
 
 PREDICTION_PROMPT = "\nPredicted interpretation (A/B): "
-AFFECT_PROMPT = "Affect intensity for this prediction (0\u2013100): "
+AFFECT_PROMPT = "Affect intensity for this prediction (0, 25, 50, 75, or 100): "
 BEHAVIORAL_PROMPT = "Final behavioral choice (A/B): "
 POST_PERTURBATION_PROMPT = "Which interpretation is most active immediately after the perturbation? (A/B/U): "
 CONTENT_PROBE_PROMPT = "Which interpretation is most active in your mind right now? (A/B/U for uncodable): "
@@ -66,7 +85,7 @@ SESSION_INTRO_TEXT = (
     "A = Interpretation A\n"
     "B = Interpretation B\n"
     "Use A or B only for prediction and behavioral choice.\n"
-    "Affect rating must be 0\u2013100."
+    "Affect rating must be 0, 25, 50, 75, or 100."
 )
 
 # ============================================================
@@ -75,8 +94,7 @@ SESSION_INTRO_TEXT = (
 BLOCKS = ["affect", "belief", "contradiction"]
 FEEDBACK_LEVELS = ["confirmatory", "mildly_contradictory", "strongly_contradictory"]
 PERTURBATION_TYPES = ["head_turn", "posture_shift", "scene_shift", "breath_reset"]
-AFFECT_MIN = 0
-AFFECT_MAX = 100
+AFFECT_CHOICES = (0, 25, 50, 75, 100)
 BASE_STIMULUS_LIMIT = 20
 
 RUN_MODE = "default_tfl"

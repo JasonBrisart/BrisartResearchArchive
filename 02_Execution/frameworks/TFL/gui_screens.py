@@ -13,7 +13,9 @@ Communication / relationships
 - render_trial(session) is called by
   frameworks/TFL/gui_session.TFLGuiSession.render().
 - Reads session.engine; after each input calls session.after_input(), which
-  handles completion and redraws.
+  handles completion and redraws. Calls session.accepting_input() before
+  every answer and session.mark_screen_drawn() after every draw (the input
+  guard, owned by TFLGuiSession).
 - Publishes the keys valid on the current screen in session.key_actions;
   TFLGuiSession owns the window key bindings and dispatches through it.
 - Shows session.save_status() in the footer of every trial screen.
@@ -26,21 +28,27 @@ Settings / parameters
   run mode, progress bar, the stage content, then a footer with the
   keyboard hint and save status. The bar shows completed trials, not the
   trial in progress.
-- Keys: A/B (and U where uncodable is allowed) answer choice stages; Enter
-  views the stimulus, submits affect, confirms a perturbation, and closes
-  the completion screen. Esc and F11 are handled by the session.
+- Affect: one button for each value in settings.AFFECT_CHOICES (0, 25, 50,
+  75, 100). Choosing one records it and moves to the next screen at once;
+  there is no Continue button and no way to change it afterwards.
+- Keys: A/B (and U where uncodable is allowed) answer choice stages; 1 to 5
+  choose the affect values 0, 25, 50, 75, 100 (the number-pad digits count);
+  Enter views the stimulus, confirms a perturbation, and closes the
+  completion screen. Esc and F11 are handled by the session.
 - COUNTDOWN_REFRESH_MS (250): countdown refresh period.
 - COUNTDOWN_WARN_SECONDS (3): the countdown turns to the warning colour at
   or below this many seconds.
 
 Edge cases
 ----------
-- Invalid affect text shows "Please enter a whole number from 0 to 100",
-  keeps the typed text selected, and stays on the stage.
+- An answer that arrives within INPUT_GUARD_SECONDS (set in gui_session.py)
+  of a screen being drawn is ignored, so a double-click or a held key cannot answer the question that
+  replaces the one just answered. Esc and F11 are not guarded.
 - The countdown stops as soon as its label is destroyed or time runs out.
 - Answer buttons do not take keyboard focus, so Space cannot press a button
   left focused from an earlier screen.
-- A key that is not valid on the current screen does nothing.
+- A key that is not valid on the current screen does nothing. Typing a
+  number cannot give an affect value that is not one of the five.
 - The completion screen lists the last five save problems, if any.
 
 Known limitations
@@ -50,6 +58,8 @@ Known limitations
 - The on-screen question wording is shorter than the reference prompts in
   frameworks/TFL/settings.py (the CLI uses those); stored answers and
   feedback sentences are identical.
+- The input guard also swallows a genuine answer given within that fraction
+  of a second of a new screen appearing; the participant presses again.
 - Native rendering, fonts, and DPI scaling are verified by hand on the
   target machine, not by the automated tests.
 
@@ -57,6 +67,7 @@ Examples
 --------
 - render_trial(session)
 - session.key_actions["a"]()  # same as clicking A
+- session.key_actions["3"]()  # same as clicking the affect button 50
 """
 from __future__ import annotations
 
@@ -73,6 +84,7 @@ from .config import format_run_mode
 COUNTDOWN_REFRESH_MS = 250
 COUNTDOWN_WARN_SECONDS = 3
 
+AFFECT_QUESTION = "Affect intensity for this prediction"
 CHOICE_PROMPTS = {
     "prediction": ("Which interpretation do you predict?", ("A", "B")),
     "post_perturbation_probe": ("Which interpretation is most active immediately after the perturbation?",
@@ -101,6 +113,8 @@ def _card(parent, title: str, body: Any, body_style: str = "CardMuted.TLabel") -
 
 
 def _submit(session, method: Callable, value=None) -> None:
+    if not session.accepting_input():
+        return
     accepted = method() if value is None else method(value)
     if accepted or session.engine.active_stage() != session.rendered_stage:
         session.after_input()
@@ -143,29 +157,20 @@ def _choice_prompt(session, parent, stage: str) -> None:
     ttk.Label(parent, text=hint, style="Hint.TLabel").pack(anchor="w", pady=(8, 0))
 
 
-def _affect_form(session, parent) -> None:
-    ttk.Label(parent, text=settings.AFFECT_PROMPT.rstrip(": "), style="Prompt.TLabel").pack(anchor="w", pady=(14, 8))
+def _affect_choices(session, parent) -> None:
+    ttk.Label(parent, text=AFFECT_QUESTION, style="Prompt.TLabel").pack(anchor="w", pady=(14, 8))
     row = ttk.Frame(parent, style="Bg.TFrame")
     row.pack(anchor="w")
-    entry_var = tk.StringVar(master=session.win)
-    entry = ttk.Entry(row, textvariable=entry_var, width=6, font=("Segoe UI", 16))
-    entry.pack(side="left")
-    error = tk.StringVar(master=session.win)
-
-    def submit() -> None:
-        if session.engine.submit_affect(entry_var.get()):
-            session.after_input()
-        else:
-            error.set(f"Please enter a whole number from {settings.AFFECT_MIN} to {settings.AFFECT_MAX}.")
-            entry.selection_range(0, "end")
-
-    ttk.Button(row, text="Continue", style="Accent.TButton", command=submit,
-               takefocus=False).pack(side="left", padx=(10, 0))
-    ttk.Label(parent, text="Type a whole number from 0 to 100, then press Enter.",
+    for number, value in enumerate(settings.AFFECT_CHOICES, start=1):
+        column = ttk.Frame(row, style="Bg.TFrame")
+        column.pack(side="left", padx=(0, 10))
+        action = lambda chosen=value: _submit(session, session.engine.submit_affect, chosen)  # noqa: E731
+        ttk.Button(column, text=str(value), style="Choice.TButton", width=5,
+                   command=action, takefocus=False).pack()
+        ttk.Label(column, text=f"Press {number}", style="Hint.TLabel").pack(pady=(4, 0))
+        session.key_actions[str(number)] = action
+    ttk.Label(parent, text="Click a value or press 1 to 5. The next screen appears right away.",
               style="Hint.TLabel").pack(anchor="w", pady=(8, 0))
-    ttk.Label(parent, textvariable=error, style="CountdownLow.TLabel").pack(anchor="w", pady=(6, 0))
-    session.key_actions["return"] = submit
-    session.focus_target = entry
 
 
 def _tick(session, label) -> None:
@@ -227,7 +232,7 @@ def _render_stage(session, content, stage: str) -> None:
     _card(content, "", trial["ambiguous_text"], body_style="Stimulus.TLabel")
     _options_pair(content, trial)
     if stage == "affect":
-        _affect_form(session, content)
+        _affect_choices(session, content)
     elif stage == "perturbation":
         _card(content, "Perturbation step", engine.perturbation_instruction())
         done = lambda: _submit(session, engine.continue_perturbation)  # noqa: E731
@@ -262,6 +267,7 @@ def render_trial(session: Any) -> None:
         footer.pack(fill="x", side="bottom", pady=(12, 0))
         ttk.Label(footer, text="Esc: stop run  \u00b7  F11: full screen", style="Hint.TLabel").pack(side="left")
         ttk.Label(footer, text=session.save_status(), style="Hint.TLabel").pack(side="right")
+    session.mark_screen_drawn()
     try:
         session.focus_target.focus_set()
     except (tk.TclError, AttributeError):

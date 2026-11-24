@@ -3,11 +3,12 @@ File: tests/test_tfl.py
 
 Purpose
 -------
-Prove that TFL reproduces the 02_Execution reference procedure with
-default options, and test everything the Archive adds: the run options,
-saving after every answer, never overwriting a file, AppData output,
-standard-library analysis of one or several sessions, the command line,
-and the GUI adapter.
+Prove that TFL's trial generation, stimulus library, feedback wording, and
+analysis rules reproduce the 02_Execution reference, and test everything
+the Archive does differently or adds: the five-value affect rating, the
+12-second default timer, the run options, saving after every answer,
+never overwriting a file, AppData output, analysis of one or several
+sessions, the command line, and the GUI adapter.
 
 Communication / relationships
 -----------------------------
@@ -25,9 +26,9 @@ Settings / parameters
   using the process-wide random module; it is the oracle.
 - REFERENCE_STIMULI_SHA256: digest of the reference tfl_stimuli.csv rows
   serialized as sorted-key JSON.
-- Fifty-four tests: ReferenceParityTests (6), OptionTests (7),
-  ProcedureTests (6), SavingTests (9), AnalysisTests (6),
-  MultiSessionAnalysisTests (7), CommandLineTests (7), RegressionTests
+- Fifty-six tests: ReferenceParityTests (6), OptionTests (7),
+  ProcedureTests (7), SavingTests (9), AnalysisTests (6),
+  MultiSessionAnalysisTests (7), CommandLineTests (8), RegressionTests
   (4), IsolationTests (2).
 
 Edge cases
@@ -70,7 +71,7 @@ APPDATA = tempfile.mkdtemp(prefix="brisart_tfl_test_")
 os.environ["APPDATA"] = APPDATA
 
 from config.runtime import get_tfl_output_dir  # noqa: E402
-from frameworks.TFL import analysis, cli_runner, feedback  # noqa: E402
+from frameworks.TFL import analysis, cli_runner, feedback, settings  # noqa: E402
 from frameworks.TFL.config import (  # noqa: E402
     DEFAULT_OPTIONS, OPTION_SPECS, default_mode_description, get_default_config, resolve_run_config,
     restore_defaults, set_option,
@@ -208,7 +209,7 @@ class ReferenceParityTests(unittest.TestCase):
     def test_schema(self):
         self.assertEqual(TRIAL_FIELDNAMES[:27], REFERENCE_FIELDNAMES)
         self.assertEqual(TRIAL_FIELDNAMES[27:], ["response_timer_sec", "prediction_timed_out", "behavioral_timed_out",
-                                                 "session_label", "random_seed", "trial_status"])
+                                                 "protocol_edition", "session_label", "random_seed", "trial_status"])
 
     def test_feedback_wording(self):
         self.assertEqual(feedback.determine_feedback("A", "strongly_contradictory"), ("B", "strong"))
@@ -325,13 +326,34 @@ class ProcedureTests(unittest.TestCase):
                 self.assertEqual(list(engine.rows[0]), TRIAL_FIELDNAMES)
                 self.assertEqual(engine.rows[0]["trial_status"], "complete")
 
-    def test_affect_validation_matches_reference(self):
+    def test_affect_accepts_only_the_five_values(self):
+        self.assertEqual(settings.AFFECT_CHOICES, (0, 25, 50, 75, 100))
+        for chosen in settings.AFFECT_CHOICES:
+            with self.subTest(chosen=chosen):
+                engine, _ = single_trial_engine()
+                engine.continue_cue()
+                engine.submit_prediction("a")
+                self.assertTrue(engine.submit_affect(chosen))
+                self.assertEqual(engine.response["affect"], chosen)
         engine, _ = single_trial_engine()
         engine.continue_cue()
         engine.submit_prediction("a")
-        for bad in ("50.5", "-1", "101", "", "fifty", True, 50.0):
-            self.assertFalse(engine.submit_affect(bad), bad)
-        self.assertTrue(engine.submit_affect(" 50 "))
+        for bad in ("50.5", "-1", "101", "", "fifty", True, 50.0, 10, 24, 26, 60, 99, "10", "075 5"):
+            with self.subTest(bad=bad):
+                self.assertFalse(engine.submit_affect(bad), bad)
+        self.assertEqual(engine.active_stage(), "affect")      # nothing advanced, nothing recorded
+        self.assertEqual(engine.response["affect"], "")
+        self.assertTrue(engine.submit_affect(" 50 "))          # surrounding spaces are tolerated, as before
+        self.assertEqual(engine.response["affect"], 50)
+
+    def test_a_rejected_affect_is_not_saved(self):
+        calls = []
+        engine, _ = single_trial_engine(on_progress=calls.append)
+        engine.continue_cue()
+        engine.submit_prediction("A")
+        saved = len(calls)
+        self.assertFalse(engine.submit_affect(60))
+        self.assertEqual(len(calls), saved)
 
     def test_untimed_runs_have_no_deadline_and_measure_rt(self):
         engine, timer = single_trial_engine(options={"enable_response_timer": False})
@@ -361,7 +383,7 @@ class ProcedureTests(unittest.TestCase):
         for callback in stale.values():
             callback()
         self.assertEqual(engine.active_stage(), "affect")
-        engine.submit_affect("10")
+        engine.submit_affect("25")
         timer.advance(5)
         self.assertFalse(engine.submit_behavioral_choice("B"))
         row = engine.rows[0]
@@ -400,8 +422,8 @@ class SavingTests(unittest.TestCase):
             rows = read_csv(writer.path)
             self.assertEqual(len(rows), 1)
             self.assertEqual((rows[0]["prediction"], rows[0]["affect"], rows[0]["trial_status"]), ("B", "", "in_progress"))
-            engine.submit_affect("70")
-            self.assertEqual(read_csv(writer.path)[0]["affect"], "70")
+            engine.submit_affect("75")
+            self.assertEqual(read_csv(writer.path)[0]["affect"], "75")
 
     def test_files_are_never_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -653,7 +675,9 @@ class CommandLineTests(unittest.TestCase):
             rows = read_csv(path)
         self.assertEqual(len(rows), 120)
         self.assertEqual({r["run_mode"] for r in rows}, {"default_tfl"})
-        self.assertIn("TFL Baseline Reference Implementation v2.6", output)
+        self.assertEqual({r["protocol_edition"] for r in rows}, {"3.0"})
+        self.assertIn("Temporal Feedback Loop — Protocol Edition 3.0", output)
+        self.assertNotIn("TFL Baseline Reference Implementation v2.6", output)
         self.assertTrue(any(line.startswith("Feedback: Strong contradiction") for line in output))
 
     def test_options_menu_drives_the_option_table(self):
@@ -676,6 +700,23 @@ class CommandLineTests(unittest.TestCase):
                          {("modified_tfl", "20", "pilot02")})
         self.assertEqual(sum(r["perturbation_trial"] == "True" for r in rows), 3)
         self.assertTrue(any(line.startswith("\nNot changed: Trials Per Block must be from 1 to 200") for line in output))
+
+    def test_console_asks_again_until_the_affect_is_one_of_the_five_values(self):
+        offered = []
+
+        def ask(prompt):
+            if "Affect intensity" in prompt:
+                offered.append(prompt)
+                return ("60", "10", "50.0", "", "25")[len(offered) - 1] if len(offered) <= 5 else "75"
+            return self.answer(prompt)
+        with tempfile.TemporaryDirectory() as directory:
+            output = []
+            path = cli_runner.run_cli(ask, output.append, output_dir=directory, timer=NullSchedulerTimer(),
+                                      options={"trials_per_block": 1, "blocks": "affect"})
+            rows = read_csv(path)
+        self.assertIn("(0, 25, 50, 75, or 100)", offered[0])
+        self.assertEqual(output.count("Please enter one of: 0, 25, 50, 75, 100."), 4)
+        self.assertEqual([row["affect"] for row in rows], ["25"])
 
     def test_late_console_answer_is_a_timeout(self):
         timer = NullSchedulerTimer()

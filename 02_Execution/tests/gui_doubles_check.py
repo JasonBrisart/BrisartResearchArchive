@@ -5,10 +5,12 @@ Purpose
 -------
 Drive the GUI end to end with stand-in widget classes on machines without
 Tk: the Archive window and every page, the TFL options screen, a complete
-run answered only from the keyboard, the hand-off to the Results page when
-a run finishes, the held-key guard, Esc to stop a run, closing the Archive
-during a run, the Results page's single and multi-session analysis, and
-the scrolling helpers.
+run answered only from the keyboard (including the five affect values on
+the keys 1 to 5), the input guard that ignores answers right after a screen
+is drawn, the hand-off to the Results page when a run finishes, the
+held-key guard, Esc to stop a run, closing the Archive during a run, the
+Results page's single and multi-session analysis, and the scrolling
+helpers.
 
 Communication / relationships
 -----------------------------
@@ -27,6 +29,8 @@ Settings / parameters
 - APP: a stand-in for the Archive window exposing only what a TFL session
   may use (log, tfl_output_dir, show_page, analyze_tfl); calls to the last
   two are recorded in hand_offs.
+- INPUT_GUARD_SECONDS is set to 0 for the run so scripted answers are not
+  swallowed; the guard has its own check with the real delay.
 - Output goes to a temporary folder; APPDATA is set by the caller.
 - Prints "GUI adapter double check passed", then the Results and
   scrolling confirmations; test_tfl.py looks for the first.
@@ -103,12 +107,14 @@ from types import SimpleNamespace  # noqa: E402
 
 from gui.main_window import BrisartSuiteApp  # noqa: E402
 from gui.pages.results_page import chronological_selection  # noqa: E402
-from frameworks.TFL import gui_options  # noqa: E402
+from frameworks.TFL import gui_options, gui_session, settings  # noqa: E402
 from frameworks.TFL.gui_session import TFLGuiSession  # noqa: E402
 
+gui_session.INPUT_GUARD_SECONDS = 0
+
 OUTPUT = Path(tempfile.mkdtemp())
-KEY_ANSWERS = {"cue": "Return", "prediction": "a", "perturbation": "Return", "post_perturbation_probe": "u",
-               "behavioral_choice": "B", "content_probe": "U"}
+KEY_ANSWERS = {"cue": "Return", "prediction": "a", "affect": "3", "perturbation": "Return",
+               "post_perturbation_probe": "u", "behavioral_choice": "B", "content_probe": "U"}
 
 
 def key(session, keysym):
@@ -153,7 +159,8 @@ assert len(engine.trials) == 20 and {t["block"] for t in engine.trials} == {"bel
 assert session.writer.path.name.startswith("tfl_output_gui_check_")
 
 # Every screen publishes exactly the keys that answer it; the whole run is answered from the keyboard.
-expected_keys = {"cue": {"return"}, "prediction": {"a", "b"}, "affect": {"return"}, "perturbation": {"return"},
+expected_keys = {"cue": {"return"}, "prediction": {"a", "b"}, "affect": {"1", "2", "3", "4", "5"},
+                 "perturbation": {"return"},
                  "post_perturbation_probe": {"a", "b", "u"}, "behavioral_choice": {"a", "b"},
                  "content_probe": {"a", "b", "u"}}
 seen = set()
@@ -162,13 +169,11 @@ while not engine.completed:
     seen.add(stage)
     assert set(session.key_actions) == expected_keys[stage], (stage, session.key_actions)
     if stage == "affect":
-        assert key(session, "x") is None and engine.active_stage() == "affect"  # unmapped key does nothing
-        engine.submit_affect("55")
-        session.after_input()
-    else:
-        before = (len(engine.rows), stage)
-        assert key(session, KEY_ANSWERS[stage]) == "break"
-        assert (len(engine.rows), engine.active_stage()) != before, stage
+        for useless in ("x", "0", "6", "Return", "a"):   # only 1 to 5 answer affect; Enter and letters do nothing
+            assert key(session, useless) is None and engine.active_stage() == "affect", useless
+    before = (len(engine.rows), stage)
+    assert key(session, KEY_ANSWERS[stage]) == "break"
+    assert (len(engine.rows), engine.active_stage()) != before, stage
 assert seen == set(expected_keys), seen
 assert session.finished and session.writer.closed and session.writer.rows_saved == 20
 assert hand_offs == [("page", "Results"), ("analyze", session.writer.path)], hand_offs  # finished run -> Results
@@ -176,6 +181,7 @@ assert set(session.key_actions) == {"return"}  # completion screen: Enter closes
 import csv  # noqa: E402
 saved = list(csv.DictReader(session.writer.path.open(encoding="utf-8")))
 assert {row["prediction"] for row in saved} <= {"A", ""} and {row["behavioral_choice"] for row in saved} <= {"B", ""}
+assert {row["affect"] for row in saved} == {"50"}   # the key 3 is the third value, 50
 
 # Held-key guard: a held key acts once until released; focus loss forgets held keys.
 presses = []
@@ -222,6 +228,45 @@ assert first.writer.closed and first.engine.cancelled
 assert len(first.writer.path.read_text(encoding="utf-8").splitlines()) == 2
 print("GUI adapter double check passed")
 
+# Affect: every key 1 to 5 (and the keypad digits) records its own value and moves straight on.
+values = {}
+for keysym, expected in (("1", 0), ("2", 25), ("3", 50), ("4", 75), ("5", 100),
+                         ("KP_1", 0), ("KP_2", 25), ("KP_3", 50), ("KP_4", 75), ("KP_5", 100)):
+    probe = new_session()
+    probe.option_vars["trials_per_block"].set("1")
+    probe.option_vars["blocks"]["affect"].set(True)
+    key(probe, "Return")
+    key(probe, "Return")
+    key(probe, "a")
+    assert probe.engine.active_stage() == "affect"
+    assert key(probe, keysym) == "break"
+    assert probe.engine.response["affect"] == expected, (keysym, probe.engine.response["affect"])
+    assert probe.engine.active_stage() == "behavioral_choice"     # no Continue step
+    assert set(probe.key_actions) == {"a", "b"}                    # the screen has already changed
+    probe.end_run("check")
+    values[keysym] = expected
+assert sorted(set(values.values())) == list(settings.AFFECT_CHOICES)
+
+# Input guard: an answer right after a screen is drawn is ignored (a double-click cannot answer the next
+# question); once the guard has passed, the same answer is accepted. Esc and F11 are never guarded.
+gui_session.INPUT_GUARD_SECONDS = 60
+guarded = new_session()
+guarded.option_vars["trials_per_block"].set("1")
+key(guarded, "Return")                       # options screen is not guarded; the run starts
+assert guarded.engine.active_stage() == "cue"
+assert not guarded.accepting_input()
+assert key(guarded, "Return") == "break" and guarded.engine.active_stage() == "cue"   # swallowed
+guarded._ready_at = 0
+assert guarded.accepting_input()
+assert key(guarded, "Return") == "break" and guarded.engine.active_stage() == "prediction"
+assert not guarded.accepting_input()                                                   # the new screen guards again
+assert key(guarded, "a") == "break" and guarded.engine.active_stage() == "prediction"
+assert guarded.engine.response["prediction"] == ""
+assert key(guarded, "F11") == "break"        # not guarded
+guarded.end_run("check")
+gui_session.INPUT_GUARD_SECONDS = 0
+print("Affect buttons and input guard checks passed")
+
 # Results page: one session, several sessions (pooled), nothing selected, newest by default.
 from frameworks.TFL.headless import build_engine  # noqa: E402
 from frameworks.TFL.output import SessionWriter, list_session_files  # noqa: E402
@@ -232,7 +277,7 @@ while not engine2.completed:
     if stage == "cue":
         engine2.continue_cue()
     else:
-        method, value = {"prediction": ("submit_prediction", "B"), "affect": ("submit_affect", "10"),
+        method, value = {"prediction": ("submit_prediction", "B"), "affect": ("submit_affect", "25"),
                          "behavioral_choice": ("submit_behavioral_choice", "A"),
                          "content_probe": ("submit_content_probe", "U")}[stage]
         getattr(engine2, method)(value)
