@@ -46,8 +46,7 @@ Edge cases
 - file_hash() streams a file in 1 MB chunks rather than reading it
   whole, each chunk fed through BrisartHash256.update().
 - safe_read_text() reads at most max_bytes (5,000,000) and decodes them as
-  UTF-8 with errors="replace", so it never raises. Text in another
-  encoding, such as UTF-16 or Latin-1, comes back with replacement characters.
+  UTF-8 or BOM-marked UTF-16. File I/O errors propagate to the importer.
 - normalize_url("") returns ""; normalize_url() on a schemeless string
   assumes https and prepends it before parsing.
 - same_site() compares the netloc (host plus any port or user info),
@@ -63,7 +62,7 @@ Known limitations
   includes everyday words such as "file", "data", "use", "one" and "two", so
   a query made only of those words has no searchable terms.
 - term_variants() knows regular English plurals only.
-- safe_read_text() does not detect UTF-16 or Latin-1 (see Edge cases).
+- safe_read_text() does not guess non-BOM legacy encodings.
 
 Examples
 --------
@@ -217,10 +216,8 @@ def same_site(a: str, b: str) -> bool:
 
 
 def safe_read_text(path: Path, max_bytes: int = 5_000_000) -> str:
-    raw = path.read_bytes()[:max_bytes]
-    for encoding in ("utf-8", "utf-16", "latin-1"):
-        try:
-            return raw.decode(encoding, "replace")
-        except Exception:
-            continue
-    return raw.decode("utf-8", "replace")
+    with path.open("rb") as stream:
+        raw = stream.read(max(0, max_bytes))
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return raw.decode("utf-16", "replace")
+    return raw.decode("utf-8-sig", "replace")

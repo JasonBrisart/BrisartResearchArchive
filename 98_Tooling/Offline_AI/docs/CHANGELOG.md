@@ -4,6 +4,55 @@ All notable changes to BrisartAI are documented here, newest release first.
 
 ---
 
+## [1.4.0] - 2026-11-25
+
+### Release overview
+
+BrisartAI 1.4.0 improves offline retrieval, adds bounded typo recovery, and gives the desktop clearer library actions and search status. Brisart owns candidate selection, ranking and cited evidence; SQLite remains storage.
+
+### Changed
+
+- `knowledge/ranker.py` uses the existing SQLite postings for candidate retrieval. It groups selected English variants (such as expire/expiry and renew/renewal), drops question framing when a topic remains, and prioritizes how many distinct concepts occur together in the strongest body passage. Intent, title, phrase and document scores break ties within that coverage tier.
+- `knowledge/relevance_engine.py` supplies the shared passage splitter and concept matcher. It retains short lines, covers long unpunctuated text with overlapping windows, and walks sorted positions rather than testing every pair for proximity.
+- `knowledge/synthesizer.py` favors broader topic coverage over repeated words or generic comparison, causal and quantity cues. It suppresses weaker excerpts when stronger coverage is available, caps excerpts before spending the overall answer budget, and labels partial coverage.
+
+### Fixed
+
+- Explicit empty source scopes no longer fall through to unrestricted search, and phrase boosts respect word boundaries. Regression tests cover buried passages, scattered keyword decoys, compound terms, short cited answers, partial matches and comparison distractors.
+
+### Follow-up retrieval passes
+
+- `knowledge/relevance_engine.py` reuses tokenized passages from a bounded in-memory cache for short documents, with longer documents streamed without caching. A per-query term lookup counts matched concepts for both ranking and excerpts without re-tokenizing cached passages. The cache changes no persistent data.
+- `knowledge/ranker.py` prefers an exact, case-sensitive Python declaration or assignment over a mere mention when searching for a code-style identifier. The lexical shortlist still applies.
+- Passage extraction keeps short colon-ended field labels together with adjacent numeric or yes/no values. This prevents citations like “Permit fee:” from dropping the amount on the next line. Regression tests cover declaration-versus-mention ranking and split field values.
+- On the same 63-file, 20-question Linux benchmark with network syscalls blocked, median warm search time went from 131.7 ms to 52.4 ms. Correct first results increased from 9 to 10; top-five and top-ten results stayed at 18 and 20. These are follow-up measurements on the existing corpus, not independent relevance or Windows performance results.
+- The updated headless suite passed 278 tests and 7 subtests; all 4 offline replay checks passed.
+
+### Unified Brisart retrieval
+
+- The Brisart engine is the single content-retrieval path. Notes now use its relevance order and matching passage previews instead of substring counts. Collections and timeline lookups use the same query concepts and postings, without changing the timeline's chronological display. Historical web entries are not considered by these vault lookups.
+- The ranker fetches variants in bounded SQL batches and skips document-length work when there are no matching postings. SQLite stores and fetches records from ordinary tables; it does not run FTS or decide relevance. No BM25 library, TF-IDF package, embeddings, model or network service is used at runtime.
+- No schema, dependency, settings or version changes. Existing indexes remain usable. Source-management filename filters remain simple UI filters, not full-text search.
+
+- Verified 280 tests, 7 subtests and all four offline replay cases. The network-blocked 20-question benchmark kept the complete previous top-ten ordering for every query (10 first-place hits, 20 top-ten hits; 47.8 ms median warm query on this run). This verifies document ranking continuity, not note preview quality on a real library.
+
+### Desktop and reliability
+- `ui/sidebar.py`, `ui/theme.py` and `ui/app.py` group library and preference controls, distinguish the import action, show local file and note counts, and identify the active search scope. Help opens outside the transcript; Ctrl+L focuses the question and F1 opens Help.
+- `ui/chat_panel.py` retains draft text when Enter is pressed during a search. `ui/app.py` passes worker results through a queue so workers do not call Tk; the main loop controls the busy state and defers closing until the answer finishes.
+- `ui/dialogs.py` adds scrolling for long source lists and paths, Escape to close, and checkbox rollback with an error message when settings cannot be saved.
+- `core/settings.py` accepts malformed or non-object JSON safely, replaces the settings file atomically, and restores the prior toggle after failed writes. `core/session_memory.py` resolves equal timestamps using insertion order.
+- `util.py` honors the read limit before decoding and recognizes BOM-marked UTF-8 and UTF-16 for local text imports. Other legacy encodings are not guessed. Previously misdecoded files need reimporting to benefit.
+### Retrieval refinements and testing
+- `knowledge/ranker.py` now recovers a unique one-edit spelling neighbor for unmatched alphabetic terms in eligible sources. It keeps the first two letters fixed and skips ambiguous, oversized or unsupported cases. `knowledge/synthesizer.py` and `knowledge/vault.py` use the recovered forms for excerpts. Conversation answers disclose recovered spellings.
+- `knowledge/ranker.py` caches one scope's document lengths per index connection and refreshes after local writes or commits by another connection. The index schema and scoring formula are unchanged.
+- Added seven regression tests. The Linux headless application suite passed 287 tests and 7 subtests; all four replay fixtures passed. Tests used the supplied Brisart URL code and temporary standard-library stand-ins for missing Native APIs. Those stand-ins are not shipped and this run does not establish Official Native API parity.
+
+- `scripts/benchmark_retrieval.py` compared six configurations across 270 queries with network access blocked. Correct first results increased from 220 to 244 against the attached sibling baseline; see `docs/TESTING.md` for full comparisons, limits and reproducibility.
+
+### Compatibility and limits
+Existing SQLite indexes and settings remain usable without a schema migration or reindex. Keep the external Official Native API folder and the existing per-user data. Live Tk, Windows keyboard/layout behavior and Explorer drag-and-drop were not exercised. No auto-update or publication was performed.
+---
+
 ## [1.3.0] - 2026-11-25
 
 ### Release overview

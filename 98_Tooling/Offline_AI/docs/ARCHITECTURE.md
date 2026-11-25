@@ -7,7 +7,7 @@ BrisartAI is an offline-first Python research assistant with a Tk desktop and he
 1. `run.py` or `cli.py` installs the external native module directory through `brisart_ai/native_path.py`.
 2. The service opens the per-user SQLite index, settings and session memory.
 3. A question enters `core/conversation.py`, which normalizes it and selects only enabled `file` and `note` source types.
-4. `knowledge/ranker.py` ranks indexed evidence, and `knowledge/synthesizer.py` extracts cited passages.
+4. `knowledge/ranker.py` retrieves indexed candidates and reranks them by their strongest passage. `knowledge/synthesizer.py` shares the same query concepts and passage matching, then extracts cited excerpts.
 5. The response is returned to the CLI or Tk transcript and recorded in session memory.
 
 When both source toggles are off, the application returns a no-evidence answer rather than falling back to historical web rows.

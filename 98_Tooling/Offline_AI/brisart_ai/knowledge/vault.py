@@ -10,7 +10,7 @@ Communication / relationships
 -----------------------------
 - brisart_ai/core/service.py: calls add_note(), list_notes(), search_notes(),
   reindex_missing_notes() (once, at startup).
-- Imports brisart_ai.util.{now_ts, tokenize}; calls index.add_source().
+- Uses the shared Brisart ranker; calls index.add_source() to index notes.
 
 Settings / parameters
 ---------------------
@@ -36,9 +36,11 @@ usage.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-from brisart_ai.util import now_ts, tokenize
+from brisart_ai.knowledge.ranker import matching_source_ids, query_groups, search
+from brisart_ai.knowledge.relevance_engine import scored_passages
+from brisart_ai.util import now_ts
 
 ENTITY_RE = re.compile(r"\b[A-Z][A-Za-z0-9_]*(?:[ -][A-Z][A-Za-z0-9_]*){0,4}\b")
 
@@ -144,21 +146,15 @@ def _collection_id(index, name: str) -> Optional[int]:
 
 def add_sources_to_collection(index, collection_name: str, query: str) -> str:
     init_vault_schema(index)
+    groups = query_groups(query)
+    if not groups:
+        return "No searchable terms were provided."
     create_collection(index, collection_name)
     cid = _collection_id(index, collection_name)
     if cid is None:
         return f"Could not find collection: {collection_name}"
 
-    terms = tokenize(query)
-    if not terms:
-        return "No searchable terms were provided."
-
-    rows = index.conn.execute("SELECT id, title, location, text FROM sources").fetchall()
-    matched = []
-    for source_id, title, location, text in rows:
-        blob = f"{title or ''} {location or ''} {text or ''}".lower()
-        if any(term in blob for term in terms):
-            matched.append(source_id)
+    matched = matching_source_ids(index, groups, ("file", "note"))
 
     with index.conn:
         for source_id in matched:
@@ -244,70 +240,39 @@ def list_notes(index, limit: int = 20) -> str:
 
 
 def search_notes(index, query: str, limit: int = 10) -> str:
-    """Simple substring/count note search, independent of the ranked index."""
-    init_vault_schema(index)
-    terms = tokenize(query)
-    if not terms:
+    """Present Brisart-ranked notes with vault collection metadata."""
+    groups = query_groups(query)
+    if not groups:
         return "No searchable terms were provided."
-
-    rows = index.conn.execute(
-        """SELECT notes.id, notes.title, notes.body, collections.name
-           FROM notes LEFT JOIN collections ON collections.id = notes.collection_id
-           ORDER BY notes.updated_at DESC"""
-    ).fetchall()
-
-    scored: List[Tuple[int, Tuple[int, str, str, Optional[str]]]] = []
-    for row in rows:
-        note_id, title, body, collection = row
-        blob = f"{title} {body}".lower()
-        score = sum(blob.count(term) for term in terms)
-        if score > 0:
-            scored.append((score, row))
-    scored.sort(key=lambda item: item[0], reverse=True)
-
+    docs = search_notes_as_documents(index, query, limit)
     lines = ["Note Search", "", f"Query: {query}", ""]
-    if not scored:
-        lines.append("No matching notes found.")
-        return "\n".join(lines)
-
-    for score, row in scored[:limit]:
-        note_id, title, body, collection = row
-        preview = " ".join(body.split())[:220]
-        lines.append(f"[{note_id}] {title}")
-        lines.append(f"Score: {score}")
-        lines.append(f"Collection: {collection or 'unassigned'}")
-        lines.append(f"Preview: {preview}")
-        lines.append("")
+    if not docs:
+        return "\n".join(lines + ["No matching notes found."])
+    init_vault_schema(index)
+    for doc in docs:
+        location = doc["location"]
+        note_id = str(location).removeprefix("note:")
+        row = index.conn.execute(
+            "SELECT collections.name FROM notes LEFT JOIN collections "
+            "ON collections.id = notes.collection_id WHERE notes.id = ?", (note_id,),
+        ).fetchone()
+        # Preview the actual matching passage rather than unrelated opening text.
+        corrections = doc.get("query_corrections", {})
+        resolved = [forms | {corrections[term]} if term in corrections else forms
+                    for term, forms in groups.items()]
+        best = max(scored_passages(doc["text"], resolved),
+                   key=lambda entry: entry[1] + entry[1] / max(8, entry[2]),
+                   default=(doc["text"], 0, 0))
+        preview = " ".join(best[0].split())
+        lines.extend([f"[{note_id}] {doc['title']}", f"Score: {doc['score']:.3f}",
+                      f"Collection: {row[0] if row and row[0] else 'unassigned'}",
+                      f"Preview: {preview}", ""])
     return "\n".join(lines).rstrip()
 
 
 def search_notes_as_documents(index, query: str, limit: int = 10) -> List[Dict[str, object]]:
-    """Legacy substring-scored note search returning document dicts."""
-    init_vault_schema(index)
-    terms = tokenize(query)
-    if not terms:
-        return []
-
-    rows = index.conn.execute(
-        """SELECT notes.id, notes.title, notes.body, collections.name
-           FROM notes LEFT JOIN collections ON collections.id = notes.collection_id
-           ORDER BY notes.updated_at DESC"""
-    ).fetchall()
-
-    documents: List[Dict[str, object]] = []
-    for note_id, title, body, _collection in rows:
-        blob = f"{title} {body}".lower()
-        score = float(sum(blob.count(term) for term in terms))
-        if score <= 0:
-            continue
-        documents.append({
-            "id": f"note-{note_id}", "score": score, "source_type": "note",
-            "location": f"note:{note_id}", "title": title, "text": body,
-            "extension": "", "size_bytes": len(body), "indexed_at": 0,
-            "intent": "general", "intent_boosts": [], "intent_penalties": [],
-        })
-    documents.sort(key=lambda doc: doc["score"], reverse=True)
-    return documents[:limit]
+    """Use the same ranking as conversation, limited to indexed notes."""
+    return search(index, query, limit=limit, source_types=("note",))
 
 
 def extract_entities_from_text(text: str, limit: int = 30) -> List[str]:
@@ -440,43 +405,31 @@ def vault_report(index, top_entities: int = 25) -> str:
 
 
 def timeline(index, query: str, limit: int = 30) -> str:
-    """Simple chronological timeline of indexed sources matching a term."""
-    init_vault_schema(index)
-    terms = tokenize(query)
-    if not terms:
+    """Display the earliest indexed local sources matching Brisart query terms."""
+    groups = query_groups(query)
+    if not groups:
         return "No searchable timeline term was provided."
-
-    rows = index.conn.execute(
-        "SELECT id, source_type, title, location, text, indexed_at FROM sources ORDER BY indexed_at ASC"
-    ).fetchall()
-
-    matches = []
-    for source_id, source_type, title, location, text, indexed_at in rows:
-        blob = f"{title or ''} {location or ''} {text or ''}".lower()
-        score = sum(blob.count(term) for term in terms)
-        if score > 0:
-            matches.append((indexed_at, score, source_id, source_type, title, location))
-    matches.sort(key=lambda item: (item[0], -item[1]))
-
-    lines = []
-    lines.append("Timeline")
-    lines.append("--------")
-    lines.append(f"Topic: {query}")
-    lines.append("")
-    if not matches:
-        lines.append("No matching indexed sources found.")
-        return "\n".join(lines)
-
-    for indexed_at, score, source_id, source_type, title, location in matches[:limit]:
-        label = title or location
-        lines.append(f"- Indexed at: {indexed_at}")
-        lines.append(f"  Source: {source_type}: {label}")
-        lines.append(f"  Match score: {score}")
-        lines.append(f"  Location: {location}")
-        lines.append("")
-
-    if len(matches) > limit:
-        lines.append(f"... {len(matches) - limit} additional matching sources not shown.")
+    source_ids = set(matching_source_ids(index, groups, ("file", "note")))
+    lines = ["Timeline", "--------", f"Topic: {query}", ""]
+    if not source_ids:
+        return "\n".join(lines + ["No matching indexed sources found."])
+    remaining = max(0, limit)
+    if remaining:
+        rows = index.conn.execute("SELECT id, source_type, title, location, indexed_at "
+                                  "FROM sources ORDER BY indexed_at, id")
+        try:
+            for source_id, kind, title, location, indexed_at in rows:
+                if source_id in source_ids:
+                    lines.extend([f"- Indexed at: {indexed_at}", f"  Source: {kind}: {title or location}",
+                                  f"  Location: {location}", ""])
+                    remaining -= 1
+                    if not remaining:
+                        break
+        finally:
+            rows.close()
+    omitted = len(source_ids) - max(0, limit)
+    if omitted > 0:
+        lines.append(f"... {omitted} additional matching sources not shown.")
     return "\n".join(lines).rstrip()
 
 

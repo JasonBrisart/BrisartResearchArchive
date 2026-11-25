@@ -1,0 +1,4809 @@
+{
+  "documents": 124,
+  "sha256": "2d20bf0a3812f99c541558cb5b861d3cc6056e31b7488ec1a454b9d19f6efbf4",
+  "python": "3.12.16 (main, Nov 16 2026, 15:02:47) [GCC 13.2.0]",
+  "sqlite": "3.44.0",
+  "network": "seccomp; IPv4 and IPv6 socket probes denied",
+  "results": [
+    {
+      "kind": "identifier",
+      "query": "Where is aix_platform defined?",
+      "target": "_aix_support.py",
+      "rank": 1,
+      "results": [
+        "_aix_support.py",
+        "sysconfig.py",
+        "uuid.py",
+        "socket.py",
+        "posixpath.py",
+        "platform.py",
+        "hashlib.py",
+        "_threading_local.py",
+        "site.py",
+        "os.py"
+      ],
+      "ms": 0.47541000000705935
+    },
+    {
+      "kind": "docstring",
+      "query": "AIX filesets are identified by four decimal values: V.R.M.F.",
+      "target": "_aix_support.py",
+      "rank": 1,
+      "results": [
+        "_aix_support.py",
+        "sysconfig.py",
+        "_pylong.py",
+        "string.py",
+        "uuid.py",
+        "platform.py",
+        "fractions.py",
+        "gettext.py",
+        "decimal.py",
+        "numbers.py"
+      ],
+      "ms": 0.42399300002671225
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is aix_buildtag defined?",
+      "target": "_aix_support.py",
+      "rank": 1,
+      "results": [
+        "_aix_support.py",
+        "sysconfig.py",
+        "uuid.py",
+        "copyreg.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.13720699999453245
+    },
+    {
+      "kind": "docstring",
+      "query": "Return the platform_tag of the system Python was built on.",
+      "target": "_aix_support.py",
+      "rank": 1,
+      "results": [
+        "_aix_support.py",
+        "posixpath.py",
+        "ntpath.py",
+        "sysconfig.py",
+        "platform.py",
+        "uuid.py",
+        "crypt.py",
+        "filecmp.py",
+        "_osx_support.py",
+        "selectors.py"
+      ],
+      "ms": 0.3180950000114535
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Set defined?",
+      "target": "_collections_abc.py",
+      "rank": null,
+      "results": [
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.15556100001390405
+    },
+    {
+      "kind": "docstring",
+      "query": "A set is a finite, iterable container.",
+      "target": "_collections_abc.py",
+      "rank": 1,
+      "results": [
+        "_collections_abc.py",
+        "decimal.py",
+        "fractions.py",
+        "aifc.py",
+        "random.py",
+        "heapq.py",
+        "pkgutil.py",
+        "_weakrefset.py",
+        "reprlib.py",
+        "types.py"
+      ],
+      "ms": 0.23631199999840646
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is MutableSet defined?",
+      "target": "_collections_abc.py",
+      "rank": 1,
+      "results": [
+        "_collections_abc.py",
+        "weakref.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.14016299999752846
+    },
+    {
+      "kind": "docstring",
+      "query": "A mutable set is a finite, iterable container.",
+      "target": "_collections_abc.py",
+      "rank": 1,
+      "results": [
+        "_collections_abc.py",
+        "shelve.py",
+        "decimal.py",
+        "copy.py",
+        "fractions.py",
+        "_osx_support.py",
+        "aifc.py",
+        "random.py",
+        "heapq.py",
+        "pkgutil.py"
+      ],
+      "ms": 0.22192500000528526
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Mapping defined?",
+      "target": "_collections_abc.py",
+      "rank": 4,
+      "results": [
+        "codecs.py",
+        "_compat_pickle.py",
+        "pyclbr.py",
+        "_collections_abc.py",
+        "posixpath.py",
+        "sysconfig.py",
+        "mimetypes.py",
+        "cgi.py",
+        "types.py",
+        "sched.py"
+      ],
+      "ms": 0.1508319999743435
+    },
+    {
+      "kind": "docstring",
+      "query": "A Mapping is a generic container for associating key/value",
+      "target": "_collections_abc.py",
+      "rank": 2,
+      "results": [
+        "selectors.py",
+        "_collections_abc.py",
+        "mimetypes.py",
+        "weakref.py",
+        "zipimport.py",
+        "decimal.py",
+        "crypt.py",
+        "trace.py",
+        "_aix_support.py",
+        "bdb.py"
+      ],
+      "ms": 0.3304379999917728
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is MutableMapping defined?",
+      "target": "_collections_abc.py",
+      "rank": 1,
+      "results": [
+        "_collections_abc.py",
+        "shelve.py",
+        "weakref.py",
+        "os.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py"
+      ],
+      "ms": 0.110286999984055
+    },
+    {
+      "kind": "docstring",
+      "query": "A MutableMapping is a generic container for associating",
+      "target": "_collections_abc.py",
+      "rank": 1,
+      "results": [
+        "_collections_abc.py",
+        "weakref.py",
+        "shelve.py",
+        "selectors.py",
+        "os.py",
+        "decimal.py",
+        "crypt.py",
+        "mimetypes.py",
+        "_aix_support.py",
+        "bdb.py"
+      ],
+      "ms": 0.22273700000141616
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Sequence defined?",
+      "target": "_collections_abc.py",
+      "rank": 4,
+      "results": [
+        "sched.py",
+        "codecs.py",
+        "random.py",
+        "_collections_abc.py",
+        "reprlib.py",
+        "functools.py",
+        "posixpath.py",
+        "dis.py",
+        "ntpath.py",
+        "opcode.py"
+      ],
+      "ms": 0.14222699999777433
+    },
+    {
+      "kind": "docstring",
+      "query": "All the operations on a read-only sequence.",
+      "target": "_collections_abc.py",
+      "rank": 2,
+      "results": [
+        "operator.py",
+        "_collections_abc.py",
+        "dis.py",
+        "opcode.py",
+        "random.py",
+        "functools.py",
+        "telnetlib.py",
+        "posixpath.py",
+        "tempfile.py",
+        "tokenize.py"
+      ],
+      "ms": 0.21133499998882144
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is ByteString defined?",
+      "target": "_collections_abc.py",
+      "rank": 1,
+      "results": [
+        "_collections_abc.py",
+        "base64.py",
+        "smtplib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py"
+      ],
+      "ms": 0.10718000001475048
+    },
+    {
+      "kind": "docstring",
+      "query": "This unifies bytes and bytearray.",
+      "target": "_collections_abc.py",
+      "rank": 1,
+      "results": [
+        "_collections_abc.py",
+        "pprint.py",
+        "hmac.py",
+        "random.py",
+        "base64.py",
+        "copy.py",
+        "plistlib.py",
+        "wave.py",
+        "hashlib.py",
+        "bz2.py"
+      ],
+      "ms": 0.13466200002199002
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is MutableSequence defined?",
+      "target": "_collections_abc.py",
+      "rank": 1,
+      "results": [
+        "_collections_abc.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09556900002394286
+    },
+    {
+      "kind": "docstring",
+      "query": "All the operations on a read-write sequence.",
+      "target": "_collections_abc.py",
+      "rank": 2,
+      "results": [
+        "operator.py",
+        "_collections_abc.py",
+        "telnetlib.py",
+        "dis.py",
+        "opcode.py",
+        "functools.py",
+        "random.py",
+        "tempfile.py",
+        "tokenize.py",
+        "bz2.py"
+      ],
+      "ms": 0.26469499999848267
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is DecompressReader defined?",
+      "target": "_compression.py",
+      "rank": 1,
+      "results": [
+        "_compression.py",
+        "bz2.py",
+        "lzma.py",
+        "gzip.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py"
+      ],
+      "ms": 0.11811099997771635
+    },
+    {
+      "kind": "docstring",
+      "query": "Adapts the decompressor API to a RawIOBase reader API",
+      "target": "_compression.py",
+      "rank": 1,
+      "results": [
+        "_compression.py",
+        "gzip.py",
+        "codecs.py",
+        "io.py",
+        "socket.py",
+        "dis.py",
+        "csv.py",
+        "cgitb.py",
+        "nntplib.py",
+        "gettext.py"
+      ],
+      "ms": 0.1436289999787732
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is ParserBase defined?",
+      "target": "_markupbase.py",
+      "rank": 1,
+      "results": [
+        "_markupbase.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10297200000763951
+    },
+    {
+      "kind": "docstring",
+      "query": "Parser base class which provides some common support methods used",
+      "target": "_markupbase.py",
+      "rank": 1,
+      "results": [
+        "_markupbase.py",
+        "platform.py",
+        "string.py",
+        "cgi.py",
+        "uuid.py",
+        "nntplib.py",
+        "trace.py",
+        "cProfile.py",
+        "compileall.py",
+        "calendar.py"
+      ],
+      "ms": 0.424334000001636
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is compiler_fixup defined?",
+      "target": "_osx_support.py",
+      "rank": 1,
+      "results": [
+        "_osx_support.py",
+        "sysconfig.py",
+        "__future__.py",
+        "compileall.py",
+        "dis.py",
+        "_threading_local.py",
+        "posixpath.py",
+        "runpy.py",
+        "types.py",
+        "fractions.py"
+      ],
+      "ms": 0.20515399998544126
+    },
+    {
+      "kind": "docstring",
+      "query": "This function will strip '-isysroot PATH' and '-arch ARCH' from the",
+      "target": "_osx_support.py",
+      "rank": 1,
+      "results": [
+        "_osx_support.py",
+        "platform.py",
+        "pstats.py",
+        "compileall.py",
+        "mailcap.py",
+        "sysconfig.py",
+        "ntpath.py",
+        "site.py",
+        "gettext.py",
+        "cgi.py"
+      ],
+      "ms": 0.27713899999071145
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is customize_config_vars defined?",
+      "target": "_osx_support.py",
+      "rank": 1,
+      "results": [
+        "_osx_support.py",
+        "sysconfig.py",
+        "_aix_support.py",
+        "site.py",
+        "random.py",
+        "bisect.py",
+        "_sitebuiltins.py",
+        "cgitb.py",
+        "posixpath.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.16193300001532407
+    },
+    {
+      "kind": "docstring",
+      "query": "Customize Python build configuration variables.",
+      "target": "_osx_support.py",
+      "rank": 1,
+      "results": [
+        "_osx_support.py",
+        "sysconfig.py",
+        "site.py",
+        "_aix_support.py",
+        "platform.py",
+        "opcode.py",
+        "cProfile.py",
+        "bisect.py",
+        "os.py",
+        "pprint.py"
+      ],
+      "ms": 0.2161339999986467
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is customize_compiler defined?",
+      "target": "_osx_support.py",
+      "rank": 1,
+      "results": [
+        "_osx_support.py",
+        "_threading_local.py",
+        "sysconfig.py",
+        "bisect.py",
+        "_sitebuiltins.py",
+        "textwrap.py",
+        "cProfile.py",
+        "site.py",
+        "warnings.py",
+        "__future__.py"
+      ],
+      "ms": 0.16010900000651418
+    },
+    {
+      "kind": "docstring",
+      "query": "Customize compiler path and configuration variables.",
+      "target": "_osx_support.py",
+      "rank": 1,
+      "results": [
+        "_osx_support.py",
+        "sysconfig.py",
+        "site.py",
+        "os.py",
+        "bisect.py",
+        "cProfile.py",
+        "platform.py",
+        "_aix_support.py",
+        "py_compile.py",
+        "textwrap.py"
+      ],
+      "ms": 0.25741099997844685
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is get_cache_token defined?",
+      "target": "_py_abc.py",
+      "rank": 1,
+      "results": [
+        "_py_abc.py",
+        "abc.py",
+        "functools.py",
+        "trace.py",
+        "linecache.py",
+        "tokenize.py",
+        "gettext.py",
+        "shlex.py",
+        "netrc.py",
+        "nntplib.py"
+      ],
+      "ms": 0.23824499999136606
+    },
+    {
+      "kind": "docstring",
+      "query": "Returns the current ABC cache token.",
+      "target": "_py_abc.py",
+      "rank": 1,
+      "results": [
+        "_py_abc.py",
+        "abc.py",
+        "functools.py",
+        "trace.py",
+        "linecache.py",
+        "tokenize.py",
+        "shelve.py",
+        "gettext.py",
+        "shlex.py",
+        "netrc.py"
+      ],
+      "ms": 0.32222300001194526
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is ABCMeta defined?",
+      "target": "_py_abc.py",
+      "rank": 2,
+      "results": [
+        "abc.py",
+        "_py_abc.py",
+        "_collections_abc.py",
+        "numbers.py",
+        "io.py",
+        "selectors.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py"
+      ],
+      "ms": 0.11385300001620635
+    },
+    {
+      "kind": "docstring",
+      "query": "Metaclass for defining Abstract Base Classes (ABCs).",
+      "target": "_py_abc.py",
+      "rank": 2,
+      "results": [
+        "abc.py",
+        "_py_abc.py",
+        "types.py",
+        "_collections_abc.py",
+        "numbers.py",
+        "io.py",
+        "functools.py",
+        "selectors.py",
+        "contextlib.py",
+        "os.py"
+      ],
+      "ms": 0.280986000007033
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is int_to_decimal defined?",
+      "target": "_pylong.py",
+      "rank": 4,
+      "results": [
+        "fractions.py",
+        "numbers.py",
+        "decimal.py",
+        "_pylong.py",
+        "_aix_support.py",
+        "gettext.py",
+        "string.py",
+        "pstats.py",
+        "copyreg.py",
+        "__future__.py"
+      ],
+      "ms": 0.17008799997597635
+    },
+    {
+      "kind": "docstring",
+      "query": "Asymptotically fast conversion of an 'int' to Decimal.",
+      "target": "_pylong.py",
+      "rank": 1,
+      "results": [
+        "_pylong.py",
+        "numbers.py",
+        "fractions.py",
+        "string.py",
+        "gettext.py",
+        "decimal.py",
+        "gzip.py",
+        "opcode.py",
+        "pipes.py",
+        "xdrlib.py"
+      ],
+      "ms": 0.18922299997825576
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is int_to_decimal_string defined?",
+      "target": "_pylong.py",
+      "rank": 4,
+      "results": [
+        "fractions.py",
+        "numbers.py",
+        "decimal.py",
+        "_pylong.py",
+        "_aix_support.py",
+        "gettext.py",
+        "string.py",
+        "pstats.py",
+        "copyreg.py",
+        "__future__.py"
+      ],
+      "ms": 0.20109600001205763
+    },
+    {
+      "kind": "docstring",
+      "query": "Asymptotically fast conversion of an 'int' to a decimal string.",
+      "target": "_pylong.py",
+      "rank": 1,
+      "results": [
+        "_pylong.py",
+        "numbers.py",
+        "fractions.py",
+        "string.py",
+        "gettext.py",
+        "decimal.py",
+        "gzip.py",
+        "opcode.py",
+        "pipes.py",
+        "xdrlib.py"
+      ],
+      "ms": 0.2610079999953996
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is int_from_string defined?",
+      "target": "_pylong.py",
+      "rank": null,
+      "results": [
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.19217999999909807
+    },
+    {
+      "kind": "docstring",
+      "query": "Asymptotically fast version of PyLong_FromString(), conversion",
+      "target": "_pylong.py",
+      "rank": 1,
+      "results": [
+        "_pylong.py",
+        "gzip.py",
+        "opcode.py",
+        "string.py",
+        "pipes.py",
+        "xdrlib.py",
+        "numbers.py",
+        "nturl2path.py",
+        "random.py",
+        "bisect.py"
+      ],
+      "ms": 0.19121700000823694
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is str_to_int defined?",
+      "target": "_pylong.py",
+      "rank": null,
+      "results": [
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.1925400000004629
+    },
+    {
+      "kind": "docstring",
+      "query": "Asymptotically fast version of decimal string to 'int' conversion.",
+      "target": "_pylong.py",
+      "rank": 1,
+      "results": [
+        "_pylong.py",
+        "numbers.py",
+        "fractions.py",
+        "string.py",
+        "gettext.py",
+        "decimal.py",
+        "gzip.py",
+        "opcode.py",
+        "pipes.py",
+        "_aix_support.py"
+      ],
+      "ms": 0.35953300002233846
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is int_divmod defined?",
+      "target": "_pylong.py",
+      "rank": 2,
+      "results": [
+        "numbers.py",
+        "_pylong.py",
+        "fractions.py",
+        "sunau.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py"
+      ],
+      "ms": 0.2065770000001521
+    },
+    {
+      "kind": "docstring",
+      "query": "Asymptotically fast replacement for divmod, for 'int'.",
+      "target": "_pylong.py",
+      "rank": 1,
+      "results": [
+        "_pylong.py",
+        "numbers.py",
+        "fractions.py",
+        "opcode.py",
+        "gzip.py",
+        "random.py",
+        "heapq.py",
+        "bisect.py",
+        "sunau.py",
+        "cProfile.py"
+      ],
+      "ms": 0.22086399999921014
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is LocaleTime defined?",
+      "target": "_strptime.py",
+      "rank": 1,
+      "results": [
+        "_strptime.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10174999999890133
+    },
+    {
+      "kind": "docstring",
+      "query": "Stores and handles locale-specific information related to time.",
+      "target": "_strptime.py",
+      "rank": 1,
+      "results": [
+        "_strptime.py",
+        "site.py",
+        "profile.py",
+        "trace.py",
+        "code.py",
+        "socket.py",
+        "textwrap.py",
+        "cProfile.py",
+        "sysconfig.py",
+        "platform.py"
+      ],
+      "ms": 0.311342999992803
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is TimeRE defined?",
+      "target": "_strptime.py",
+      "rank": 4,
+      "results": [
+        "profile.py",
+        "timeit.py",
+        "cProfile.py",
+        "_strptime.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py"
+      ],
+      "ms": 0.12114699998733158
+    },
+    {
+      "kind": "docstring",
+      "query": "Handle conversion from format directives to regexes.",
+      "target": "_strptime.py",
+      "rank": 1,
+      "results": [
+        "_strptime.py",
+        "pipes.py",
+        "textwrap.py",
+        "warnings.py",
+        "_pylong.py",
+        "tokenize.py",
+        "string.py",
+        "fractions.py",
+        "codecs.py",
+        "xdrlib.py"
+      ],
+      "ms": 0.4309759999898688
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is abstractmethod defined?",
+      "target": "abc.py",
+      "rank": 2,
+      "results": [
+        "numbers.py",
+        "abc.py",
+        "_collections_abc.py",
+        "_py_abc.py",
+        "selectors.py",
+        "functools.py",
+        "contextlib.py",
+        "os.py",
+        "copyreg.py",
+        "_aix_support.py"
+      ],
+      "ms": 0.13991099999088874
+    },
+    {
+      "kind": "docstring",
+      "query": "A decorator indicating abstract methods.",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "functools.py",
+        "_py_abc.py",
+        "contextlib.py",
+        "signal.py",
+        "reprlib.py",
+        "numbers.py",
+        "heapq.py",
+        "io.py",
+        "rlcompleter.py"
+      ],
+      "ms": 0.19316200001640027
+    },
+    {
+      "kind": "typo",
+      "query": "abstractmetohd",
+      "target": "abc.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.018355000008796196
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is abstractclassmethod defined?",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09538899999483874
+    },
+    {
+      "kind": "docstring",
+      "query": "A decorator indicating abstract classmethods.",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "functools.py",
+        "contextlib.py",
+        "_py_abc.py",
+        "_collections_abc.py",
+        "signal.py",
+        "reprlib.py",
+        "numbers.py",
+        "heapq.py",
+        "queue.py"
+      ],
+      "ms": 0.1833629999907771
+    },
+    {
+      "kind": "typo",
+      "query": "abstractclassmetohd",
+      "target": "abc.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.02466600000161634
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is abstractstaticmethod defined?",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09733199999573117
+    },
+    {
+      "kind": "docstring",
+      "query": "A decorator indicating abstract staticmethods.",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "contextlib.py",
+        "functools.py",
+        "_py_abc.py",
+        "signal.py",
+        "reprlib.py",
+        "numbers.py",
+        "heapq.py",
+        "io.py",
+        "rlcompleter.py"
+      ],
+      "ms": 0.12803900000335489
+    },
+    {
+      "kind": "typo",
+      "query": "abstractstaticmetohd",
+      "target": "abc.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.01621999999201762
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is abstractproperty defined?",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09134199999039083
+    },
+    {
+      "kind": "docstring",
+      "query": "A decorator indicating abstract properties.",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "functools.py",
+        "_py_abc.py",
+        "contextlib.py",
+        "numbers.py",
+        "rlcompleter.py",
+        "heapq.py",
+        "types.py",
+        "signal.py",
+        "reprlib.py"
+      ],
+      "ms": 0.14623300000948802
+    },
+    {
+      "kind": "typo",
+      "query": "abstractpropetry",
+      "target": "abc.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.0157190000038554
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is update_abstractmethods defined?",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "_collections_abc.py",
+        "_py_abc.py",
+        "numbers.py",
+        "functools.py",
+        "selectors.py",
+        "os.py",
+        "contextlib.py",
+        "_compat_pickle.py",
+        "hashlib.py"
+      ],
+      "ms": 0.1312050000024101
+    },
+    {
+      "kind": "docstring",
+      "query": "Recalculate the set of abstract methods of an abstract class.",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "_compression.py",
+        "_py_abc.py",
+        "numbers.py",
+        "functools.py",
+        "io.py",
+        "_collections_abc.py",
+        "contextlib.py",
+        "types.py",
+        "selectors.py"
+      ],
+      "ms": 0.25082999999881395
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is ABC defined?",
+      "target": "abc.py",
+      "rank": 2,
+      "results": [
+        "_py_abc.py",
+        "abc.py",
+        "numbers.py",
+        "io.py",
+        "types.py",
+        "functools.py",
+        "_collections_abc.py",
+        "os.py",
+        "contextlib.py",
+        "weakref.py"
+      ],
+      "ms": 0.14835799998991206
+    },
+    {
+      "kind": "docstring",
+      "query": "Helper class that provides a standard way to create an ABC using",
+      "target": "abc.py",
+      "rank": 1,
+      "results": [
+        "abc.py",
+        "contextlib.py",
+        "functools.py",
+        "_py_abc.py",
+        "_collections_abc.py",
+        "shelve.py",
+        "weakref.py",
+        "numbers.py",
+        "warnings.py",
+        "runpy.py"
+      ],
+      "ms": 0.3689400000155274
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is b64encode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.1286810000067362
+    },
+    {
+      "kind": "docstring",
+      "query": "Encode the bytes-like object s using Base64 and return a bytes object.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "plistlib.py",
+        "smtplib.py",
+        "mimetypes.py",
+        "cgi.py",
+        "os.py",
+        "codecs.py",
+        "tempfile.py",
+        "tokenize.py"
+      ],
+      "ms": 33.85434099999429
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is b64decode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.2421630000242203
+    },
+    {
+      "kind": "docstring",
+      "query": "Decode the Base64 encoded bytes-like object or ASCII string s.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "plistlib.py",
+        "secrets.py",
+        "smtplib.py",
+        "tokenize.py",
+        "quopri.py",
+        "uu.py",
+        "cgi.py",
+        "nntplib.py",
+        "zipapp.py"
+      ],
+      "ms": 0.7262689999834038
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is standard_b64encode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "copyreg.py",
+        "abc.py",
+        "mimetypes.py",
+        "random.py",
+        "socketserver.py",
+        "numbers.py",
+        "sysconfig.py",
+        "ftplib.py"
+      ],
+      "ms": 0.20293899999046516
+    },
+    {
+      "kind": "docstring",
+      "query": "Encode bytes-like object s using the standard Base64 alphabet.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "plistlib.py",
+        "smtplib.py",
+        "mimetypes.py",
+        "site.py",
+        "ftplib.py",
+        "codecs.py",
+        "os.py",
+        "nntplib.py"
+      ],
+      "ms": 0.5082710000010593
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is standard_b64decode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "copyreg.py",
+        "abc.py",
+        "mimetypes.py",
+        "random.py",
+        "socketserver.py",
+        "numbers.py",
+        "sysconfig.py",
+        "ftplib.py",
+        "codecs.py"
+      ],
+      "ms": 0.1705990000004931
+    },
+    {
+      "kind": "docstring",
+      "query": "Decode bytes encoded with the standard Base64 alphabet.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "plistlib.py",
+        "smtplib.py",
+        "site.py",
+        "mimetypes.py",
+        "codecs.py",
+        "nntplib.py",
+        "uu.py",
+        "quopri.py"
+      ],
+      "ms": 0.2735719999975572
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is urlsafe_b64encode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.1226290000033714
+    },
+    {
+      "kind": "docstring",
+      "query": "Encode bytes using the URL- and filesystem-safe Base64 alphabet.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "plistlib.py",
+        "mimetypes.py",
+        "site.py",
+        "uuid.py",
+        "webbrowser.py",
+        "smtplib.py",
+        "tempfile.py",
+        "posixpath.py"
+      ],
+      "ms": 0.41678900001329566
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is urlsafe_b64decode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.11297099999296734
+    },
+    {
+      "kind": "docstring",
+      "query": "Decode bytes using the URL- and filesystem-safe Base64 alphabet.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "secrets.py",
+        "plistlib.py",
+        "site.py",
+        "uuid.py",
+        "webbrowser.py",
+        "mimetypes.py",
+        "smtplib.py",
+        "os.py",
+        "telnetlib.py"
+      ],
+      "ms": 0.33628899998916495
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is b16encode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10349299998324568
+    },
+    {
+      "kind": "docstring",
+      "query": "Encode the bytes-like object s using Base16 and return a bytes object.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "cgi.py",
+        "os.py",
+        "codecs.py",
+        "tempfile.py",
+        "tokenize.py",
+        "zipapp.py",
+        "gzip.py",
+        "sunau.py",
+        "quopri.py"
+      ],
+      "ms": 0.552673999976605
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is b16decode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10620800000538111
+    },
+    {
+      "kind": "docstring",
+      "query": "Decode the Base16 encoded bytes-like object or ASCII string s.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "tokenize.py",
+        "quopri.py",
+        "plistlib.py",
+        "uu.py",
+        "cgi.py",
+        "secrets.py",
+        "nntplib.py",
+        "zipapp.py",
+        "zipimport.py"
+      ],
+      "ms": 0.8592570000018895
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is a85encode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.12817900000072768
+    },
+    {
+      "kind": "docstring",
+      "query": "Encode bytes-like object b using Ascii85 and return a bytes object.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "cgi.py",
+        "os.py",
+        "codecs.py",
+        "tempfile.py",
+        "tokenize.py",
+        "zipapp.py",
+        "gzip.py",
+        "sunau.py",
+        "quopri.py"
+      ],
+      "ms": 0.5508410000061303
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is a85decode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.13144599998327067
+    },
+    {
+      "kind": "docstring",
+      "query": "Decode the Ascii85 encoded bytes-like object or ASCII string b.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "tokenize.py",
+        "quopri.py",
+        "plistlib.py",
+        "uu.py",
+        "cgi.py",
+        "secrets.py",
+        "nntplib.py",
+        "zipapp.py",
+        "zipimport.py"
+      ],
+      "ms": 0.44044400002007933
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is b85encode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10231100000623883
+    },
+    {
+      "kind": "docstring",
+      "query": "Encode bytes-like object b in base85 format and return a bytes object.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "cgi.py",
+        "os.py",
+        "codecs.py",
+        "tempfile.py",
+        "tokenize.py",
+        "zipapp.py",
+        "gzip.py",
+        "sunau.py",
+        "quopri.py"
+      ],
+      "ms": 0.5121180000173808
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is b85decode defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10456499998667823
+    },
+    {
+      "kind": "docstring",
+      "query": "Decode the base85-encoded bytes-like object or ASCII string b",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "tokenize.py",
+        "quopri.py",
+        "plistlib.py",
+        "uu.py",
+        "cgi.py",
+        "secrets.py",
+        "nntplib.py",
+        "zipapp.py",
+        "zipimport.py"
+      ],
+      "ms": 0.48388500002261026
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is encodebytes defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "plistlib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.1085230000228421
+    },
+    {
+      "kind": "docstring",
+      "query": "Encode a bytestring into a bytes object containing multiple lines",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "_collections_abc.py",
+        "compileall.py",
+        "smtplib.py",
+        "bz2.py",
+        "codecs.py",
+        "lzma.py",
+        "ftplib.py",
+        "cgi.py",
+        "tempfile.py"
+      ],
+      "ms": 0.3576599999917107
+    },
+    {
+      "kind": "typo",
+      "query": "encodebyets",
+      "target": "base64.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.02085900001702612
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is decodebytes defined?",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "smtplib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.10575700000003962
+    },
+    {
+      "kind": "docstring",
+      "query": "Decode a bytestring of base-64 data into a bytes object.",
+      "target": "base64.py",
+      "rank": 1,
+      "results": [
+        "base64.py",
+        "_collections_abc.py",
+        "plistlib.py",
+        "_aix_support.py",
+        "_osx_support.py",
+        "hmac.py",
+        "uuid.py",
+        "smtplib.py",
+        "codecs.py",
+        "dis.py"
+      ],
+      "ms": 0.30892799998127884
+    },
+    {
+      "kind": "typo",
+      "query": "decodebyets",
+      "target": "base64.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.01671100000066872
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is BdbQuit defined?",
+      "target": "bdb.py",
+      "rank": 1,
+      "results": [
+        "bdb.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09413600000129918
+    },
+    {
+      "kind": "docstring",
+      "query": "Exception to give up completely.",
+      "target": "bdb.py",
+      "rank": null,
+      "results": [
+        "rlcompleter.py",
+        "cmd.py",
+        "codeop.py",
+        "queue.py",
+        "site.py",
+        "calendar.py",
+        "random.py",
+        "profile.py",
+        "code.py",
+        "socketserver.py"
+      ],
+      "ms": 0.21372999998447995
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Bdb defined?",
+      "target": "bdb.py",
+      "rank": 1,
+      "results": [
+        "bdb.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.12133699999594683
+    },
+    {
+      "kind": "docstring",
+      "query": "Generic Python debugger base class.",
+      "target": "bdb.py",
+      "rank": 1,
+      "results": [
+        "bdb.py",
+        "types.py",
+        "functools.py",
+        "sysconfig.py",
+        "contextlib.py",
+        "_collections_abc.py",
+        "random.py",
+        "tty.py",
+        "pyclbr.py",
+        "uuid.py"
+      ],
+      "ms": 0.3016739999850415
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is set_trace defined?",
+      "target": "bdb.py",
+      "rank": 1,
+      "results": [
+        "bdb.py",
+        "profile.py",
+        "tracemalloc.py",
+        "trace.py",
+        "site.py",
+        "copy.py",
+        "code.py",
+        "heapq.py",
+        "warnings.py",
+        "copyreg.py"
+      ],
+      "ms": 0.17764199998282493
+    },
+    {
+      "kind": "docstring",
+      "query": "Start debugging with a Bdb instance from the caller's frame.",
+      "target": "bdb.py",
+      "rank": 1,
+      "results": [
+        "bdb.py",
+        "profile.py",
+        "modulefinder.py",
+        "trace.py",
+        "aifc.py",
+        "ftplib.py",
+        "tracemalloc.py",
+        "pipes.py",
+        "shlex.py",
+        "warnings.py"
+      ],
+      "ms": 0.4095860000177254
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is checkfuncname defined?",
+      "target": "bdb.py",
+      "rank": 1,
+      "results": [
+        "bdb.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.17403500001478278
+    },
+    {
+      "kind": "docstring",
+      "query": "Return True if break should happen here.",
+      "target": "bdb.py",
+      "rank": null,
+      "results": [
+        "code.py",
+        "_pylong.py",
+        "selectors.py",
+        "weakref.py",
+        "shelve.py",
+        "pyclbr.py",
+        "operator.py",
+        "_strptime.py",
+        "sysconfig.py",
+        "timeit.py"
+      ],
+      "ms": 0.3676780000034796
+    },
+    {
+      "kind": "typo",
+      "query": "checkfuncnmae",
+      "target": "bdb.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.020086999995783117
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is effective defined?",
+      "target": "bdb.py",
+      "rank": 1,
+      "results": [
+        "bdb.py",
+        "site.py",
+        "fileinput.py",
+        "opcode.py",
+        "shelve.py",
+        "posixpath.py",
+        "codeop.py",
+        "hmac.py",
+        "os.py",
+        "codecs.py"
+      ],
+      "ms": 0.1261460000137049
+    },
+    {
+      "kind": "docstring",
+      "query": "Return (active breakpoint, delete temporary flag) or (None, None) as",
+      "target": "bdb.py",
+      "rank": 1,
+      "results": [
+        "bdb.py",
+        "tempfile.py",
+        "stat.py",
+        "cgi.py",
+        "types.py",
+        "fileinput.py",
+        "pipes.py",
+        "ftplib.py",
+        "socketserver.py",
+        "poplib.py"
+      ],
+      "ms": 0.3680279999969116
+    },
+    {
+      "kind": "typo",
+      "query": "effectvie",
+      "target": "bdb.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.021400000008497955
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is insort_right defined?",
+      "target": "bisect.py",
+      "rank": 1,
+      "results": [
+        "bisect.py",
+        "reprlib.py",
+        "abc.py",
+        "filecmp.py",
+        "ftplib.py",
+        "numbers.py",
+        "trace.py",
+        "socket.py",
+        "bdb.py",
+        "codecs.py"
+      ],
+      "ms": 0.14551199998891207
+    },
+    {
+      "kind": "docstring",
+      "query": "Insert item x in list a, and keep it sorted assuming a is sorted.",
+      "target": "bisect.py",
+      "rank": 1,
+      "results": [
+        "bisect.py",
+        "heapq.py",
+        "rlcompleter.py",
+        "pkgutil.py",
+        "profile.py",
+        "functools.py",
+        "cProfile.py",
+        "tokenize.py",
+        "site.py",
+        "graphlib.py"
+      ],
+      "ms": 0.2838309999901867
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is bisect_right defined?",
+      "target": "bisect.py",
+      "rank": 1,
+      "results": [
+        "bisect.py",
+        "random.py",
+        "reprlib.py",
+        "abc.py",
+        "filecmp.py",
+        "ftplib.py",
+        "numbers.py",
+        "trace.py",
+        "socket.py",
+        "bdb.py"
+      ],
+      "ms": 0.14377799999465424
+    },
+    {
+      "kind": "docstring",
+      "query": "Return the index where to insert item x in list a, assuming a is sorted.",
+      "target": "bisect.py",
+      "rank": 1,
+      "results": [
+        "bisect.py",
+        "heapq.py",
+        "rlcompleter.py",
+        "profile.py",
+        "_collections_abc.py",
+        "_osx_support.py",
+        "pkgutil.py",
+        "_strptime.py",
+        "weakref.py",
+        "functools.py"
+      ],
+      "ms": 0.45877900001300986
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is insort_left defined?",
+      "target": "bisect.py",
+      "rank": 1,
+      "results": [
+        "bisect.py",
+        "reprlib.py",
+        "filecmp.py",
+        "ftplib.py",
+        "compileall.py",
+        "posixpath.py",
+        "textwrap.py",
+        "sched.py",
+        "pstats.py",
+        "os.py"
+      ],
+      "ms": 0.14718500000299173
+    },
+    {
+      "kind": "docstring",
+      "query": "Insert item x in list a, and keep it sorted assuming a is sorted.",
+      "target": "bisect.py",
+      "rank": 1,
+      "results": [
+        "bisect.py",
+        "heapq.py",
+        "rlcompleter.py",
+        "pkgutil.py",
+        "profile.py",
+        "functools.py",
+        "cProfile.py",
+        "tokenize.py",
+        "site.py",
+        "graphlib.py"
+      ],
+      "ms": 0.2711479999959465
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is bisect_left defined?",
+      "target": "bisect.py",
+      "rank": 1,
+      "results": [
+        "bisect.py",
+        "random.py",
+        "reprlib.py",
+        "filecmp.py",
+        "ftplib.py",
+        "compileall.py",
+        "posixpath.py",
+        "textwrap.py",
+        "sched.py",
+        "pstats.py"
+      ],
+      "ms": 0.14219700000239754
+    },
+    {
+      "kind": "docstring",
+      "query": "Return the index where to insert item x in list a, assuming a is sorted.",
+      "target": "bisect.py",
+      "rank": 1,
+      "results": [
+        "bisect.py",
+        "heapq.py",
+        "rlcompleter.py",
+        "profile.py",
+        "_collections_abc.py",
+        "_osx_support.py",
+        "pkgutil.py",
+        "_strptime.py",
+        "weakref.py",
+        "functools.py"
+      ],
+      "ms": 0.45201500000757733
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is BZ2File defined?",
+      "target": "bz2.py",
+      "rank": 1,
+      "results": [
+        "bz2.py",
+        "fileinput.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.10792199998377328
+    },
+    {
+      "kind": "docstring",
+      "query": "A file object providing transparent bzip2 (de)compression.",
+      "target": "bz2.py",
+      "rank": 1,
+      "results": [
+        "bz2.py",
+        "lzma.py",
+        "mimetypes.py",
+        "gzip.py",
+        "codecs.py",
+        "zipapp.py",
+        "aifc.py",
+        "_compression.py",
+        "wave.py",
+        "sunau.py"
+      ],
+      "ms": 0.2851429999850552
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is isleap defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.10143899999093264
+    },
+    {
+      "kind": "docstring",
+      "query": "Return True for leap years, False for non-leap years.",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "nntplib.py",
+        "plistlib.py",
+        "zipimport.py",
+        "mimetypes.py",
+        "_pylong.py",
+        "getopt.py",
+        "queue.py",
+        "tty.py"
+      ],
+      "ms": 0.4006199999935234
+    },
+    {
+      "kind": "typo",
+      "query": "islaep",
+      "target": "calendar.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.019906999995100705
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is leapdays defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09841500002494286
+    },
+    {
+      "kind": "docstring",
+      "query": "Return number of leap years in range [y1, y2).",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "nntplib.py",
+        "plistlib.py",
+        "zipimport.py",
+        "random.py",
+        "fnmatch.py",
+        "cmd.py",
+        "stringprep.py",
+        "crypt.py"
+      ],
+      "ms": 0.33051799999839204
+    },
+    {
+      "kind": "typo",
+      "query": "leapdyas",
+      "target": "calendar.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.016280999972195787
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is weekday defined?",
+      "target": "calendar.py",
+      "rank": 2,
+      "results": [
+        "_strptime.py",
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.10065800000802483
+    },
+    {
+      "kind": "docstring",
+      "query": "Return weekday (0-6 ~ Mon-Sun) for year, month (1-12), day (1-31).",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "nntplib.py",
+        "plistlib.py",
+        "zipimport.py",
+        "crypt.py",
+        "token.py",
+        "imghdr.py",
+        "_aix_support.py",
+        "socketserver.py"
+      ],
+      "ms": 0.5616310000107205
+    },
+    {
+      "kind": "typo",
+      "query": "weekady",
+      "target": "calendar.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.019425999994382437
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is monthrange defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09653000000753309
+    },
+    {
+      "kind": "docstring",
+      "query": "Return weekday of first day of month (0-6 ~ Mon-Sun)",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "nntplib.py",
+        "plistlib.py",
+        "imghdr.py",
+        "zipimport.py",
+        "xdrlib.py",
+        "sunau.py",
+        "platform.py",
+        "socketserver.py"
+      ],
+      "ms": 0.3876549999972667
+    },
+    {
+      "kind": "typo",
+      "query": "monthragne",
+      "target": "calendar.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.015658999984680122
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Calendar defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.09932599999729064
+    },
+    {
+      "kind": "docstring",
+      "query": "Base calendar class. This class doesn't do any formatting. It simply",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "io.py",
+        "copyreg.py",
+        "sched.py",
+        "modulefinder.py",
+        "_threading_local.py",
+        "webbrowser.py",
+        "os.py",
+        "textwrap.py"
+      ],
+      "ms": 0.3659839999841097
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is TextCalendar defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.27192900000727604
+    },
+    {
+      "kind": "docstring",
+      "query": "Subclass of Calendar that outputs a calendar as a simple plain text",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "cgitb.py",
+        "mimetypes.py",
+        "cgi.py",
+        "io.py",
+        "textwrap.py",
+        "cmd.py",
+        "warnings.py",
+        "functools.py"
+      ],
+      "ms": 0.24291500000117594
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is HTMLCalendar defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.692204999978685
+    },
+    {
+      "kind": "docstring",
+      "query": "This calendar returns complete HTML pages.",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "cgi.py",
+        "cgitb.py",
+        "webbrowser.py",
+        "_markupbase.py",
+        "rlcompleter.py",
+        "cmd.py",
+        "random.py",
+        "_compat_pickle.py"
+      ],
+      "ms": 0.5254430000150023
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is LocaleTextCalendar defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.14433999999141633
+    },
+    {
+      "kind": "docstring",
+      "query": "This class can be passed a locale name in the constructor and will return",
+      "target": "calendar.py",
+      "rank": 5,
+      "results": [
+        "hashlib.py",
+        "copyreg.py",
+        "code.py",
+        "timeit.py",
+        "calendar.py",
+        "socketserver.py",
+        "fileinput.py",
+        "sched.py",
+        "gettext.py",
+        "telnetlib.py"
+      ],
+      "ms": 0.3732779999836566
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is LocaleHTMLCalendar defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10056799999347277
+    },
+    {
+      "kind": "docstring",
+      "query": "This class can be passed a locale name in the constructor and will return",
+      "target": "calendar.py",
+      "rank": 5,
+      "results": [
+        "hashlib.py",
+        "copyreg.py",
+        "code.py",
+        "timeit.py",
+        "calendar.py",
+        "socketserver.py",
+        "fileinput.py",
+        "sched.py",
+        "gettext.py",
+        "telnetlib.py"
+      ],
+      "ms": 0.346919999998363
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is format defined?",
+      "target": "calendar.py",
+      "rank": null,
+      "results": [
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.16516900001306567
+    },
+    {
+      "kind": "docstring",
+      "query": "Prints multi-column formatting for year calendars",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "nntplib.py",
+        "tokenize.py",
+        "csv.py",
+        "plistlib.py",
+        "cProfile.py",
+        "cmd.py",
+        "dis.py",
+        "timeit.py"
+      ],
+      "ms": 0.23118299998259317
+    },
+    {
+      "kind": "typo",
+      "query": "foramt",
+      "target": "calendar.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.017402999986870782
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is formatstring defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09620000000154505
+    },
+    {
+      "kind": "docstring",
+      "query": "Returns a string formatted from n strings, centered within n columns.",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "csv.py",
+        "cProfile.py",
+        "tokenize.py",
+        "cmd.py",
+        "dis.py",
+        "textwrap.py",
+        "pstats.py",
+        "uuid.py",
+        "pprint.py"
+      ],
+      "ms": 0.48839400000133537
+    },
+    {
+      "kind": "typo",
+      "query": "formatstrnig",
+      "target": "calendar.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.022061000009898635
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is timegm defined?",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.1484779999998409
+    },
+    {
+      "kind": "docstring",
+      "query": "Unrelated but handy function to calculate Unix timestamp from GMT.",
+      "target": "calendar.py",
+      "rank": 1,
+      "results": [
+        "calendar.py",
+        "_strptime.py",
+        "uuid.py",
+        "functools.py",
+        "_py_abc.py",
+        "abc.py",
+        "py_compile.py",
+        "compileall.py",
+        "sysconfig.py",
+        "poplib.py"
+      ],
+      "ms": 0.36294800000291616
+    },
+    {
+      "kind": "typo",
+      "query": "timgem",
+      "target": "calendar.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.028353000004699425
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is initlog defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09845400001040616
+    },
+    {
+      "kind": "docstring",
+      "query": "Write a log message, if there is a log file.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "warnings.py",
+        "nntplib.py",
+        "random.py",
+        "crypt.py",
+        "heapq.py",
+        "_threading_local.py",
+        "smtplib.py",
+        "hashlib.py",
+        "cgitb.py"
+      ],
+      "ms": 0.253453999988551
+    },
+    {
+      "kind": "typo",
+      "query": "initolg",
+      "target": "cgi.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.016931999994085345
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is dolog defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09411599998543352
+    },
+    {
+      "kind": "docstring",
+      "query": "Write a log message to the log file.  See initlog() for docs.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "warnings.py",
+        "nntplib.py",
+        "hashlib.py",
+        "random.py",
+        "crypt.py",
+        "cgitb.py",
+        "heapq.py",
+        "_threading_local.py",
+        "smtplib.py"
+      ],
+      "ms": 0.31209399998033405
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is nolog defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09982700001387457
+    },
+    {
+      "kind": "docstring",
+      "query": "Dummy function, assigned to log when logging is disabled.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "random.py",
+        "crypt.py",
+        "_threading_local.py",
+        "heapq.py",
+        "warnings.py",
+        "hashlib.py",
+        "timeit.py",
+        "socketserver.py",
+        "functools.py"
+      ],
+      "ms": 0.2254620000030627
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is parse defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "pyclbr.py",
+        "sysconfig.py",
+        "_compat_pickle.py",
+        "cmd.py",
+        "rlcompleter.py",
+        "dis.py",
+        "ftplib.py",
+        "mimetypes.py",
+        "fractions.py"
+      ],
+      "ms": 0.1424970000130088
+    },
+    {
+      "kind": "docstring",
+      "query": "Parse a query in the environment or from a file (default stdin)",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "platform.py",
+        "_aix_support.py",
+        "getpass.py",
+        "webbrowser.py",
+        "pty.py",
+        "ntpath.py",
+        "telnetlib.py",
+        "py_compile.py",
+        "nntplib.py"
+      ],
+      "ms": 0.33763099997941026
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is parse_header defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "cmd.py",
+        "zipimport.py",
+        "nntplib.py",
+        "plistlib.py",
+        "sysconfig.py",
+        "smtplib.py",
+        "sunau.py",
+        "aifc.py",
+        "gzip.py"
+      ],
+      "ms": 0.20234799998775088
+    },
+    {
+      "kind": "docstring",
+      "query": "Parse a Content-type like header.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "plistlib.py",
+        "zipimport.py",
+        "mimetypes.py",
+        "gettext.py",
+        "calendar.py",
+        "gzip.py",
+        "wave.py",
+        "chunk.py",
+        "nntplib.py"
+      ],
+      "ms": 0.272188999986156
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is MiniFieldStorage defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09997699999075849
+    },
+    {
+      "kind": "docstring",
+      "query": "Like FieldStorage, for use when no file uploads are possible.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "ftplib.py",
+        "getopt.py",
+        "copy.py",
+        "_pylong.py",
+        "codeop.py",
+        "tabnanny.py",
+        "_strptime.py",
+        "heapq.py",
+        "textwrap.py"
+      ],
+      "ms": 0.3086979999977757
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is FieldStorage defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.13197699999523138
+    },
+    {
+      "kind": "docstring",
+      "query": "Store a sequence of fields, reading multipart/form-data.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "mailcap.py",
+        "uuid.py",
+        "string.py",
+        "dis.py",
+        "nntplib.py",
+        "sunau.py",
+        "sched.py",
+        "gzip.py",
+        "opcode.py"
+      ],
+      "ms": 0.41278300000158197
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is test defined?",
+      "target": "cgi.py",
+      "rank": 8,
+      "results": [
+        "pyclbr.py",
+        "_py_abc.py",
+        "copyreg.py",
+        "abc.py",
+        "random.py",
+        "imghdr.py",
+        "posixpath.py",
+        "cgi.py",
+        "_compat_pickle.py",
+        "numbers.py"
+      ],
+      "ms": 0.14556300001800082
+    },
+    {
+      "kind": "docstring",
+      "query": "Robust test CGI script, usable as main program.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "cgitb.py",
+        "_osx_support.py",
+        "webbrowser.py",
+        "tabnanny.py",
+        "timeit.py",
+        "base64.py",
+        "cProfile.py",
+        "sysconfig.py",
+        "getopt.py"
+      ],
+      "ms": 0.23520999999959713
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is print_environ defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "sysconfig.py",
+        "posixpath.py",
+        "os.py",
+        "ntpath.py",
+        "_aix_support.py",
+        "site.py",
+        "_osx_support.py",
+        "webbrowser.py",
+        "getpass.py"
+      ],
+      "ms": 0.27883100000281047
+    },
+    {
+      "kind": "docstring",
+      "query": "Dump the shell environment as HTML.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "cgitb.py",
+        "posixpath.py",
+        "os.py",
+        "mailcap.py",
+        "platform.py",
+        "ntpath.py",
+        "_aix_support.py",
+        "_osx_support.py",
+        "webbrowser.py"
+      ],
+      "ms": 0.1450310000166155
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is print_form defined?",
+      "target": "cgi.py",
+      "rank": 2,
+      "results": [
+        "__future__.py",
+        "cgi.py",
+        "rlcompleter.py",
+        "fractions.py",
+        "aifc.py",
+        "posixpath.py",
+        "bdb.py",
+        "pyclbr.py",
+        "gettext.py",
+        "tabnanny.py"
+      ],
+      "ms": 0.17616899998529334
+    },
+    {
+      "kind": "docstring",
+      "query": "Dump the contents of a form as HTML.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "cgitb.py",
+        "mimetypes.py",
+        "stat.py",
+        "gettext.py",
+        "_markupbase.py",
+        "plistlib.py",
+        "calendar.py",
+        "rlcompleter.py",
+        "abc.py"
+      ],
+      "ms": 0.14190600001029452
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is print_directory defined?",
+      "target": "cgi.py",
+      "rank": 7,
+      "results": [
+        "compileall.py",
+        "os.py",
+        "sysconfig.py",
+        "ftplib.py",
+        "site.py",
+        "ntpath.py",
+        "cgi.py",
+        "zipimport.py",
+        "runpy.py",
+        "posixpath.py"
+      ],
+      "ms": 0.20075599999813676
+    },
+    {
+      "kind": "docstring",
+      "query": "Dump the current directory as HTML.",
+      "target": "cgi.py",
+      "rank": 2,
+      "results": [
+        "cgitb.py",
+        "cgi.py",
+        "stat.py",
+        "calendar.py",
+        "_markupbase.py",
+        "abc.py",
+        "plistlib.py",
+        "trace.py",
+        "cProfile.py",
+        "_compat_pickle.py"
+      ],
+      "ms": 0.19241000001102293
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is print_environ_usage defined?",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "webbrowser.py",
+        "mailcap.py",
+        "_osx_support.py",
+        "sysconfig.py",
+        "posixpath.py",
+        "os.py",
+        "ntpath.py",
+        "telnetlib.py",
+        "abc.py"
+      ],
+      "ms": 0.20913200000904908
+    },
+    {
+      "kind": "docstring",
+      "query": "Dump a list of environment variables used by CGI as HTML.",
+      "target": "cgi.py",
+      "rank": 1,
+      "results": [
+        "cgi.py",
+        "cgitb.py",
+        "posixpath.py",
+        "webbrowser.py",
+        "sysconfig.py",
+        "_osx_support.py",
+        "_aix_support.py",
+        "ntpath.py",
+        "getpass.py",
+        "os.py"
+      ],
+      "ms": 0.29102499999567044
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is reset defined?",
+      "target": "cgitb.py",
+      "rank": 8,
+      "results": [
+        "codecs.py",
+        "abc.py",
+        "site.py",
+        "bdb.py",
+        "xdrlib.py",
+        "rlcompleter.py",
+        "pipes.py",
+        "cgitb.py",
+        "code.py",
+        "socket.py"
+      ],
+      "ms": 0.12385200000153418
+    },
+    {
+      "kind": "docstring",
+      "query": "Return a string that resets the CGI and browser to a known state.",
+      "target": "cgitb.py",
+      "rank": 1,
+      "results": [
+        "cgitb.py",
+        "codecs.py",
+        "site.py",
+        "webbrowser.py",
+        "cgi.py",
+        "pstats.py",
+        "pipes.py",
+        "rlcompleter.py",
+        "socket.py",
+        "fileinput.py"
+      ],
+      "ms": 0.6366000000070926
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is lookup defined?",
+      "target": "cgitb.py",
+      "rank": 7,
+      "results": [
+        "codecs.py",
+        "reprlib.py",
+        "selectors.py",
+        "symtable.py",
+        "linecache.py",
+        "mailcap.py",
+        "cgitb.py",
+        "functools.py",
+        "socketserver.py",
+        "tokenize.py"
+      ],
+      "ms": 0.32950700000355937
+    },
+    {
+      "kind": "docstring",
+      "query": "Find the value for a given name in the given environment.",
+      "target": "cgitb.py",
+      "rank": null,
+      "results": [
+        "cgi.py",
+        "ntpath.py",
+        "posixpath.py",
+        "_osx_support.py",
+        "os.py",
+        "mailcap.py",
+        "sysconfig.py",
+        "webbrowser.py",
+        "getpass.py",
+        "site.py"
+      ],
+      "ms": 0.3181650000101399
+    },
+    {
+      "kind": "typo",
+      "query": "looukp",
+      "target": "cgitb.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.048630999998522384
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is scanvars defined?",
+      "target": "cgitb.py",
+      "rank": 1,
+      "results": [
+        "cgitb.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10192999999958374
+    },
+    {
+      "kind": "docstring",
+      "query": "Scan one logical line of Python and look up values of variables used.",
+      "target": "cgitb.py",
+      "rank": 1,
+      "results": [
+        "cgitb.py",
+        "_markupbase.py",
+        "bisect.py",
+        "getopt.py",
+        "platform.py",
+        "modulefinder.py",
+        "pkgutil.py",
+        "pyclbr.py",
+        "csv.py",
+        "shlex.py"
+      ],
+      "ms": 0.44621500001085224
+    },
+    {
+      "kind": "typo",
+      "query": "scanvras",
+      "target": "cgitb.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.021820999990040946
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is html defined?",
+      "target": "cgitb.py",
+      "rank": 2,
+      "results": [
+        "cgi.py",
+        "cgitb.py",
+        "_compat_pickle.py",
+        "_aix_support.py",
+        "calendar.py",
+        "_markupbase.py",
+        "mimetypes.py",
+        "decimal.py",
+        "posixpath.py",
+        "base64.py"
+      ],
+      "ms": 0.11121800000069015
+    },
+    {
+      "kind": "docstring",
+      "query": "Return a nice HTML document describing a given traceback.",
+      "target": "cgitb.py",
+      "rank": 1,
+      "results": [
+        "cgitb.py",
+        "cgi.py",
+        "_markupbase.py",
+        "runpy.py",
+        "_aix_support.py",
+        "decimal.py",
+        "numbers.py",
+        "gettext.py",
+        "calendar.py",
+        "getopt.py"
+      ],
+      "ms": 0.4250650000017231
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is text defined?",
+      "target": "cgitb.py",
+      "rank": null,
+      "results": [
+        "rlcompleter.py",
+        "io.py",
+        "cmd.py",
+        "_sitebuiltins.py",
+        "codecs.py",
+        "cgi.py",
+        "mimetypes.py",
+        "socket.py",
+        "ftplib.py",
+        "textwrap.py"
+      ],
+      "ms": 0.153928000003134
+    },
+    {
+      "kind": "docstring",
+      "query": "Return a plain text document describing a given traceback.",
+      "target": "cgitb.py",
+      "rank": 1,
+      "results": [
+        "cgitb.py",
+        "cgi.py",
+        "mimetypes.py",
+        "numbers.py",
+        "codeop.py",
+        "smtplib.py",
+        "tracemalloc.py",
+        "csv.py",
+        "cmd.py",
+        "telnetlib.py"
+      ],
+      "ms": 0.4011599999955706
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Hook defined?",
+      "target": "cgitb.py",
+      "rank": 7,
+      "results": [
+        "cmd.py",
+        "rlcompleter.py",
+        "modulefinder.py",
+        "fileinput.py",
+        "pkgutil.py",
+        "_py_abc.py",
+        "cgitb.py",
+        "site.py",
+        "warnings.py",
+        "socketserver.py"
+      ],
+      "ms": 0.12704799999596617
+    },
+    {
+      "kind": "docstring",
+      "query": "A hook to replace sys.excepthook that shows tracebacks in HTML.",
+      "target": "cgitb.py",
+      "rank": 1,
+      "results": [
+        "cgitb.py",
+        "code.py",
+        "site.py",
+        "contextlib.py",
+        "dis.py",
+        "cgi.py",
+        "warnings.py",
+        "fileinput.py",
+        "_py_abc.py",
+        "decimal.py"
+      ],
+      "ms": 0.2798329999791349
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is enable defined?",
+      "target": "cgitb.py",
+      "rank": 5,
+      "results": [
+        "site.py",
+        "bdb.py",
+        "__future__.py",
+        "rlcompleter.py",
+        "cgitb.py",
+        "cProfile.py",
+        "warnings.py",
+        "cmd.py",
+        "sysconfig.py",
+        "contextlib.py"
+      ],
+      "ms": 0.1505209999947965
+    },
+    {
+      "kind": "docstring",
+      "query": "Install an exception handler that formats tracebacks as HTML.",
+      "target": "cgitb.py",
+      "rank": 1,
+      "results": [
+        "cgitb.py",
+        "cgi.py",
+        "_aix_support.py",
+        "py_compile.py",
+        "_markupbase.py",
+        "getpass.py",
+        "gettext.py",
+        "decimal.py",
+        "socketserver.py",
+        "site.py"
+      ],
+      "ms": 0.25582800000734096
+    },
+    {
+      "kind": "typo",
+      "query": "enalbe",
+      "target": "cgitb.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.01696199998946213
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Cmd defined?",
+      "target": "cmd.py",
+      "rank": 1,
+      "results": [
+        "cmd.py",
+        "_aix_support.py",
+        "ftplib.py",
+        "profile.py",
+        "pipes.py",
+        "bdb.py",
+        "nntplib.py",
+        "cProfile.py",
+        "webbrowser.py",
+        "os.py"
+      ],
+      "ms": 0.19302100000118116
+    },
+    {
+      "kind": "docstring",
+      "query": "A simple framework for writing line-oriented command interpreters.",
+      "target": "cmd.py",
+      "rank": 1,
+      "results": [
+        "cmd.py",
+        "site.py",
+        "sysconfig.py",
+        "py_compile.py",
+        "netrc.py",
+        "code.py",
+        "platform.py",
+        "zipapp.py",
+        "pstats.py",
+        "shlex.py"
+      ],
+      "ms": 0.3266409999866937
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is InteractiveConsole defined?",
+      "target": "code.py",
+      "rank": 1,
+      "results": [
+        "code.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10509599999863894
+    },
+    {
+      "kind": "docstring",
+      "query": "Closely emulate the behavior of the interactive Python interpreter.",
+      "target": "code.py",
+      "rank": 1,
+      "results": [
+        "code.py",
+        "telnetlib.py",
+        "_sitebuiltins.py",
+        "fileinput.py",
+        "bz2.py",
+        "lzma.py",
+        "site.py",
+        "contextlib.py",
+        "pkgutil.py",
+        "bdb.py"
+      ],
+      "ms": 0.3038179999919066
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is interact defined?",
+      "target": "code.py",
+      "rank": 2,
+      "results": [
+        "_sitebuiltins.py",
+        "code.py",
+        "telnetlib.py",
+        "bdb.py",
+        "site.py",
+        "fileinput.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py"
+      ],
+      "ms": 0.1105669999788006
+    },
+    {
+      "kind": "docstring",
+      "query": "Closely emulate the interactive Python interpreter.",
+      "target": "code.py",
+      "rank": 1,
+      "results": [
+        "code.py",
+        "telnetlib.py",
+        "_sitebuiltins.py",
+        "site.py",
+        "bz2.py",
+        "fileinput.py",
+        "lzma.py",
+        "bdb.py",
+        "shelve.py",
+        "zipapp.py"
+      ],
+      "ms": 0.25621999998293177
+    },
+    {
+      "kind": "typo",
+      "query": "intercat",
+      "target": "code.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.01953700001422476
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is CodecInfo defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.12325999998097359
+    },
+    {
+      "kind": "docstring",
+      "query": "Codec details when looking up the codec registry",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "warnings.py",
+        "copyreg.py",
+        "functools.py",
+        "plistlib.py",
+        "_py_abc.py",
+        "abc.py",
+        "weakref.py",
+        "mimetypes.py",
+        "contextlib.py"
+      ],
+      "ms": 0.16332599997781472
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Codec defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "plistlib.py",
+        "tokenize.py",
+        "smtplib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py"
+      ],
+      "ms": 0.28008399999635003
+    },
+    {
+      "kind": "docstring",
+      "query": "Defines the interface for stateless encoders/decoders.",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "io.py",
+        "cgi.py",
+        "base64.py",
+        "shelve.py",
+        "os.py",
+        "tokenize.py",
+        "uu.py",
+        "quopri.py",
+        "zipapp.py"
+      ],
+      "ms": 0.253143000009004
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is IncrementalEncoder defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.11498500001039247
+    },
+    {
+      "kind": "docstring",
+      "query": "An IncrementalEncoder encodes an input in multiple steps. The input can",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "pipes.py",
+        "heapq.py",
+        "bdb.py",
+        "random.py",
+        "pkgutil.py",
+        "base64.py",
+        "bz2.py",
+        "compileall.py",
+        "cgi.py"
+      ],
+      "ms": 0.4540790000078232
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is BufferedIncrementalEncoder defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.12295999999878404
+    },
+    {
+      "kind": "docstring",
+      "query": "This subclass of IncrementalEncoder can be used as the baseclass for an",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "_py_abc.py",
+        "abc.py",
+        "io.py",
+        "string.py",
+        "numbers.py",
+        "_threading_local.py",
+        "warnings.py",
+        "code.py",
+        "random.py"
+      ],
+      "ms": 0.24036000002070068
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is IncrementalDecoder defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.19870200000582372
+    },
+    {
+      "kind": "docstring",
+      "query": "An IncrementalDecoder decodes an input in multiple steps. The input can",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "pipes.py",
+        "heapq.py",
+        "random.py",
+        "bdb.py",
+        "base64.py",
+        "pkgutil.py",
+        "cgi.py",
+        "uu.py",
+        "quopri.py"
+      ],
+      "ms": 0.22446999997782768
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is BufferedIncrementalDecoder defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.10659899999154732
+    },
+    {
+      "kind": "docstring",
+      "query": "This subclass of IncrementalDecoder can be used as the baseclass for an",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "_py_abc.py",
+        "abc.py",
+        "io.py",
+        "string.py",
+        "numbers.py",
+        "_threading_local.py",
+        "warnings.py",
+        "code.py",
+        "random.py"
+      ],
+      "ms": 0.4186940000181494
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is StreamReaderWriter defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.1135919999910584
+    },
+    {
+      "kind": "docstring",
+      "query": "StreamReaderWriter instances allow wrapping streams which",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "pprint.py",
+        "contextlib.py",
+        "gzip.py",
+        "bz2.py",
+        "lzma.py",
+        "textwrap.py",
+        "socket.py",
+        "types.py",
+        "os.py"
+      ],
+      "ms": 0.3551550000224779
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is StreamRecoder defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.1092640000024403
+    },
+    {
+      "kind": "docstring",
+      "query": "StreamRecoder instances translate data from one encoding to another.",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "gettext.py",
+        "base64.py",
+        "fnmatch.py",
+        "hmac.py",
+        "socket.py",
+        "zipimport.py",
+        "ntpath.py",
+        "cgi.py",
+        "genericpath.py"
+      ],
+      "ms": 0.31139300000404546
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is EncodedFile defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.10559799997622576
+    },
+    {
+      "kind": "docstring",
+      "query": "Return a wrapped version of file which provides transparent",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "bz2.py",
+        "lzma.py",
+        "os.py",
+        "types.py",
+        "textwrap.py",
+        "contextlib.py",
+        "signal.py",
+        "functools.py",
+        "cgi.py"
+      ],
+      "ms": 0.5002359999934924
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is getencoder defined?",
+      "target": "codecs.py",
+      "rank": 2,
+      "results": [
+        "site.py",
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.1092640000024403
+    },
+    {
+      "kind": "docstring",
+      "query": "Lookup up the codec for the given encoding and return",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "tokenize.py",
+        "plistlib.py",
+        "smtplib.py",
+        "selectors.py",
+        "reprlib.py",
+        "symtable.py",
+        "mailcap.py",
+        "trace.py",
+        "linecache.py"
+      ],
+      "ms": 0.591356000001042
+    },
+    {
+      "kind": "typo",
+      "query": "getencoedr",
+      "target": "codecs.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.02831300000138981
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is getdecoder defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.1344509999796628
+    },
+    {
+      "kind": "docstring",
+      "query": "Lookup up the codec for the given encoding and return",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "tokenize.py",
+        "plistlib.py",
+        "smtplib.py",
+        "selectors.py",
+        "reprlib.py",
+        "symtable.py",
+        "mailcap.py",
+        "trace.py",
+        "linecache.py"
+      ],
+      "ms": 0.4499720000126217
+    },
+    {
+      "kind": "typo",
+      "query": "getdecoedr",
+      "target": "codecs.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.02119999999194988
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is getincrementalencoder defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.10080799998490875
+    },
+    {
+      "kind": "docstring",
+      "query": "Lookup up the codec for the given encoding and return",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "tokenize.py",
+        "plistlib.py",
+        "smtplib.py",
+        "selectors.py",
+        "reprlib.py",
+        "symtable.py",
+        "mailcap.py",
+        "trace.py",
+        "linecache.py"
+      ],
+      "ms": 0.48620900000173606
+    },
+    {
+      "kind": "typo",
+      "query": "getincrementalencoedr",
+      "target": "codecs.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.024706000004925954
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is getincrementaldecoder defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.10005699999737772
+    },
+    {
+      "kind": "docstring",
+      "query": "Lookup up the codec for the given encoding and return",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "tokenize.py",
+        "plistlib.py",
+        "smtplib.py",
+        "selectors.py",
+        "reprlib.py",
+        "symtable.py",
+        "mailcap.py",
+        "trace.py",
+        "linecache.py"
+      ],
+      "ms": 0.3983349999998609
+    },
+    {
+      "kind": "typo",
+      "query": "getincrementaldecoedr",
+      "target": "codecs.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.020067000008339164
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is getreader defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.0949880000007397
+    },
+    {
+      "kind": "docstring",
+      "query": "Lookup up the codec for the given encoding and return",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "tokenize.py",
+        "plistlib.py",
+        "smtplib.py",
+        "selectors.py",
+        "reprlib.py",
+        "symtable.py",
+        "mailcap.py",
+        "trace.py",
+        "linecache.py"
+      ],
+      "ms": 0.402772999990475
+    },
+    {
+      "kind": "typo",
+      "query": "getreaedr",
+      "target": "codecs.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.02011800000900621
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is getwriter defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py",
+        "socketserver.py"
+      ],
+      "ms": 0.09429699997554053
+    },
+    {
+      "kind": "docstring",
+      "query": "Lookup up the codec for the given encoding and return",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "tokenize.py",
+        "plistlib.py",
+        "smtplib.py",
+        "selectors.py",
+        "reprlib.py",
+        "symtable.py",
+        "mailcap.py",
+        "trace.py",
+        "linecache.py"
+      ],
+      "ms": 0.3270520000171473
+    },
+    {
+      "kind": "typo",
+      "query": "getwrietr",
+      "target": "codecs.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.015579999995907201
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is make_encoding_map defined?",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "mimetypes.py",
+        "cgi.py",
+        "os.py",
+        "compileall.py",
+        "sysconfig.py",
+        "ntpath.py",
+        "socket.py",
+        "io.py",
+        "zipimport.py"
+      ],
+      "ms": 0.22072300001241274
+    },
+    {
+      "kind": "docstring",
+      "query": "Creates an encoding map from a decoding map.",
+      "target": "codecs.py",
+      "rank": 1,
+      "results": [
+        "codecs.py",
+        "base64.py",
+        "shelve.py",
+        "tokenize.py",
+        "cgi.py",
+        "nntplib.py",
+        "os.py",
+        "uu.py",
+        "quopri.py",
+        "plistlib.py"
+      ],
+      "ms": 0.25790300000494426
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is compile_command defined?",
+      "target": "codeop.py",
+      "rank": 1,
+      "results": [
+        "codeop.py",
+        "ftplib.py",
+        "code.py",
+        "platform.py",
+        "smtplib.py",
+        "cmd.py",
+        "py_compile.py",
+        "_osx_support.py",
+        "mailcap.py",
+        "timeit.py"
+      ],
+      "ms": 0.17554799998720227
+    },
+    {
+      "kind": "docstring",
+      "query": "Compile a command and determine whether it is incomplete.",
+      "target": "codeop.py",
+      "rank": 1,
+      "results": [
+        "codeop.py",
+        "code.py",
+        "_markupbase.py",
+        "platform.py",
+        "timeit.py",
+        "modulefinder.py",
+        "ftplib.py",
+        "smtplib.py",
+        "csv.py",
+        "webbrowser.py"
+      ],
+      "ms": 0.17941599998039237
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is Compile defined?",
+      "target": "codeop.py",
+      "rank": null,
+      "results": [
+        "__future__.py",
+        "compileall.py",
+        "dis.py",
+        "_threading_local.py",
+        "sysconfig.py",
+        "posixpath.py",
+        "runpy.py",
+        "types.py",
+        "fractions.py",
+        "zipimport.py"
+      ],
+      "ms": 0.14790700001299228
+    },
+    {
+      "kind": "docstring",
+      "query": "Instances of this class behave much like the built-in compile",
+      "target": "codeop.py",
+      "rank": 1,
+      "results": [
+        "codeop.py",
+        "fractions.py",
+        "contextlib.py",
+        "os.py",
+        "cProfile.py",
+        "code.py",
+        "_osx_support.py",
+        "types.py",
+        "sysconfig.py",
+        "platform.py"
+      ],
+      "ms": 0.25270300000102
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is CommandCompiler defined?",
+      "target": "codeop.py",
+      "rank": 1,
+      "results": [
+        "codeop.py",
+        "code.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.099525999985417
+    },
+    {
+      "kind": "docstring",
+      "query": "Instances of this class have __call__ methods identical in",
+      "target": "codeop.py",
+      "rank": 4,
+      "results": [
+        "symtable.py",
+        "crypt.py",
+        "filecmp.py",
+        "codeop.py",
+        "reprlib.py",
+        "pipes.py",
+        "codecs.py",
+        "selectors.py",
+        "csv.py",
+        "trace.py"
+      ],
+      "ms": 0.272239999986823
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is compile_dir defined?",
+      "target": "compileall.py",
+      "rank": 1,
+      "results": [
+        "compileall.py",
+        "sysconfig.py",
+        "zipimport.py",
+        "posixpath.py",
+        "glob.py",
+        "_sitebuiltins.py",
+        "ftplib.py",
+        "trace.py",
+        "rlcompleter.py",
+        "os.py"
+      ],
+      "ms": 0.2808859999845481
+    },
+    {
+      "kind": "docstring",
+      "query": "Byte-compile all modules in the given directory tree.",
+      "target": "compileall.py",
+      "rank": 1,
+      "results": [
+        "compileall.py",
+        "pyclbr.py",
+        "os.py",
+        "keyword.py",
+        "modulefinder.py",
+        "tabnanny.py",
+        "py_compile.py",
+        "zipimport.py",
+        "hashlib.py",
+        "glob.py"
+      ],
+      "ms": 0.32932600001345236
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is compile_path defined?",
+      "target": "compileall.py",
+      "rank": 1,
+      "results": [
+        "compileall.py",
+        "__future__.py",
+        "posixpath.py",
+        "sysconfig.py",
+        "runpy.py",
+        "zipimport.py",
+        "dis.py",
+        "_threading_local.py",
+        "ntpath.py",
+        "_osx_support.py"
+      ],
+      "ms": 0.29615400001148373
+    },
+    {
+      "kind": "docstring",
+      "query": "Byte-compile all module on sys.path.",
+      "target": "compileall.py",
+      "rank": 2,
+      "results": [
+        "py_compile.py",
+        "compileall.py",
+        "fnmatch.py",
+        "glob.py",
+        "posixpath.py",
+        "zipimport.py",
+        "dis.py",
+        "ntpath.py",
+        "telnetlib.py",
+        "platform.py"
+      ],
+      "ms": 0.34272199999918485
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is AbstractContextManager defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.11261099999160251
+    },
+    {
+      "kind": "docstring",
+      "query": "An abstract base class for context managers.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "_weakrefset.py",
+        "warnings.py",
+        "tempfile.py",
+        "abc.py",
+        "_py_abc.py",
+        "numbers.py",
+        "functools.py",
+        "smtplib.py",
+        "ftplib.py"
+      ],
+      "ms": 0.24029000002201428
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is AbstractAsyncContextManager defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.14413899998544366
+    },
+    {
+      "kind": "docstring",
+      "query": "An abstract base class for asynchronous context managers.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "_collections_abc.py",
+        "_weakrefset.py",
+        "warnings.py",
+        "tempfile.py",
+        "abc.py",
+        "_py_abc.py",
+        "numbers.py",
+        "functools.py",
+        "smtplib.py"
+      ],
+      "ms": 0.27428300001020034
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is ContextDecorator defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.10208200001216028
+    },
+    {
+      "kind": "docstring",
+      "query": "A base class or mixin that enables context managers to work as decorators.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "warnings.py",
+        "cgitb.py",
+        "tempfile.py",
+        "rlcompleter.py",
+        "_weakrefset.py",
+        "numbers.py",
+        "nntplib.py",
+        "functools.py",
+        "abc.py"
+      ],
+      "ms": 0.2974070000050233
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is AsyncContextDecorator defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09797299998126618
+    },
+    {
+      "kind": "docstring",
+      "query": "A base class or mixin that enables async context managers to work as decorators.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "warnings.py",
+        "_collections_abc.py",
+        "cgitb.py",
+        "tempfile.py",
+        "rlcompleter.py",
+        "_weakrefset.py",
+        "numbers.py",
+        "bdb.py",
+        "opcode.py"
+      ],
+      "ms": 0.3322209999794268
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is closing defined?",
+      "target": "contextlib.py",
+      "rank": null,
+      "results": [
+        "socketserver.py",
+        "_sitebuiltins.py",
+        "chunk.py",
+        "socket.py",
+        "codecs.py",
+        "_aix_support.py",
+        "types.py",
+        "cgi.py",
+        "ftplib.py",
+        "os.py"
+      ],
+      "ms": 0.1526560000115751
+    },
+    {
+      "kind": "docstring",
+      "query": "Context to automatically close something at the end of a block.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "smtplib.py",
+        "nntplib.py",
+        "tempfile.py",
+        "poplib.py",
+        "getpass.py",
+        "ftplib.py",
+        "telnetlib.py",
+        "socket.py",
+        "selectors.py"
+      ],
+      "ms": 0.2436750000072152
+    },
+    {
+      "kind": "typo",
+      "query": "closnig",
+      "target": "contextlib.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.016660999989426273
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is aclosing defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "_collections_abc.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.09438600000066799
+    },
+    {
+      "kind": "docstring",
+      "query": "Async context manager for safely finalizing an asynchronously cleaned-up",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "tempfile.py",
+        "_collections_abc.py",
+        "_weakrefset.py",
+        "pprint.py",
+        "dis.py",
+        "getpass.py",
+        "warnings.py",
+        "secrets.py",
+        "poplib.py"
+      ],
+      "ms": 0.22803599998155732
+    },
+    {
+      "kind": "typo",
+      "query": "aclosnig",
+      "target": "contextlib.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.01647100000923274
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is redirect_stdout defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "webbrowser.py",
+        "cmd.py",
+        "uuid.py",
+        "ftplib.py",
+        "imghdr.py",
+        "pty.py",
+        "uu.py",
+        "pipes.py",
+        "quopri.py"
+      ],
+      "ms": 0.1932819999979074
+    },
+    {
+      "kind": "docstring",
+      "query": "Context manager for temporarily redirecting stdout to another file.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "webbrowser.py",
+        "pty.py",
+        "_weakrefset.py",
+        "warnings.py",
+        "ftplib.py",
+        "tempfile.py",
+        "smtplib.py",
+        "pprint.py",
+        "cgitb.py"
+      ],
+      "ms": 0.27555500000175925
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is redirect_stderr defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "webbrowser.py",
+        "_aix_support.py",
+        "socketserver.py",
+        "site.py",
+        "imghdr.py",
+        "getpass.py",
+        "code.py",
+        "quopri.py",
+        "uuid.py"
+      ],
+      "ms": 0.15224500000954322
+    },
+    {
+      "kind": "docstring",
+      "query": "Context manager for temporarily redirecting stderr to another file.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "webbrowser.py",
+        "warnings.py",
+        "_weakrefset.py",
+        "pty.py",
+        "ftplib.py",
+        "tempfile.py",
+        "smtplib.py",
+        "getpass.py",
+        "runpy.py"
+      ],
+      "ms": 0.24769400002355724
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is suppress defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "telnetlib.py",
+        "compileall.py",
+        "py_compile.py",
+        "code.py",
+        "cgitb.py",
+        "os.py",
+        "smtplib.py",
+        "copyreg.py",
+        "_aix_support.py"
+      ],
+      "ms": 0.1286410000034266
+    },
+    {
+      "kind": "docstring",
+      "query": "Context manager to suppress specified exceptions",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "warnings.py",
+        "_weakrefset.py",
+        "cgitb.py",
+        "smtplib.py",
+        "tempfile.py",
+        "compileall.py",
+        "code.py",
+        "ftplib.py",
+        "telnetlib.py"
+      ],
+      "ms": 0.27868099999750484
+    },
+    {
+      "kind": "typo",
+      "query": "supprses",
+      "target": "contextlib.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.02051800001368065
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is ExitStack defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "getpass.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py"
+      ],
+      "ms": 0.09912600000916427
+    },
+    {
+      "kind": "docstring",
+      "query": "Context manager for dynamic management of a stack of exit callbacks.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "ftplib.py",
+        "_weakrefset.py",
+        "warnings.py",
+        "tempfile.py",
+        "_threading_local.py",
+        "secrets.py",
+        "timeit.py",
+        "telnetlib.py",
+        "weakref.py"
+      ],
+      "ms": 0.2219060000072659
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is AsyncExitStack defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09890499998732594
+    },
+    {
+      "kind": "docstring",
+      "query": "Async context manager for dynamic management of a stack of exit",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "_weakrefset.py",
+        "warnings.py",
+        "tempfile.py",
+        "types.py",
+        "pyclbr.py",
+        "opcode.py",
+        "_threading_local.py",
+        "secrets.py",
+        "ftplib.py"
+      ],
+      "ms": 0.21671600001127445
+    },
+    {
+      "kind": "identifier",
+      "query": "Where is nullcontext defined?",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "copyreg.py",
+        "_aix_support.py",
+        "__future__.py",
+        "codecs.py",
+        "_sitebuiltins.py",
+        "rlcompleter.py",
+        "pyclbr.py",
+        "_threading_local.py",
+        "io.py"
+      ],
+      "ms": 0.09952600001383871
+    },
+    {
+      "kind": "docstring",
+      "query": "Context manager that does no additional processing.",
+      "target": "contextlib.py",
+      "rank": 1,
+      "results": [
+        "contextlib.py",
+        "warnings.py",
+        "nntplib.py",
+        "tempfile.py",
+        "smtplib.py",
+        "_weakrefset.py",
+        "ftplib.py",
+        "poplib.py",
+        "_compat_pickle.py",
+        "site.py"
+      ],
+      "ms": 0.23209500000120897
+    },
+    {
+      "kind": "typo",
+      "query": "nullcontxet",
+      "target": "contextlib.py",
+      "rank": null,
+      "results": [],
+      "ms": 0.019256000001632856
+    }
+  ]
+}

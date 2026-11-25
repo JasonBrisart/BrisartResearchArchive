@@ -15,6 +15,8 @@ Only search_local_files and search_notes are supported.
 
 Edge cases
 ----------
+Non-object JSON uses defaults. Atomic replacement preserves the prior file
+on save failure; the in-memory toggle rolls back.
 
 Known limitations
 -----------------
@@ -28,6 +30,7 @@ ResearchSettings().set("search_notes", True).
 from __future__ import annotations
 
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Dict
 
 from brisart_ai import state
@@ -68,15 +71,23 @@ class ResearchSettings:
             data = brisart_loads(self.path.read_text(encoding="utf-8"))
         except Exception:
             data = {}
+        self.values = dict(DEFAULT_SETTINGS)
+        if not isinstance(data, dict):
+            return
         for key in DEFAULT_SETTINGS:
             if key in data and isinstance(data[key], bool):
                 self.values[key] = data[key]
 
     def save(self) -> None:
-        self.path.write_text(
-            brisart_dumps(self.values, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        temporary = None
+        try:
+            with NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.path.parent, delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(brisart_dumps(self.values, indent=2, sort_keys=True))
+            temporary.replace(self.path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
     def get(self, key: str) -> bool:
         return bool(self.values.get(key, False))
@@ -84,8 +95,13 @@ class ResearchSettings:
     def set(self, key: str, value: bool) -> None:
         if key not in DEFAULT_SETTINGS:
             raise KeyError(f"Unknown setting: {key}")
+        previous = self.values[key]
         self.values[key] = bool(value)
-        self.save()
+        try:
+            self.save()
+        except Exception:
+            self.values[key] = previous
+            raise
 
     def toggle(self, key: str) -> bool:
         new_value = not self.get(key)

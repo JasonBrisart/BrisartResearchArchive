@@ -62,6 +62,18 @@ class TestSessionMemory(unittest.TestCase):
             self.assertIn("dogs", joined)
             mem.close()
 
+    def test_same_timestamp_returns_latest_insert_first(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            mem = self._make(d)
+            try:
+                with patch("brisart_ai.core.session_memory.now_ts", return_value=1):
+                    mem.add("user", "earlier question")
+                    mem.add("user", "next question")
+                self.assertEqual(mem.recent_topics(1), ["next question"])
+            finally:
+                mem.close()
+
     def test_empty_content_is_dropped(self):
         with tempfile.TemporaryDirectory() as d:
             mem = self._make(d)

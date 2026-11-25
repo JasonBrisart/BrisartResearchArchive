@@ -1,0 +1,1352 @@
+[
+  [
+    "identifier",
+    "Where is aix_platform defined?",
+    "_aix_support.py"
+  ],
+  [
+    "docstring",
+    "AIX filesets are identified by four decimal values: V.R.M.F.",
+    "_aix_support.py"
+  ],
+  [
+    "identifier",
+    "Where is aix_buildtag defined?",
+    "_aix_support.py"
+  ],
+  [
+    "docstring",
+    "Return the platform_tag of the system Python was built on.",
+    "_aix_support.py"
+  ],
+  [
+    "identifier",
+    "Where is Set defined?",
+    "_collections_abc.py"
+  ],
+  [
+    "docstring",
+    "A set is a finite, iterable container.",
+    "_collections_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is MutableSet defined?",
+    "_collections_abc.py"
+  ],
+  [
+    "docstring",
+    "A mutable set is a finite, iterable container.",
+    "_collections_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is Mapping defined?",
+    "_collections_abc.py"
+  ],
+  [
+    "docstring",
+    "A Mapping is a generic container for associating key/value",
+    "_collections_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is MutableMapping defined?",
+    "_collections_abc.py"
+  ],
+  [
+    "docstring",
+    "A MutableMapping is a generic container for associating",
+    "_collections_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is Sequence defined?",
+    "_collections_abc.py"
+  ],
+  [
+    "docstring",
+    "All the operations on a read-only sequence.",
+    "_collections_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is ByteString defined?",
+    "_collections_abc.py"
+  ],
+  [
+    "docstring",
+    "This unifies bytes and bytearray.",
+    "_collections_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is MutableSequence defined?",
+    "_collections_abc.py"
+  ],
+  [
+    "docstring",
+    "All the operations on a read-write sequence.",
+    "_collections_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is DecompressReader defined?",
+    "_compression.py"
+  ],
+  [
+    "docstring",
+    "Adapts the decompressor API to a RawIOBase reader API",
+    "_compression.py"
+  ],
+  [
+    "identifier",
+    "Where is ParserBase defined?",
+    "_markupbase.py"
+  ],
+  [
+    "docstring",
+    "Parser base class which provides some common support methods used",
+    "_markupbase.py"
+  ],
+  [
+    "identifier",
+    "Where is compiler_fixup defined?",
+    "_osx_support.py"
+  ],
+  [
+    "docstring",
+    "This function will strip '-isysroot PATH' and '-arch ARCH' from the",
+    "_osx_support.py"
+  ],
+  [
+    "identifier",
+    "Where is customize_config_vars defined?",
+    "_osx_support.py"
+  ],
+  [
+    "docstring",
+    "Customize Python build configuration variables.",
+    "_osx_support.py"
+  ],
+  [
+    "identifier",
+    "Where is customize_compiler defined?",
+    "_osx_support.py"
+  ],
+  [
+    "docstring",
+    "Customize compiler path and configuration variables.",
+    "_osx_support.py"
+  ],
+  [
+    "identifier",
+    "Where is get_cache_token defined?",
+    "_py_abc.py"
+  ],
+  [
+    "docstring",
+    "Returns the current ABC cache token.",
+    "_py_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is ABCMeta defined?",
+    "_py_abc.py"
+  ],
+  [
+    "docstring",
+    "Metaclass for defining Abstract Base Classes (ABCs).",
+    "_py_abc.py"
+  ],
+  [
+    "identifier",
+    "Where is int_to_decimal defined?",
+    "_pylong.py"
+  ],
+  [
+    "docstring",
+    "Asymptotically fast conversion of an 'int' to Decimal.",
+    "_pylong.py"
+  ],
+  [
+    "identifier",
+    "Where is int_to_decimal_string defined?",
+    "_pylong.py"
+  ],
+  [
+    "docstring",
+    "Asymptotically fast conversion of an 'int' to a decimal string.",
+    "_pylong.py"
+  ],
+  [
+    "identifier",
+    "Where is int_from_string defined?",
+    "_pylong.py"
+  ],
+  [
+    "docstring",
+    "Asymptotically fast version of PyLong_FromString(), conversion",
+    "_pylong.py"
+  ],
+  [
+    "identifier",
+    "Where is str_to_int defined?",
+    "_pylong.py"
+  ],
+  [
+    "docstring",
+    "Asymptotically fast version of decimal string to 'int' conversion.",
+    "_pylong.py"
+  ],
+  [
+    "identifier",
+    "Where is int_divmod defined?",
+    "_pylong.py"
+  ],
+  [
+    "docstring",
+    "Asymptotically fast replacement for divmod, for 'int'.",
+    "_pylong.py"
+  ],
+  [
+    "identifier",
+    "Where is LocaleTime defined?",
+    "_strptime.py"
+  ],
+  [
+    "docstring",
+    "Stores and handles locale-specific information related to time.",
+    "_strptime.py"
+  ],
+  [
+    "identifier",
+    "Where is TimeRE defined?",
+    "_strptime.py"
+  ],
+  [
+    "docstring",
+    "Handle conversion from format directives to regexes.",
+    "_strptime.py"
+  ],
+  [
+    "identifier",
+    "Where is abstractmethod defined?",
+    "abc.py"
+  ],
+  [
+    "docstring",
+    "A decorator indicating abstract methods.",
+    "abc.py"
+  ],
+  [
+    "typo",
+    "abstractmetohd",
+    "abc.py"
+  ],
+  [
+    "identifier",
+    "Where is abstractclassmethod defined?",
+    "abc.py"
+  ],
+  [
+    "docstring",
+    "A decorator indicating abstract classmethods.",
+    "abc.py"
+  ],
+  [
+    "typo",
+    "abstractclassmetohd",
+    "abc.py"
+  ],
+  [
+    "identifier",
+    "Where is abstractstaticmethod defined?",
+    "abc.py"
+  ],
+  [
+    "docstring",
+    "A decorator indicating abstract staticmethods.",
+    "abc.py"
+  ],
+  [
+    "typo",
+    "abstractstaticmetohd",
+    "abc.py"
+  ],
+  [
+    "identifier",
+    "Where is abstractproperty defined?",
+    "abc.py"
+  ],
+  [
+    "docstring",
+    "A decorator indicating abstract properties.",
+    "abc.py"
+  ],
+  [
+    "typo",
+    "abstractpropetry",
+    "abc.py"
+  ],
+  [
+    "identifier",
+    "Where is update_abstractmethods defined?",
+    "abc.py"
+  ],
+  [
+    "docstring",
+    "Recalculate the set of abstract methods of an abstract class.",
+    "abc.py"
+  ],
+  [
+    "identifier",
+    "Where is ABC defined?",
+    "abc.py"
+  ],
+  [
+    "docstring",
+    "Helper class that provides a standard way to create an ABC using",
+    "abc.py"
+  ],
+  [
+    "identifier",
+    "Where is b64encode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Encode the bytes-like object s using Base64 and return a bytes object.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is b64decode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Decode the Base64 encoded bytes-like object or ASCII string s.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is standard_b64encode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Encode bytes-like object s using the standard Base64 alphabet.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is standard_b64decode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Decode bytes encoded with the standard Base64 alphabet.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is urlsafe_b64encode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Encode bytes using the URL- and filesystem-safe Base64 alphabet.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is urlsafe_b64decode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Decode bytes using the URL- and filesystem-safe Base64 alphabet.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is b16encode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Encode the bytes-like object s using Base16 and return a bytes object.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is b16decode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Decode the Base16 encoded bytes-like object or ASCII string s.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is a85encode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Encode bytes-like object b using Ascii85 and return a bytes object.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is a85decode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Decode the Ascii85 encoded bytes-like object or ASCII string b.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is b85encode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Encode bytes-like object b in base85 format and return a bytes object.",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is b85decode defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Decode the base85-encoded bytes-like object or ASCII string b",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is encodebytes defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Encode a bytestring into a bytes object containing multiple lines",
+    "base64.py"
+  ],
+  [
+    "typo",
+    "encodebyets",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is decodebytes defined?",
+    "base64.py"
+  ],
+  [
+    "docstring",
+    "Decode a bytestring of base-64 data into a bytes object.",
+    "base64.py"
+  ],
+  [
+    "typo",
+    "decodebyets",
+    "base64.py"
+  ],
+  [
+    "identifier",
+    "Where is BdbQuit defined?",
+    "bdb.py"
+  ],
+  [
+    "docstring",
+    "Exception to give up completely.",
+    "bdb.py"
+  ],
+  [
+    "identifier",
+    "Where is Bdb defined?",
+    "bdb.py"
+  ],
+  [
+    "docstring",
+    "Generic Python debugger base class.",
+    "bdb.py"
+  ],
+  [
+    "identifier",
+    "Where is set_trace defined?",
+    "bdb.py"
+  ],
+  [
+    "docstring",
+    "Start debugging with a Bdb instance from the caller's frame.",
+    "bdb.py"
+  ],
+  [
+    "identifier",
+    "Where is checkfuncname defined?",
+    "bdb.py"
+  ],
+  [
+    "docstring",
+    "Return True if break should happen here.",
+    "bdb.py"
+  ],
+  [
+    "typo",
+    "checkfuncnmae",
+    "bdb.py"
+  ],
+  [
+    "identifier",
+    "Where is effective defined?",
+    "bdb.py"
+  ],
+  [
+    "docstring",
+    "Return (active breakpoint, delete temporary flag) or (None, None) as",
+    "bdb.py"
+  ],
+  [
+    "typo",
+    "effectvie",
+    "bdb.py"
+  ],
+  [
+    "identifier",
+    "Where is insort_right defined?",
+    "bisect.py"
+  ],
+  [
+    "docstring",
+    "Insert item x in list a, and keep it sorted assuming a is sorted.",
+    "bisect.py"
+  ],
+  [
+    "identifier",
+    "Where is bisect_right defined?",
+    "bisect.py"
+  ],
+  [
+    "docstring",
+    "Return the index where to insert item x in list a, assuming a is sorted.",
+    "bisect.py"
+  ],
+  [
+    "identifier",
+    "Where is insort_left defined?",
+    "bisect.py"
+  ],
+  [
+    "docstring",
+    "Insert item x in list a, and keep it sorted assuming a is sorted.",
+    "bisect.py"
+  ],
+  [
+    "identifier",
+    "Where is bisect_left defined?",
+    "bisect.py"
+  ],
+  [
+    "docstring",
+    "Return the index where to insert item x in list a, assuming a is sorted.",
+    "bisect.py"
+  ],
+  [
+    "identifier",
+    "Where is BZ2File defined?",
+    "bz2.py"
+  ],
+  [
+    "docstring",
+    "A file object providing transparent bzip2 (de)compression.",
+    "bz2.py"
+  ],
+  [
+    "identifier",
+    "Where is isleap defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Return True for leap years, False for non-leap years.",
+    "calendar.py"
+  ],
+  [
+    "typo",
+    "islaep",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is leapdays defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Return number of leap years in range [y1, y2).",
+    "calendar.py"
+  ],
+  [
+    "typo",
+    "leapdyas",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is weekday defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Return weekday (0-6 ~ Mon-Sun) for year, month (1-12), day (1-31).",
+    "calendar.py"
+  ],
+  [
+    "typo",
+    "weekady",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is monthrange defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Return weekday of first day of month (0-6 ~ Mon-Sun)",
+    "calendar.py"
+  ],
+  [
+    "typo",
+    "monthragne",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is Calendar defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Base calendar class. This class doesn't do any formatting. It simply",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is TextCalendar defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Subclass of Calendar that outputs a calendar as a simple plain text",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is HTMLCalendar defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "This calendar returns complete HTML pages.",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is LocaleTextCalendar defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "This class can be passed a locale name in the constructor and will return",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is LocaleHTMLCalendar defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "This class can be passed a locale name in the constructor and will return",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is format defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Prints multi-column formatting for year calendars",
+    "calendar.py"
+  ],
+  [
+    "typo",
+    "foramt",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is formatstring defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Returns a string formatted from n strings, centered within n columns.",
+    "calendar.py"
+  ],
+  [
+    "typo",
+    "formatstrnig",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is timegm defined?",
+    "calendar.py"
+  ],
+  [
+    "docstring",
+    "Unrelated but handy function to calculate Unix timestamp from GMT.",
+    "calendar.py"
+  ],
+  [
+    "typo",
+    "timgem",
+    "calendar.py"
+  ],
+  [
+    "identifier",
+    "Where is initlog defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Write a log message, if there is a log file.",
+    "cgi.py"
+  ],
+  [
+    "typo",
+    "initolg",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is dolog defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Write a log message to the log file.  See initlog() for docs.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is nolog defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Dummy function, assigned to log when logging is disabled.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is parse defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Parse a query in the environment or from a file (default stdin)",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is parse_header defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Parse a Content-type like header.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is MiniFieldStorage defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Like FieldStorage, for use when no file uploads are possible.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is FieldStorage defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Store a sequence of fields, reading multipart/form-data.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is test defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Robust test CGI script, usable as main program.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is print_environ defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Dump the shell environment as HTML.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is print_form defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Dump the contents of a form as HTML.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is print_directory defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Dump the current directory as HTML.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is print_environ_usage defined?",
+    "cgi.py"
+  ],
+  [
+    "docstring",
+    "Dump a list of environment variables used by CGI as HTML.",
+    "cgi.py"
+  ],
+  [
+    "identifier",
+    "Where is reset defined?",
+    "cgitb.py"
+  ],
+  [
+    "docstring",
+    "Return a string that resets the CGI and browser to a known state.",
+    "cgitb.py"
+  ],
+  [
+    "identifier",
+    "Where is lookup defined?",
+    "cgitb.py"
+  ],
+  [
+    "docstring",
+    "Find the value for a given name in the given environment.",
+    "cgitb.py"
+  ],
+  [
+    "typo",
+    "looukp",
+    "cgitb.py"
+  ],
+  [
+    "identifier",
+    "Where is scanvars defined?",
+    "cgitb.py"
+  ],
+  [
+    "docstring",
+    "Scan one logical line of Python and look up values of variables used.",
+    "cgitb.py"
+  ],
+  [
+    "typo",
+    "scanvras",
+    "cgitb.py"
+  ],
+  [
+    "identifier",
+    "Where is html defined?",
+    "cgitb.py"
+  ],
+  [
+    "docstring",
+    "Return a nice HTML document describing a given traceback.",
+    "cgitb.py"
+  ],
+  [
+    "identifier",
+    "Where is text defined?",
+    "cgitb.py"
+  ],
+  [
+    "docstring",
+    "Return a plain text document describing a given traceback.",
+    "cgitb.py"
+  ],
+  [
+    "identifier",
+    "Where is Hook defined?",
+    "cgitb.py"
+  ],
+  [
+    "docstring",
+    "A hook to replace sys.excepthook that shows tracebacks in HTML.",
+    "cgitb.py"
+  ],
+  [
+    "identifier",
+    "Where is enable defined?",
+    "cgitb.py"
+  ],
+  [
+    "docstring",
+    "Install an exception handler that formats tracebacks as HTML.",
+    "cgitb.py"
+  ],
+  [
+    "typo",
+    "enalbe",
+    "cgitb.py"
+  ],
+  [
+    "identifier",
+    "Where is Cmd defined?",
+    "cmd.py"
+  ],
+  [
+    "docstring",
+    "A simple framework for writing line-oriented command interpreters.",
+    "cmd.py"
+  ],
+  [
+    "identifier",
+    "Where is InteractiveConsole defined?",
+    "code.py"
+  ],
+  [
+    "docstring",
+    "Closely emulate the behavior of the interactive Python interpreter.",
+    "code.py"
+  ],
+  [
+    "identifier",
+    "Where is interact defined?",
+    "code.py"
+  ],
+  [
+    "docstring",
+    "Closely emulate the interactive Python interpreter.",
+    "code.py"
+  ],
+  [
+    "typo",
+    "intercat",
+    "code.py"
+  ],
+  [
+    "identifier",
+    "Where is CodecInfo defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Codec details when looking up the codec registry",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is Codec defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Defines the interface for stateless encoders/decoders.",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is IncrementalEncoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "An IncrementalEncoder encodes an input in multiple steps. The input can",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is BufferedIncrementalEncoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "This subclass of IncrementalEncoder can be used as the baseclass for an",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is IncrementalDecoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "An IncrementalDecoder decodes an input in multiple steps. The input can",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is BufferedIncrementalDecoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "This subclass of IncrementalDecoder can be used as the baseclass for an",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is StreamReaderWriter defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "StreamReaderWriter instances allow wrapping streams which",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is StreamRecoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "StreamRecoder instances translate data from one encoding to another.",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is EncodedFile defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Return a wrapped version of file which provides transparent",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is getencoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Lookup up the codec for the given encoding and return",
+    "codecs.py"
+  ],
+  [
+    "typo",
+    "getencoedr",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is getdecoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Lookup up the codec for the given encoding and return",
+    "codecs.py"
+  ],
+  [
+    "typo",
+    "getdecoedr",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is getincrementalencoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Lookup up the codec for the given encoding and return",
+    "codecs.py"
+  ],
+  [
+    "typo",
+    "getincrementalencoedr",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is getincrementaldecoder defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Lookup up the codec for the given encoding and return",
+    "codecs.py"
+  ],
+  [
+    "typo",
+    "getincrementaldecoedr",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is getreader defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Lookup up the codec for the given encoding and return",
+    "codecs.py"
+  ],
+  [
+    "typo",
+    "getreaedr",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is getwriter defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Lookup up the codec for the given encoding and return",
+    "codecs.py"
+  ],
+  [
+    "typo",
+    "getwrietr",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is make_encoding_map defined?",
+    "codecs.py"
+  ],
+  [
+    "docstring",
+    "Creates an encoding map from a decoding map.",
+    "codecs.py"
+  ],
+  [
+    "identifier",
+    "Where is compile_command defined?",
+    "codeop.py"
+  ],
+  [
+    "docstring",
+    "Compile a command and determine whether it is incomplete.",
+    "codeop.py"
+  ],
+  [
+    "identifier",
+    "Where is Compile defined?",
+    "codeop.py"
+  ],
+  [
+    "docstring",
+    "Instances of this class behave much like the built-in compile",
+    "codeop.py"
+  ],
+  [
+    "identifier",
+    "Where is CommandCompiler defined?",
+    "codeop.py"
+  ],
+  [
+    "docstring",
+    "Instances of this class have __call__ methods identical in",
+    "codeop.py"
+  ],
+  [
+    "identifier",
+    "Where is compile_dir defined?",
+    "compileall.py"
+  ],
+  [
+    "docstring",
+    "Byte-compile all modules in the given directory tree.",
+    "compileall.py"
+  ],
+  [
+    "identifier",
+    "Where is compile_path defined?",
+    "compileall.py"
+  ],
+  [
+    "docstring",
+    "Byte-compile all module on sys.path.",
+    "compileall.py"
+  ],
+  [
+    "identifier",
+    "Where is AbstractContextManager defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "An abstract base class for context managers.",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is AbstractAsyncContextManager defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "An abstract base class for asynchronous context managers.",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is ContextDecorator defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "A base class or mixin that enables context managers to work as decorators.",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is AsyncContextDecorator defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "A base class or mixin that enables async context managers to work as decorators.",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is closing defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "Context to automatically close something at the end of a block.",
+    "contextlib.py"
+  ],
+  [
+    "typo",
+    "closnig",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is aclosing defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "Async context manager for safely finalizing an asynchronously cleaned-up",
+    "contextlib.py"
+  ],
+  [
+    "typo",
+    "aclosnig",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is redirect_stdout defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "Context manager for temporarily redirecting stdout to another file.",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is redirect_stderr defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "Context manager for temporarily redirecting stderr to another file.",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is suppress defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "Context manager to suppress specified exceptions",
+    "contextlib.py"
+  ],
+  [
+    "typo",
+    "supprses",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is ExitStack defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "Context manager for dynamic management of a stack of exit callbacks.",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is AsyncExitStack defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "Async context manager for dynamic management of a stack of exit",
+    "contextlib.py"
+  ],
+  [
+    "identifier",
+    "Where is nullcontext defined?",
+    "contextlib.py"
+  ],
+  [
+    "docstring",
+    "Context manager that does no additional processing.",
+    "contextlib.py"
+  ],
+  [
+    "typo",
+    "nullcontxet",
+    "contextlib.py"
+  ]
+]

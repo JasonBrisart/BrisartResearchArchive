@@ -1,48 +1,22 @@
-r"""
-File: version.py
+"""Declare the BrisartAI release version.
 
 Purpose
 -------
-Keep the application version in one root-level constant.
-
+Provide one version value for startup and desktop display.
 Communication / relationships
 -----------------------------
-- brisart_ai/version_info.py loads this file directly by path (via
-  importlib.util) and reads its __version__ attribute. It is
-  deliberately loaded by path rather than a plain `import version`,
-  since this file lives at the project root, not inside the brisart_ai
-  package, and brisart_ai must not depend on the project root being on
-  sys.path.
-- Every other consumer of the version string (ui/app.py's window
-  title, ui/sidebar.py's version label, web/policy.py's outbound
-  USER_AGENT) goes through brisart_ai/version_info.py, not this file
-  directly; this file has exactly one reader.
-
+Read by brisart_ai/version_info.py.
 Settings / parameters
 ---------------------
-- __version__ (str): the current release version. Bump this single
-  value to change the version everywhere it's displayed (window title,
-  sidebar, the outbound USER_AGENT string). No other file needs to be
-  touched to release a new version number.
-
+Update the version alongside docs/CHANGELOG.md.
 Edge cases
 ----------
-- None; this module has no logic, only the version string. If this
-  file is ever missing, unreadable, or fails to import (a syntax error
-  introduced by a bad manual edit, for instance),
-  brisart_ai/version_info.py falls back to "0.0.0-unknown" rather than
-  raising, so a broken version.py can never crash application startup.
-
+The consumer handles missing or invalid version files.
 Known limitations
 -----------------
-- The string is not checked against docs/CHANGELOG.md, so a release can ship
-  with the two out of step.
-
+This constant does not migrate user state.
 Examples
 --------
-::
-
-    __version__ = "1.3.0"
+__version__ = "1.4.0"
 """
-
-__version__ = "1.3.0"
+__version__ = "1.4.0"

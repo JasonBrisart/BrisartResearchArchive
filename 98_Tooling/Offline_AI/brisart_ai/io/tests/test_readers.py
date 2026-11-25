@@ -99,6 +99,13 @@ class TestIterSupportedFiles(unittest.TestCase):
 
 
 class TestReadFile(unittest.TestCase):
+    def test_reads_bom_encoded_unicode_without_leaking_marker(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "notes.txt"
+            for encoding in ("utf-16", "utf-8-sig"):
+                path.write_bytes("Text from a lab notebook".encode(encoding))
+                self.assertEqual(read_file(path), "Text from a lab notebook")
+
     def test_reads_plain_text_file(self):
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "a.txt"

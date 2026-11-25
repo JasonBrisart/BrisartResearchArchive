@@ -1,28 +1,23 @@
-r"""
-File: brisart_ai/knowledge/tests/test_synthesizer.py
-
+"""
 Purpose
 -------
-Check synthesizer behavior through 5 unittest test groups.
+Test selection and citation of relevant local passages.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, brisart_ai.knowledge.synthesizer.
+Feeds representative document dictionaries to the evidence renderer.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Uses fixed local fixtures; no external corpus.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Covers short lines, partial evidence, comparisons, long lines and citations.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Does not measure relevance on a real research library.
 
 Examples
 --------
@@ -86,6 +81,27 @@ class TestFormatSource(unittest.TestCase):
 
 
 class TestSynthesize(unittest.TestCase):
+    def test_short_structured_lines_and_low_coverage(self):
+        docs = [{"title": "A", "location": "/a.txt", "text": "Permit expiry: June 30\nUnrelated heading"}]
+        self.assertIn("Permit expiry: June 30", synthesize("When does the permit expire?", docs))
+        self.assertIn("may not answer the whole question", synthesize("permit renewal fee", docs))
+
+    def test_comparison_does_not_let_one_subject_win(self):
+        docs = [{"title": "A", "location": "/a.txt", "text":
+                 "Trains are faster than bicycles on longer routes. "
+                 "Ferries and trains serve different parts of the coastline."}]
+        answer = synthesize("compare ferries versus trains", docs)
+        self.assertIn("Ferries and trains", answer)
+        self.assertNotIn("bicycles", answer)
+
+    def test_long_unpunctuated_passage_is_not_dropped(self):
+        docs = [{"text": "background " * 150 + "permit renewal opens April 3"}]
+        self.assertIn("permit renewal opens April 3", synthesize("permit renewal", docs))
+
+    def test_split_label_and_value_stay_together_in_cited_excerpt(self):
+        docs = [{"title": "Permit", "location": "/permit.txt", "text": "Permit fee:\n$42\n\nUnrelated text"}]
+        self.assertIn("[1] Permit fee: $42", synthesize("What is the permit fee?", docs))
+
     def test_empty_docs_returns_no_information_message(self):
         result = synthesize("anything", [])
         self.assertIn("don't have any indexed information", result)

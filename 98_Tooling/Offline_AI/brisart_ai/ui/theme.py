@@ -21,8 +21,7 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Actual fonts fall back to the platform defaults if unavailable.
 
 Examples
 --------
@@ -39,7 +38,7 @@ BG_INPUT = "#262b33"
 BG_CHAT = "#15171b"
 
 FG_TEXT = "#e6e6e6"
-FG_MUTED = "#8a919b"
+FG_MUTED = "#a8b1bd"
 FG_ACCENT = "#4fc3f7"
 FG_ACCENT_DIM = "#2d8cb3"
 FG_SUCCESS = "#7bd88f"
@@ -60,4 +59,4 @@ FONT_MONO_BOLD = ("Consolas", 10, "bold")
 PAD = 8
 PAD_SMALL = 4
 
-SIDEBAR_WIDTH = 210
+SIDEBAR_WIDTH = 228

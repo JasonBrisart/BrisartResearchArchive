@@ -7,7 +7,8 @@ Present the offline research desktop and its local evidence actions.
 
 Communication / relationships
 -----------------------------
-Calls BrisartService from the Tk event loop and worker thread.
+The search worker hands results to the Tk loop via a queue, never calls Tk,
+and does not overlap user-driven index changes.
 
 Settings / parameters
 ---------------------
@@ -29,6 +30,7 @@ Run python run.py.
 from __future__ import annotations
 
 import threading
+from queue import Empty, SimpleQueue
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -44,12 +46,12 @@ HELP_TEXT = """BrisartAI Help
 --------------
 Core actions (left sidebar):
   Add Sources     drop or browse for files and folders to index
-  Remove Sources  remove selected indexed files or notes
+  Manage sources  remove selected indexed files or notes
   Add Note        save observations and optionally quote an imported source
   Settings        view/toggle research sources
   Help            show this message
 
-Just type a question in the chat box below and press Enter.
+Enter submits a question. Ctrl+L focuses the question field. F1 opens Help.
 
 BrisartAI answers from your imported files and research notes."""
 
@@ -68,6 +70,7 @@ class BrisartApp(tk.Tk):
         self.configure(bg=theme.BG_APP)
         self._busy = False
         self._close_pending = False
+        self._answers = SimpleQueue()
 
         self._configure_style()
         self._build_layout()
@@ -77,6 +80,8 @@ class BrisartApp(tk.Tk):
             f"{APP_NAME} {__version__} ready. Type a question below and "
             "press Enter -- I'll answer using your indexed files and notes."
         )
+        self.bind("<F1>", self._action_help)
+        self.bind("<Control-l>", lambda _event: self.chat.focus_input())
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _configure_style(self) -> None:
@@ -88,6 +93,14 @@ class BrisartApp(tk.Tk):
         style.configure("Panel.TFrame", background=theme.BG_PANEL)
         style.configure("Sidebar.TFrame", background=theme.BG_SIDEBAR)
         style.configure("TSeparator", background=theme.BORDER)
+        style.configure("Navigation.TButton", anchor="w", padding=(11, 7),
+                        background=theme.BG_INPUT, foreground=theme.FG_TEXT)
+        style.configure("Primary.TButton", padding=(11, 7), font=theme.FONT_UI_BOLD,
+                        background=theme.FG_ACCENT, foreground=theme.BG_CHAT)
+        for name in ("Navigation.TButton", "Primary.TButton"):
+            style.map(name, background=[("disabled", theme.BG_PANEL), ("pressed", theme.FG_ACCENT_DIM),
+                                       ("active", theme.FG_USER)],
+                      foreground=[("disabled", theme.FG_MUTED), ("active", theme.BG_CHAT)])
 
     def _build_layout(self) -> None:
         actions = {
@@ -102,37 +115,62 @@ class BrisartApp(tk.Tk):
         body = ttk.Frame(self, style="Panel.TFrame")
         body.pack(side="right", fill="both", expand=True, padx=theme.PAD, pady=theme.PAD)
 
+        tk.Label(body, text="Research workspace", bg=theme.BG_PANEL, fg=theme.FG_TEXT,
+                 font=theme.FONT_HEADING).pack(anchor="w", padx=8, pady=(8, 2))
+        self.scope = tk.StringVar(master=self)
+        tk.Label(body, textvariable=self.scope, bg=theme.BG_PANEL, fg=theme.FG_MUTED,
+                 font=theme.FONT_UI).pack(anchor="w", padx=8, pady=(0, 8))
         self.chat = ChatPanel(body, on_submit=self._on_chat_submit)
         self.chat.pack(fill="both", expand=True)
         self.chat.focus_input()
 
     def _refresh_status(self) -> None:
         total, files, web = self.service.counts()
-        self.sidebar.set_status(total, files, web)
+        self.sidebar.set_status(files, total - files - web)
+        active = [label for key, label in (("search_local_files", "local files"),
+                  ("search_notes", "research notes")) if self.service.settings.get(key)]
+        self.scope.set("Searching: " + " + ".join(active) if active else "Search is off. Enable sources in Search settings.")
 
     def _answer_question(self, question: str) -> None:
         question = question.strip()
         if not question or self._busy:
             return
         self._busy = True
-        self.chat.append_system("Searching your imported files and notes...")
+        self.sidebar.set_busy(True)
+        self.chat.set_busy(True)
+        self.scope.set("Searching the offline library...")
 
         def worker() -> None:
             try:
-                answer = self.service.ask(question)
+                result = (self.service.ask(question), tuple(self.service.last_diagnostics))
             except Exception as exc:
-                answer = f"Something went wrong answering that: {exc}"
-            self.after(0, self._on_answer_ready, answer)
+                result = (f"Could not search the local library: {exc}", ())
+            self._answers.put(result)
 
-        threading.Thread(target=worker, daemon=True).start()
+        try:
+            threading.Thread(target=worker, daemon=True).start()
+        except RuntimeError:
+            self._on_answer_ready("Could not start search. Try again.", ())
+        else:
+            self.after(40, self._poll_answer)
 
-    def _on_answer_ready(self, answer: str) -> None:
+    def _poll_answer(self):
+        try:
+            answer, diagnostics = self._answers.get_nowait()
+        except Empty:
+            self.after(40, self._poll_answer)
+        else:
+            self._on_answer_ready(answer, diagnostics)
+
+    def _on_answer_ready(self, answer: str, diagnostics) -> None:
         self._busy = False
         if self._close_pending:
             self._on_close()
             return
+        self.sidebar.set_busy(False)
+        self.chat.set_busy(False)
         self.chat.append_assistant(answer)
-        for diagnostic_line in self.service.last_diagnostics:
+        for diagnostic_line in diagnostics:
             self.chat.append_system(diagnostic_line)
         self._refresh_status()
 
@@ -183,8 +221,9 @@ class BrisartApp(tk.Tk):
             return
         SettingsDialog(self, self.service, on_change=self._refresh_status)
 
-    def _action_help(self) -> None:
-        self.chat.append_system(HELP_TEXT)
+    def _action_help(self, _event=None) -> None:
+        if not self.grab_current():
+            messagebox.showinfo("Help and shortcuts", HELP_TEXT, parent=self)
 
     def _on_close(self) -> None:
         if self._busy:

@@ -1,45 +1,41 @@
-r"""
-File: brisart_ai/knowledge/relevance_engine.py
-
+"""
 Purpose
 -------
-Score term evidence with discrete rarity, presence, length and proximity
-rules.
+Own lexical evidence measurements for local document and passage scoring.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/knowledge/ranker.py: search() calls rarity_weight(),
-  presence_points(), shape_multiplier(), proximity_bonus().
-- Imports nothing from elsewhere in brisart_ai.
+The ranker uses rarity, presence, length and proximity measurements.
+The ranker and synthesizer use the same passage splitter and concept counts.
 
 Settings / parameters
 ---------------------
-- RARITY_TIERS: 4 fixed tiers by corpus-share.
-- PRESENCE_SCHEDULE: 4 fixed points by occurrence count, capped.
-- SHAPE_BRACKETS: 4 fixed multipliers by length ratio; shortest bracket
-  BOOSTS (1.15x) unlike BM25.
-- PROXIMITY_WINDOW_CHARS (120) / PROXIMITY_BONUS_PER_PAIR (0.15) /
-  PROXIMITY_BONUS_CAP (0.6).
+Rarity is tiered and repetition credit is capped. Proximity uses a
+120-character window. Long lines use 700-character windows with overlap.
 
 Edge cases
 ----------
-- rarity_weight()/presence_points() return 0.0 for zero occurrences.
-- shape_multiplier() guards average_length <= 0 by returning 1.0.
+Short lines are retained. Long excerpts mark truncation with ellipses.
+Closest-position comparisons walk sorted positions in linear time.
+A bounded in-memory cache reuses profiles for up to 48 documents of at
+most 32,768 characters. Short labels retain adjacent numeric or yes/no values.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Line and sentence boundaries are heuristic, not grammatical parsing.
+Long text windows may start or end inside a word.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+list(scored_passages("Permit expiry: June 30", [{"expiry", "expire"}]))
 """
 
 from __future__ import annotations
 
 import re
+from functools import lru_cache
+
+from brisart_ai.util import title_tokens, tokenize
 from typing import Dict, List, Sequence, Set, Tuple
 
 RARITY_TIERS: Tuple[Tuple[float, float], ...] = (
@@ -135,13 +131,83 @@ def proximity_bonus(haystack: str, matched_terms: Sequence[str]) -> Tuple[float,
 
 
 def _closest_distance(left_positions: Sequence[int], right_positions: Sequence[int]) -> int:
-    best = None
-    for left in left_positions:
-        for right in right_positions:
-            distance = abs(left - right)
-            if best is None or distance < best:
-                best = distance
-    return best if best is not None else PROXIMITY_WINDOW_CHARS + 1
+    i = j = 0
+    best = abs(left_positions[0] - right_positions[0]) if left_positions and right_positions else PROXIMITY_WINDOW_CHARS + 1
+    while i < len(left_positions) and j < len(right_positions):
+        left, right = left_positions[i], right_positions[j]
+        best = min(best, abs(left - right))
+        if left < right:
+            i += 1
+        elif left > right:
+            j += 1
+        else:
+            return 0
+    return best
+
+
+def passages(text: str):
+    """Yield source lines or sentences; window overlong unpunctuated text."""
+    lines = iter(text.splitlines())
+    pending = None
+    while True:
+        line = next(lines, None)
+        if line is None:
+            if pending:
+                yield pending
+            break
+        line = line.strip()
+        if pending:
+            if line and len(line) <= 100 and re.match(r"(?:[$€£]?\d|yes\b|no\b)", line, re.I):
+                yield pending + "\n" + line
+                pending = None
+                continue
+            yield pending
+            pending = None
+        if 2 <= len(line) <= 85 and line.endswith(":"):
+            pending = line
+            continue
+        yield from _sentence_windows(line)
+
+
+def _sentence_windows(line: str):
+    for part in re.split(r"(?<=[.!?])\s+", line):
+        if not part:
+            continue
+        if len(part) <= 700:
+            yield part
+            continue
+        for start in range(0, len(part), 550):
+            if start and start + 150 >= len(part):
+                break
+            end = min(len(part), start + 700)
+            yield ("... " if start else "") + part[start:end].strip() + (" ..." if end < len(part) else "")
+
+
+def _passage_profiles(text: str):
+    for passage in passages(text):
+        words = title_tokens(passage)
+        yield passage, frozenset(words) | frozenset(tokenize(passage)), len(words)
+
+
+@lru_cache(maxsize=48)
+def _small_document_profiles(text: str):
+    return tuple(_passage_profiles(text))
+
+
+def scored_passages(text: str, groups):
+    """Match a query to passages; reuse tokenization of recently read short files."""
+    masks = {}
+    for number, forms in enumerate(groups):
+        for form in forms:
+            masks[form] = masks.get(form, 0) | (1 << number)
+    profiles = (_small_document_profiles(text) if len(text) <= 32768
+                else _passage_profiles(text))
+    for passage, tokens, length in profiles:
+        mask = 0
+        for token, value in masks.items():
+            if token in tokens:
+                mask |= value
+        yield passage, mask.bit_count(), length
 
 
 __all__ = [

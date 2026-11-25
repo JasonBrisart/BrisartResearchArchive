@@ -1,29 +1,23 @@
-r"""
-File: brisart_ai/knowledge/tests/test_ranker.py
-
+"""
 Purpose
 -------
-Check ranker behavior through 5 unittest test groups.
+Test document ordering, query concepts and source scope.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib,
-brisart_ai.knowledge.index, brisart_ai.knowledge.ranker.
+Runs ranker against temporary SQLite indexes and tests metadata adjustments.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Uses fixed local fixtures; no external corpus.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Checks scattered keywords, buried evidence, compound tokens and empty scope.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Does not measure relevance on a real research library.
 
 Examples
 --------
@@ -42,6 +36,57 @@ from brisart_ai.knowledge.ranker import (
 class TestSearch(unittest.TestCase):
     def _make(self, tmpdir):
         return Index(str(Path(tmpdir) / "test.sqlite"))
+
+    def test_body_evidence_beats_scattered_keywords(self):
+        with Index(":memory:") as idx:
+            idx.add_source("file", "/decoy.txt", "Permit renewal", "Permit. " * 20 + "Renewal. " * 20)
+            idx.add_source("file", "/field.txt", "Field notes", "General background. " * 150 +
+                           "Permit renewal opens in April.")
+            self.assertEqual(search(idx, "permit renewal")[0]["title"], "Field notes")
+
+    def test_metadata_and_generic_query_do_not_replace_evidence(self):
+        with Index(":memory:") as idx:
+            idx.add_source("file", "/decoy.txt", "Explain", "Explain every rule in the handbook.")
+            self.assertEqual(search(idx, "explain aurora"), [])
+            self.assertEqual(search(idx, "explain", source_types=[]), [])
+
+    def test_compound_token_remains_searchable(self):
+        with Index(":memory:") as idx:
+            idx.add_source("file", "/a.txt", "History", "Pat is the co-founder.")
+            self.assertEqual(len(search(idx, "co-founder")), 1)
+
+    def test_exact_python_definition_outranks_mentions(self):
+        with Index(":memory:") as idx:
+            idx.add_source("file", "/guide.md", "MAX_RETRIES", "MAX_RETRIES permits repeated attempts.")
+            idx.add_source("file", "/settings.py", "settings", "MAX_RETRIES = 3")
+            idx.add_source("file", "/other.py", "other", "max_retries = 99")
+            self.assertEqual(search(idx, "What is MAX_RETRIES?")[0]["location"], "/settings.py")
+
+    def test_typo_recovery_is_scoped_and_citations_use_recovered_term(self):
+        from brisart_ai.knowledge.synthesizer import synthesize
+        with Index(":memory:") as idx:
+            idx.add_source("file", "/work.txt", "Guide", "Calibration begins at noon.")
+            idx.add_source("web", "https://example.invalid", "Old", "Calibratoin starts tomorrow.")
+            docs = search(idx, "calibratoin", source_type="file")
+            self.assertEqual(docs[0]["query_corrections"], {"calibratoin": "calibration"})
+            answer = synthesize("calibratoin", docs)
+            self.assertIn("[1] Calibration begins at noon.", answer)
+            self.assertIn("calibratoin -> calibration", answer)
+            self.assertNotIn("tomorrow", answer)
+
+    def test_ambiguous_typo_does_not_guess(self):
+        with Index(":memory:") as idx:
+            idx.add_source("file", "/work.txt", "Guide", "Samples and sampled entries are different.")
+            self.assertEqual(search(idx, "samplex"), [])
+
+    def test_lengths_refresh_after_another_handle_commits(self):
+        from brisart_ai.knowledge.ranker import _load_document_lengths
+        with tempfile.TemporaryDirectory() as tmp, self._make(tmp) as reader, self._make(tmp) as writer:
+            writer.add_source("file", "/one.txt", "A", "instrument logs")
+            first, _mean = _load_document_lengths(reader, ["file"], None)
+            writer.add_source("file", "/two.txt", "B", "instrument logs")
+            second, _mean = _load_document_lengths(reader, ["file"], None)
+            self.assertEqual((len(first), len(second)), (1, 2))
 
     def test_empty_query_returns_no_results(self):
         with tempfile.TemporaryDirectory() as d:

@@ -37,13 +37,37 @@ from brisart_ai.knowledge.index import Index
 from brisart_ai.knowledge.vault import (
     add_note, add_sources_to_collection, create_collection, extract_entities_from_text,
     list_collections, list_notes, reindex_missing_notes, search_notes, search_notes_as_documents,
-    vault_report,
+    timeline, vault_report,
 )
 
 
 class TestVault(unittest.TestCase):
     def _make(self, tmpdir):
         return Index(str(Path(tmpdir) / "test.sqlite"))
+
+    def test_note_search_uses_shared_variants_and_relevant_preview(self):
+        with Index(":memory:") as idx:
+            add_note(idx, "Permit", "Background. " * 40 + "Permit expiry: June 30.")
+            add_note(idx, "Travel", "An expirationist is not an indexed term match.")
+            idx.add_source("file", "/permit.txt", "Other", "Permit expires tomorrow.")
+            docs = search_notes_as_documents(idx, "When does the permit expire?")
+            self.assertEqual([d["title"] for d in docs], ["Permit"])
+            self.assertIn("Preview: Permit expiry: June 30.", search_notes(idx, "permit expire"))
+            self.assertEqual(search_notes_as_documents(idx, "expiry", limit=0), [])
+
+    def test_collection_and_timeline_exclude_substrings_and_old_web_rows(self):
+        with Index(":memory:") as idx:
+            idx.add_source("file", "/answer.txt", "Handbook", "Permit renewal begins in October.")
+            idx.add_source("file", "/decoy.txt", "Decoy", "A superrenewalism entry.")
+            idx.add_source("web", "https://example.invalid", "Old page", "The permit renews in June.")
+            self.assertIn("Matched sources added: 1", add_sources_to_collection(idx, "Permits", "renew"))
+            selected = idx.conn.execute("SELECT s.location FROM source_collections c "
+                                        "JOIN sources s ON c.source_id=s.id").fetchall()
+            self.assertEqual(selected, [("/answer.txt",)])
+            result = timeline(idx, "renew")
+            self.assertIn("/answer.txt", result)
+            self.assertNotIn("/decoy.txt", result)
+            self.assertNotIn("Old page", result)
 
     def test_create_collection(self):
         with tempfile.TemporaryDirectory() as d:

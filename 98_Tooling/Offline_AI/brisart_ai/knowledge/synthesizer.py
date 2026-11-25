@@ -1,40 +1,30 @@
-r"""
-File: brisart_ai/knowledge/synthesizer.py
-
+"""
 Purpose
 -------
-Select sentences from ranked evidence and attach source citations without
-generating prose.
+Select and cite excerpts from ranked local evidence without generating claims.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/core/conversation.py: calls synthesize().
-- Imports brisart_ai.intent.{INTENT_COMPARISON, INTENT_EXPLANATION,
-  INTENT_STATISTIC, detect_intent} and brisart_ai.util.{expand_query_terms,
-  split_sentences, tokenize}.
+Shares query groups with ranker.py and passage matching with relevance_engine.py.
 
 Settings / parameters
 ---------------------
-- max_sources (6) / max_sentences (10).
-- _HAS_QUANTITY / _HAS_COMPARISON_SIGNAL / _HAS_REASON_SIGNAL.
+Source and excerpt limits default to six and ten, with at most three
+excerpts per source. Coverage outweighs bounded intent-specific cues.
 
 Edge cases
 ----------
-- Boosts only apply to sentences sharing at least one query term.
-- Query terms include their singular/plural forms, and the frame word
-  "work" in "how does X work" is dropped (util.expand_query_terms), so a
-  sentence about "a lawsuit" answers "how do lawsuits work".
-- Chosen sentences de-duplicated by normalized key.
+Repetition cannot inflate concept coverage. Short lines can be evidence.
+Recovered spellings and partial matches are labeled and identical normalized excerpts appear once.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+A match is not proof that a passage answers a question or that a source
+is correct. This module does not infer missing facts.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+synthesize("When does the permit expire?", ranked_documents)
 """
 
 from __future__ import annotations
@@ -44,10 +34,12 @@ import re
 from typing import Dict, Iterable, List, Set, Tuple
 
 from brisart_ai.intent import INTENT_COMPARISON, INTENT_EXPLANATION, INTENT_STATISTIC, detect_intent
-from brisart_ai.util import expand_query_terms, split_sentences, tokenize
+from brisart_ai.knowledge.ranker import query_groups
+from brisart_ai.knowledge.relevance_engine import scored_passages
+from brisart_ai.util import tokenize
 
 Document = Dict[str, object]
-Candidate = Tuple[float, int, str, Document]
+Candidate = Tuple[float, int, int, str, Document]
 
 
 def query_wants_quantity(query: str) -> bool:
@@ -106,7 +98,7 @@ def format_source(document: Document) -> str:
 
 
 def _deduplication_key(sentence: str) -> str:
-    return re.sub(r"\W+", "", sentence.casefold())[:240]
+    return " ".join(re.findall(r"\w+", sentence.casefold()))
 
 
 def sentence_score(
@@ -144,8 +136,12 @@ def synthesize(
 
     safe_source_limit = max(1, int(max_sources))
     safe_sentence_limit = max(1, int(max_sentences))
-    query_terms = expand_query_terms(query)
+    groups = query_groups(query)
 
+    fixes = docs[0].get("query_corrections", {})
+    for term, corrected in fixes.items():
+        if term in groups:
+            groups[term] = groups[term] | {corrected}
     quantity_mode = query_wants_quantity(query)
     comparison_mode = query_wants_comparison(query)
     reason_mode = query_wants_reason(query)
@@ -153,25 +149,37 @@ def synthesize(
     candidates: List[Candidate] = []
     for source_number, document in enumerate(docs[:safe_source_limit], start=1):
         text = str(document.get("text", ""))
-        for sentence in split_sentences(text):
-            score = sentence_score(
-                sentence, query_terms, quantity_mode=quantity_mode,
-                comparison_mode=comparison_mode, reason_mode=reason_mode,
-            )
-            if score > 0:
-                candidates.append((score, source_number, sentence, document))
-
+        for sentence, hits, length in scored_passages(text, groups.values()):
+            if not hits:
+                continue
+            coverage = hits / len(groups)
+            score = 4.0 * hits + hits / max(8, length)
+            if quantity_mode and _HAS_QUANTITY.search(sentence):
+                score += 2.0 * coverage
+            if comparison_mode and _HAS_COMPARISON_SIGNAL.search(sentence):
+                score += 2.0 * coverage
+            if reason_mode and _HAS_REASON_SIGNAL.search(sentence):
+                score += 2.0 * coverage
+            score += 0.45 / source_number
+            candidates.append((score, source_number, hits, sentence, document))
     candidates.sort(key=lambda item: item[0], reverse=True)
 
     chosen: List[Candidate] = []
     seen = set()
+    source_counts: Dict[int, int] = collections.defaultdict(int)
+    if candidates and len(groups) > 1:
+        best_hits = candidates[0][2]
+        minimum_hits = min(best_hits, max(2, best_hits - 1))
+        candidates = [candidate for candidate in candidates
+                      if candidate[2] >= minimum_hits]
     for candidate in candidates:
-        score, source_number, sentence, document = candidate
+        _, source_number, _, sentence, _ = candidate
         key = _deduplication_key(sentence)
-        if not key or key in seen:
+        if not key or key in seen or source_counts[source_number] >= 3:
             continue
         seen.add(key)
-        chosen.append((score, source_number, sentence, document))
+        source_counts[source_number] += 1
+        chosen.append(candidate)
         if len(chosen) >= safe_sentence_limit:
             break
 
@@ -181,22 +189,10 @@ def synthesize(
             "passage that directly answers that."
         )
 
-    if quantity_mode:
-        signal_re = _HAS_QUANTITY
-    elif comparison_mode:
-        signal_re = _HAS_COMPARISON_SIGNAL
-    elif reason_mode:
-        signal_re = _HAS_REASON_SIGNAL
-    else:
-        signal_re = None
-
-    if signal_re is not None:
-        chosen.sort(key=lambda item: (0 if signal_re.search(item[2]) else 1, -item[0]))
-
     by_source: Dict[int, List[str]] = collections.defaultdict(list)
     original_docs: Dict[int, Document] = {}
     order: List[int] = []
-    for score, source_number, sentence, document in chosen:
+    for _, source_number, _, sentence, document in chosen:
         if source_number not in by_source:
             order.append(source_number)
         by_source[source_number].append(_clean_sentence(sentence))
@@ -206,9 +202,14 @@ def synthesize(
     for new_index, original_number in enumerate(order, start=1):
         display_number[original_number] = new_index
 
+    best_hits = chosen[0][2]
     lines: List[str] = []
+    if fixes:
+        lines.extend(["Search also matched: " + ", ".join(f"{term} -> {word}" for term, word in fixes.items()), ""])
+    if best_hits < len(groups):
+        lines.extend(["Closest excerpts I found. They may not answer the whole question.", ""])
     for original_number in order:
-        paragraph = " ".join(by_source[original_number][:3])
+        paragraph = " ".join(by_source[original_number])
         lines.append(f"[{display_number[original_number]}] {paragraph}")
         lines.append("")
 

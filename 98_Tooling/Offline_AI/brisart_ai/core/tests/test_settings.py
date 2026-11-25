@@ -40,6 +40,25 @@ class TestResearchSettings(unittest.TestCase):
     def _make(self, tmpdir):
         return ResearchSettings(path=Path(tmpdir) / "settings.json")
 
+    def test_valid_json_non_object_does_not_break_startup(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "settings.json"
+            for payload in ("null", "42", "[]"):
+                path.write_text(payload)
+                self.assertEqual(ResearchSettings(path).values, DEFAULT_SETTINGS)
+
+    def test_failed_atomic_replace_restores_setting_and_cleans_temp(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            settings = self._make(d)
+            original = settings.path.read_bytes()
+            with patch.object(Path, "replace", side_effect=PermissionError("blocked")):
+                with self.assertRaises(PermissionError):
+                    settings.set("search_notes", False)
+            self.assertTrue(settings.get("search_notes"))
+            self.assertEqual(settings.path.read_bytes(), original)
+            self.assertEqual(list(Path(d).iterdir()), [settings.path])
+
     def test_defaults_applied_when_no_file_exists(self):
         with tempfile.TemporaryDirectory() as d:
             s = self._make(d)

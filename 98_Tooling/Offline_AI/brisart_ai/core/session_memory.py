@@ -17,6 +17,7 @@ Settings / parameters
 - check_same_thread=False.
 - _compress(): tokenizes, caps at 12 terms, falls back to 140 chars.
 - recent_topics(limit=6).
+- Newer insertion IDs break ties between messages saved in the same second.
 
 Edge cases
 ----------
@@ -81,7 +82,7 @@ class SessionMemory:
 
     def recent_topics(self, limit: int = 6) -> List[str]:
         rows = self.conn.execute(
-            "SELECT content FROM conversation_memory ORDER BY created_at DESC LIMIT ?",
+            "SELECT content FROM conversation_memory ORDER BY created_at DESC, id DESC LIMIT ?",
             (limit,),
         ).fetchall()
         topics = []

@@ -1,30 +1,23 @@
-r"""
-File: brisart_ai/core/tests/test_conversation.py
-
+"""
 Purpose
 -------
-Check conversation behavior through 1 unittest test group.
+Verify local answer routing and cited evidence end to end.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib,
-brisart_ai.core.conversation, brisart_ai.core.session_memory,
-brisart_ai.core.settings, brisart_ai.knowledge.index.
+Builds conversation answers with a temporary Index, SessionMemory and settings.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Local file and note toggles are exercised independently.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Checks partial vocabulary matches, no evidence, disabled sources and old web records.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Headless fixtures do not exercise Tk or a real document collection.
 
 Examples
 --------
@@ -59,6 +52,18 @@ class TestBuildConversationAnswer(unittest.TestCase):
             self.assertIn("Sources:", answer)
             self.assertTrue("Gates" in answer or "Allen" in answer)
             index.close(); memory.close()
+
+    def test_paraphrased_question_returns_exact_cited_excerpt(self):
+        with tempfile.TemporaryDirectory() as d:
+            index, memory, settings = self._make(d)
+            try:
+                index.add_source("file", "/permit.txt", "Permit rules", "Permit expiry: June 30")
+                answer = build_conversation_answer("When does the permit expire?", index, memory, settings=settings)
+                self.assertIn("[1] Permit expiry: June 30", answer)
+                self.assertIn("/permit.txt", answer)
+            finally:
+                index.close()
+                memory.close()
 
     def test_empty_index_returns_no_information_message(self):
         with tempfile.TemporaryDirectory() as d:

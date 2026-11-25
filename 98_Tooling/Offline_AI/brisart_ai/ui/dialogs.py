@@ -15,7 +15,8 @@ Only Local Files and Research Notes are offered.
 
 Edge cases
 ----------
-Canceling a dialog leaves state unchanged. The drop queue deduplicates paths before import.
+Escape closes a dialog; applied settings are saved immediately.
+A failed settings write restores the checkbox. The drop queue deduplicates paths before import.
 
 Known limitations
 -----------------
@@ -59,7 +60,7 @@ class RemoveSourcesDialog(tk.Toplevel):
 
     def __init__(self, master, service, on_change=None):
         super().__init__(master)
-        self.title("Remove Sources")
+        self.title("Manage Sources")
         self.transient(master)
         self.geometry("760x420")
         self.minsize(520, 300)
@@ -74,13 +75,20 @@ class RemoveSourcesDialog(tk.Toplevel):
         tk.Entry(search, textvariable=self.query).pack(side="left", fill="x", expand=True,
                                                        padx=theme.PAD_SMALL)
         self.query.trace_add("write", lambda *_: self._refresh())
-        self.tree = ttk.Treeview(self, columns=("type", "title", "location"),
+        table = ttk.Frame(self)
+        table.pack(fill="both", expand=True, padx=theme.PAD, pady=theme.PAD)
+        self.tree = ttk.Treeview(table, columns=("type", "title", "location"),
                                  show="headings", selectmode="extended")
         for key, label, width in (("type", "Type", 80), ("title", "Title", 190),
                                   ("location", "Original location", 440)):
             self.tree.heading(key, text=label)
             self.tree.column(key, width=width, minwidth=70)
-        self.tree.pack(fill="both", expand=True, padx=theme.PAD, pady=theme.PAD)
+        scroll = ttk.Scrollbar(table, command=self.tree.yview)
+        scroll.pack(side="right", fill="y")
+        horizontal = ttk.Scrollbar(table, orient="horizontal", command=self.tree.xview)
+        horizontal.pack(side="bottom", fill="x")
+        self.tree.configure(yscrollcommand=scroll.set, xscrollcommand=horizontal.set)
+        self.tree.pack(fill="both", expand=True)
         self.tree.bind("<Control-a>", self._select_all)
         self.tree.bind("<Control-A>", self._select_all)
         tk.Label(self, text="Ctrl/Shift-click to select multiple. Ctrl+A selects all visible sources.",
@@ -92,6 +100,7 @@ class RemoveSourcesDialog(tk.Toplevel):
         tk.Button(bar, text="Remove Selected", command=self._remove).pack(side="left")
         tk.Button(bar, text="Close", command=self.destroy).pack(side="right")
         self._refresh()
+        self.bind("<Escape>", lambda _event: self.destroy())
         self.grab_set()
 
     def _refresh(self):
@@ -165,6 +174,7 @@ class AddSourcesDialog(tk.Toplevel):
             else:
                 instructions.set("Drop files or folders into the list, or use the Browse buttons.")
                 self._poll_drop()
+        self.bind("<Escape>", lambda _event: self.destroy())
         self.grab_set()
 
     def _browse(self, kind):
@@ -242,6 +252,7 @@ class SourceNoteDialog(tk.Toplevel):
         ttk.Button(self, text="Save Note", command=self._save).pack(anchor="e", padx=12, pady=10)
         self.query.trace_add("write", lambda *_: self._filter())
         self._filter()
+        self.bind("<Escape>", lambda _event: self.destroy())
         self.grab_set()
 
     def _field(self, title, widget, expand=False):
@@ -321,6 +332,7 @@ class SettingsDialog(tk.Toplevel):
         self.vars = {}
         self._build()
         self.transient(master)
+        self.bind("<Escape>", lambda _event: self.destroy())
         self.grab_set()
 
     def _build(self) -> None:
@@ -355,7 +367,12 @@ class SettingsDialog(tk.Toplevel):
         close_btn.pack(pady=(0, theme.PAD))
 
     def _toggle(self, key: str) -> None:
-        self.service.settings.set(key, self.vars[key].get())
+        try:
+            self.service.settings.set(key, self.vars[key].get())
+        except Exception as exc:
+            self.vars[key].set(self.service.settings.get(key))
+            messagebox.showerror("Could not save settings", str(exc), parent=self)
+            return
         if self.on_change:
             self.on_change()
 

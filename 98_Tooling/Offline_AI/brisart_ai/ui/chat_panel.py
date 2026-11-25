@@ -16,7 +16,8 @@ Settings / parameters
 
 Edge cases
 ----------
-- The transcript is read-only outside of append().
+- The transcript is read-only outside append(). Drafts stay editable and
+are not cleared when Enter is pressed during an active search.
 - append() auto-scrolls to the bottom after every message.
 
 Known limitations
@@ -49,7 +50,7 @@ class ChatPanel(ttk.Frame):
     def _build(self) -> None:
         self.transcript = scrolledtext.ScrolledText(
             self, wrap="word", bg=theme.BG_CHAT, fg=theme.FG_TEXT,
-            insertbackground=theme.FG_TEXT, font=theme.FONT_MONO,
+            insertbackground=theme.FG_TEXT, font=theme.FONT_UI,
             borderwidth=0, highlightthickness=0, padx=theme.PAD, pady=theme.PAD,
             state="disabled",
         )
@@ -70,19 +71,21 @@ class ChatPanel(ttk.Frame):
         self.entry.pack(side="left", fill="x", expand=True, ipady=6, padx=(0, theme.PAD_SMALL))
         self.entry.bind("<Return>", self._submit)
 
-        send_btn = tk.Button(
-            input_row, text="Send", command=self._submit, bg=theme.FG_ACCENT_DIM,
-            fg="#0b0d10", activebackground=theme.FG_ACCENT, relief="flat",
-            font=theme.FONT_UI_BOLD, padx=14,
-        )
-        send_btn.pack(side="right")
+        self.send = ttk.Button(input_row, text="Search", command=self._submit, style="Primary.TButton")
+        self.send.pack(side="right")
+        self.busy = False
 
-    def _submit(self, _event=None) -> None:
+    def set_busy(self, busy: bool) -> None:
+        self.busy = busy
+        self.send.state(["disabled" if busy else "!disabled"])
+
+    def _submit(self, _event=None) -> str:
         text = self.input_var.get().strip()
-        if not text:
-            return
+        if not text or self.busy:
+            return "break"
         self.input_var.set("")
         self.on_submit(text)
+        return "break"
 
     def append(self, text: str, tag: str = "assistant") -> None:
         self.transcript.configure(state="normal")
