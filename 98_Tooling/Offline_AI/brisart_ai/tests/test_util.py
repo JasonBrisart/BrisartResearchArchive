@@ -3,31 +3,76 @@ File: brisart_ai/tests/test_util.py
 
 Purpose
 -------
-Check util behavior through 7 unittest test groups.
+Exercise tokenization, hashes and normalization utilities.
+
+Protected scenarios: TestTokenize verifies basic tokenization; TestTokenize verifies
+stopwords removed; TestTokenize verifies none input returns empty list; TestTokenize
+verifies empty string returns empty list; TestTokenize verifies single char words
+excluded.
+
+Protected scenarios: TestStableHash verifies matches real hashlib sha256; TestStableHash
+verifies deterministic; TestStableHash verifies different inputs differ; TestFileHash
+verifies matches hashlib for file contents; TestFileHash verifies streams large file
+correctly.
+
+Protected scenarios: TestSplitSentences verifies splits on sentence boundaries;
+TestSplitSentences verifies too short sentences dropped; TestSplitSentences verifies
+empty text returns empty list; TestSplitSentences verifies none returns empty list;
+TestNormalizeUrl verifies empty string returns empty.
+
+Protected scenarios: TestNormalizeUrl verifies schemeless url gets https prepended;
+TestNormalizeUrl verifies scheme and host lowercased; TestNormalizeUrl verifies path
+percent encoding normalized; TestNormalizeUrl verifies fragment stripped; TestSameSite
+verifies same host different scheme is same site.
+
+Protected scenarios: TestSameSite verifies different hosts not same site; TestSameSite
+verifies case insensitive comparison; TestTermVariantsAndFrames verifies regular plurals
+both directions; TestTermVariantsAndFrames verifies no bad strips;
+TestTermVariantsAndFrames verifies question frame.
+
+Protected scenarios: TestTermVariantsAndFrames verifies title tokens split file names.
 
 Communication / relationships
 -----------------------------
-Direct module imports: hashlib, tempfile, unittest, pathlib,
-brisart_ai.util.
+Uses small text samples and temporary files.
+
+Direct project imports: brisart_ai.util.
+
+The cases use self.assertEqual, self.assertNotIn, self.assertIn, self.assertNotEqual,
+self.assertTrue, self.assertFalse to check returned values, persisted state or raised
+errors. The suite is run through scripts/run_tests.py so Native API discovery happens
+before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Regular word variants, URL normalization and sentence splitting.
+
+Regression coverage includes TestSameSite.test_different_hosts_not_same_site,
+TestSameSite.test_case_insensitive_comparison,
+TestTermVariantsAndFrames.test_regular_plurals_both_directions,
+TestTermVariantsAndFrames.test_no_bad_strips,
+TestTermVariantsAndFrames.test_question_frame,
+TestTermVariantsAndFrames.test_title_tokens_split_file_names.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/tests/test_util.py
+python scripts/run_tests.py brisart_ai/tests/test_util.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/tests/test_util.py -k
+test_stopwords_removed.
 """
 
 import hashlib

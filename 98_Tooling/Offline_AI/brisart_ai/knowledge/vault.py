@@ -3,34 +3,92 @@ File: brisart_ai/knowledge/vault.py
 
 Purpose
 -------
-Add notes, collections, entity links and timeline views to the research
-index.
+Store notes and collections, and expose library metadata and timeline lookups.
+
+The vault owns notes, collections, lightweight entity links and chronological views
+layered over the same index. It must not become an independent competing content-search
+implementation.
+
+Public operations: init_vault_schema (index) - Create vault tables if they don't exist
+yet. Safe to call repeatedly; create_collection (index, name, description='');
+list_collections (index); add_sources_to_collection (index, collection_name, query).
+
+Public operations: reindex_missing_notes (index) - Mirror any note missing from the main
+source index; add_note (index, title, body, collection_name='') - Save a note to the
+vault's notes table and mirror it into the ranked index; list_notes (index, limit=20);
+search_notes (index, query, limit=10) - Present Brisart-ranked notes with vault
+collection metadata.
+
+Public operations: search_notes_as_documents (index, query, limit=10) - Use the same
+ranking as conversation, limited to indexed notes; extract_entities_from_text (text,
+limit=30) - Extract lightweight capitalized-phrase entities. Not machine learning;
+rebuild_entities (index, max_sources=5000) - Rebuild entity links from indexed sources.
+Always safe to re-run; vault_report (index, top_entities=25) - High-level vault report:
+counts, collections, top entities.
+
+Public operations: timeline (index, query, limit=30) - Display the earliest indexed
+local sources matching Brisart query terms.
+
+Internal helpers include _collection_id, _index_note.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/core/service.py: calls add_note(), list_notes(), search_notes(),
-  reindex_missing_notes() (once, at startup).
-- Uses the shared Brisart ranker; calls index.add_source() to index notes.
+Writes note snapshots through Index and uses Brisart postings and ranking for content
+search.
+
+Notes are mirrored into indexed sources. Ranked note search delegates to Brisart;
+collections and timelines use the same postings for matching while preserving their own
+display order.
+
+Direct project imports: brisart_ai.knowledge.ranker,
+brisart_ai.knowledge.relevance_engine, brisart_ai.util.
+
+Direct importing modules include brisart_ai/core/service.py,
+brisart_ai/knowledge/tests/test_vault.py.
+
+Concrete calls within this file include index.conn.executescript, index.conn.commit,
+index.add_source, index.source_count, index.conn.execute.
 
 Settings / parameters
 ---------------------
-- ENTITY_RE: capitalized-phrase pattern, a lightweight heuristic.
-- rebuild_entities(max_sources=5000).
+Note search uses relevance order; timelines display by indexing time.
+
+Module configuration and named constants: ENTITY_RE.
+
+Call signatures: init_vault_schema(index); create_collection(index, name,
+description=''); list_collections(index); add_sources_to_collection(index,
+collection_name, query); reindex_missing_notes(index).
+
+Call signatures: add_note(index, title, body, collection_name=''); list_notes(index,
+limit=20); search_notes(index, query, limit=10); search_notes_as_documents(index, query,
+limit=10); extract_entities_from_text(text, limit=30).
+
+Call signatures: rebuild_entities(index, max_sources=5000); vault_report(index,
+top_entities=25); timeline(index, query, limit=30).
 
 Edge cases
 ----------
-- Notes mirrored into sources (source_type="note") via _index_note().
-- reindex_missing_notes() is idempotent.
+Historical web rows are excluded from collection and timeline matching; old unindexed
+notes can be reindexed.
+
+Entity extraction uses capitalized phrases rather than an ML model. A note snapshot
+survives deletion of its originating file entry until the note itself is removed.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+A saved excerpt remains a snapshot and is not synchronized with its original file.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+search_notes(index, "permit renewal")
+
+Other callable entry points in this module include create_collection, list_collections,
+add_sources_to_collection, reindex_missing_notes, add_note, list_notes, search_notes,
+plus 5 more.
 """
 
 from __future__ import annotations

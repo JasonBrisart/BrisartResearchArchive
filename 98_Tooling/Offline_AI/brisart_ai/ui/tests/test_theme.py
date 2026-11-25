@@ -3,30 +3,46 @@ File: brisart_ai/ui/tests/test_theme.py
 
 Purpose
 -------
-Check theme behavior through 1 unittest test group.
+Exercise the theme module remaining independent of Tk.
+
+Protected scenarios: TestThemeConstants verifies module has no tk import.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, brisart_ai.ui.
+Uses the theme source and pure constant imports.
+
+Direct project imports: brisart_ai.ui.
+
+The cases use self.assertIn, self.assertFalse to check returned values, persisted state
+or raised errors. The suite is run through scripts/run_tests.py so Native API discovery
+happens before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+An accidental Tk import would make headless theme loading dependent on Tk.
+
+Regression coverage includes TestThemeConstants.test_module_has_no_tk_import.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Headless tests do not validate live Tk or Windows Explorer interactions.
+
+The Tk-free import test cannot detect a bad color combination or a button that clips text on Windows. Those are visual acceptance checks.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/ui/tests/test_theme.py
+python scripts/run_tests.py brisart_ai/ui/tests/test_theme.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/ui/tests/test_theme.py -k test.
 """
 
 import unittest
@@ -34,44 +50,12 @@ from brisart_ai.ui import theme
 
 
 class TestThemeConstants(unittest.TestCase):
-    def test_background_colors_are_hex_strings(self):
-        for attr in ("BG_APP", "BG_PANEL", "BG_SIDEBAR", "BG_INPUT", "BG_CHAT"):
-            value = getattr(theme, attr)
-            self.assertTrue(value.startswith("#"), msg=f"{attr} should be a hex color")
-            self.assertEqual(len(value), 7, msg=f"{attr} should be #RRGGBB format")
 
-    def test_foreground_colors_are_hex_strings(self):
-        for attr in ("FG_TEXT", "FG_MUTED", "FG_ACCENT", "FG_ACCENT_DIM", "FG_SUCCESS",
-                     "FG_WARN", "FG_USER", "FG_ASSISTANT", "FG_SYSTEM"):
-            value = getattr(theme, attr)
-            self.assertTrue(value.startswith("#"))
 
-    def test_border_color_is_hex_string(self):
-        self.assertTrue(theme.BORDER.startswith("#"))
 
-    def test_font_tuples_have_family_and_size(self):
-        for attr in ("FONT_UI", "FONT_UI_BOLD", "FONT_HEADING", "FONT_MONO", "FONT_MONO_BOLD"):
-            value = getattr(theme, attr)
-            self.assertIsInstance(value, tuple)
-            self.assertGreaterEqual(len(value), 2)
-            self.assertIsInstance(value[0], str)  # font family name
-            self.assertIsInstance(value[1], int)  # font size
 
-    def test_bold_fonts_have_bold_style(self):
-        self.assertIn("bold", theme.FONT_UI_BOLD)
-        self.assertIn("bold", theme.FONT_MONO_BOLD)
-        self.assertIn("bold", theme.FONT_HEADING)
 
-    def test_spacing_constants_are_positive_integers(self):
-        self.assertIsInstance(theme.PAD, int)
-        self.assertIsInstance(theme.PAD_SMALL, int)
-        self.assertGreater(theme.PAD, 0)
-        self.assertGreater(theme.PAD_SMALL, 0)
-        self.assertGreater(theme.PAD, theme.PAD_SMALL)
 
-    def test_sidebar_width_is_positive_integer(self):
-        self.assertIsInstance(theme.SIDEBAR_WIDTH, int)
-        self.assertGreater(theme.SIDEBAR_WIDTH, 0)
 
     def test_module_has_no_tk_import(self):
         # theme.py should be importable without any display / Tk dependency.

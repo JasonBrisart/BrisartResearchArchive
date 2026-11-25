@@ -3,28 +3,65 @@ File: brisart_ai/ui/dialogs.py
 
 Purpose
 -------
-Queue local imports, preview and annotate source text, and manage indexed sources and settings.
+Own import queues, source management, note composition and settings controls.
+
+The dialogs own human-facing import queues, source removal, note annotation and settings
+editing. Their responsibility is collecting valid input and confirmation, not directly
+implementing indexing.
+
+Public operations: ask_import_paths (master, kind) - Choose multiple files or one folder
+explicitly; never open two pickers; AddSourcesDialog.destroy (self).
+
+Internal helpers include RemoveSourcesDialog.__init__, RemoveSourcesDialog._refresh,
+RemoveSourcesDialog._select_all, RemoveSourcesDialog._remove, AddSourcesDialog.__init__,
+AddSourcesDialog._browse, AddSourcesDialog._enqueue, AddSourcesDialog._poll_drop,
+AddSourcesDialog._unqueue, AddSourcesDialog._import, SourceNoteDialog.__init__,
+SourceNoteDialog._field, and 10 additional local helpers.
 
 Communication / relationships
 -----------------------------
-Used by app.py; settings toggles come from ResearchSettings.
+Calls the service for source previews and changes; adds the Explorer bridge only on
+Windows.
+
+The import dialog uses the reader registry and delegates to the service. Source-note
+selection previews indexed text and validates the saved excerpt. Settings errors are
+reflected back into the checkbox state.
+
+Direct project imports: brisart_ai.core.settings, brisart_ai.io.readers,
+brisart_ai.knowledge.index, brisart_ai.ui.
+
+Direct importing modules include brisart_ai/ui/app.py.
+
+Concrete calls within this file include filedialog.askdirectory, self.title,
+self.transient, self.geometry, self.minsize, self.configure, self.query.trace_add,
+self.tree.configure, self.tree.pack, self.tree.bind, self._refresh, self.bind.
 
 Settings / parameters
 ---------------------
-Only Local Files and Research Notes are offered.
+Browse uses the supported-file registry; the removal table filters title, path and type.
+
+Call signatures: ask_import_paths(master, kind); AddSourcesDialog.destroy(self).
 
 Edge cases
 ----------
-Escape closes a dialog; applied settings are saved immediately.
-A failed settings write restores the checkbox. The drop queue deduplicates paths before import.
+Failed settings writes restore the checkbox; note excerpts remain separately stored.
+
+Explorer drag-and-drop is optional and Windows-specific; Browse remains available.
+Cancelled dialogs and failed writes must not claim to have changed application data.
+
+Explicit exception branches or raised errors in this file include ValueError, Exception,
+OSError.
 
 Known limitations
 -----------------
-Requires Tk. Explorer drop is Windows-only; file and folder pickers are always available.
+Browse is the fallback where Windows drop is unavailable. Removing an indexed file never
+deletes the disk original.
 
 Examples
 --------
-Open AddSourcesDialog(master, on_import) or SourceNoteDialog(master, service, on_saved).
+AddSourcesDialog(parent, on_import)
+
+Other callable entry points in this module include AddSourcesDialog.destroy.
 """
 
 from __future__ import annotations

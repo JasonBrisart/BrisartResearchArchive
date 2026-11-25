@@ -3,26 +3,57 @@ File: brisart_ai/core/conversation.py
 
 Purpose
 -------
-Answer questions exclusively from enabled indexed files and notes.
+Build a cited answer from enabled local sources.
+
+The conversation layer chooses eligible source types and builds an answer from the
+existing index. It deliberately does not perform file ingestion, persistence schema
+changes, or live web research.
+
+Public operations: build_conversation_answer (query, index, memory, limit=8,
+settings=None) - Build a source-grounded answer to one question.
 
 Communication / relationships
 -----------------------------
-Called by BrisartService.ask; uses the local ranker, synthesizer and session memory.
+Calls the Brisart ranker and excerpt renderer and records compact context through
+SessionMemory.
+
+A question is normalized, session context is consulted, ranked local documents are
+gathered and excerpts are synthesized. Only then is the exchange recorded. This order
+matters because no-evidence responses must not silently widen source scope.
+
+Direct project imports: brisart_ai.core.settings, brisart_ai.io.input_cleaner,
+brisart_ai.knowledge.ranker, brisart_ai.knowledge.synthesizer.
+
+Direct importing modules include brisart_ai/core/service.py,
+brisart_ai/core/tests/test_conversation.py.
+
+Concrete calls within this file include settings.get.
 
 Settings / parameters
 ---------------------
+The source toggles independently enable file and note evidence.
+
+Call signatures: build_conversation_answer(query, index, memory, limit=8,
+settings=None).
 
 Edge cases
 ----------
-With both toggles off, return no evidence rather than searching all source types.
+When both are off, lookup is skipped; historical web rows are never eligible.
+
+Disabling both source types bypasses retrieval entirely. Historical web records may
+still exist in a migrated database but are not candidates for answers.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-Previously indexed web rows are intentionally excluded.
+This is extractive ranking, not semantic inference or internet research.
 
 Examples
 --------
-Call build_conversation_answer(query, index, memory, settings=settings).
+build_conversation_answer(question, index, memory, settings=settings)
 """
 
 from __future__ import annotations

@@ -1,33 +1,82 @@
-"""
+r"""
+File: brisart_ai/knowledge/relevance_engine.py
+
 Purpose
 -------
-Own lexical evidence measurements for local document and passage scoring.
+Measure lexical evidence, passage coverage, repetition and proximity.
+
+This module defines the lexical measurements shared by ranking and excerpt selection.
+Keeping passage splitting and coverage in one owner prevents the document ranker and
+answer renderer from using incompatible definitions of a match.
+
+Public operations: rarity_weight (document_frequency, total_documents) - Fixed-tier
+weight for a term's corpus rarity. Not a log curve; presence_points (term_frequency) -
+Fixed-schedule credit for how many times a term occurs in one document;
+term_contribution (term_frequency, document_frequency, total_documents) - One term's
+total contribution to a document's base score; shape_multiplier (document_length,
+average_length) - Fixed-bracket multiplier for a document's length relative to the
+corpus.
+
+Public operations: proximity_bonus (haystack, matched_terms) - Bonus multiplier for
+matched query terms appearing physically close together; passages (text) - Yield source
+lines or sentences; window overlong unpunctuated text; scored_passages (text, groups) -
+Match a query to passages; reuse tokenization of recently read short files.
+
+Internal helpers include _term_positions, _closest_distance, _sentence_windows,
+_passage_profiles, _small_document_profiles.
 
 Communication / relationships
 -----------------------------
-The ranker uses rarity, presence, length and proximity measurements.
-The ranker and synthesizer use the same passage splitter and concept counts.
+The ranker, excerpt renderer and vault share passage scoring.
+
+Discrete rarity, occurrence, length and proximity signals are calculated without a
+learned model. Short document profiles are cached in memory and longer text is streamed
+through passage windows.
+
+Direct project imports: brisart_ai.util.
+
+Direct importing modules include brisart_ai/knowledge/synthesizer.py,
+brisart_ai/knowledge/tests/test_relevance_engine.py, brisart_ai/knowledge/vault.py.
 
 Settings / parameters
 ---------------------
-Rarity is tiered and repetition credit is capped. Proximity uses a
-120-character window. Long lines use 700-character windows with overlap.
+Caches up to 48 document profiles for text of at most 32,768 characters; longer text is
+processed without caching.
+
+Module configuration and named constants: RARITY_TIERS (tuple, 4 entries),
+PRESENCE_SCHEDULE (tuple, 4 entries), SHAPE_BRACKETS (tuple, 4 entries),
+PROXIMITY_WINDOW_CHARS=120, PROXIMITY_BONUS_PER_PAIR=0.15, PROXIMITY_BONUS_CAP=0.6,
+SIGNAL_PROXIMITY='<proximity>'.
+
+Call signatures: rarity_weight(document_frequency, total_documents);
+presence_points(term_frequency); term_contribution(term_frequency, document_frequency,
+total_documents); shape_multiplier(document_length, average_length);
+proximity_bonus(haystack, matched_terms).
+
+Call signatures: passages(text); scored_passages(text, groups).
 
 Edge cases
 ----------
-Short lines are retained. Long excerpts mark truncation with ellipses.
-Closest-position comparisons walk sorted positions in linear time.
-A bounded in-memory cache reuses profiles for up to 48 documents of at
-most 32,768 characters. Short labels retain adjacent numeric or yes/no values.
+Short labels can stay with adjacent numeric or yes/no values; long lines use overlapping
+windows.
+
+Short field labels can be joined with adjacent numeric or yes/no values. Sentence
+boundaries and long-window splits are heuristic and can cut through prose.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-Line and sentence boundaries are heuristic, not grammatical parsing.
-Long text windows may start or end inside a word.
+Sentence and field boundaries are heuristic, and windows can cut through words.
 
 Examples
 --------
-list(scored_passages("Permit expiry: June 30", [{"expiry", "expire"}]))
+list(scored_passages("Permit fee: $42", [{"fee"}]))
+
+Other callable entry points in this module include presence_points, term_contribution,
+shape_multiplier, proximity_bonus, passages, scored_passages.
 """
 
 from __future__ import annotations

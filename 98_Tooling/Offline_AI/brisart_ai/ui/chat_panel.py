@@ -3,32 +3,68 @@ File: brisart_ai/ui/chat_panel.py
 
 Purpose
 -------
-Render the transcript and compose the question-entry area of the desktop.
+Display the transcript and collect a single-line question.
+
+The chat panel owns the visible transcript and editable question entry. It does not
+store the durable topic history or calculate answers.
+
+Public operations: ChatPanel.set_busy (self, busy); ChatPanel.append (self, text,
+tag='assistant'); ChatPanel.append_user (self, text); ChatPanel.append_assistant (self,
+text).
+
+Public operations: ChatPanel.append_system (self, text); ChatPanel.focus_input (self).
+
+Internal helpers include ChatPanel.__init__, ChatPanel._build, ChatPanel._submit.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/ui/app.py: constructs ChatPanel and calls append_*().
-- Imports brisart_ai.ui.theme for every color/font constant used.
+Sends a submission to the parent callback; the parent supplies reply and status
+messages.
+
+It invokes the application callback on submission and receives text and busy-state
+updates from its owner.
+
+Direct project imports: brisart_ai.ui.
+
+Direct importing modules include brisart_ai/ui/app.py.
+
+Concrete calls within this file include self._build, self.transcript.pack,
+self.transcript.tag_configure, self.entry.pack, self.entry.bind, self.send.pack,
+self.send.state, self.input_var.set, self.on_submit, self.transcript.configure,
+self.transcript.insert, self.transcript.see.
 
 Settings / parameters
 ---------------------
-- on_submit: callback invoked with stripped, non-empty input text.
+set_busy disables the Search button while leaving the draft editable.
+
+Call signatures: ChatPanel.set_busy(self, busy); ChatPanel.append(self, text,
+tag='assistant'); ChatPanel.append_user(self, text); ChatPanel.append_assistant(self,
+text); ChatPanel.append_system(self, text).
+
+Call signatures: ChatPanel.focus_input(self).
 
 Edge cases
 ----------
-- The transcript is read-only outside append(). Drafts stay editable and
-are not cleared when Enter is pressed during an active search.
-- append() auto-scrolls to the bottom after every message.
+Enter during an active search does not discard the draft.
+
+Submitting during an active search must leave the draft intact; transcript output is not
+itself the persisted research database.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+The visible transcript is a widget, not the persistent topic store.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+panel.append_assistant(answer)
+
+Other callable entry points in this module include ChatPanel.append,
+ChatPanel.append_user, ChatPanel.append_assistant, ChatPanel.append_system,
+ChatPanel.focus_input.
 """
 
 from __future__ import annotations

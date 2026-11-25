@@ -3,31 +3,52 @@ File: brisart_ai/knowledge/tests/test_ingest.py
 
 Purpose
 -------
-Check ingest behavior through 1 unittest test group.
+Exercise supported files entering the local index.
+
+Protected scenarios: TestIngestPaths verifies ingests supported files in folder;
+TestIngestPaths verifies skips empty files; TestIngestPaths verifies unsupported
+extension not ingested; TestIngestPaths verifies single file path; TestIngestPaths
+verifies returns zero for nonexistent path.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib,
-brisart_ai.knowledge.index, brisart_ai.knowledge.ingest.
+Uses temporary input files and index.
+
+Direct project imports: brisart_ai.knowledge.index, brisart_ai.knowledge.ingest.
+
+The cases use self.assertEqual to check returned values, persisted state or raised
+errors. The suite is run through scripts/run_tests.py so Native API discovery happens
+before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Invalid, duplicate or empty import inputs.
+
+Regression coverage includes TestIngestPaths.test_ingests_supported_files_in_folder,
+TestIngestPaths.test_skips_empty_files,
+TestIngestPaths.test_unsupported_extension_not_ingested,
+TestIngestPaths.test_single_file_path,
+TestIngestPaths.test_returns_zero_for_nonexistent_path.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/knowledge/tests/test_ingest.py
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_ingest.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/knowledge/tests/test_ingest.py -k
+test_skips_empty_files.
 """
 
 import tempfile

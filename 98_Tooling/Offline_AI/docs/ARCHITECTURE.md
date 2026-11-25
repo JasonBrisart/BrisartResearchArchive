@@ -1,28 +1,22 @@
 # Architecture
 
-BrisartAI is an offline-first Python research assistant with a Tk desktop and headless CLI. The two entry points share `BrisartService`, and no runtime path initiates public internet search.
+The desktop (`run.py`) and headless CLI (`cli.py`) share `core/service.py`. Both bootstrap external Native APIs before importing their consumers, then migrate eligible legacy state before opening the index. Neither launcher owns ranking, storage, or file-format handling.
 
-## Request flow
+| Responsibility | Owner | Boundary |
+|---|---|---|
+| Application operations | `core/service.py`, `core/conversation.py` | Open handles, apply question scope, compose cited answers, and coordinate mutations. UI and CLI do not duplicate these operations. |
+| Local input | `io/readers.py`, `binary_readers.py`, `extractor.py` | Discover paths and extract text. No index or network ownership. |
+| Persistence | `knowledge/index.py`, `knowledge/vault.py`, `core/session_memory.py`, `core/settings.py` | The index stores source records and postings; the vault owns notes and collections; memory and settings own their own state. |
+| Retrieval and excerpts | `knowledge/ranker.py`, `relevance_engine.py`, `synthesizer.py`, `intent.py` | Brisart implements candidate selection, ranking and excerpt choice; SQLite is not a ranking engine. |
+| Desktop | `ui/app.py`, `sidebar.py`, `chat_panel.py`, `dialogs.py`, `theme.py` | Tk owns presentation. The search worker returns through a queue, with widget updates on the Tk thread. |
+| Environment and platform boundaries | `state.py`, `native_path.py`, `ui/windows_drop.py` | State paths and migration, external API discovery, and Windows drop handling stay independently owned. |
 
-1. `run.py` or `cli.py` installs the external native module directory through `brisart_ai/native_path.py`.
-2. The service opens the per-user SQLite index, settings and session memory.
-3. A question enters `core/conversation.py`, which normalizes it and selects only enabled `file` and `note` source types.
-4. `knowledge/ranker.py` retrieves indexed candidates and reranks them by their strongest passage. `knowledge/synthesizer.py` shares the same query concepts and passage matching, then extracts cited excerpts.
-5. The response is returned to the CLI or Tk transcript and recorded in session memory.
+## Data flows
 
-When both source toggles are off, the application returns a no-evidence answer rather than falling back to historical web rows.
+**Import:** File discovery and extraction → ingestion → indexed text and token postings. Relevance code never reads arbitrary files to answer a search.
 
-## Responsibility ownership
+**Question:** Enabled file and note types → Brisart query groups and lexical shortlist → passage coverage and tie-breakers → cited excerpts. Unique supported spelling recovery uses the eligible indexed vocabulary. Both toggles off means no lookup. Historical web rows can remain in the database but are excluded from answer and vault content lookups. Filename filters in Manage Sources are metadata filters, not content ranking.
 
-- `core/`: orchestration, user preferences and conversation context.
-- `io/`: local file enumeration and text extraction, including HTML files already on disk.
-- `knowledge/`: local indexing, evidence scoring, citations and notes. The schema can retain historical `web` rows; this release does not migrate or erase user data.
-- `ui/`: desktop widgets and user actions, without network ownership.
-- `state.py`: user-data location and safe legacy migration.
-- `native_path.py`: resolving the shared external Native APIs; it does not contain their implementations.
+**Note:** Attach an excerpt from indexed file text → validate it against the source → save a note snapshot. Removing a file entry leaves the disk source and independent saved notes intact.
 
-The former `brisart_ai/web/` subsystem, provider search, crawler, HTTP fetcher, public URL policy and live-search replay script have been removed. This does not change the local document reader's ability to parse downloaded HTML files.
-
-## Boundaries
-
-The root contains only `run.py`, `cli.py` and `version.py`; no `__init__.py` contains code. Application data lives outside the repository. The Native APIs live in `94_Native_API's/Official`, not inside Offline_AI. Changes to their interfaces can affect the application on its next launch.
+Review file-specific details in the six-section source headers. Keep Linux benchmark tooling and its comparator dependencies under `scripts/`, outside the application entry points.

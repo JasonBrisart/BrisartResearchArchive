@@ -3,31 +3,72 @@ File: brisart_ai/knowledge/tests/test_relevance_engine.py
 
 Purpose
 -------
-Check relevance engine behavior through 5 unittest test groups.
+Exercise term weights, shape and proximity behavior.
+
+Protected scenarios: TestRarityWeight verifies zero document frequency returns zero;
+TestRarityWeight verifies zero total documents returns zero; TestRarityWeight verifies
+common term gets lowest tier; TestRarityWeight verifies distinctive term gets highest
+tier; TestRarityWeight verifies tier boundaries are fixed regardless of scale.
+
+Protected scenarios: TestPresencePoints verifies zero occurrences is zero;
+TestPresencePoints verifies single occurrence gets baseline; TestPresencePoints verifies
+many occurrences capped; TestPresencePoints verifies more occurrences never scores
+lower; TestTermContribution verifies combines presence and rarity.
+
+Protected scenarios: TestShapeMultiplier verifies zero average length returns neutral;
+TestShapeMultiplier verifies typical length gets full credit; TestShapeMultiplier
+verifies short document is boosted above neutral; TestShapeMultiplier verifies long
+document is diluted; TestShapeMultiplier verifies much longer document diluted more than
+slightly longer.
+
+Protected scenarios: TestProximityBonus verifies single term returns neutral;
+TestProximityBonus verifies no terms returns neutral; TestProximityBonus verifies terms
+close together get bonus; TestProximityBonus verifies terms far apart get no bonus;
+TestProximityBonus verifies bonus is capped.
+
+Protected scenarios: TestProximityBonus verifies terms matched case insensitively.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, brisart_ai.knowledge.relevance_engine.
+Uses small explicit scored token and text examples.
+
+Direct project imports: brisart_ai.knowledge.relevance_engine.
+
+The cases use self.assertEqual, self.assertLessEqual, self.assertGreater,
+self.assertLess, self.assertTrue to check returned values, persisted state or raised
+errors. The suite is run through scripts/run_tests.py so Native API discovery happens
+before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Near, distant and absent terms plus capped repetition.
+
+Regression coverage includes TestProximityBonus.test_single_term_returns_neutral,
+TestProximityBonus.test_no_terms_returns_neutral,
+TestProximityBonus.test_terms_close_together_get_bonus,
+TestProximityBonus.test_terms_far_apart_get_no_bonus,
+TestProximityBonus.test_bonus_is_capped,
+TestProximityBonus.test_terms_matched_case_insensitively.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py
-brisart_ai/knowledge/tests/test_relevance_engine.py
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_relevance_engine.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/knowledge/tests/test_relevance_engine.py
+-k test_zero_total_documents_returns_zero.
 """
 
 import unittest

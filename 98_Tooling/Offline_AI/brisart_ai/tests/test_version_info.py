@@ -3,30 +3,50 @@ File: brisart_ai/tests/test_version_info.py
 
 Purpose
 -------
-Check version info behavior through 1 unittest test group.
+Exercise version resolution and fallback.
+
+Protected scenarios: TestVersionInfo verifies app name is brisartai; TestVersionInfo
+verifies version is nonempty string; TestVersionInfo verifies version not the unknown
+fallback when file exists.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, brisart_ai.version_info.
+Uses a real version file and missing or invalid file cases.
+
+Direct project imports: brisart_ai.version_info.
+
+The cases use self.assertEqual, self.assertIsInstance, self.assertTrue,
+self.assertNotEqual to check returned values, persisted state or raised errors. The
+suite is run through scripts/run_tests.py so Native API discovery happens before
+collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Unavailable version data falls back without aborting startup.
+
+Regression coverage includes TestVersionInfo.test_app_name_is_brisartai,
+TestVersionInfo.test_version_is_nonempty_string,
+TestVersionInfo.test_version_not_the_unknown_fallback_when_file_exists.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/tests/test_version_info.py
+python scripts/run_tests.py brisart_ai/tests/test_version_info.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/tests/test_version_info.py -k
+test_version_is_nonempty_string.
 """
 
 import unittest

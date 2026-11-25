@@ -32,7 +32,7 @@ BrisartAI 1.4.0 improves offline retrieval, adds bounded typo recovery, and give
 
 - The Brisart engine is the single content-retrieval path. Notes now use its relevance order and matching passage previews instead of substring counts. Collections and timeline lookups use the same query concepts and postings, without changing the timeline's chronological display. Historical web entries are not considered by these vault lookups.
 - The ranker fetches variants in bounded SQL batches and skips document-length work when there are no matching postings. SQLite stores and fetches records from ordinary tables; it does not run FTS or decide relevance. No BM25 library, TF-IDF package, embeddings, model or network service is used at runtime.
-- No schema, dependency, settings or version changes. Existing indexes remain usable. Source-management filename filters remain simple UI filters, not full-text search.
+- The retrieval changes require no schema, settings or dependency additions. Existing indexes remain usable. Source-management filename filters remain simple UI filters, not full-text search.
 
 - Verified 280 tests, 7 subtests and all four offline replay cases. The network-blocked 20-question benchmark kept the complete previous top-ten ordering for every query (10 first-place hits, 20 top-ten hits; 47.8 ms median warm query on this run). This verifies document ranking continuity, not note preview quality on a real library.
 
@@ -48,6 +48,15 @@ BrisartAI 1.4.0 improves offline retrieval, adds bounded typo recovery, and give
 - Added seven regression tests. The Linux headless application suite passed 287 tests and 7 subtests; all four replay fixtures passed. Tests used the supplied Brisart URL code and temporary standard-library stand-ins for missing Native APIs. Those stand-ins are not shipped and this run does not establish Official Native API parity.
 
 - `scripts/benchmark_retrieval.py` compared six configurations across 270 queries with network access blocked. Correct first results increased from 220 to 244 against the attached sibling baseline; see `docs/TESTING.md` for full comparisons, limits and reproducibility.
+
+### Documentation and dependency cleanup
+- Expanded all 53 Python module, test and developer-tool headers into substantial, file-specific six-section documentation. Complex retrieval and service modules now describe their actual public operations, function signatures, dependency direction, matching behavior, error boundaries and regression coverage. Smaller files explain their real responsibilities without inventing unrelated features.
+- The documentation audit retained executable Python unchanged. The 1.4.0 headless suite passed 281 tests and 5 subtests, and all four offline replay fixtures passed with the five supplied external Brisart helpers. The benchmark was not rerun because ranking code did not change.
+
+- Reviewed all Python sources, tests and tools, and standardized file-specific headers in the required six-section order. Consolidated duplicate root and package READMEs into source headers and the product guide. Kept architecture ownership, operational security, reproducible benchmark evidence and release history as separate references with distinct purposes.
+- `brisart_ai/native_path.py` now requires only the five helpers used by the offline app. Removed codec and robots from startup validation; existing seven-module Official folders still work. Added a regression check for discovery with only the five used helpers.
+- Removed theme constant-format assertions while retaining the Tk-free dependency test. The Linux suite passed 281 tests and 5 subtests; all four offline replay cases passed using the five supplied Brisart helpers, without stand-ins. The Windows desktop and Explorer drop remain unverified. The historical benchmark was not rerun.
+- No schema, index, ranking, file-format or settings migration changes. Version remains 1.4.0.
 
 ### Compatibility and limits
 Existing SQLite indexes and settings remain usable without a schema migration or reindex. Keep the external Official Native API folder and the existing per-user data. Live Tk, Windows keyboard/layout behavior and Explorer drag-and-drop were not exercised. No auto-update or publication was performed.

@@ -3,36 +3,62 @@ File: brisart_ai/core/session_memory.py
 
 Purpose
 -------
-Keep per-session question and answer context in the local index.
+Keep compact conversation topics in the local database.
+
+Compact conversation context is retained separately from full indexed documents. The
+module records short topic strings rather than reconstructing a complete conversational
+model.
+
+Public operations: SessionMemory.add (self, role, content); SessionMemory.recent_topics
+(self, limit=6); SessionMemory.close (self).
+
+Internal helpers include SessionMemory.__init__, SessionMemory._compress.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/core/conversation.py: recent_topics() / add().
-- brisart_ai/core/service.py: constructs the single SessionMemory instance.
-- Imports brisart_ai.io.input_cleaner.normalize_shellish_input() and
-  brisart_ai.util.now_ts()/tokenize().
+The service opens the handle; conversation code reads and records topics.
+
+Both answers and questions may contribute context, but ordering is by timestamp and
+insertion ID so messages recorded within the same second remain deterministic.
+
+Direct project imports: brisart_ai.io.input_cleaner, brisart_ai.util.
+
+Direct importing modules include brisart_ai/core/service.py,
+brisart_ai/core/tests/test_conversation.py,
+brisart_ai/core/tests/test_session_memory.py.
+
+Concrete calls within this file include sqlite3.connect, self.conn.execute,
+self.conn.commit, self._compress, self.conn.close.
 
 Settings / parameters
 ---------------------
-- check_same_thread=False.
-- _compress(): tokenizes, caps at 12 terms, falls back to 140 chars.
-- recent_topics(limit=6).
-- Newer insertion IDs break ties between messages saved in the same second.
+Keeps the first 12 tokens or a 140-character fallback; recent_topics defaults to six
+rows.
+
+Call signatures: SessionMemory.add(self, role, content);
+SessionMemory.recent_topics(self, limit=6); SessionMemory.close(self).
 
 Edge cases
 ----------
-- add() drops rows that compress to nothing.
-- Content capped at 400 chars at the SQL layer.
+Blank messages are skipped; insertion ID breaks ties within a timestamp.
+
+Blank or repeated text is not useful topic evidence. Compaction and a bounded
+recent-history query keep this layer from becoming a second search engine.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+This is persistent topic memory, not a complete conversation transcript.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+memory.recent_topics(limit=3)
+
+Other callable entry points in this module include SessionMemory.recent_topics,
+SessionMemory.close.
 """
 
 from __future__ import annotations

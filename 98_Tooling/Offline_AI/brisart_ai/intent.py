@@ -3,46 +3,74 @@ File: brisart_ai/intent.py
 
 Purpose
 -------
-Infer retrieval intent from question wording and score corresponding
-evidence.
+Interpret question patterns and compute intent-related ranking adjustments.
+
+Public operations: name_candidates (text); is_generic_concept_page (text, topic_terms);
+is_bare_generic_concept_title (candidate) - True when `candidate` is a bare
+generic-concept title/slug; looks_like_person_name (text).
+
+Public operations: wants_person (query); detect_intent (query); wants_date (query);
+boost_terms (intent, query='').
+
+Public operations: penalty_terms (intent); score_intent (text, intent, query='',
+boost_weight=1.0, penalty_weight=DEFAULT_PENALTY_WEIGHT, max_boosts=4,
+topic_terms=None); describe_intent (intent, query='').
+
+Internal helpers include _words, _has_phrase, _normalize_haystack, _match_vocabulary.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/knowledge/ranker.py: detect_intent(),
-  is_bare_generic_concept_title(), name_candidates(), score_intent().
-  score_intent().
-- brisart_ai/knowledge/synthesizer.py: INTENT_COMPARISON/
-  INTENT_EXPLANATION/INTENT_STATISTIC/detect_intent().
-- Imports brisart_url.brisart_unquote() (replacing
-  urllib.parse.unquote(), used only by name_candidates()); see
-  94_Native_API's/Official for verification. Otherwise imports only
-  re and typing.
+The ranker consumes classification and adjustment helpers; the URL helper decodes slug
+text.
+
+Direct project imports: brisart_url.
+
+Direct importing modules include brisart_ai/knowledge/ranker.py,
+brisart_ai/knowledge/synthesizer.py, brisart_ai/tests/test_intent.py,
+scripts/debug_offline_replay.py.
 
 Settings / parameters
 ---------------------
-- ALL_INTENTS: founder, inventor, statistic, explanation, comparison,
-  general.
-- _KNOWN_COMPANIES: hand-maintained company-name set.
-- INTENT_BOOSTS / INTENT_PENALTIES: per-intent vocabulary.
-- BOOST_WEIGHTS / PENALTY_WEIGHTS: per-signal weights.
+Intent is inferred from lexical cues and built-in topic patterns.
+
+Module configuration and named constants: INTENT_FOUNDER='founder',
+INTENT_INVENTOR='inventor', INTENT_STATISTIC='statistic',
+INTENT_EXPLANATION='explanation', INTENT_COMPARISON='comparison',
+INTENT_GENERAL='general', ALL_INTENTS (tuple, 6 entries), INTENT_BOOSTS (dict, 6
+entries), INTENT_PENALTIES (dict, 6 entries), DATE_BOOSTS (tuple, 8 entries),
+SIGNAL_PERSON='<person>', SIGNAL_YEAR='<year>', SIGNAL_WORK='<work-of-art>',
+SIGNAL_GENERIC='<generic-concept>', BOOST_WEIGHTS (dict, 2 entries), PENALTY_WEIGHTS
+(dict, 2 entries), DEFAULT_PENALTY_WEIGHT=1.5.
+
+Call signatures: name_candidates(text); is_generic_concept_page(text, topic_terms);
+is_bare_generic_concept_title(candidate); looks_like_person_name(text);
+wants_person(query).
+
+Call signatures: detect_intent(query); wants_date(query); boost_terms(intent, query='');
+penalty_terms(intent); score_intent(text, intent, query='', boost_weight=1.0,
+penalty_weight=DEFAULT_PENALTY_WEIGHT, max_boosts=4, topic_terms=None).
+
+Call signatures: describe_intent(intent, query='').
 
 Edge cases
 ----------
-- is_generic_concept_page() vs. is_bare_generic_concept_title(): the
-  latter additionally strips common " - Site Name" title suffixes.
-- looks_like_person_name() is a narrow shape test.
-- name_candidates() offers a URL's last path segment as an extra
-  candidate.
+Titles and URL-like locations are only signals, not proof of source relevance.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Heuristics do not identify every name or infer unstated intent.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+detect_intent("Who invented the transistor?")
+
+Other callable entry points in this module include is_generic_concept_page,
+is_bare_generic_concept_title, looks_like_person_name, wants_person, detect_intent,
+wants_date, boost_terms, plus 3 more.
 """
 
 from __future__ import annotations

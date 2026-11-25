@@ -3,30 +3,68 @@ File: brisart_ai/io/tests/test_readers.py
 
 Purpose
 -------
-Check readers behavior through 3 unittest test groups.
+Exercise local filename support, discovery and read dispatch.
+
+Protected scenarios: TestIsSupported verifies known text extension; TestIsSupported
+verifies known binary extension; TestIsSupported verifies unsupported extension;
+TestIsSupported verifies extensionless wellknown names; TestIsSupported verifies case
+insensitive extension match.
+
+Protected scenarios: TestIterSupportedFiles verifies yields single supported file;
+TestIterSupportedFiles verifies skips unsupported single file; TestIterSupportedFiles
+verifies walks folder recursively; TestIterSupportedFiles verifies deduplicates same
+file reached twice; TestIterSupportedFiles verifies nonexistent path does not raise.
+
+Protected scenarios: TestReadFile verifies reads bom encoded unicode without leaking
+marker; TestReadFile verifies reads plain text file; TestReadFile verifies reads csv as
+pipe separated; TestReadFile verifies reads tsv as pipe separated; TestReadFile verifies
+reads html as extracted text.
+
+Protected scenarios: TestReadFile verifies reads valid json pretty printed; TestReadFile
+verifies reads invalid json as raw text; TestReadFile verifies reads jsonl line by line;
+TestReadFile verifies reads rtf stripped.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib, brisart_ai.io.readers.
+Uses temporary files and directories.
+
+Direct project imports: brisart_ai.io.readers.
+
+The cases use self.assertTrue, self.assertFalse, self.assertEqual, self.assertIn to
+check returned values, persisted state or raised errors. The suite is run through
+scripts/run_tests.py so Native API discovery happens before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+BOM-encoded text, unsupported inputs and nested folders.
+
+Explicit exception branches or raised errors in this file include Exception.
+
+Regression coverage includes TestReadFile.test_reads_tsv_as_pipe_separated,
+TestReadFile.test_reads_html_as_extracted_text,
+TestReadFile.test_reads_valid_json_pretty_printed,
+TestReadFile.test_reads_invalid_json_as_raw_text,
+TestReadFile.test_reads_jsonl_line_by_line, TestReadFile.test_reads_rtf_stripped.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/io/tests/test_readers.py
+python scripts/run_tests.py brisart_ai/io/tests/test_readers.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/io/tests/test_readers.py -k
+test_known_binary_extension.
 """
 
 import tempfile

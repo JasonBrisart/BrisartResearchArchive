@@ -3,34 +3,51 @@ File: brisart_ai/native_path.py
 
 Purpose
 -------
-Resolve the shared native modules before startup without vendoring them in
-Offline_AI.
+Resolve the external Brisart helpers before launchers import their consumers.
+
+Public operations: find_native_dir (project_root=PROJECT_ROOT, environ=None) - Return
+the folder that holds the Brisart native stack for this checkout; install
+(project_root=PROJECT_ROOT, environ=None) - Put the native stack folder on sys.path
+(once) and return it.
+
+Internal helpers include _is_external_stack, _archive_candidates.
 
 Communication / relationships
 -----------------------------
-The launchers, test runner and replay scripts call install() before loading
-application modules that use flat brisart_* imports. No API code lives here.
+Used by run.py, cli.py and developer tools; helpers are not bundled.
+
+No direct project import appears in this module’s top-level imports. The file is reached
+as a launcher, test, or helper, or through a runtime import rather than through an
+ordinary domain import.
 
 Settings / parameters
 ---------------------
-BRISART_NATIVE_API, if set, names the external directory containing all
-seven modules. Otherwise ancestors are checked for 94_Native_API's, preferring
-its Official subfolder before the folder itself. Older folder spellings are
-also recognized.
+BRISART_NATIVE_API overrides ancestor discovery of the Official or flat API folder.
+
+Module configuration and named constants: ENV_VAR='BRISART_NATIVE_API', ARCHIVE_DIRNAMES
+(tuple, 4 entries), ARCHIVE_SUBDIR='Official', PROJECT_ROOT, REQUIRED_MODULES (tuple, 5
+entries).
+
+Call signatures: find_native_dir(project_root=PROJECT_ROOT, environ=None);
+install(project_root=PROJECT_ROOT, environ=None).
 
 Edge cases
 ----------
-An invalid override fails without searching elsewhere. Incomplete candidates
-are skipped. Resolved paths inside Offline_AI cannot supply the modules.
+An incomplete override fails without falling back; a path inside the project is
+rejected.
+
+Explicit exception branches or raised errors in this file include ImportError.
 
 Known limitations
 -----------------
-The loader checks location and file presence, not API version compatibility.
+File discovery checks presence, not version or API compatibility. Codec and robots are
+not used by this application.
 
 Examples
 --------
-In the Archive layout, run python cli.py counts with 94_Native_API's at the
-repository root. For a detached checkout, set BRISART_NATIVE_API explicitly.
+native_path.install()
+
+Other callable entry points in this module include install.
 """
 
 from __future__ import annotations
@@ -45,12 +62,10 @@ ARCHIVE_DIRNAMES = ("94_Native_API's", "94_native apis", "94_Native_APIs", "94_N
 ARCHIVE_SUBDIR = "Official"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_MODULES = (
-    "brisart_codec.py",
     "brisart_hash.py",
     "brisart_inflate.py",
     "brisart_json.py",
     "brisart_markup.py",
-    "brisart_robots.py",
     "brisart_url.py",
 )
 

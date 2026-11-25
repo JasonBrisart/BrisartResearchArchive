@@ -1,5 +1,5 @@
-# Developer scripts
+# Developer tools
 
-`run_tests.py` installs the external native modules and executes co-located application tests. `debug_offline_replay.py` replays fixed ranking and answer fixtures without network access. The live-provider search replay was removed with internet research.
-
-`benchmark_retrieval.py` compares offline ranking modes; `benchmark_data/` holds the pinned queries and measured results for 1.4.0.
+- `run_tests.py` bootstraps external imports and executes co-located pytest tests.
+- `debug_offline_replay.py` runs local ranking and answer fixtures.
+- `benchmark_retrieval.py` runs one Linux comparison mode at a time. `benchmark_data/` preserves the pinned queries and six recorded result sets for the 1.4.0 benchmark. See [testing and reproduction](../docs/TESTING.md) for staging and interpretation. Comparator packages are not application dependencies.

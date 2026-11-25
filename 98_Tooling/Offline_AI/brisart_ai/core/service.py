@@ -3,27 +3,91 @@ File: brisart_ai/core/service.py
 
 Purpose
 -------
-Coordinate local imports, source management, sourced notes and question answering.
+Coordinate index, settings, memory, imports, notes and source removal for the two
+launchers.
+
+This is the common application boundary used by the headless CLI and Tk desktop. It owns
+the lifetime of Index, SessionMemory and ResearchSettings so the two entry points cannot
+drift into separate research implementations.
+
+Public operations: BrisartService.counts (self); BrisartService.ask (self, text,
+limit=8) - Answer a question; BrisartService.import_paths (self, paths);
+BrisartService.list_sources (self).
+
+Public operations: BrisartService.remove_source (self, source_id);
+BrisartService.remove_sources (self, source_ids); BrisartService.get_source_for_note
+(self, source_id); BrisartService.add_source_note (self, title, observation, source_id,
+passage) - Save an exact excerpt with its provenance as a durable local note.
+
+Public operations: BrisartService.add_note (self, title, body);
+BrisartService.list_notes (self, limit=20); BrisartService.search_notes (self, query,
+limit=10); BrisartService.toggle_setting (self, key).
+
+Public operations: BrisartService.settings_panel_text (self); BrisartService.close
+(self).
+
+Internal helpers include BrisartService.__init__, BrisartService._extract_diagnostics.
 
 Communication / relationships
 -----------------------------
-Called by CLI and Tk desktop; owns Index, SessionMemory and ResearchSettings.
+Desktop and CLI call this service; mutations go to knowledge modules.
+
+Source-backed notes preserve a validated copy of the quoted passage with its original
+location. Index removal is a separate mutation: deleting an imported file entry must not
+delete its disk original or a previously saved note excerpt.
+
+Direct project imports: brisart_ai.core.conversation, brisart_ai.core.session_memory,
+brisart_ai.core.settings, brisart_ai.knowledge.index, brisart_ai.knowledge.ingest,
+brisart_ai.knowledge.vault.
+
+Direct importing modules include brisart_ai/core/tests/test_service_headless.py,
+brisart_ai/ui/app.py, cli.py.
+
+Concrete calls within this file include self.index.source_count,
+self._extract_diagnostics, self.counts, self.index.list_sources,
+self.index.remove_source, self.index.remove_sources, self.index.file_for_note,
+self.get_source_for_note, self.add_note, self.settings.resolve_key,
+self.settings.toggle, self.settings.render.
 
 Settings / parameters
 ---------------------
-Uses per-user index and settings paths unless callers supply overrides.
+Accepts an index path and optional settings path.
+
+Call signatures: BrisartService.counts(self); BrisartService.ask(self, text, limit=8);
+BrisartService.import_paths(self, paths); BrisartService.list_sources(self);
+BrisartService.remove_source(self, source_id).
+
+Call signatures: BrisartService.remove_sources(self, source_ids);
+BrisartService.get_source_for_note(self, source_id);
+BrisartService.add_source_note(self, title, observation, source_id, passage);
+BrisartService.add_note(self, title, body); BrisartService.list_notes(self, limit=20).
+
+Call signatures: BrisartService.search_notes(self, query, limit=10);
+BrisartService.toggle_setting(self, key); BrisartService.settings_panel_text(self);
+BrisartService.close(self).
 
 Edge cases
 ----------
-Sourced notes reject stale or mismatched excerpts and preserve a copy with provenance.
+A sourced note rejects a stale source or an excerpt not present in the indexed text.
+
+A sourced note is rejected if the selected indexed file has disappeared or if the quoted
+text no longer occurs in the indexed snapshot. The service closes handles when its owner
+is done.
+
+Explicit exception branches or raised errors in this file include ValueError.
 
 Known limitations
 -----------------
-A Tk display is needed only for the desktop, not the service.
+Dropping an indexed file does not remove saved note excerpts or the original disk file.
 
 Examples
 --------
-Use BrisartService(db_path).ask("question").
+BrisartService(db_path).ask("When does the permit expire?")
+
+Other callable entry points in this module include BrisartService.ask,
+BrisartService.import_paths, BrisartService.list_sources, BrisartService.remove_source,
+BrisartService.remove_sources, BrisartService.get_source_for_note,
+BrisartService.add_source_note, plus 6 more.
 """
 
 from __future__ import annotations

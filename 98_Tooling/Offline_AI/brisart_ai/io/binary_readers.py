@@ -3,36 +3,60 @@ File: brisart_ai/io/binary_readers.py
 
 Purpose
 -------
-Extract indexable text from supported Office, OpenDocument and PDF
-containers.
+Extract searchable text from common document containers and simple PDFs.
+
+This module owns container-specific text extraction, not general file discovery or
+relevance scoring. It reads supported document packages and PDF text streams without
+calling external web services.
+
+Public operations: read_docx (path); read_pptx (path); read_xlsx (path); read_odt
+(path).
+
+Public operations: read_pdf_best_effort (path, max_bytes=10000000).
+
+Internal helpers include _xml_text.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/io/readers.py: read_file() dispatches here.
-- Imports brisart_inflate.brisart_zlib_decompress()
-  (replacing zlib.decompress() for PDF content streams); see
-  the external native API documentation for verification.
+readers.py dispatches formats here; ZIP/XML parsing uses the standard library and PDF
+inflation uses a Native API.
+
+ZIP/XML handling is performed in the reader, while compressed PDF content uses the
+external Brisart inflate helper. Failures are handled at the format boundary rather than
+changing the index schema.
+
+Direct project imports: brisart_inflate.
+
+Direct importing modules include brisart_ai/io/readers.py,
+brisart_ai/io/tests/test_binary_readers.py.
 
 Settings / parameters
 ---------------------
-- read_pdf_best_effort(path, max_bytes=10_000_000).
+The requested reader selects the container layout.
+
+Call signatures: read_docx(path); read_pptx(path); read_xlsx(path); read_odt(path);
+read_pdf_best_effort(path, max_bytes=10000000).
 
 Edge cases
 ----------
-- Office formats are zip containers; each reader unzips relevant parts.
-- read_pdf_best_effort() finds literal parenthesized runs, then
-  DEFLATE-decompresses stream...endstream blocks via brisart_zlib_decompress().
-- Every function returns "" on any failure rather than raising.
+Missing or invalid document parts can yield no text.
+
+Extracted text can omit layout, images, scanned pages and unsupported encodings. A
+document that opens successfully can still produce no searchable text.
+
+Explicit exception branches or raised errors in this file include Exception.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Best-effort extraction does not preserve page layout, perform OCR or implement all PDF
+encodings.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+read_docx(Path("notebook.docx"))
+
+Other callable entry points in this module include read_pptx, read_xlsx, read_odt,
+read_pdf_best_effort.
 """
 
 from __future__ import annotations

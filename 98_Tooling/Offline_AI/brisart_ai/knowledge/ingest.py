@@ -3,33 +3,51 @@ File: brisart_ai/knowledge/ingest.py
 
 Purpose
 -------
-Read local files and hand usable text to the index with source provenance.
+Discover supported local imports and write their extracted text to the index.
+
+Ingestion is the boundary between filesystem extraction and durable indexed evidence. It
+does not own ranking or GUI file selection.
+
+Public operations: ingest_paths (paths, index) - Ingest supported files from paths into
+the supplied index.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/core/service.py: BrisartService.import_paths() is the sole caller.
-- Calls brisart_ai.io.readers.iter_supported_files()/read_file(),
-  brisart_ai.util.file_hash(), and index.add_source().
+Uses io.readers for discovery and extraction and delegates writes to Index.
+
+The reader walks supported paths and extracts text; the index stores source metadata and
+token postings. Reimport is needed after a source changes on disk.
+
+Direct project imports: brisart_ai.io.readers, brisart_ai.util.
+
+Direct importing modules include brisart_ai/core/service.py,
+brisart_ai/knowledge/tests/test_ingest.py.
+
+Concrete calls within this file include index.add_source.
 
 Settings / parameters
 ---------------------
-- No module-level constants.
+Accepts a mixture of file and directory paths.
+
+Call signatures: ingest_paths(paths, index).
 
 Edge cases
 ----------
-- Empty text skipped and not counted.
-- Hash failure logged but doesn't block indexing.
-- Any read/index failure caught and logged per-file.
+Unreadable or empty inputs do not become useful indexed evidence.
+
+A supported filename can still be unreadable or yield no useful text. Folder traversal
+should not produce multiple records for the same resolved input path.
+
+Explicit exception branches or raised errors in this file include (OSError,
+UnicodeError, ValueError, RuntimeError), Exception, OSError.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Indexes a snapshot; it does not watch the filesystem for edits.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+ingest_paths(["notes.md", "reference/"], index)
 """
 
 from __future__ import annotations

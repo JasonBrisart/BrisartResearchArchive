@@ -3,28 +3,74 @@ File: brisart_ai/core/settings.py
 
 Purpose
 -------
-Persist Local Files and Research Notes search toggles.
+Persist the file and note eligibility toggles.
+
+The two persisted toggles control eligibility of imported files and research notes, not
+the existence of records in the index. The old automatic web-research setting is
+intentionally not part of the current runtime.
+
+Public operations: ResearchSettings.load (self); ResearchSettings.save (self);
+ResearchSettings.get (self, key); ResearchSettings.set (self, key, value).
+
+Public operations: ResearchSettings.toggle (self, key); ResearchSettings.resolve_key
+(self, raw_key); ResearchSettings.render (self).
+
+Internal helpers include ResearchSettings.__init__.
 
 Communication / relationships
 -----------------------------
-Used by the service and settings dialog; serialized through external brisart_json.
+The service reads these options; the Tk settings dialog updates them. JSON is provided
+by the external Native API.
+
+Saving uses a temporary file in the destination directory followed by replacement. A
+failed replacement restores the previous in-memory value so the GUI cannot claim a
+preference was saved when it was not.
+
+Direct project imports: brisart_ai, brisart_json.
+
+Direct importing modules include brisart_ai/core/conversation.py,
+brisart_ai/core/service.py, brisart_ai/core/tests/test_conversation.py,
+brisart_ai/core/tests/test_service_headless.py, brisart_ai/core/tests/test_settings.py,
+brisart_ai/ui/dialogs.py.
+
+Concrete calls within this file include state.settings_path, self.load, self.set,
+self.get, self.path.exists, self.save, self.values.get, self.path.read_text.
 
 Settings / parameters
 ---------------------
-Only search_local_files and search_notes are supported.
+search_local_files and search_notes default to True; a caller may supply a custom path.
+
+Module configuration and named constants: DEFAULT_SETTINGS_PATH, DEFAULT_SETTINGS (dict,
+2 entries), TOGGLE_LABELS (dict, 2 entries), SETTING_ALIASES (dict, 5 entries).
+
+Call signatures: ResearchSettings.load(self); ResearchSettings.save(self);
+ResearchSettings.get(self, key); ResearchSettings.set(self, key, value);
+ResearchSettings.toggle(self, key).
+
+Call signatures: ResearchSettings.resolve_key(self, raw_key);
+ResearchSettings.render(self).
 
 Edge cases
 ----------
-Non-object JSON uses defaults. Atomic replacement preserves the prior file
-on save failure; the in-memory toggle rolls back.
+Malformed or non-object JSON uses defaults. Failed atomic replacement rolls the changed
+value back.
+
+Missing, malformed, or non-object settings content falls back to the two defaults. This
+does not provide a multi-process merge protocol.
+
+Explicit exception branches or raised errors in this file include Exception, KeyError.
 
 Known limitations
 -----------------
-Settings do not control historical web records, which are excluded from answers.
+Does not merge simultaneous writes from multiple app processes.
 
 Examples
 --------
-ResearchSettings().set("search_notes", True).
+settings.set("search_notes", False)
+
+Other callable entry points in this module include ResearchSettings.save,
+ResearchSettings.get, ResearchSettings.set, ResearchSettings.toggle,
+ResearchSettings.resolve_key, ResearchSettings.render.
 """
 
 from __future__ import annotations

@@ -1,30 +1,52 @@
-"""Receive Explorer file and folder drops on a Tk widget.
+r"""
+File: brisart_ai/ui/windows_drop.py
 
 Purpose
 -------
-Bridge the Windows shell's WM_DROPFILES message to the Add Sources queue.
+Receive Explorer file and folder drops for the Add Sources queue.
+
+The Windows drop bridge exists because standard Tk does not provide the Explorer
+filesystem drop behavior required by Add Sources. It is platform-specific and does not
+belong in the cross-platform reader.
+
+Internal helpers include ExplorerDrop.__init__.
 
 Communication / relationships
 -----------------------------
-The dialog polls the queue on the Tk thread; the native callback does not
-call Tk. Windows unregisters the subclass when the drop widget is destroyed.
+The Windows callback queues paths while the Tk dialog polls on the UI thread.
+
+A Windows subclass callback receives paths and queues them; the Tk dialog polls the
+queue on its own thread. The callback must not call Tk.
+
+No direct project import appears in this module’s top-level imports. The file is reached
+as a launcher, test, or helper, or through a runtime import rather than through an
+ordinary domain import.
+
+Concrete calls within this file include self.paths.append.
 
 Settings / parameters
 ---------------------
-ExplorerDrop accepts an HWND owned by the current UI thread.
+ExplorerDrop accepts an HWND on the owning UI thread.
+
+This file has no independently configurable runtime parameters. The values it exports
+are consumed by its owner rather than loaded from another settings file.
 
 Edge cases
 ----------
-A drop always releases its shell handle, even if path decoding fails.
+Drop handles are released and the subclass is removed when the widget is destroyed.
+
+Shell handles must always be released and the subclass removed when the window is
+destroyed. Windows privilege boundaries can prevent Explorer drops.
+
+Explicit exception branches or raised errors in this file include OSError.
 
 Known limitations
 -----------------
-Only Windows Explorer-style filesystem drops are supported. Use Browse on
-other platforms or when Windows blocks drops between privilege levels.
+Windows Explorer-style filesystem drops only; Browse is the fallback.
 
 Examples
 --------
-Keep ExplorerDrop(widget.winfo_id()) alive until the widget is destroyed.
+ExplorerDrop(widget.winfo_id())
 """
 from collections import deque
 import ctypes as c

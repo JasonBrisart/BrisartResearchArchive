@@ -3,31 +3,55 @@ File: brisart_ai/knowledge/tests/test_index.py
 
 Purpose
 -------
-Check index behavior through 1 unittest test group.
+Exercise source persistence, deduplication and removal.
+
+Protected scenarios: TestIndex verifies add source and count; TestIndex verifies empty
+text returns false not added; TestIndex verifies missing source type raises; TestIndex
+verifies missing location raises; TestIndex verifies readding same source upserts not
+duplicates.
+
+Protected scenarios: TestIndex verifies source count by type; TestIndex verifies clear
+removes all sources; TestIndex verifies context manager closes connection.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib,
-brisart_ai.knowledge.index.
+Uses temporary SQLite indexes.
+
+Direct project imports: brisart_ai.knowledge.index.
+
+The cases use self.assertEqual, self.assertTrue, self.assertFalse, self.assertRaises to
+check returned values, persisted state or raised errors. The suite is run through
+scripts/run_tests.py so Native API discovery happens before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Source type counts, duplicates and clearing indexed records.
+
+Regression coverage includes TestIndex.test_missing_source_type_raises,
+TestIndex.test_missing_location_raises,
+TestIndex.test_readding_same_source_upserts_not_duplicates,
+TestIndex.test_source_count_by_type, TestIndex.test_clear_removes_all_sources,
+TestIndex.test_context_manager_closes_connection.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/knowledge/tests/test_index.py
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_index.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/knowledge/tests/test_index.py -k
+test_add_source_and_count.
 """
 
 import tempfile

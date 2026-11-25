@@ -3,42 +3,38 @@ File: brisart_ai/version_info.py
 
 Purpose
 -------
-Read the root version for runtime display and outbound identification.
+Expose the app label and release version to the desktop.
+
+Internal helpers include _read_version.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/ui/app.py, brisart_ai/ui/sidebar.py: APP_NAME/__version__.
+Loads project-root version.py by file path.
+
+Direct importing modules include brisart_ai/tests/test_version_info.py,
+brisart_ai/ui/app.py, brisart_ai/ui/sidebar.py.
 
 Settings / parameters
 ---------------------
-- APP_NAME (str): "BrisartAI".
-- __version__ (str): read from version.py at the project root.
-  version.py is loaded directly by file path via importlib.util
-  (not a plain `import version`, since it is now a real Python module
-  rather than a bare version string in a .txt file) and its own
-  __version__ attribute is used. Loading by path (rather than a plain
-  `import version`) avoids ever needing to add the project root to
-  sys.path, and keeps this the one and only place that touches
-  version.py.
+APP_NAME is BrisartAI; version resolution happens at import.
+
+Module configuration and named constants: APP_NAME='BrisartAI'.
 
 Edge cases
 ----------
-- If version.py is missing, unreadable, fails to import (a syntax
-  error, for instance), or does not define __version__, this falls
-  back to "0.0.0-unknown" rather than raising ImportError; exactly
-  the same failure-tolerant contract the previous version.txt-reading
-  implementation had.
-- Project root located relative to this file's own path (parents[1]).
+Missing, invalid or empty version data falls back to 0.0.0-unknown.
+
+Explicit exception branches or raised errors in this file include Exception.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+This module reports a local version; it has no updater or remote check.
+
+The fallback hides the underlying import exception from normal startup. If the displayed version is 0.0.0-unknown, inspect the root version file rather than assuming an update failed.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+from brisart_ai.version_info import APP_NAME, __version__
 """
 
 from __future__ import annotations

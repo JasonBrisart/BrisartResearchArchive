@@ -3,31 +3,61 @@ File: brisart_ai/io/tests/test_binary_readers.py
 
 Purpose
 -------
-Check binary readers behavior through 5 unittest test groups.
+Exercise document-container and simple PDF extraction.
+
+Protected scenarios: TestReadDocx verifies extracts text from document xml; TestReadDocx
+verifies corrupt docx returns empty string; TestReadPptx verifies extracts slide and
+notes text; TestReadXlsx verifies extracts shared strings and worksheet; TestReadOdt
+verifies extracts content xml text.
+
+Protected scenarios: TestReadOdt verifies missing content xml returns empty;
+TestReadPdfBestEffort verifies extracts literal parenthesized text;
+TestReadPdfBestEffort verifies extracts text from real deflate compressed stream;
+TestReadPdfBestEffort verifies undecompressable stream is skipped not raised;
+TestReadPdfBestEffort verifies nonexistent file returns empty string.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, zipfile, zlib, pathlib,
-brisart_ai.io.binary_readers.
+Uses small local document fixtures.
+
+Direct project imports: brisart_ai.io.binary_readers.
+
+The cases use self.assertEqual, self.assertIn to check returned values, persisted state
+or raised errors. The suite is run through scripts/run_tests.py so Native API discovery
+happens before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Missing document content and compressed text streams.
+
+Explicit exception branches or raised errors in this file include Exception.
+
+Regression coverage includes TestReadOdt.test_extracts_content_xml_text,
+TestReadOdt.test_missing_content_xml_returns_empty,
+TestReadPdfBestEffort.test_extracts_literal_parenthesized_text,
+TestReadPdfBestEffort.test_extracts_text_from_real_deflate_compressed_stream,
+TestReadPdfBestEffort.test_undecompressable_stream_is_skipped_not_raised,
+TestReadPdfBestEffort.test_nonexistent_file_returns_empty_string.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/io/tests/test_binary_readers.py
+python scripts/run_tests.py brisart_ai/io/tests/test_binary_readers.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/io/tests/test_binary_readers.py -k
+test_corrupt_docx_returns_empty_string.
 """
 
 import tempfile

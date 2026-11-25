@@ -3,31 +3,57 @@ File: brisart_ai/tests/test_native_path.py
 
 Purpose
 -------
-Exercise external module discovery and verify the import origin of every
-required module.
+Exercise external API discovery and import origin.
+
+Protected scenarios: TestNativePath verifies prefers official in named archive folder;
+TestNativePath verifies supports flat archive folder when official incomplete;
+TestNativePath verifies supports previous archive spelling; TestNativePath verifies
+offline startup does not require web only helpers; TestNativePath verifies override
+wins.
+
+Protected scenarios: TestNativePath verifies invalid override does not fall back;
+TestNativePath verifies local copy cannot satisfy dependency; TestNativePath verifies
+modules import from selected external directory.
 
 Communication / relationships
 -----------------------------
-Uses native_path and isolated directory layouts. The project test runner
-installs the external stack before collection.
+Uses isolated layouts plus the loaded external helpers.
+
+Direct project imports: brisart_ai.
+
+The cases use self.assertEqual, self.assertRaisesRegex, self.assertFalse to check
+returned values, persisted state or raised errors. The suite is run through
+scripts/run_tests.py so Native API discovery happens before collection.
 
 Settings / parameters
 ---------------------
-Injects the environment mapping into find_native_dir for discovery tests.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-An incomplete Official folder, invalid override, or legacy in-project
-copy must not silently change which dependency is loaded.
+Incomplete and in-project overrides and supported historical folder spellings.
+
+Regression coverage includes TestNativePath.test_supports_previous_archive_spelling,
+TestNativePath.test_offline_startup_does_not_require_web_only_helpers,
+TestNativePath.test_override_wins,
+TestNativePath.test_invalid_override_does_not_fall_back,
+TestNativePath.test_local_copy_cannot_satisfy_dependency,
+TestNativePath.test_modules_import_from_selected_external_directory.
 
 Known limitations
 -----------------
-Dummy module files test discovery only; the import test checks the actual
-stack supplied to the current test run.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/tests/test_native_path.py
+python scripts/run_tests.py brisart_ai/tests/test_native_path.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/tests/test_native_path.py -k setUp.
 """
 
 import importlib
@@ -69,6 +95,15 @@ class TestNativePath(unittest.TestCase):
     def test_supports_previous_archive_spelling(self):
         other = make_stack(self.archive / '94_Native_API' / 'Official')
         self.assertEqual(native_path.find_native_dir(self.project, {}), other)
+
+    def test_offline_startup_does_not_require_web_only_helpers(self):
+        helpers = {"brisart_hash.py", "brisart_inflate.py", "brisart_json.py",
+                   "brisart_markup.py", "brisart_url.py"}
+        official = self.api / "Official"
+        official.mkdir(parents=True)
+        for name in helpers:
+            (official / name).touch()
+        self.assertEqual(native_path.find_native_dir(self.project, {}), official)
 
     def test_override_wins(self):
         make_stack(self.api / 'Official')

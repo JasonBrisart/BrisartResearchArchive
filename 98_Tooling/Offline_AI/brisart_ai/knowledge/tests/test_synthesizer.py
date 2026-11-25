@@ -1,27 +1,75 @@
-"""
+r"""
+File: brisart_ai/knowledge/tests/test_synthesizer.py
+
 Purpose
 -------
-Test selection and citation of relevant local passages.
+Exercise selection and citation of indexed excerpts.
+
+Protected scenarios: TestQueryIntentDelegation verifies wants quantity for how many;
+TestQueryIntentDelegation verifies wants comparison for outlive;
+TestQueryIntentDelegation verifies wants reason for why; TestQueryIntentDelegation
+verifies general query wants none of them; TestSentenceScore verifies no overlap scores
+zero.
+
+Protected scenarios: TestSentenceScore verifies overlap scores positive;
+TestSentenceScore verifies quantity mode boosts numeric sentence; TestSentenceScore
+verifies comparison mode boosts comparative sentence; TestSentenceScore verifies reason
+mode boosts causal sentence; TestFormatSource verifies formats with title and location.
+
+Protected scenarios: TestFormatSource verifies falls back to location when no title;
+TestSynthesize verifies short structured lines and low coverage; TestSynthesize verifies
+comparison does not let one subject win; TestSynthesize verifies long unpunctuated
+passage is not dropped; TestSynthesize verifies split label and value stay together in
+cited excerpt.
+
+Protected scenarios: TestSynthesize verifies empty docs returns no information message;
+TestSynthesize verifies docs with no matching sentences returns distinct message;
+TestSynthesize verifies matching docs produce cited answer; TestSynthesize verifies
+citations are sequential with no gaps; TestSynthesizerInflection verifies singular
+sentence answers plural question.
 
 Communication / relationships
 -----------------------------
-Feeds representative document dictionaries to the evidence renderer.
+Uses document dictionaries with known answer passages.
+
+Direct project imports: brisart_ai.knowledge.synthesizer.
+
+The cases use self.assertTrue, self.assertFalse, self.assertEqual, self.assertGreater,
+self.assertIn, self.assertNotIn to check returned values, persisted state or raised
+errors. The suite is run through scripts/run_tests.py so Native API discovery happens
+before collection.
 
 Settings / parameters
 ---------------------
-Uses fixed local fixtures; no external corpus.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Covers short lines, partial evidence, comparisons, long lines and citations.
+Short fields, comparisons, partial coverage and long lines.
+
+Regression coverage includes
+TestSynthesize.test_split_label_and_value_stay_together_in_cited_excerpt,
+TestSynthesize.test_empty_docs_returns_no_information_message,
+TestSynthesize.test_docs_with_no_matching_sentences_returns_distinct_message,
+TestSynthesize.test_matching_docs_produce_cited_answer,
+TestSynthesize.test_citations_are_sequential_with_no_gaps,
+TestSynthesizerInflection.test_singular_sentence_answers_plural_question.
 
 Known limitations
 -----------------
-Does not measure relevance on a real research library.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/knowledge/tests/test_synthesizer.py
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_synthesizer.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/knowledge/tests/test_synthesizer.py -k
+test_wants_comparison_for_outlive.
 """
 
 import unittest

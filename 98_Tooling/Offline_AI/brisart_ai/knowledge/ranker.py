@@ -1,36 +1,104 @@
-"""
+r"""
+File: brisart_ai/knowledge/ranker.py
+
 Purpose
 -------
-Rank local sources by passage coverage, then by document-level evidence.
+Find and order local evidence using Brisart's lexical retrieval pipeline.
+
+The Brisart Retrieval Engine owns query concept grouping, lexical candidate discovery,
+passage-aware ranking and source-scope enforcement. It does not delegate relevance to
+BM25, TF-IDF, an embedding service or SQLite FTS.
+
+Public operations: query_groups (query) - Return ordered topic terms and their accepted
+spellings; title_match_adjust (title, meaningful_terms, term_rarity=None) - Boost a
+score for meaningful query terms present in the title; generic_concept_title_adjust
+(title, location) - Penalize a document whose title/URL is a bare generic concept;
+phrase_match_adjust (query, haystack) - Boost a score when the literal query phrase
+appears verbatim.
+
+Public operations: proximity_adjust (matched_terms, haystack) - Boost a score when
+matched query terms sit close together; intent_adjust (base_score, title, text,
+location, intent, query, topic_terms=None, term_rarity=None, matched_terms=None) - Apply
+title-match, generic-concept, phrase-match, proximity, and intent adjustments;
+matching_source_ids (index, groups, source_types) - Return all matches, for operations
+that do not need relevance order; search (index, query, limit=8, source_type=None,
+source_types=None) - Search indexed sources and rank matches by relevance.
+
+Internal helpers include _normalize_for_phrase, _concept_postings, _one_edit,
+_fill_unmatched_terms, _build_doc_length_sql, _load_document_lengths.
 
 Communication / relationships
 -----------------------------
-Reads Brisart token postings from ordinary SQLite tables in batches.
-Also supplies unranked matching IDs to vault collection and timeline queries. Shares query concepts with
-synthesizer.py and passage matching with relevance_engine.py.
+Reads ordinary SQLite postings; relevance_engine scores passage coverage; vault and
+conversation use its results.
+
+Query terms are grouped with accepted variants, postings are retrieved from ordinary
+SQLite tables, and a bounded candidate set is evaluated for coverage and intent. Exact
+code declarations and uniquely recoverable one-edit spellings provide additional
+evidence without overriding the source-type boundary.
+
+Direct project imports: brisart_ai.intent, brisart_ai.knowledge, brisart_ai.util.
+
+Direct importing modules include brisart_ai/core/conversation.py,
+brisart_ai/knowledge/synthesizer.py, brisart_ai/knowledge/tests/test_ranker.py,
+brisart_ai/knowledge/vault.py, scripts/debug_offline_replay.py.
+
+Concrete calls within this file include relevance_engine.proximity_bonus,
+index.conn.execute, relevance_engine.rarity_weight, relevance_engine.scored_passages,
+relevance_engine.term_contribution, relevance_engine.shape_multiplier,
+index.source_count.
 
 Settings / parameters
 ---------------------
-The shortlist contains up to five times the requested limit plus ten
-candidates. Each extra matched concept in one passage outranks metadata.
-One document-length snapshot is cached per open index and invalidated on writes.
+The lexical shortlist is bounded. Explicit source scopes are honored; the default limit
+is eight.
+
+Module configuration and named constants: STOPWORDS (set, 128 entries),
+GENERIC_QUERY_VERBS (set, 41 entries), COVERAGE_FLOOR=0.15, INTENT_WEIGHT=0.3,
+INTENT_MIN_FACTOR=0.4, INTENT_MAX_FACTOR=1.9, INTENT_TEXT_CHARS=2000,
+INTENT_CANDIDATE_FACTOR=5, INTENT_CANDIDATE_MIN=10, TITLE_MATCH_WEIGHT=0.12,
+TITLE_MATCH_MAX_FACTOR=1.42, GENERIC_TERM_DAMPING=0.2,
+SIGNAL_TITLE_MATCH='<title-match>', GENERIC_CONCEPT_TITLE_PENALTY_FACTOR=0.35,
+SIGNAL_GENERIC_CONCEPT_TITLE='<generic-concept-title>', PHRASE_MATCH_FACTOR=1.35,
+PHRASE_MATCH_MIN_WORDS=2, SIGNAL_PHRASE_MATCH='<phrase-match>'.
+
+Call signatures: query_groups(query); title_match_adjust(title, meaningful_terms,
+term_rarity=None); generic_concept_title_adjust(title, location);
+phrase_match_adjust(query, haystack); proximity_adjust(matched_terms, haystack).
+
+Call signatures: intent_adjust(base_score, title, text, location, intent, query,
+topic_terms=None, term_rarity=None, matched_terms=None); matching_source_ids(index,
+groups, source_types); search(index, query, limit=8, source_type=None,
+source_types=None).
 
 Edge cases
 ----------
-Known English word families and regular plural variants share one concept.
-An explicit empty source scope returns no results; ties use source ID.
-Exact Python declarations can outrank mentions. Unmatched alphabetic
-query terms may recover a unique one-edit neighbor in the eligible vocabulary.
+A missing alphabetic term can recover a unique one-edit neighbor with the same
+two-letter prefix. Document lengths are cached per scope and connection.
+
+Typo recovery is conservative: the first two letters must agree, the candidate must be
+unique and the vocabulary scan is bounded. The document-length cache is keyed to
+connection changes; ambiguous terms and excluded documents are not guessed back into
+results.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-The initial shortlist still requires an indexed term hit; this is not
-semantic retrieval. Typo recovery requires a shared two-letter prefix
-and skips ambiguous or oversized candidate vocabularies.
+No embeddings or general semantic matching. Ambiguous spellings and candidates outside
+the shortlist can be missed.
+
+Document scores are not calibrated probabilities. A higher score expresses relative lexical evidence among candidates, not confidence that the cited statement is factually true.
 
 Examples
 --------
-search(index, "When does the permit expire?", source_types={"file"})
+search(index, "calibratoin", source_types={"file"})
+
+Other callable entry points in this module include title_match_adjust,
+generic_concept_title_adjust, phrase_match_adjust, proximity_adjust, intent_adjust,
+matching_source_ids, search.
 """
 
 from __future__ import annotations

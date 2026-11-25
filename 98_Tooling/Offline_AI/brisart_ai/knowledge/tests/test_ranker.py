@@ -1,27 +1,93 @@
-"""
+r"""
+File: brisart_ai/knowledge/tests/test_ranker.py
+
 Purpose
 -------
-Test document ordering, query concepts and source scope.
+Exercise Brisart candidate selection and ordering.
+
+These regression cases constrain the observable order and eligibility of retrieved
+documents. They prevent a ranking optimization from silently turning lexical scope or
+typo recovery into unrestricted search.
+
+Protected scenarios: TestSearch verifies body evidence beats scattered keywords;
+TestSearch verifies metadata and generic query do not replace evidence; TestSearch
+verifies compound token remains searchable; TestSearch verifies exact python definition
+outranks mentions; TestSearch verifies typo recovery is scoped and citations use
+recovered term.
+
+Protected scenarios: TestSearch verifies ambiguous typo does not guess; TestSearch
+verifies lengths refresh after another handle commits; TestSearch verifies empty query
+returns no results; TestSearch verifies no matching documents returns empty; TestSearch
+verifies matching document is returned.
+
+Protected scenarios: TestSearch verifies source types filter restricts scope; TestSearch
+verifies founder intent ranks history above product page; TestSearch verifies statistic
+intent finds numeric content; TestSearch verifies result documents have expected fields;
+TestSearch verifies limit is respected.
+
+Protected scenarios: TestTitleMatchAdjust verifies no title returns neutral;
+TestTitleMatchAdjust verifies matching title term boosts; TestTitleMatchAdjust verifies
+generic verb damped; TestGenericConceptTitleAdjust verifies bare generic title
+penalized; TestGenericConceptTitleAdjust verifies specific title not penalized.
+
+Protected scenarios: TestPhraseMatchAdjust verifies single word query not boosted;
+TestPhraseMatchAdjust verifies exact phrase match boosts; TestPhraseMatchAdjust verifies
+scrambled words do not match; TestInflectionAndQuestionFrame verifies plural query finds
+singular document; TestInflectionAndQuestionFrame verifies how does x work ranks topic
+above work pages.
+
+Protected scenarios: TestInflectionAndQuestionFrame verifies work alone is still
+searched; TestInflectionAndQuestionFrame verifies both forms in query count once;
+TestInflectionAndQuestionFrame verifies file name title matches.
 
 Communication / relationships
 -----------------------------
-Runs ranker against temporary SQLite indexes and tests metadata adjustments.
+Uses temporary indexes and representative query cases.
+
+Temporary indexes hold deliberately competing documents: exact declarations, scattered
+keywords, buried passages, source types and ambiguous spellings.
+
+Direct project imports: brisart_ai.knowledge.index, brisart_ai.knowledge.ranker.
+
+The cases use self.assertEqual, self.assertGreater, self.assertTrue, self.assertLess,
+self.assertIn, self.assertNotIn, self.assertGreaterEqual, self.assertLessEqual to check
+returned values, persisted state or raised errors. The suite is run through
+scripts/run_tests.py so Native API discovery happens before collection.
 
 Settings / parameters
 ---------------------
-Uses fixed local fixtures; no external corpus.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Checks scattered keywords, buried evidence, compound tokens and empty scope.
+Typo scope, ambiguous terms, exact declarations, cache invalidation and empty scope.
+
+An explicit empty scope returns nothing; a unique one-edit recovery is reported; an
+ambiguous typo is not guessed. A commit through another connection must invalidate
+cached lengths.
+
+Regression coverage includes TestPhraseMatchAdjust.test_scrambled_words_do_not_match,
+TestInflectionAndQuestionFrame.test_plural_query_finds_singular_document,
+TestInflectionAndQuestionFrame.test_how_does_x_work_ranks_topic_above_work_pages,
+TestInflectionAndQuestionFrame.test_work_alone_is_still_searched,
+TestInflectionAndQuestionFrame.test_both_forms_in_query_count_once,
+TestInflectionAndQuestionFrame.test_file_name_title_matches.
 
 Known limitations
 -----------------
-Does not measure relevance on a real research library.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/knowledge/tests/test_ranker.py
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_ranker.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/knowledge/tests/test_ranker.py -k
+test_body_evidence_beats_scattered_keywords.
 """
 
 import tempfile

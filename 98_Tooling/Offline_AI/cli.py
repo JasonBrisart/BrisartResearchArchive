@@ -3,27 +3,42 @@ File: cli.py
 
 Purpose
 -------
-Provide offline CLI commands for local files, notes and questions.
+Expose local imports, notes, counts and cited questions without Tk.
+
+Public operations: main (argv=None).
 
 Communication / relationships
 -----------------------------
-Initializes native_path and state before creating BrisartService.
+Installs Native APIs before constructing BrisartService; runs legacy state migration
+before opening the index.
+
+Direct project imports: brisart_ai, brisart_ai.core.service, brisart_ai.knowledge.index.
+
+Concrete calls within this file include native_path.install, state.migrate_legacy_state,
+service.close, service.counts, service.ask, service.import_paths, service.add_note,
+service.list_notes.
 
 Settings / parameters
 ---------------------
-Commands: counts, ask, import, note, notes; no web flags.
+Use --db before a subcommand to override the SQLite path; BRISARTAI_STATE_DIR controls
+default state.
+
+Call signatures: main(argv=None).
 
 Edge cases
 ----------
-Unknown research or --web options are rejected by argparse.
+The service closes in finally after command execution; unrecognized commands fail
+through argparse.
+
+Explicit exception branches or raised errors in this file include SystemExit.
 
 Known limitations
 -----------------
-No desktop is needed, but the external Native APIs are required.
+No web search or desktop controls. The external APIs must resolve even for help.
 
 Examples
 --------
-python cli.py ask "question"
+python cli.py ask "What is the permit fee?"
 """
 from __future__ import annotations
 import argparse

@@ -3,33 +3,80 @@ File: brisart_ai/core/tests/test_service_headless.py
 
 Purpose
 -------
-Exercise research service operations directly, without creating Tk widgets.
+Exercise the public headless service workflows.
+
+These end-to-end service tests protect the shared behavior used by both the GUI and CLI
+without constructing widgets. They are particularly important because indexing and note
+deletion cross multiple storage tables.
+
+Protected scenarios: TestBrisartServiceHeadless verifies construction succeeds;
+TestBrisartServiceHeadless verifies counts start at zero; TestBrisartServiceHeadless
+verifies add note increases counts; TestBrisartServiceHeadless verifies ask answers from
+indexed note; TestBrisartServiceHeadless verifies add multiple supported files and
+folder recursively.
+
+Protected scenarios: TestBrisartServiceHeadless verifies source note keeps provenance
+and excerpt after source removal; TestBrisartServiceHeadless verifies batch removal
+rolls back and ignores duplicate and missing ids; TestBrisartServiceHeadless verifies
+remove imported file preserves original and clears search; TestBrisartServiceHeadless
+verifies remove note deletes vault record and does not reindex;
+TestBrisartServiceHeadless verifies toggle setting flips value.
+
+Protected scenarios: TestBrisartServiceHeadless verifies settings panel text contains
+research sources; TestBrisartServiceHeadless verifies import paths ingests files;
+TestBrisartServiceHeadless verifies list notes reflects added note;
+TestBrisartServiceHeadless verifies settings live in the given file not the state
+folder; TestBrisartServiceHeadless verifies default settings path is in the state
+folder.
 
 Communication / relationships
 -----------------------------
-Direct module imports: json, tempfile, unittest, pathlib,
-brisart_ai.core.service. Every service is built with a database and a
-settings file inside its own temporary directory.
+Uses temporary database, settings and imported files.
+
+Temporary files, a temporary SQLite database and explicit service closure isolate each
+test. The tests exercise actual public service calls rather than mocking the ranker.
+
+Direct project imports: brisart_ai, brisart_ai.core.service, brisart_ai.core.settings.
+
+The cases use self.assertEqual, self.assertNotIn, self.assertIsNotNone, self.assertIn,
+self.assertTrue, self.assertFalse, self.assertRaisesRegex, self.assertRaises to check
+returned values, persisted state or raised errors. The suite is run through
+scripts/run_tests.py so Native API discovery happens before collection.
 
 Settings / parameters
 ---------------------
-_make(tmpdir) builds a BrisartService with db_path and settings_path in
-tmpdir. Nothing here reads or writes the user's saved settings.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-- test_default_settings_path_is_in_the_state_folder only compares paths; it
-  never constructs a service on the user's own settings file.
+File and note removal, batch rollback, source-backed notes and recursive imports.
+
+Removing a source must preserve the original file, and a saved note excerpt must remain
+valid after its source entry is removed. A failed batch deletion must roll back
+together.
+
+Regression coverage includes TestBrisartServiceHeadless.test_toggle_setting_flips_value,
+TestBrisartServiceHeadless.test_settings_panel_text_contains_research_sources,
+TestBrisartServiceHeadless.test_import_paths_ingests_files,
+TestBrisartServiceHeadless.test_list_notes_reflects_added_note,
+TestBrisartServiceHeadless.test_settings_live_in_the_given_file_not_the_state_folder,
+TestBrisartServiceHeadless.test_default_settings_path_is_in_the_state_folder.
 
 Known limitations
 -----------------
-- app.py, chat_panel.py, dialogs.py and sidebar.py need a live Tk display
-  and are checked by hand, not here.
-  network.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/core/tests/test_service_headless.py
+python scripts/run_tests.py brisart_ai/core/tests/test_service_headless.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/core/tests/test_service_headless.py -k
+test_construction_succeeds.
 """
 
 import json

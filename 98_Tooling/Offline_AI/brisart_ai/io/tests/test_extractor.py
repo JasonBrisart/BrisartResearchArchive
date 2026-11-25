@@ -3,30 +3,61 @@ File: brisart_ai/io/tests/test_extractor.py
 
 Purpose
 -------
-Check extractor behavior through 2 unittest test groups.
+Exercise HTML and CSV text extraction.
+
+Protected scenarios: TestHtmlToText verifies extracts title text and links;
+TestHtmlToText verifies script content excluded from text; TestHtmlToText verifies style
+content excluded from text; TestHtmlToText verifies reference citation marker is
+stripped; TestHtmlToText verifies ordinary superscript not stripped.
+
+Protected scenarios: TestHtmlToText verifies links are deduplicated; TestHtmlToText
+verifies non http links excluded; TestHtmlToText verifies malformed html does not raise;
+TestHtmlToText verifies block tags separated by newlines; TestCsvToText verifies basic
+csv conversion.
+
+Protected scenarios: TestCsvToText verifies empty rows skipped; TestCsvToText verifies
+single column; TestCsvToText verifies empty input.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, brisart_ai.io.extractor.
+Uses inline markup and CSV fixtures.
+
+Direct project imports: brisart_ai.io.extractor.
+
+The cases use self.assertEqual, self.assertIn, self.assertNotIn to check returned
+values, persisted state or raised errors. The suite is run through scripts/run_tests.py
+so Native API discovery happens before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Skipped HTML content, headings, links and empty input.
+
+Explicit exception branches or raised errors in this file include Exception.
+
+Regression coverage includes TestHtmlToText.test_malformed_html_does_not_raise,
+TestHtmlToText.test_block_tags_separated_by_newlines,
+TestCsvToText.test_basic_csv_conversion, TestCsvToText.test_empty_rows_skipped,
+TestCsvToText.test_single_column, TestCsvToText.test_empty_input.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/io/tests/test_extractor.py
+python scripts/run_tests.py brisart_ai/io/tests/test_extractor.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/io/tests/test_extractor.py -k
+test_script_content_excluded_from_text.
 """
 
 import unittest

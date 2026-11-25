@@ -3,40 +3,54 @@ File: brisart_ai/tests/test_layout.py
 
 Purpose
 -------
-Guard the package, state and external dependency boundaries in the actual
-checkout.
+Exercise the distributable root, external dependency and user-state boundaries.
+
+Protected scenarios: TestProjectLayout verifies root holds only the three entry files;
+TestProjectLayout verifies no saved state inside the project; TestProjectLayout verifies
+external native implementations are not packaged; TestProjectLayout verifies no init py
+anywhere in the project.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, brisart_ai.native_path (for
-PROJECT_ROOT). Reads the real project folder; nothing is written.
+Uses the actual project directory.
+
+Direct project imports: brisart_ai.
+
+The cases use self.assertEqual, self.assertFalse to check returned values, persisted
+state or raised errors. The suite is run through scripts/run_tests.py so Native API
+discovery happens before collection.
 
 Settings / parameters
 ---------------------
-- ROOT_FILES: the only files allowed directly in the project root. Add a
-  name here, and to docs/ARCHITECTURE.md, to allow another.
-- _SKIPPED_FOLDERS: folders the __init__.py scan ignores (.git, virtual
-  environments, node_modules, __pycache__).
+Run independently through the project test runner.
+
+Module configuration and named constants: ROOT_FILES (set, 3 entries).
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-- Only files in the root are counted; folders (brisart_ai/, docs/, scripts/,
-  __pycache__) are fine.
-- A leftover brisart_ai_index.sqlite3 (or its -wal/-shm files) or a data/
-  folder in the project is reported, because saved state belongs in the
-  per-user folder (brisart_ai/state.py).
+Bundled APIs, repository-local state and prohibited root files.
+
+Regression coverage includes
+TestProjectLayout.test_root_holds_only_the_three_entry_files,
+TestProjectLayout.test_no_saved_state_inside_the_project,
+TestProjectLayout.test_external_native_implementations_are_not_packaged,
+TestProjectLayout.test_no_init_py_anywhere_in_the_project.
 
 Known limitations
 -----------------
-- It checks the folder it runs from, so an index left beside the program by
-  an earlier release makes it fail until run.py or cli.py has moved it, or it
-  is deleted.
-- README.md, LICENSE and similar files are not allowed in the root; the
-  project overview is docs/README.md.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/tests/test_layout.py
+python scripts/run_tests.py brisart_ai/tests/test_layout.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/tests/test_layout.py -k
+test_no_saved_state_inside_the_project.
 """
 
 import unittest

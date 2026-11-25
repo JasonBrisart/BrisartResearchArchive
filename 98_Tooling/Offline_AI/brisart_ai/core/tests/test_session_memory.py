@@ -3,31 +3,57 @@ File: brisart_ai/core/tests/test_session_memory.py
 
 Purpose
 -------
-Check session memory behavior through 1 unittest test group.
+Exercise persisted topic ordering and compaction.
+
+Protected scenarios: TestSessionMemory verifies add and recent topics; TestSessionMemory
+verifies both added topics are present; TestSessionMemory verifies same timestamp
+returns lainsert first; TestSessionMemory verifies empty content is dropped;
+TestSessionMemory verifies content compressed to tokens.
+
+Protected scenarios: TestSessionMemory verifies duplicate topics deduplicated;
+TestSessionMemory verifies limit respected.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib,
-brisart_ai.core.session_memory.
+Uses a temporary SQLite database.
+
+Direct project imports: brisart_ai.core.session_memory.
+
+The cases use self.assertTrue, self.assertIn, self.assertEqual, self.assertLess,
+self.assertLessEqual to check returned values, persisted state or raised errors. The
+suite is run through scripts/run_tests.py so Native API discovery happens before
+collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Empty input, duplicate topics and identical timestamps.
+
+Regression coverage includes TestSessionMemory.test_both_added_topics_are_present,
+TestSessionMemory.test_same_timestamp_returns_latest_insert_first,
+TestSessionMemory.test_empty_content_is_dropped,
+TestSessionMemory.test_content_compressed_to_tokens,
+TestSessionMemory.test_duplicate_topics_deduplicated,
+TestSessionMemory.test_limit_respected.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/core/tests/test_session_memory.py
+python scripts/run_tests.py brisart_ai/core/tests/test_session_memory.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/core/tests/test_session_memory.py -k
+test_add_and_recent_topics.
 """
 
 import tempfile

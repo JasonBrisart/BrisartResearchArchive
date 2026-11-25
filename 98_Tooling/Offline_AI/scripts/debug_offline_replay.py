@@ -4,38 +4,46 @@ File: scripts/debug_offline_replay.py
 
 Purpose
 -------
-Replay fixed evidence fixtures to inspect ranking without network access.
+Replay fixed local retrieval and excerpt scenarios.
+
+Public operations: run_fixture (fixture, limit=5); main (argv).
 
 Communication / relationships
 -----------------------------
-- Puts the project root on sys.path, then imports
-  brisart_ai.native_path and calls install() before any other brisart_ai import.
-- Imports brisart_ai.intent.{describe_intent, detect_intent},
-  brisart_ai.knowledge.index.Index, brisart_ai.knowledge.ranker.search.
-- Standalone script; run directly via `python3 scripts/debug_offline_replay.py`.
+Initializes Native APIs, creates temporary indexes and exercises ranker and renderer.
+
+Direct project imports: brisart_ai, brisart_ai.intent, brisart_ai.knowledge.index,
+brisart_ai.knowledge.ranker.
+
+Concrete calls within this file include native_path.install, index.close,
+index.add_source.
 
 Settings / parameters
 ---------------------
-- FIXTURES: (name, query, expected_top_title, chunks) tuples.
-- Usage: no args (all fixtures), a fixture name, or --list.
+Runs the built-in fixture set without downloading content.
+
+Module configuration and named constants: FIXTURES (list, 4 entries).
+
+Call signatures: run_fixture(fixture, limit=5); main(argv).
 
 Edge cases
 ----------
-- Fixture database lives in a temp dir, deleted on exit.
-- Exit status is non-zero when a fixture's expected top chunk doesn't win.
+A fixture prints its ranking and answer diagnostics when expectations are violated.
+
+Explicit exception branches or raised errors in this file include SystemExit.
 
 Known limitations
 -----------------
-- Four fixtures with three or four chunks each. A pass shows the ranking
-  order on those texts only, not retrieval quality on a real corpus.
+A targeted replay, not a benchmark of arbitrary research collections.
+
+Developer tooling is not part of the normal desktop request path. Benchmark-only
+dependencies do not become runtime requirements of the offline research assistant.
 
 Examples
 --------
-::
+python scripts/debug_offline_replay.py
 
-    python3 scripts/debug_offline_replay.py
-    python3 scripts/debug_offline_replay.py microsoft
-    python3 scripts/debug_offline_replay.py --list
+Other callable entry points in this module include main.
 """
 
 from __future__ import annotations

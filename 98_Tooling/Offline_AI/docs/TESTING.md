@@ -1,19 +1,17 @@
 # Testing
 
-From the Offline_AI directory, run:
+From `Offline_AI`, with Python, pytest and the five external Brisart Native APIs available:
 
 ```text
 python scripts/run_tests.py -q
 python scripts/debug_offline_replay.py
 ```
 
-The test runner installs the external Native API path before collecting the co-located `unittest` tests through pytest. Set `BRISART_NATIVE_API` when the Archive's `94_Native_API's/Official` folder is not in the usual parent layout.
+The runner configures external imports before collecting co-located tests. Pass a test path after `run_tests.py` for a focused run. Test state is temporary. During this pass, **281 tests, 5 subtests and all 4 offline replay cases passed** using the supplied Brisart hash, inflate, JSON, markup and URL implementations staged outside the project, with no stand-ins. This does not validate a newer or different copy of the Official folder. The lower count reflects removal of presentation constant-shape checks; the Tk-free dependency boundary remains tested.
 
-The tests cover local ingestion, ranking, citations, notes, settings, state migration, module resolution, layout and the absence of public-web runtime routes. The offline replay uses fixed fixtures and does not contact providers. Web provider, crawler and fetch tests are removed with their implementation.
+**Windows smoke test before distribution:** With your real Official folder, run the headless suite and start `run.py`. Browse and drop files onto the import queue; import them, attach an excerpt to a note, search, and remove the indexed source. Confirm the original file and separate note remain. Check the busy state, closing during a query, and keyboard shortcuts. This pass did not exercise live Tk or Explorer drag-and-drop.
 
-No desktop GUI or Windows-specific file-locking behavior is exercised in this headless environment. Existing historical web rows are retained but are not eligible for answers.
-
-On Windows, open Add Sources and drop a file and a folder from Explorer into the list. Verify that import begins only after clicking Import Sources. Then open Add Note, select the imported file, attach a highlighted passage, and verify that the note includes the excerpt and its original path. These desktop steps are not covered by the headless run.
+The measurements below are preserved 1.4.0 release evidence, not reruns from this documentation pass.
 
 ## 1.4.0 benchmark
 

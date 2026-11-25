@@ -3,28 +3,71 @@ File: brisart_ai/ui/app.py
 
 Purpose
 -------
-Present the offline research desktop and its local evidence actions.
+Own the Tk workspace, search worker and application lifetime.
+
+The Tk application owns layout, action routing, search-worker lifetime and the
+active-source status shown to the user. It does not own retrieval algorithms or SQLite
+schema.
+
+Public operations: run (db_path=DEFAULT_DB).
+
+Internal helpers include BrisartApp.__init__, BrisartApp._configure_style,
+BrisartApp._build_layout, BrisartApp._refresh_status, BrisartApp._answer_question,
+BrisartApp._poll_answer, BrisartApp._on_answer_ready, BrisartApp._on_chat_submit,
+BrisartApp._ready_for_changes, BrisartApp._import_selected, BrisartApp._action_sources,
+BrisartApp._action_remove, and 6 additional local helpers.
 
 Communication / relationships
 -----------------------------
-The search worker hands results to the Tk loop via a queue, never calls Tk,
-and does not overlap user-driven index changes.
+Delegates research to BrisartService and composes the sidebar, transcript and dialogs.
+
+The search worker returns a result through a queue; only the Tk event loop updates
+widgets. Mutating actions are disabled while a query runs and closing waits for the
+outstanding operation.
+
+Direct project imports: brisart_ai.knowledge.index, brisart_ai.ui,
+brisart_ai.ui.chat_panel, brisart_ai.ui.dialogs, brisart_ai.core.service,
+brisart_ai.ui.sidebar, brisart_ai.version_info.
+
+Direct importing modules include run.py.
+
+Concrete calls within this file include messagebox.showerror, self.title, self.geometry,
+self.minsize, self.configure, self._configure_style, self._build_layout,
+self._refresh_status, self.chat.append_system, self.bind, self.protocol,
+self.sidebar.pack.
 
 Settings / parameters
 ---------------------
-Add Sources, Remove Sources, Add Note, Settings and Help are the sidebar actions.
+Shows active source scope; F1 opens Help and Ctrl+L focuses the question field.
+
+Module configuration and named constants: HELP_TEXT='BrisartAI
+Help\n--------------\nCore actions (left sidebar):\n Add Sources drop or browse for
+files and folders to index\n Manage sources remove selected indexed files or notes\n Add
+Note save observations and optionally quote an imported source\n Settings view/toggle
+research sources\n Help show this message\n\nEnter submits a question. Ctrl+L focuses
+the question field. F1 opens Help.\n\nBrisartAI answers from your imported files and
+research notes.'.
+
+Call signatures: run(db_path=DEFAULT_DB).
 
 Edge cases
 ----------
-Questions with no eligible evidence return a local-only explanation.
+Receives worker results through a queue on the Tk thread and defers closure while search
+is busy.
+
+The desktop requires Tk and a display. A queued answer is distinct from a submitted
+draft; a second Enter during a search must not discard the user’s text.
+
+Explicit exception branches or raised errors in this file include Exception,
+tk.TclError, RuntimeError, Empty.
 
 Known limitations
 -----------------
-Requires a working Tk installation and display.
+Requires Tk and a live display. This module does not rank documents.
 
 Examples
 --------
-Run python run.py.
+python run.py
 """
 
 from __future__ import annotations

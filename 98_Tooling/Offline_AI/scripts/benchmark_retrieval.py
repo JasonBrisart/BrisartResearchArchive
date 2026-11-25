@@ -1,18 +1,57 @@
-"""Purpose
+r"""
+File: scripts/benchmark_retrieval.py
+
+Purpose
 -------
-Compare offline top-ten retrieval on a local Python source corpus.
+Compare offline document ranking on the installed Python source library.
+
+This Linux-only tool compares the application’s Brisart ranking with benchmark-only
+retrieval baselines on an installed Python source corpus. It is not an application
+dependency or an alternative runtime engine.
+
+Public operations: block ().
+
 Communication / relationships
 -----------------------------
-Runs candidate rankers in separate processes and writes raw result JSON.
+Brisart and the benchmark-only SQLite FTS5, TF-IDF and ripgrep modes run one process at
+a time.
+
+Each mode indexes the same source texts and writes per-query rankings. A seccomp filter
+denies socket and connection syscalls before corpus indexing and validates IPv4 and IPv6
+denial.
+
+No direct project import appears in this module’s top-level imports. The file is reached
+as a launcher, test, or helper, or through a runtime import rather than through an
+ordinary domain import.
+
+Concrete calls within this file include sqlite3.connect.
+
 Settings / parameters
 ---------------------
-Use one mode per invocation; BRISART_NATIVE_API selects external helpers.
+The mode selects a ranker; BRISART_NATIVE_API applies only to the two Brisart modes.
+
+Call signatures: block().
+
 Edge cases
 ----------
-Abort if the network restriction cannot be installed or verified.
+Socket denial must be enforced and probed before searching; prepare regenerates the
+query set.
+
+The designated declaration file is one labeled target, not a human relevance judgment.
+The benchmark does not measure answer truth, desktop behavior or performance on an
+independent research library.
+
+Explicit exception branches or raised errors in this file include PermissionError,
+RuntimeError.
+
 Known limitations
 -----------------
-Linux only. Declaring file is the only labeled target; no GUI or synthesis.
+Linux only. The declaring file is the labeled target; answer quality and GUI are not
+measured.
+
+Developer tooling is not part of the normal desktop request path. Benchmark-only
+dependencies do not become runtime requirements of the offline research assistant.
+
 Examples
 --------
 python benchmark_retrieval.py Offline_AI

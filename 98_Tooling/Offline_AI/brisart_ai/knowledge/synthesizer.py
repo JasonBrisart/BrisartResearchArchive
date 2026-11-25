@@ -1,30 +1,73 @@
-"""
+r"""
+File: brisart_ai/knowledge/synthesizer.py
+
 Purpose
 -------
-Select and cite excerpts from ranked local evidence without generating claims.
+Render cited excerpts rather than inventing an answer.
+
+The synthesizer renders selected source excerpts with citations. It is intentionally
+extractive: the application should disclose partial evidence rather than manufacture an
+answer that was not present in the index.
+
+Public operations: query_wants_quantity (query); query_wants_comparison (query);
+query_wants_reason (query); format_source (document).
+
+Public operations: sentence_score (sentence, query_terms, quantity_mode=False,
+comparison_mode=False, reason_mode=False); synthesize (query, docs, max_sources=6,
+max_sentences=10, recent_topics=None) - Return the most relevant information from ranked
+documents.
+
+Internal helpers include _clean_sentence, _deduplication_key.
 
 Communication / relationships
 -----------------------------
-Shares query groups with ranker.py and passage matching with relevance_engine.py.
+Uses ranker query groups, supplied spelling corrections and relevance_engine passage
+scoring.
+
+It shares query concepts and passage coverage with the ranker, applies intent-related
+excerpt cues, limits duplicate passages and caps how many excerpts one source can
+contribute.
+
+Direct project imports: brisart_ai.intent, brisart_ai.knowledge.ranker,
+brisart_ai.knowledge.relevance_engine, brisart_ai.util.
+
+Direct importing modules include brisart_ai/core/conversation.py,
+brisart_ai/knowledge/tests/test_synthesizer.py.
 
 Settings / parameters
 ---------------------
-Source and excerpt limits default to six and ten, with at most three
-excerpts per source. Coverage outweighs bounded intent-specific cues.
+Limits source and excerpt counts and caps excerpts per source.
+
+Call signatures: query_wants_quantity(query); query_wants_comparison(query);
+query_wants_reason(query); format_source(document); sentence_score(sentence,
+query_terms, quantity_mode=False, comparison_mode=False, reason_mode=False).
+
+Call signatures: synthesize(query, docs, max_sources=6, max_sentences=10,
+recent_topics=None).
 
 Edge cases
 ----------
-Repetition cannot inflate concept coverage. Short lines can be evidence.
-Recovered spellings and partial matches are labeled and identical normalized excerpts appear once.
+Duplicate excerpts are skipped; partial evidence and recovered spellings are labeled.
+
+A cited passage can be relevant without proving the full proposition in the question.
+Spelling recovery and partial coverage must be visible instead of silently treated as
+certainty.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-A match is not proof that a passage answers a question or that a source
-is correct. This module does not infer missing facts.
+Topic coverage does not establish truth or that a source answers every part of the
+question.
 
 Examples
 --------
-synthesize("When does the permit expire?", ranked_documents)
+synthesize("What is the permit fee?", ranked_documents)
+
+Other callable entry points in this module include query_wants_comparison,
+query_wants_reason, format_source, sentence_score, synthesize.
 """
 
 from __future__ import annotations

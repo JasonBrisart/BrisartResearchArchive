@@ -3,30 +3,78 @@ File: brisart_ai/tests/test_intent.py
 
 Purpose
 -------
-Check intent behavior through 6 unittest test groups.
+Exercise question classification and title adjustment.
+
+Protected scenarios: TestDetectIntent verifies founder intent for known company;
+TestDetectIntent verifies inventor intent for device; TestDetectIntent verifies
+statistic intent for how many; TestDetectIntent verifies explanation intent for why;
+TestDetectIntent verifies comparison intent for outlive.
+
+Protected scenarios: TestDetectIntent verifies general intent for bare noun;
+TestDetectIntent verifies empty query is general; TestDetectIntent verifies product word
+routes to inventor not founder; TestDetectIntent verifies unknown company falls back to
+inventor; TestNameCandidates verifies plain text returns itself.
+
+Protected scenarios: TestNameCandidates verifies url path segment extracted;
+TestNameCandidates verifies empty input returns empty list;
+TestIsBareGenericConceptTitle verifies bare concept word; TestIsBareGenericConceptTitle
+verifies specific title is not generic; TestIsBareGenericConceptTitle verifies empty
+string is not generic.
+
+Protected scenarios: TestIsBareGenericConceptTitle verifies law of south africa is not
+bare; TestLooksLikePersonName verifies two word name; TestLooksLikePersonName verifies
+three word name with middle initial; TestLooksLikePersonName verifies organizational
+word rejected; TestLooksLikePersonName verifies single word rejected.
+
+Protected scenarios: TestLooksLikePersonName verifies contains digit rejected;
+TestScoreIntent verifies founder boost terms increase score; TestScoreIntent verifies
+penalty terms decrease score; TestScoreIntent verifies empty text returns zero delta;
+TestScoreIntent verifies work of art qualifier penalized.
+
+Protected scenarios: TestDescribeIntent verifies general intent description;
+TestDescribeIntent verifies specific intent description includes name.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, brisart_ai.intent.
+Uses literal questions, titles and source text.
+
+Direct project imports: brisart_ai.intent.
+
+The cases use self.assertEqual, self.assertIn, self.assertTrue, self.assertFalse,
+self.assertGreater, self.assertLess to check returned values, persisted state or raised
+errors. The suite is run through scripts/run_tests.py so Native API discovery happens
+before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Founder, inventor, statistical and explanation patterns.
+
+Regression coverage includes TestScoreIntent.test_founder_boost_terms_increase_score,
+TestScoreIntent.test_penalty_terms_decrease_score,
+TestScoreIntent.test_empty_text_returns_zero_delta,
+TestScoreIntent.test_work_of_art_qualifier_penalized,
+TestDescribeIntent.test_general_intent_description,
+TestDescribeIntent.test_specific_intent_description_includes_name.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/tests/test_intent.py
+python scripts/run_tests.py brisart_ai/tests/test_intent.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/tests/test_intent.py -k
+test_inventor_intent_for_device.
 """
 
 import unittest

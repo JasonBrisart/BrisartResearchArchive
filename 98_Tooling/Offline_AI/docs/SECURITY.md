@@ -1,17 +1,9 @@
-# Security
+# Security and local data
 
-## Local data
+**Offline is not encrypted.** SQLite stores indexed text, research notes, source paths and compact conversation topics without application-level encryption. Settings are local JSON. Read access to the profile, a backup or a synced copy may expose that data. Windows `%APPDATA%` may be part of a roaming profile. Use filesystem access controls and protect backups; see the [state instructions](README.md#state-and-upgrading) for choosing a directory.
 
-The SQLite index stores imported document text and notes unencrypted under the current user's profile. On Windows the default is `%APPDATA%\Brisart Research Archive\BrisartAI`. Restrict filesystem access appropriately; use `BRISARTAI_STATE_DIR` to choose a different location.
+**Index removal is not secure erasure.** Removing an indexed file leaves the original on disk and any separate note snapshots intact. Old content may persist in backups or database pages. The app does not promise secure deletion.
 
-## Input boundary
+**Local import is not a sandbox.** Readers parse user-selected files in the application process and are best-effort. Use trusted inputs and a trusted external Native API directory. Imported HTML is parsed for text, not opened as a browser page. The runtime has no web-search or HTTP-fetch path; OS-managed network locations and profile synchronization are outside this boundary.
 
-BrisartAI parses user-selected local files, including potentially malformed Office, OpenDocument, HTML and PDF content. Readers are best-effort and do not sandbox untrusted files. Native decompression comes from the separately maintained `94_Native_API's/Official` project.
-
-## Network boundary
-
-BrisartAI has no internet search command, GUI action, automatic web setting, crawler, provider client or HTTP fetcher. Its local-file readers can still process URLs as text and HTML documents saved on disk. Historical web rows in a preexisting database are preserved, not used as answer evidence.
-
-## Reporting
-
-When reporting a vulnerability, provide a reproducible input, the affected module and environment, and avoid sending confidential indexed content. Coordinate disclosure before publishing exploit details.
+For a bug report, include the affected version, platform and a minimal non-confidential input that reproduces it. Do not attach the production index or private indexed files.

@@ -3,36 +3,70 @@ File: brisart_ai/io/extractor.py
 
 Purpose
 -------
-Convert HTML and CSV into searchable text while retaining useful structure.
+Convert local HTML and CSV to searchable plain text.
+
+This module converts local markup and delimited data into a textual representation
+suitable for indexing. HTML URL handling is for reference interpretation, not network
+fetching.
+
+Public operations: HTMLTextExtractor.handle_starttag (self, tag, attrs);
+HTMLTextExtractor.handle_startendtag (self, tag, attrs); HTMLTextExtractor.handle_endtag
+(self, tag); HTMLTextExtractor.handle_data (self, data).
+
+Public operations: HTMLTextExtractor.result (self); html_to_text (source, base_url='') -
+Convert HTML into a title, readable text, and discovered links; csv_to_text (source) -
+Convert CSV text into searchable pipe-separated text.
+
+Internal helpers include HTMLTextExtractor.__init__,
+HTMLTextExtractor._is_reference_marker.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/io/readers.py: calls html_to_text()/csv_to_text().
-- Imports brisart_markup.BrisartMarkupParser (replacing
-  html.parser.HTMLParser) and brisart_url.brisart_urljoin()
-  (replacing urllib.parse.urljoin()); see 94_Native_API's/Official.
+readers.py chooses the extractor; HTML parsing and URL joining use external Native APIs.
+
+The external markup parser and URL joiner provide primitive operations. This module
+decides what content is useful to retain as evidence.
+
+Direct project imports: brisart_markup, brisart_url, brisart_ai.util.
+
+Direct importing modules include brisart_ai/io/readers.py,
+brisart_ai/io/tests/test_extractor.py.
+
+Concrete calls within this file include self._is_reference_marker, self.handle_starttag,
+self.text_parts.append, self.title_parts.append, self.links.append.
 
 Settings / parameters
 ---------------------
-- SKIP_TAGS / BLOCK_TAGS: tags never emitted as text / newline-boundary tags.
-- REFERENCE_MARKER_TAGS / REFERENCE_MARKER_CLASSES: <sup> citation markers
-  are skipped.
+Callers supply HTML or CSV text; HTML may have a base URL.
+
+Call signatures: HTMLTextExtractor.handle_starttag(self, tag, attrs);
+HTMLTextExtractor.handle_startendtag(self, tag, attrs);
+HTMLTextExtractor.handle_endtag(self, tag); HTMLTextExtractor.handle_data(self, data);
+HTMLTextExtractor.result(self).
+
+Call signatures: html_to_text(source, base_url=''); csv_to_text(source).
 
 Edge cases
 ----------
-- <sup class="reference">[3]</sup> is skipped, scoped narrowly to <sup>.
-- csv_to_text() falls back to naive comma-to-pipe split on malformed CSV.
-- html_to_text() wraps feed()/close() in try/except.
+HTML reference targets can be formatted without requesting them.
+
+Markup order, tables and whitespace are simplified; parsing is not a browser renderer
+and embedded scripts are not executed.
+
+Explicit exception branches or raised errors in this file include Exception, (csv.Error,
+UnicodeError).
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+HTML is not rendered as a browser page; scripts are not executed.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+csv_to_text("material,count\nsteel,4")
+
+Other callable entry points in this module include HTMLTextExtractor.handle_startendtag,
+HTMLTextExtractor.handle_endtag, HTMLTextExtractor.handle_data,
+HTMLTextExtractor.result, html_to_text, csv_to_text.
 """
 
 from __future__ import annotations

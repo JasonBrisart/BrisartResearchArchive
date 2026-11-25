@@ -3,27 +3,86 @@ File: brisart_ai/knowledge/index.py
 
 Purpose
 -------
-Store source records, preview indexed files and remove selected sources atomically.
+Store indexed source text and token postings, and remove selected index records.
+
+The SQLite index owns the durable source rows and token postings that Brisart retrieval
+consumes. SQLite supplies storage and transactions; no SQLite full-text ranking
+algorithm determines relevance.
+
+Public operations: Index.add_source (self, source_type, location, title, text,
+content_hash='', size_bytes=0, extension=''); Index.list_sources (self) - Return
+imported files and notes, newest first, for source management; Index.file_for_note
+(self, source_id) - Return the indexed title, path and text of an imported file;
+Index.remove_source (self, source_id).
+
+Public operations: Index.remove_sources (self, source_ids) - Remove a batch atomically;
+dependent index records cascade in SQLite; Index.source_count (self, source_type=None);
+Index.clear (self); Index.close (self).
+
+Public operations: filter_source_rows (rows, query) - Case-insensitive substring search
+over type, title and location.
+
+Internal helpers include Index.__init__, Index._init_schema, Index.__enter__,
+Index.__exit__.
 
 Communication / relationships
 -----------------------------
-Used by ingestion, ranker, notes and service; no crawler dependency.
+Ingest and vault write sources; the ranker reads postings; the desktop uses source
+metadata for management.
+
+Ingestion writes source text and postings; the ranker reads them; vault notes and
+source-management actions update related rows. Batch removal is transactional and relies
+on foreign-key behavior for dependent index records.
+
+Direct project imports: brisart_ai, brisart_ai.util.
+
+Direct importing modules include brisart_ai/core/service.py,
+brisart_ai/core/tests/test_conversation.py, brisart_ai/knowledge/tests/test_index.py,
+brisart_ai/knowledge/tests/test_ingest.py, brisart_ai/knowledge/tests/test_ranker.py,
+brisart_ai/knowledge/tests/test_vault.py, brisart_ai/tests/test_state.py,
+brisart_ai/ui/app.py, brisart_ai/ui/dialogs.py,
+brisart_ai/ui/tests/test_source_management.py, cli.py, run.py, plus 1 more.
+
+Concrete calls within this file include state.index_path, sqlite3.connect,
+self.conn.execute, self._init_schema, self.conn.executescript, self.conn.commit,
+self.conn.close, self.close, self.remove_sources, self.conn.executemany.
 
 Settings / parameters
 ---------------------
-Source types can include historical web rows for database continuity.
+The caller may select a database path or :memory:.
+
+Module configuration and named constants: DEFAULT_DB.
+
+Call signatures: Index.add_source(self, source_type, location, title, text,
+content_hash='', size_bytes=0, extension=''); Index.list_sources(self);
+Index.file_for_note(self, source_id); Index.remove_source(self, source_id);
+Index.remove_sources(self, source_ids).
+
+Call signatures: Index.source_count(self, source_type=None); Index.clear(self);
+Index.close(self); filter_source_rows(rows, query).
 
 Edge cases
 ----------
-Repeated or stale removal IDs are ignored. Foreign keys clear dependent index records.
+Batch removal is atomic; SQLite cascades dependent rows. Original files and independent
+saved excerpts are not deleted.
+
+A removed index entry does not erase its original file or separately saved note
+snapshots. Source text represents the last indexed copy, not a live filesystem view.
+
+Explicit exception branches or raised errors in this file include ValueError,
+RuntimeError.
 
 Known limitations
 -----------------
-The index does not decide which types are eligible for a question.
+SQLite provides record storage and lookup, not FTS ranking.
 
 Examples
 --------
-Use Index(path).source_count("file").
+index.remove_sources([2, 3])
+
+Other callable entry points in this module include Index.list_sources,
+Index.file_for_note, Index.remove_source, Index.remove_sources, Index.source_count,
+Index.clear, Index.close, plus 1 more.
 """
 
 from __future__ import annotations

@@ -3,77 +3,67 @@ File: brisart_ai/util.py
 
 Purpose
 -------
-Share text, URL, digest and timestamp helpers across application owners.
+Provide shared token, text, digest, URL and timestamp primitives.
+
+Public operations: now_ts (); stable_hash (value); file_hash (path); tokenize (text).
+
+Public operations: title_tokens (title) - Tokens of a title or file name, split on
+underscores, hyphens and dots; term_variants (term) - The term plus its regular
+singular/plural forms ("lawsuits" <-> "lawsuit"); query_frame_terms (query) - Words that
+frame a question rather than name its topic ("work" in "how do X work");
+expand_query_terms (query) - Query tokens minus frame words, each with its
+singular/plural variants.
+
+Public operations: split_sentences (text); normalize_url (url); same_site (a, b);
+safe_read_text (path, max_bytes=5000000).
 
 Communication / relationships
 -----------------------------
-- brisart_ai/knowledge/index.py: now_ts(), stable_hash(), tokenize()
-- brisart_ai/knowledge/ranker.py: tokenize(), title_tokens(), term_variants(),
-  query_frame_terms()
-- brisart_ai/knowledge/synthesizer.py: split_sentences(), tokenize(),
-  expand_query_terms()
-- brisart_ai/knowledge/ingest.py: file_hash()
-- brisart_ai/io/readers.py: safe_read_text()
-- brisart_ai/io/extractor.py: normalize_url()
-- brisart_ai/core/session_memory.py: now_ts(), tokenize()
-- Imports brisart_hash.brisart_sha256() (replacing
-  hashlib.sha256()) and brisart_url's
-  brisart_urlsplit()/brisart_urlunsplit()/brisart_quote()/
-  brisart_unquote() (replacing the corresponding urllib.parse
-  functions); see 94_Native_API's/Official for how each of these
-  was independently verified against the real stdlib function it
-  replaces before being wired in here. Otherwise imports nothing from
-  elsewhere in brisart_ai; only the standard library (re, time,
-  pathlib) beyond that.
+Retrieval and readers use these helpers; hashing and URL parsing use external Brisart
+modules.
+
+Direct project imports: brisart_hash, brisart_url.
+
+Direct importing modules include brisart_ai/core/session_memory.py,
+brisart_ai/io/extractor.py, brisart_ai/io/readers.py, brisart_ai/knowledge/index.py,
+brisart_ai/knowledge/ingest.py, brisart_ai/knowledge/ranker.py,
+brisart_ai/knowledge/relevance_engine.py, brisart_ai/knowledge/synthesizer.py,
+brisart_ai/knowledge/vault.py, brisart_ai/tests/test_util.py.
 
 Settings / parameters
 ---------------------
-- STOPWORDS: a small, English-only stopword set used by tokenize() to
-  drop function words before terms are indexed or matched.
-- WORD_RE: token boundary pattern for tokenize(); alphanumerics plus
-  internal underscores/hyphens, at least two characters.
-- term_variants() covers regular English singular/plural pairs only
-  (-s, -es, -ies); terms shorter than MIN_VARIANT_LENGTH get none.
-- QUESTION_FRAME_RE: "how do/does/did/can/will/would/could/should ...
-  work(s)"; the trailing "work" is the question's frame, not its topic.
-- SENTENCE_RE: a lookbehind split on sentence-ending punctuation, used
-  by split_sentences(); sentences outside the 30-700 character band
-  are dropped.
+safe_read_text enforces a byte ceiling; tokenization uses an ASCII-oriented pattern and
+stop words.
+
+Module configuration and named constants: STOPWORDS (set, 79 entries), WORD_RE,
+SENTENCE_RE, TITLE_SPLIT_RE, MIN_VARIANT_LENGTH=3, QUESTION_FRAME_RE, FRAME_TERMS.
+
+Call signatures: now_ts(); stable_hash(value); file_hash(path); tokenize(text);
+title_tokens(title).
+
+Call signatures: term_variants(term); query_frame_terms(query);
+expand_query_terms(query); split_sentences(text); normalize_url(url).
+
+Call signatures: same_site(a, b); safe_read_text(path, max_bytes=5000000).
 
 Edge cases
 ----------
-- tokenize(None) and tokenize("") both return [] rather than raising.
-- file_hash() streams a file in 1 MB chunks rather than reading it
-  whole, each chunk fed through BrisartHash256.update().
-- safe_read_text() reads at most max_bytes (5,000,000) and decodes them as
-  UTF-8 or BOM-marked UTF-16. File I/O errors propagate to the importer.
-- normalize_url("") returns ""; normalize_url() on a schemeless string
-  assumes https and prepends it before parsing.
-- same_site() compares the netloc (host plus any port or user info),
-  case-insensitively, so the same host on two ports is two sites.
-- term_variants() never strips "ss" ("class" stays "class") and always
-  includes the term itself; irregular plurals ("children") are not known.
-- query_frame_terms() returns an empty set when "work" is the only topic
-  word, so "how does it work" still searches for "work".
+BOM-marked UTF-8 and UTF-16 are recognized; malformed text decodes with replacement.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-- tokenize() drops one-character words and every STOPWORDS entry, which
-  includes everyday words such as "file", "data", "use", "one" and "two", so
-  a query made only of those words has no searchable terms.
-- term_variants() knows regular English plurals only.
-- safe_read_text() does not guess non-BOM legacy encodings.
+Non-BOM legacy encodings and full linguistic segmentation are not inferred.
 
 Examples
 --------
-::
+term_variants("lawsuits")
 
-    tokenize("Hello, World! Co-founder of the data lab")
-    # ['hello', 'world', 'co-founder', 'lab']
-    normalize_url("Example.COM/A%20b#top")
-    # 'https://example.com/A%20b'
-    query_frame_terms("how do lawsuits work?")
-    # {'work'}
+Other callable entry points in this module include stable_hash, file_hash, tokenize,
+title_tokens, term_variants, query_frame_terms, expand_query_terms, plus 4 more.
 """
 
 from __future__ import annotations

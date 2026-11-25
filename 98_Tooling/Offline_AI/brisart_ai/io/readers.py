@@ -3,37 +3,61 @@ File: brisart_ai/io/readers.py
 
 Purpose
 -------
-Dispatch supported local formats to text extractors and enumerate ingest
-candidates.
+Own the import format registry, path discovery and reader dispatch.
+
+The extension registry is the single authority for file eligibility across the picker
+and the recursive import walker. Keeping that decision here prevents the GUI from
+advertising formats the reader cannot dispatch.
+
+Public operations: is_supported (path); iter_supported_files (paths) - Yield supported
+files from a mix of individual paths and folders; read_file (path) - Extract searchable
+text from one supported file.
+
+Internal helpers include _pretty_json, _rtf_to_text.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/knowledge/ingest.py: calls iter_supported_files() and read_file().
-- Calls brisart_ai.io.binary_readers.*, brisart_ai.io.extractor.*, and
-  brisart_ai.util.safe_read_text().
-- Imports brisart_json.{brisart_loads, brisart_dumps,
-  BrisartJSONDecodeError} (replacing json.*); see the external native API documentation.
+Ingestion walks paths through this module; the desktop picker uses the same registry.
+
+Folder traversal discovers candidate files; read_file then dispatches to text, markup,
+or document-container extraction. Duplicate resolved paths are skipped before ingestion.
+
+Direct project imports: brisart_ai.io.binary_readers, brisart_ai.io.extractor,
+brisart_json, brisart_ai.util.
+
+Direct importing modules include brisart_ai/io/tests/test_readers.py,
+brisart_ai/knowledge/ingest.py, brisart_ai/ui/dialogs.py,
+brisart_ai/ui/tests/test_source_management.py.
 
 Settings / parameters
 ---------------------
-- TEXT_EXTENSIONS / BINARY_TEXT_EXTENSIONS / SUPPORTED_EXTENSIONS.
-- SUPPORTED_EXTENSIONLESS_NAMES.
+SUPPORTED_EXTENSIONS and SUPPORTED_EXTENSIONLESS_NAMES control eligibility.
+
+Module configuration and named constants: TEXT_EXTENSIONS (set, 53 entries),
+BINARY_TEXT_EXTENSIONS (set, 5 entries), SUPPORTED_EXTENSIONS,
+SUPPORTED_EXTENSIONLESS_NAMES (set, 5 entries).
+
+Call signatures: is_supported(path); iter_supported_files(paths); read_file(path).
 
 Edge cases
 ----------
-- iter_supported_files() silently skips inaccessible paths.
-- .rtf gets a crude regex stripper.
-- .json/.jsonl never raise on invalid JSON.
+Folders are walked recursively; repeated resolved paths are not yielded twice.
+
+A matching extension is only a routing hint. Unsupported, inaccessible, empty, and
+malformed files must not be presented as successfully extracted evidence.
+
+Explicit exception branches or raised errors in this file include
+(BrisartJSONDecodeError, TypeError), OSError, (OSError, PermissionError).
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Eligibility by name does not guarantee recoverable text or a valid file.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+read_file(Path("notes.md"))
+
+Other callable entry points in this module include iter_supported_files, read_file.
 """
 
 from __future__ import annotations

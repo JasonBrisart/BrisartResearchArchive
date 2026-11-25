@@ -3,31 +3,65 @@ File: brisart_ai/core/tests/test_settings.py
 
 Purpose
 -------
-Check settings behavior through 1 unittest test group.
+Exercise settings defaults, persistence and save rollback.
+
+Protected scenarios: TestResearchSettings verifies valid json non object does not break
+startup; TestResearchSettings verifies failed atomic replace restores setting and cleans
+temp; TestResearchSettings verifies defaults applied when no file exists;
+TestResearchSettings verifies settings file created on first use; TestResearchSettings
+verifies set persists across instances.
+
+Protected scenarios: TestResearchSettings verifies toggle flips value;
+TestResearchSettings verifies set unknown key raises; TestResearchSettings verifies
+corrupt settings file falls back to defaults; TestResearchSettings verifies stale
+unknown key in file is ignored; TestResearchSettings verifies resolve key aliases.
+
+Protected scenarios: TestResearchSettings verifies resolve key unknown raises;
+TestResearchSettings verifies render produces readable text; TestResearchSettings
+verifies obsolete web setting is not exposed.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib,
-brisart_ai.core.settings.
+Uses temporary settings files and a simulated replacement failure.
+
+Direct project imports: brisart_ai.core.settings.
+
+The cases use self.assertTrue, self.assertEqual, self.assertFalse, self.assertIn,
+self.assertNotIn, self.assertRaises to check returned values, persisted state or raised
+errors. The suite is run through scripts/run_tests.py so Native API discovery happens
+before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Invalid JSON shapes and failed writes.
+
+Regression coverage includes
+TestResearchSettings.test_corrupt_settings_file_falls_back_to_defaults,
+TestResearchSettings.test_stale_unknown_key_in_file_is_ignored,
+TestResearchSettings.test_resolve_key_aliases,
+TestResearchSettings.test_resolve_key_unknown_raises,
+TestResearchSettings.test_render_produces_readable_text,
+TestResearchSettings.test_obsolete_web_setting_is_not_exposed.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/core/tests/test_settings.py
+python scripts/run_tests.py brisart_ai/core/tests/test_settings.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/core/tests/test_settings.py -k
+test_valid_json_non_object_does_not_break_startup.
 """
 
 import tempfile

@@ -3,47 +3,74 @@ File: brisart_ai/tests/test_state.py
 
 Purpose
 -------
-Verify path selection and legacy data migration with isolated files and
-child processes.
+Exercise state path precedence and safe legacy migration.
+
+Protected scenarios: TestStateDir verifies windows uses appdata; TestStateDir verifies
+windows without appdata falls back to roaming under home; TestStateDir verifies macos
+uses application support; TestStateDir verifies linux uses xdg config home then dot
+config; TestStateDir verifies override replaces the whole path.
+
+Protected scenarios: TestStateDir verifies default is not inside the project;
+TestMigration verifies moves index and settings and removes the originals; TestMigration
+verifies second run does nothing and says nothing; TestMigration verifies nothing to
+move does not create the target folder; TestMigration verifies override environment
+variable disables the move.
+
+Protected scenarios: TestMigration verifies rows still in the write ahead log survive;
+TestMigration verifies never overwrites a file already in the target; TestMigration
+verifies an empty index left by a failed start is replaced; TestMigration verifies an
+index with content is never replaced; TestMigration verifies corrupt index is left in
+place with a warning.
+
+Protected scenarios: TestMigration verifies unwritable target keeps everything and
+warns; TestMigration verifies abandoned lock is cleared; TestMigration verifies four
+processes started together move each file once; TestEndToEnd verifies cli moves old
+state once and leaves the program folder clean; TestEndToEnd verifies fresh install
+creates the state folder and nothing beside the program.
 
 Communication / relationships
 -----------------------------
-Direct module imports: contextlib, json, os, shutil, sqlite3, subprocess,
-sys, tempfile, time, unittest, pathlib, brisart_ai.native_path, brisart_ai.state and
-brisart_ai.knowledge.index (to build a real legacy index). Everything runs in
-temporary directories with an explicit environment, so no test reads or
-writes the real per-user folder. The end-to-end tests run a copy of cli.py
-in a child process with HOME, APPDATA and XDG_CONFIG_HOME pointed at a
-temporary folder. The child receives the external native API directory.
+Uses temporary profiles, indexes and child processes.
+
+Direct project imports: brisart_ai, brisart_ai.knowledge.index.
+
+The cases use self.assertEqual, self.assertNotIn, self.assertFalse, self.assertIn,
+self.assertTrue, self.assertGreater to check returned values, persisted state or raised
+errors. The suite is run through scripts/run_tests.py so Native API discovery happens
+before collection.
 
 Settings / parameters
 ---------------------
-- _legacy_project(root, rows) builds a project folder holding an old-style
-  index with `rows` sources and a data/research_settings.json.
-- _clean_env(home) is a child-process environment with every per-user
-  location redirected and BRISARTAI_STATE_DIR removed.
+Run independently through the project test runner.
+
+Module configuration and named constants: PROJECT_ROOT.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-- A write-ahead log: rows that were never checkpointed into the main file
-  must survive the move.
-- A target settings file, or an index with content, that already exists is
-  never overwritten; an index with no rows in any table is.
-- A corrupt index is left in place with a warning, and no temporary file is
-  left behind.
-- Four processes released together move each file exactly once.
+Existing destination data, failed copies, locks and startup behavior.
+
+Regression coverage includes
+TestMigration.test_corrupt_index_is_left_in_place_with_a_warning,
+TestMigration.test_unwritable_target_keeps_everything_and_warns,
+TestMigration.test_abandoned_lock_is_cleared,
+TestMigration.test_four_processes_started_together_move_each_file_once,
+TestEndToEnd.test_cli_moves_old_state_once_and_leaves_the_program_folder_clean,
+TestEndToEnd.test_fresh_install_creates_the_state_folder_and_nothing_beside_the_program.
 
 Known limitations
 -----------------
-- Windows file locking is not exercised: on Windows a legacy index held open
-  by another process makes the move fail and keep the original, which these
-  tests do not reproduce.
-- The path of the real roaming profile is checked only as a string built from
-  a supplied APPDATA value.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/tests/test_state.py
+python scripts/run_tests.py brisart_ai/tests/test_state.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/tests/test_state.py -k _count_sources.
 """
 
 import contextlib

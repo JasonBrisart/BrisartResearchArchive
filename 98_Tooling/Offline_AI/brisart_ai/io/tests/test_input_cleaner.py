@@ -3,30 +3,59 @@ File: brisart_ai/io/tests/test_input_cleaner.py
 
 Purpose
 -------
-Check input cleaner behavior through 1 unittest test group.
+Exercise quoted and shell-like input normalization.
+
+Protected scenarios: TestNormalizeShellishInput verifies trims whitespace;
+TestNormalizeShellishInput verifies strips matching double quotes;
+TestNormalizeShellishInput verifies strips matching single quotes;
+TestNormalizeShellishInput verifies mismatched quotes not stripped;
+TestNormalizeShellishInput verifies inner quotes not touched.
+
+Protected scenarios: TestNormalizeShellishInput verifies all whitespace returns empty;
+TestNormalizeShellishInput verifies empty string returns empty;
+TestNormalizeShellishInput verifies plain text unchanged.
 
 Communication / relationships
 -----------------------------
-Direct module imports: unittest, brisart_ai.io.input_cleaner.
+Uses literal strings without invoking a shell.
+
+Direct project imports: brisart_ai.io.input_cleaner.
+
+The cases use self.assertEqual to check returned values, persisted state or raised
+errors. The suite is run through scripts/run_tests.py so Native API discovery happens
+before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Recognized wrappers and ordinary unwrapped questions.
+
+Regression coverage includes
+TestNormalizeShellishInput.test_strips_matching_single_quotes,
+TestNormalizeShellishInput.test_mismatched_quotes_not_stripped,
+TestNormalizeShellishInput.test_inner_quotes_not_touched,
+TestNormalizeShellishInput.test_all_whitespace_returns_empty,
+TestNormalizeShellishInput.test_empty_string_returns_empty,
+TestNormalizeShellishInput.test_plain_text_unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/io/tests/test_input_cleaner.py
+python scripts/run_tests.py brisart_ai/io/tests/test_input_cleaner.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/io/tests/test_input_cleaner.py -k
+test_strips_matching_double_quotes.
 """
 
 import unittest

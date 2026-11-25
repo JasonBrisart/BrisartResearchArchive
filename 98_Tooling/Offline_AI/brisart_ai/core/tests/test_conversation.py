@@ -1,27 +1,63 @@
-"""
+r"""
+File: brisart_ai/core/tests/test_conversation.py
+
 Purpose
 -------
-Verify local answer routing and cited evidence end to end.
+Exercise local-source scope and cited answers.
+
+Protected scenarios: TestBuildConversationAnswer verifies answers from indexed file
+source; TestBuildConversationAnswer verifies paraphrased question returns exact cited
+excerpt; TestBuildConversationAnswer verifies empty index returns no information
+message; TestBuildConversationAnswer verifies local files toggle off excludes file
+sources; TestBuildConversationAnswer verifies notes toggle off excludes note sources.
+
+Protected scenarios: TestBuildConversationAnswer verifies records question and answer to
+memory; TestBuildConversationAnswer verifies historical web sources are never used as
+answer evidence; TestBuildConversationAnswer verifies disabling both local sources does
+not search everything.
 
 Communication / relationships
 -----------------------------
-Builds conversation answers with a temporary Index, SessionMemory and settings.
+Uses temporary SQLite index and conversation memory.
+
+Direct project imports: brisart_ai.core.conversation, brisart_ai.core.session_memory,
+brisart_ai.core.settings, brisart_ai.knowledge.index.
+
+The cases use self.assertIn, self.assertTrue, self.assertEqual to check returned values,
+persisted state or raised errors. The suite is run through scripts/run_tests.py so
+Native API discovery happens before collection.
 
 Settings / parameters
 ---------------------
-Local file and note toggles are exercised independently.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Checks partial vocabulary matches, no evidence, disabled sources and old web records.
+Disabled sources, historical web rows, word variants and missing evidence.
+
+Regression coverage includes
+TestBuildConversationAnswer.test_empty_index_returns_no_information_message,
+TestBuildConversationAnswer.test_local_files_toggle_off_excludes_file_sources,
+TestBuildConversationAnswer.test_notes_toggle_off_excludes_note_sources,
+TestBuildConversationAnswer.test_records_question_and_answer_to_memory,
+TestBuildConversationAnswer.test_historical_web_sources_are_never_used_as_answer_evidence,
+TestBuildConversationAnswer.test_disabling_both_local_sources_does_not_search_everything.
 
 Known limitations
 -----------------
-Headless fixtures do not exercise Tk or a real document collection.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/core/tests/test_conversation.py
+python scripts/run_tests.py brisart_ai/core/tests/test_conversation.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/core/tests/test_conversation.py -k
+test_answers_from_indexed_file_source.
 """
 
 import tempfile

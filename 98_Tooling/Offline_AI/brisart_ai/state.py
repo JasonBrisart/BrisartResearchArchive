@@ -3,77 +3,62 @@ File: brisart_ai/state.py
 
 Purpose
 -------
-Resolve per-user storage and migrate eligible legacy index and settings
-files.
+Resolve per-user paths and migrate eligible legacy settings and indexes.
+
+Public operations: state_dir (environ=None, platform=None, home=None) - Return the
+folder that holds BrisartAI's saved state. Does not create it; index_path ();
+settings_path (); migrate_legacy_state (project_root=PROJECT_ROOT, environ=None,
+target=None, log=_warn) - Move the index and settings from beside the program into the
+per-user folder.
+
+Internal helpers include _warn, _migration_lock, _fsync_file, _table_counts,
+_remove_with_sidecars, _is_empty_index, _move_index, _move_file.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/knowledge/index.py: DEFAULT_DB comes from index_path().
-- brisart_ai/core/settings.py: DEFAULT_SETTINGS_PATH comes from settings_path().
-- run.py and cli.py: call migrate_legacy_state() once at startup, so every
-  launch path covers it.
-- Standard library only (os, sys, time, shutil, sqlite3, contextlib,
-  pathlib). It imports nothing from brisart_ai and does not need the
-  native stack, so it can run before native_path.install().
-Covered by tests: brisart_ai/tests/test_state.py.
+Both launchers call migrate_legacy_state; settings and the index use default paths from
+here.
+
+No direct project import appears in this module’s top-level imports. The file is reached
+as a launcher, test, or helper, or through a runtime import rather than through an
+ordinary domain import.
+
+Concrete calls within this file include sqlite3.connect, sqlite3.DatabaseError.
 
 Settings / parameters
 ---------------------
-- STATE_VENDOR_DIRNAME / STATE_APP_DIRNAME: "Brisart Research Archive" / "BrisartAI".
-- STATE_DIR_ENV: "BRISARTAI_STATE_DIR".
-- INDEX_FILENAME / SETTINGS_FILENAME: the two state file names.
-- LOCK_FILENAME, LOCK_STALE_SECONDS (120), LOCK_WAIT_SECONDS (150): the
-  migration lock.
-- state_dir(environ, platform, home): the folder, without creating it.
-- migrate_legacy_state(project_root, environ, target, log): returns the
-  names it moved.
+BRISARTAI_STATE_DIR selects another directory and opts out of legacy migration.
+
+Module configuration and named constants: STATE_VENDOR_DIRNAME='Brisart Research
+Archive', STATE_APP_DIRNAME='BrisartAI', STATE_DIR_ENV='BRISARTAI_STATE_DIR',
+INDEX_FILENAME='brisart_ai_index.sqlite3', SETTINGS_FILENAME='research_settings.json',
+LOCK_FILENAME='.migrate.lock', LOCK_STALE_SECONDS=120.0, LOCK_WAIT_SECONDS=150.0,
+PROJECT_ROOT.
+
+Call signatures: state_dir(environ=None, platform=None, home=None); index_path();
+settings_path(); migrate_legacy_state(project_root=PROJECT_ROOT, environ=None,
+target=None, log=_warn).
 
 Edge cases
 ----------
-- Legacy locations are <project root>/brisart_ai_index.sqlite3 (plus its
-  -wal, -shm and -journal files) and <project root>/data/research_settings.json.
-- The index is copied with SQLite's backup API, which reads through the
-  write-ahead log, so rows that were never checkpointed into the main file
-  are kept. The copy is integrity-checked and its table row counts are
-  compared with the original before the original is removed.
-- The settings file is copied through a temporary file, fsynced, and
-  size-checked before the original is removed.
-- Nothing with content is overwritten: if the per-user folder already has a
-  settings file, or an index with rows in any table, the old copy stays for
-  you to delete. An index with no rows at all is replaced, because that is
-  what a start after a failed or timed-out move creates, and keeping it
-  would hide the old data for good.
-- A failed copy (locked database, unreadable file, read-only folder) keeps
-  the original and prints a warning naming both places. If the project
-  folder is read-only the copy still succeeds, the original stays, and the
-  next run skips it.
-- It never runs when BRISARTAI_STATE_DIR is set, and it does nothing, not
-  even creating the folder, when there is nothing to move.
-- Several copies starting together take a lock file in the new folder, so
-  each file is moved exactly once. A lock older than LOCK_STALE_SECONDS is
-  treated as abandoned.
-- An empty data/ folder left behind by the move is removed.
+Migration uses a lock and preserves existing destination state rather than overwriting
+it.
+
+Explicit exception branches or raised errors in this file include sqlite3.Error,
+(OSError, sqlite3.Error), OSError, FileExistsError, sqlite3.DatabaseError,
+FileNotFoundError, TimeoutError.
 
 Known limitations
 -----------------
-- If the lock cannot be taken within LOCK_WAIT_SECONDS, the move is skipped
-  with a warning and the program starts on a new, empty index. The next
-  start moves the old index over it, as long as nothing has been added to
-  the new one in the meantime.
-- Only the index gets that replace-when-empty rule. A default settings file
-  created by a start after a failed move is kept, and the old one stays
-  beside the program.
-- %APPDATA% is the roaming profile and the index records this computer's
-  file paths. Set BRISARTAI_STATE_DIR if that matters.
-- The move is one-way; nothing copies state back beside the program.
+Filesystem permissions and operating-system profile synchronization still apply; this is
+not encryption.
 
 Examples
 --------
-::
+state.index_path()
 
-    from brisart_ai import state
-    state.state_dir()                # e.g. C:\Users\me\AppData\Roaming\Brisart Research Archive\BrisartAI
-    state.migrate_legacy_state()     # [] when there was nothing to move
+Other callable entry points in this module include index_path, settings_path,
+migrate_legacy_state.
 """
 
 from __future__ import annotations

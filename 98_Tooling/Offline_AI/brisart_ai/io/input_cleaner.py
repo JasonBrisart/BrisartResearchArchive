@@ -3,31 +3,43 @@ File: brisart_ai/io/input_cleaner.py
 
 Purpose
 -------
-Normalize quoted and shell-shaped input before the desktop handles it.
+Normalize pasted shell-like or quoted user input before retrieval.
+
+Public operations: normalize_shellish_input (text) - Trim whitespace and unwrap one pair
+of matching surrounding quotes.
+
+Internal helpers include _strip_quotes.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/core/conversation.py, brisart_ai/core/session_memory.py
-  both call normalize_shellish_input().
+Conversation and session memory use this shared normalizer.
+
+Direct importing modules include brisart_ai/core/conversation.py,
+brisart_ai/core/session_memory.py, brisart_ai/io/tests/test_input_cleaner.py.
 
 Settings / parameters
 ---------------------
-- None.
+Takes a string, not an argv list.
+
+Call signatures: normalize_shellish_input(text).
 
 Edge cases
 ----------
-- Only a single layer of quotes is stripped.
-- An all-whitespace input returns "".
+Recognized wrappers are removed without executing the line.
+
+No explicit exception-handling branch is defined at module level. Unexpected errors
+therefore follow the caller’s normal error boundary unless a lower-level helper handles
+them.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+This is not a general-purpose shell parser or sanitizer.
+
+The normalizer is not an escaping or security boundary. It must not be used to construct executable shell commands from user input.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+normalize_shellish_input('"permit fee"')
 """
 
 from __future__ import annotations

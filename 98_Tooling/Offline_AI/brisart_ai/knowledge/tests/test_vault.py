@@ -3,31 +3,63 @@ File: brisart_ai/knowledge/tests/test_vault.py
 
 Purpose
 -------
-Check vault behavior through 1 unittest test group.
+Exercise notes, collections and timeline behavior.
+
+Protected scenarios: TestVault verifies note search uses shared variants and relevant
+preview; TestVault verifies collection and timeline exclude substrings and old web rows;
+TestVault verifies create collection; TestVault verifies list collections empty;
+TestVault verifies add note saves and mirrors into index.
+
+Protected scenarios: TestVault verifies add note empty body rejected; TestVault verifies
+list notes shows saved note; TestVault verifies search notes finds matching note;
+TestVault verifies search notes as documents returns document shape; TestVault verifies
+reindex missing notes backfills old notes.
+
+Protected scenarios: TestVault verifies reindex missing notes idempotent; TestVault
+verifies extract entities from text; TestVault verifies extract entities short names
+excluded; TestVault verifies vault report includes counts; TestVault verifies add
+sources to collection matches by term.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib,
-brisart_ai.knowledge.index, brisart_ai.knowledge.vault.
+Uses temporary indexes with notes and sources.
+
+Direct project imports: brisart_ai.knowledge.index, brisart_ai.knowledge.vault.
+
+The cases use self.assertTrue, self.assertNotIn, self.assertEqual, self.assertIn to
+check returned values, persisted state or raised errors. The suite is run through
+scripts/run_tests.py so Native API discovery happens before collection.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined
-in the code below.
+Run independently through the project test runner.
+
+The test names above define the behaviors under examination. Temporary fixtures, patch
+contexts and direct calls supply inputs; these are not user-configurable application
+settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing
-implementation and tests remain unchanged.
+Source scoping, matching passage previews and metadata links.
+
+Regression coverage includes TestVault.test_reindex_missing_notes_backfills_old_notes,
+TestVault.test_reindex_missing_notes_idempotent,
+TestVault.test_extract_entities_from_text,
+TestVault.test_extract_entities_short_names_excluded,
+TestVault.test_vault_report_includes_counts,
+TestVault.test_add_sources_to_collection_matches_by_term.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+Uses controlled local fixtures, not a production research index.
 
 Examples
 --------
-python scripts/run_tests.py brisart_ai/knowledge/tests/test_vault.py
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_vault.py -q
+
+To run one behavior rather than the full suite, use pytest selection through the project
+runner: python scripts/run_tests.py brisart_ai/knowledge/tests/test_vault.py -k
+test_note_search_uses_shared_variants_and_relevant_preview.
 """
 
 import tempfile
