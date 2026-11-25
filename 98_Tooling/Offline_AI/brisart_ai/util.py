@@ -15,7 +15,6 @@ Communication / relationships
 - brisart_ai/knowledge/ingest.py: file_hash()
 - brisart_ai/io/readers.py: safe_read_text()
 - brisart_ai/io/extractor.py: normalize_url()
-- brisart_ai/web/crawler.py: normalize_url(), same_site(), stable_hash()
 - brisart_ai/core/session_memory.py: now_ts(), tokenize()
 - Imports brisart_hash.brisart_sha256() (replacing
   hashlib.sha256()) and brisart_url's

@@ -3,47 +3,27 @@ File: brisart_ai/knowledge/index.py
 
 Purpose
 -------
-Own the SQLite schema, source writes and searchable term records.
+Store source records, preview indexed files and remove selected sources atomically.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/knowledge/ingest.py, brisart_ai/web/crawler.py,
-  brisart_ai/knowledge/vault.py call add_source().
-- brisart_ai/knowledge/ranker.py reads terms/sources directly via SQL.
-- brisart_ai/core/service.py calls purge_blocked_web_sources() at startup.
-- Imports brisart_ai.blocklist.is_junk_web_source(),
-  brisart_ai.state.index_path() and
-  brisart_ai.util.{now_ts, stable_hash, tokenize}.
+Used by ingestion, ranker, notes and service; no crawler dependency.
 
 Settings / parameters
 ---------------------
-- DEFAULT_DB: brisart_ai_index.sqlite3 inside the per-user state folder
-  (brisart_ai/state.py), not beside the program.
-- check_same_thread=False.
-- add_source()'s source_key is a stable hash of source_type + location.
+Source types can include historical web rows for database continuity.
 
 Edge cases
 ----------
-- add_source() raises ValueError for missing type/location, returns
-  False for empty text.
-- purge_junk_web_sources() only touches source_type = 'web' rows.
-- Index() creates the database's parent folder if it is missing, so the
-  per-user state folder does not have to exist before the first run.
+Repeated or stale removal IDs are ignored. Foreign keys clear dependent index records.
 
 Known limitations
 -----------------
-- One connection is shared across threads (check_same_thread=False). The
-  GUI's _busy flag keeps requests from overlapping; nothing here locks.
-- DEFAULT_DB is fixed when this module is imported, so changing
-  BRISARTAI_STATE_DIR afterwards does not move it; pass a path to Index().
+The index does not decide which types are eligible for a question.
 
 Examples
 --------
-::
-
-    with Index() as index:
-        index.add_source("file", "/a.txt", "A", "hello world")
-        index.source_count()
+Use Index(path).source_count("file").
 """
 
 from __future__ import annotations
@@ -54,7 +34,6 @@ from pathlib import Path
 from typing import Optional
 
 from brisart_ai import state
-from brisart_ai.blocklist import is_junk_web_source
 from brisart_ai.util import now_ts, stable_hash, tokenize
 
 DEFAULT_DB = str(state.index_path())
@@ -102,23 +81,7 @@ class Index:
         )
         self.conn.commit()
 
-    def purge_junk_web_sources(self) -> int:
-        try:
-            rows = self.conn.execute(
-                "SELECT id, location FROM sources WHERE source_type = 'web'"
-            ).fetchall()
-        except sqlite3.Error:
-            return 0
-        doomed = [int(sid) for sid, loc in rows if is_junk_web_source(loc)]
-        if not doomed:
-            return 0
-        with self.conn:
-            self.conn.executemany("DELETE FROM terms WHERE source_id = ?", [(s,) for s in doomed])
-            self.conn.executemany("DELETE FROM sources WHERE id = ?", [(s,) for s in doomed])
-        return len(doomed)
 
-    def purge_blocked_web_sources(self) -> int:
-        return self.purge_junk_web_sources()
 
     def add_source(
         self, source_type: str, location: str, title: str, text: str,
@@ -171,6 +134,40 @@ class Index:
                 )
         return True
 
+    def list_sources(self):
+        """Return imported files and notes, newest first, for source management."""
+        return self.conn.execute(
+            "SELECT id, source_type, title, location FROM sources "
+            "WHERE source_type IN ('file', 'note') ORDER BY id DESC"
+        ).fetchall()
+
+    def file_for_note(self, source_id: int):
+        """Return the indexed title, path and text of an imported file."""
+        return self.conn.execute(
+            "SELECT title, location, text FROM sources WHERE id = ? AND source_type = 'file'",
+            (source_id,),
+        ).fetchone()
+
+    def remove_source(self, source_id: int) -> bool:
+        return bool(self.remove_sources((source_id,)))
+
+    def remove_sources(self, source_ids) -> int:
+        """Remove a batch atomically; dependent index records cascade in SQLite."""
+        removed = 0
+        with self.conn:
+            for source_id in dict.fromkeys(source_ids):
+                row = self.conn.execute(
+                    "SELECT source_type, location FROM sources WHERE id = ?", (source_id,)
+                ).fetchone()
+                if row is None or row[0] not in ("file", "note"):
+                    continue
+                if row[0] == "note" and row[1].startswith("note:") and row[1][5:].isascii() and row[1][5:].isdigit():
+                    if self.conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='notes'").fetchone():
+                        self.conn.execute("DELETE FROM notes WHERE id = ?", (int(row[1][5:]),))
+                self.conn.execute("DELETE FROM sources WHERE id = ?", (source_id,))
+                removed += 1
+        return removed
+
     def source_count(self, source_type: Optional[str] = None) -> int:
         if source_type:
             row = self.conn.execute(
@@ -196,3 +193,14 @@ class Index:
 
 
 __all__ = ["DEFAULT_DB", "Index"]
+
+
+def filter_source_rows(rows, query: str):
+    """Case-insensitive substring search over type, title and location."""
+    terms = query.casefold().split()
+    return [row for row in rows if all(
+        term in " ".join(str(value) for value in row[1:]).casefold()
+        for term in terms
+    )]
+
+

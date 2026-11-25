@@ -10,7 +10,6 @@ Communication / relationships
 -----------------------------
 - brisart_ai/knowledge/ranker.py: detect_intent(),
   is_bare_generic_concept_title(), name_candidates(), score_intent().
-- brisart_ai/web/crawler.py: describe_intent(), detect_intent(),
   score_intent().
 - brisart_ai/knowledge/synthesizer.py: INTENT_COMPARISON/
   INTENT_EXPLANATION/INTENT_STATISTIC/detect_intent().

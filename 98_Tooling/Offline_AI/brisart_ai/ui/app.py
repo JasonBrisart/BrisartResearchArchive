@@ -3,28 +3,27 @@ File: brisart_ai/ui/app.py
 
 Purpose
 -------
-Assemble the Tk desktop and coordinate user actions with the application
-service.
+Present the offline research desktop and its local evidence actions.
 
 Communication / relationships
 -----------------------------
-Constructs core/service.py backend and UI widgets.
+Calls BrisartService from the Tk event loop and worker thread.
 
 Settings / parameters
 ---------------------
-run accepts optional database path.
+Add Sources, Remove Sources, Add Note, Settings and Help are the sidebar actions.
 
 Edge cases
 ----------
-Startup errors are handled in the GUI.
+Questions with no eligible evidence return a local-only explanation.
 
 Known limitations
 -----------------
-Requires a working Tk display.
+Requires a working Tk installation and display.
 
 Examples
 --------
-python run.py
+Run python run.py.
 """
 
 from __future__ import annotations
@@ -32,12 +31,11 @@ from __future__ import annotations
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import Optional
 
 from brisart_ai.knowledge.index import DEFAULT_DB
 from brisart_ai.ui import theme
 from brisart_ai.ui.chat_panel import ChatPanel
-from brisart_ai.ui.dialogs import SettingsDialog, ask_import_path, ask_note, ask_text
+from brisart_ai.ui.dialogs import AddSourcesDialog, RemoveSourcesDialog, SettingsDialog, SourceNoteDialog
 from brisart_ai.core.service import BrisartService
 from brisart_ai.ui.sidebar import Sidebar
 from brisart_ai.version_info import APP_NAME, __version__
@@ -45,30 +43,31 @@ from brisart_ai.version_info import APP_NAME, __version__
 HELP_TEXT = """BrisartAI Help
 --------------
 Core actions (left sidebar):
-  Import Files    bring local files or a folder into the knowledge base
-  Add Note        save a short note into the knowledge base
-  Research Web    search the public web and answer a question
+  Add Sources     drop or browse for files and folders to index
+  Remove Sources  remove selected indexed files or notes
+  Add Note        save observations and optionally quote an imported source
   Settings        view/toggle research sources
   Help            show this message
 
 Just type a question in the chat box below and press Enter.
 
-Notes and imported files are searched the same way web results are --
-ask a question and BrisartAI will pull from anything relevant it has
-indexed, including your notes."""
+BrisartAI answers from your imported files and research notes."""
 
 
 class BrisartApp(tk.Tk):
     def __init__(self, db_path: str = DEFAULT_DB):
-        service = BrisartService(db_path)
-
         super().__init__()
-        self.service = service
+        try:
+            self.service = BrisartService(db_path)
+        except Exception:
+            self.destroy()
+            raise
         self.title(f"{APP_NAME} {__version__}")
         self.geometry("980x640")
         self.minsize(760, 480)
         self.configure(bg=theme.BG_APP)
         self._busy = False
+        self._close_pending = False
 
         self._configure_style()
         self._build_layout()
@@ -76,7 +75,7 @@ class BrisartApp(tk.Tk):
 
         self.chat.append_system(
             f"{APP_NAME} {__version__} ready. Type a question below and "
-            "press Enter -- I'll search the web and answer here."
+            "press Enter -- I'll answer using your indexed files and notes."
         )
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -92,8 +91,9 @@ class BrisartApp(tk.Tk):
 
     def _build_layout(self) -> None:
         actions = {
-            "import": self._action_import, "note": self._action_note,
-            "research": self._action_research, "settings": self._action_settings,
+            "sources": self._action_sources,
+            "remove": self._action_remove, "note": self._action_note,
+            "settings": self._action_settings,
             "help": self._action_help,
         }
         self.sidebar = Sidebar(self, actions)
@@ -110,22 +110,16 @@ class BrisartApp(tk.Tk):
         total, files, web = self.service.counts()
         self.sidebar.set_status(total, files, web)
 
-    def _answer_question(self, question: str, force_web: Optional[bool] = None) -> None:
+    def _answer_question(self, question: str) -> None:
         question = question.strip()
         if not question or self._busy:
             return
         self._busy = True
-        searching_web = (
-            force_web if force_web is not None else self.service.settings.get("auto_web_research")
-        )
-        if searching_web:
-            self.chat.append_system("Searching the public web and reading the top results...")
-        else:
-            self.chat.append_system("Searching your imported files and notes...")
+        self.chat.append_system("Searching your imported files and notes...")
 
         def worker() -> None:
             try:
-                answer = self.service.ask(question, force_web=force_web)
+                answer = self.service.ask(question)
             except Exception as exc:
                 answer = f"Something went wrong answering that: {exc}"
             self.after(0, self._on_answer_ready, answer)
@@ -134,6 +128,9 @@ class BrisartApp(tk.Tk):
 
     def _on_answer_ready(self, answer: str) -> None:
         self._busy = False
+        if self._close_pending:
+            self._on_close()
+            return
         self.chat.append_assistant(answer)
         for diagnostic_line in self.service.last_diagnostics:
             self.chat.append_system(diagnostic_line)
@@ -143,39 +140,56 @@ class BrisartApp(tk.Tk):
         text = text.strip()
         if not text:
             return
+        if self._busy:
+            self.chat.append_system("Wait for the current answer before sending another question.")
+            return
         self.chat.append_user(text)
         self._answer_question(text)
 
-    def _action_import(self) -> None:
-        path = ask_import_path(self)
-        if not path:
-            return
-        result = self.service.import_paths([path])
+    def _ready_for_changes(self) -> bool:
+        if self._busy:
+            messagebox.showinfo("BrisartAI", "Wait for the current answer first.", parent=self)
+            return False
+        return True
+
+    def _import_selected(self, paths, parent) -> bool:
+        try:
+            result = self.service.import_paths(paths)
+        except Exception as exc:
+            messagebox.showerror("Import Sources", str(exc), parent=parent)
+            return False
         self.chat.append_system(result)
         self._refresh_status()
+        return True
+
+    def _action_sources(self) -> None:
+        if self._ready_for_changes():
+            AddSourcesDialog(self, self._import_selected)
+
+    def _action_remove(self) -> None:
+        if self._ready_for_changes():
+            RemoveSourcesDialog(self, self.service, on_change=self._refresh_status)
 
     def _action_note(self) -> None:
-        title, body = ask_note(self)
-        if not body:
-            return
-        result = self.service.add_note(title, body)
+        if self._ready_for_changes():
+            SourceNoteDialog(self, self.service, self._on_note_saved)
+
+    def _on_note_saved(self, result: str) -> None:
         self.chat.append_system(result)
         self._refresh_status()
 
-    def _action_research(self) -> None:
-        query = ask_text(self, "Research the Web", "What do you want to know?")
-        if not query:
-            return
-        self.chat.append_user(query)
-        self._answer_question(query, force_web=True)
-
     def _action_settings(self) -> None:
+        if not self._ready_for_changes():
+            return
         SettingsDialog(self, self.service, on_change=self._refresh_status)
 
     def _action_help(self) -> None:
         self.chat.append_system(HELP_TEXT)
 
     def _on_close(self) -> None:
+        if self._busy:
+            self._close_pending = True
+            return
         self.service.close()
         self.destroy()
 

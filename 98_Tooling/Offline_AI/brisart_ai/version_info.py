@@ -8,7 +8,6 @@ Read the root version for runtime display and outbound identification.
 Communication / relationships
 -----------------------------
 - brisart_ai/ui/app.py, brisart_ai/ui/sidebar.py: APP_NAME/__version__.
-- brisart_ai/web/policy.py: __version__ for USER_AGENT.
 
 Settings / parameters
 ---------------------

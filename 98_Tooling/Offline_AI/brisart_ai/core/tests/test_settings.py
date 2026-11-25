@@ -56,9 +56,9 @@ class TestResearchSettings(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "settings.json"
             s1 = ResearchSettings(path=path)
-            s1.set("auto_web_research", True)
+            s1.set("search_local_files", True)
             s2 = ResearchSettings(path=path)
-            self.assertTrue(s2.get("auto_web_research"))
+            self.assertTrue(s2.get("search_local_files"))
 
     def test_toggle_flips_value(self):
         with tempfile.TemporaryDirectory() as d:
@@ -94,7 +94,7 @@ class TestResearchSettings(unittest.TestCase):
     def test_resolve_key_aliases(self):
         with tempfile.TemporaryDirectory() as d:
             s = self._make(d)
-            self.assertEqual(s.resolve_key("web"), "auto_web_research")
+            self.assertEqual(s.resolve_key("local"), "search_local_files")
             self.assertEqual(s.resolve_key("local"), "search_local_files")
             self.assertEqual(s.resolve_key("notes"), "search_notes")
 
@@ -110,6 +110,13 @@ class TestResearchSettings(unittest.TestCase):
             text = s.render()
             self.assertIn("Research Sources", text)
 
+
+    def test_obsolete_web_setting_is_not_exposed(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = self._make(d)
+            self.assertNotIn("auto_web_research", s.values)
+            with self.assertRaises(KeyError):
+                s.set("auto_web_research", True)
 
 if __name__ == "__main__":
     unittest.main()

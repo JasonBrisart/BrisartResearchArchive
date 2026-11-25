@@ -64,7 +64,7 @@ class TestBuildConversationAnswer(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             index, memory, settings = self._make(d)
             answer = build_conversation_answer("what is the meaning of life?", index, memory, settings=settings)
-            self.assertIn("don't have any indexed information", answer)
+            self.assertIn("don't have indexed local information", answer)
             index.close(); memory.close()
 
     def test_local_files_toggle_off_excludes_file_sources(self):
@@ -74,7 +74,7 @@ class TestBuildConversationAnswer(unittest.TestCase):
             index.add_source(source_type="file", location="/x.txt", title="X",
                 text="unique searchable content about zebras", extension="txt", size_bytes=10)
             answer = build_conversation_answer("zebras", index, memory, settings=settings)
-            self.assertIn("don't have any indexed information", answer)
+            self.assertIn("don't have indexed local information", answer)
             index.close(); memory.close()
 
     def test_notes_toggle_off_excludes_note_sources(self):
@@ -84,7 +84,7 @@ class TestBuildConversationAnswer(unittest.TestCase):
             index.add_source(source_type="note", location="note:1", title="N",
                 text="unique searchable content about narwhals", extension="")
             answer = build_conversation_answer("narwhals", index, memory, settings=settings)
-            self.assertIn("don't have any indexed information", answer)
+            self.assertIn("don't have indexed local information", answer)
             index.close(); memory.close()
 
     def test_records_question_and_answer_to_memory(self):
@@ -95,16 +95,29 @@ class TestBuildConversationAnswer(unittest.TestCase):
             self.assertTrue(len(topics) >= 1)
             index.close(); memory.close()
 
-    def test_web_source_always_searched_regardless_of_local_files_toggle(self):
+
+
+    def test_historical_web_sources_are_never_used_as_answer_evidence(self):
         with tempfile.TemporaryDirectory() as d:
             index, memory, settings = self._make(d)
-            settings.set("search_local_files", False)
-            index.add_source(source_type="web", location="https://example.com/x", title="Web Page",
-                text="unique searchable content about pangolins", extension=".html")
+            index.add_source(source_type="web", location="https://example.com/old",
+                title="Old web result", text="unique searchable content about pangolins",
+                extension="html")
             answer = build_conversation_answer("pangolins", index, memory, settings=settings)
-            self.assertIn("Sources:", answer)
+            self.assertIn("don't have indexed local information", answer)
+            self.assertEqual(index.source_count("web"), 1)
             index.close(); memory.close()
 
+    def test_disabling_both_local_sources_does_not_search_everything(self):
+        with tempfile.TemporaryDirectory() as d:
+            index, memory, settings = self._make(d)
+            index.add_source(source_type="file", location="/x.txt", title="X",
+                text="unique searchable content about zebras", extension="txt")
+            settings.set("search_local_files", False)
+            settings.set("search_notes", False)
+            answer = build_conversation_answer("zebras", index, memory, settings=settings)
+            self.assertIn("don't have indexed local information", answer)
+            index.close(); memory.close()
 
 if __name__ == "__main__":
     unittest.main()

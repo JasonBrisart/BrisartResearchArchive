@@ -3,32 +3,27 @@ File: brisart_ai/core/service.py
 
 Purpose
 -------
-Coordinate import, lookup, notes, web research and settings for both
-launchers.
+Coordinate local imports, source management, sourced notes and question answering.
 
 Communication / relationships
 -----------------------------
-Called by ui/app.py and cli.py; delegates to knowledge, conversation and web
-crawler.
+Called by CLI and Tk desktop; owns Index, SessionMemory and ResearchSettings.
 
 Settings / parameters
 ---------------------
-db_path selects the index. settings_path selects the research-settings
-JSON file and defaults to research_settings.json in the per-user state
-folder (brisart_ai/state.py); tests pass a temporary path so they never
-touch the user's saved settings. ask/research accept per-request limits.
+Uses per-user index and settings paths unless callers supply overrides.
 
 Edge cases
 ----------
-Closes both databases; captures diagnostics while answering.
+Sourced notes reject stale or mismatched excerpts and preserve a copy with provenance.
 
 Known limitations
 -----------------
-Web research needs connectivity; stdout capture is process-global.
+A Tk display is needed only for the desktop, not the service.
 
 Examples
 --------
-BrisartService(db_path).counts()
+Use BrisartService(db_path).ask("question").
 """
 
 from __future__ import annotations
@@ -45,7 +40,6 @@ from brisart_ai.core.settings import ResearchSettings, TOGGLE_LABELS
 from brisart_ai.knowledge.index import DEFAULT_DB, Index
 from brisart_ai.knowledge.ingest import ingest_paths
 from brisart_ai.knowledge.vault import add_note, list_notes, reindex_missing_notes, search_notes
-from brisart_ai.web.crawler import web_search_and_ingest
 
 _DIAGNOSTIC_MARKERS = ("WARN", "SKIP", "ERROR")
 _MAX_DIAGNOSTIC_LINES = 5
@@ -57,10 +51,6 @@ class BrisartService:
     def __init__(self, db_path: str = DEFAULT_DB, settings_path: Optional[str] = None):
         self.db_path = db_path
         self.index = Index(db_path)
-
-        removed = self.index.purge_blocked_web_sources()
-        if removed:
-            print(f"Startup cleanup: removed {removed} stale dictionary/definition page(s) from the index.")
 
         reindexed = reindex_missing_notes(self.index)
         if reindexed:
@@ -79,17 +69,14 @@ class BrisartService:
         web = self.index.source_count("web")
         return total, files, web
 
-    def ask(self, text: str, limit: int = 8, web_limit: int = 5, force_web: Optional[bool] = None) -> str:
+    def ask(self, text: str, limit: int = 8) -> str:
         """Answer a question."""
-        resolved_force_web = (
-            self.settings.get("auto_web_research") if force_web is None else bool(force_web)
-        )
         buffer = io.StringIO()
         with self._stdout_lock:
             with contextlib.redirect_stdout(buffer):
                 answer = build_conversation_answer(
                     text, self.index, self.memory, limit=limit,
-                    settings=self.settings, web_limit=web_limit, force_web=resolved_force_web,
+                    settings=self.settings,
                 )
         self.last_diagnostics = self._extract_diagnostics(buffer.getvalue())
         return answer
@@ -117,10 +104,32 @@ class BrisartService:
         total, _files, _web = self.counts()
         return f"Ingested {count} file(s) this run. Indexed sources total: {total}"
 
-    def research(self, query: str, limit: int = 5, depth: int = 0) -> str:
-        count = web_search_and_ingest(query, self.index, limit=limit, crawl_depth=depth)
-        total, _files, _web = self.counts()
-        return f"Web pages indexed this run: {count}. Indexed sources total: {total}"
+
+    def list_sources(self):
+        return self.index.list_sources()
+
+    def remove_source(self, source_id: int) -> bool:
+        return self.index.remove_source(source_id)
+
+    def remove_sources(self, source_ids) -> int:
+        return self.index.remove_sources(source_ids)
+
+    def get_source_for_note(self, source_id: int):
+        return self.index.file_for_note(source_id)
+
+    def add_source_note(self, title: str, observation: str, source_id: int, passage: str) -> str:
+        """Save an exact excerpt with its provenance as a durable local note."""
+        record = self.get_source_for_note(source_id)
+        if record is None:
+            raise ValueError("The selected source is no longer indexed.")
+        source_title, location, text = record
+        passage = passage.strip()
+        if not passage or passage not in text:
+            raise ValueError("The passage does not match the indexed file. Select it again.")
+        body = f"Source: {source_title}\nLocation: {location}\n\nExcerpt:\n{passage}"
+        if observation.strip():
+            body += f"\n\nYour observations:\n{observation.strip()}"
+        return self.add_note(title.strip() or source_title, body)
 
     def add_note(self, title: str, body: str) -> str:
         return add_note(self.index, title, body)

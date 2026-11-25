@@ -39,7 +39,6 @@ Examples
 ::
 
     python scripts/run_tests.py
-    python scripts/run_tests.py brisart_ai/web/tests -v
     python scripts/run_tests.py -k robots
 """
 

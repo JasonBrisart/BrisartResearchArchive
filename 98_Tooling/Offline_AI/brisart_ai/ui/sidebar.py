@@ -3,32 +3,27 @@ File: brisart_ai/ui/sidebar.py
 
 Purpose
 -------
-Build the desktop navigation and action controls used by the main window.
+Display local research actions and index status in the desktop.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/ui/app.py: builds one Sidebar with an actions dict.
-- Imports brisart_ai.ui.theme and brisart_ai.version_info.
+Receives action handlers from app.py and shows counts from the service.
 
 Settings / parameters
 ---------------------
-- actions: dict mapping button key to handler.
-- theme.SIDEBAR_WIDTH.
+Actions are sources, remove, note, settings and help.
 
 Edge cases
 ----------
-- set_status() only displays numbers it is handed.
-- Each button's key is bound as a default argument in its command lambda.
+Historical web records may contribute to the stored-source total.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or
-security validation.
+The sidebar does not perform indexing or network access.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported
-usage.
+Construct Sidebar(master, actions).
 """
 
 from __future__ import annotations
@@ -60,12 +55,13 @@ class Sidebar(ttk.Frame):
         core_label.pack(anchor="w", padx=theme.PAD, pady=(theme.PAD_SMALL, theme.PAD_SMALL))
 
         for label, key in (
-            ("Import Files", "import"), ("Add Note", "note"),
-            ("Research Web", "research"), ("Settings", "settings"), ("Help", "help"),
+            ("Add Sources", "sources"),
+            ("Remove Sources", "remove"), ("Add Note", "note"),
+            ("Settings", "settings"), ("Help", "help"),
         ):
             self._make_button(label, key)
 
-        self.status_var = tk.StringVar(value="Indexed: 0 (0 local, 0 web)")
+        self.status_var = tk.StringVar(value="Indexed: 0")
         status = tk.Label(
             self, textvariable=self.status_var, bg=theme.BG_SIDEBAR, fg=theme.FG_MUTED,
             font=("Segoe UI", 8), wraplength=theme.SIDEBAR_WIDTH - 2 * theme.PAD, justify="left",
@@ -82,7 +78,7 @@ class Sidebar(ttk.Frame):
         btn.pack(fill="x", padx=theme.PAD_SMALL, pady=1)
 
     def set_status(self, total: int, files: int, web: int) -> None:
-        self.status_var.set(f"Indexed: {total} ({files} local, {web} web)")
+        self.status_var.set(f"Indexed: {files} imported files; {total} stored sources")
 
 
 __all__ = ["Sidebar"]

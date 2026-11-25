@@ -7,7 +7,6 @@ Convert HTML and CSV into searchable text while retaining useful structure.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/web/fetcher.py: calls html_to_text() on every fetched page.
 - brisart_ai/io/readers.py: calls html_to_text()/csv_to_text().
 - Imports brisart_markup.BrisartMarkupParser (replacing
   html.parser.HTMLParser) and brisart_url.brisart_urljoin()

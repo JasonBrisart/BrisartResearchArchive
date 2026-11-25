@@ -3,38 +3,26 @@ File: brisart_ai/core/settings.py
 
 Purpose
 -------
-Read, normalize and persist the application's research toggles.
+Persist Local Files and Research Notes search toggles.
 
 Communication / relationships
 -----------------------------
-- Read by core/service.py, which passes an optional settings_path for tests.
-- Imports brisart_ai.state.settings_path() for DEFAULT_SETTINGS_PATH.
-- Serializes through the native brisart_json (found by native_path).
+Used by the service and settings dialog; serialized through external brisart_json.
 
 Settings / parameters
 ---------------------
-- DEFAULT_SETTINGS_PATH: research_settings.json in the per-user state folder,
-  fixed when this module is imported.
-- DEFAULT_SETTINGS: search_local_files and search_notes on, auto_web_research off.
-- ResearchSettings(path=...) takes any other file.
+Only search_local_files and search_notes are supported.
 
 Edge cases
 ----------
-- A missing file is created with the defaults; a corrupt file, or a stale or
-  non-boolean key, is ignored and the default kept.
-- The file's parent folder is created if it is missing.
 
 Known limitations
 -----------------
-- No multi-process locking for simultaneous settings writers.
-- Older releases kept this file at data/research_settings.json beside the
-  program; state.migrate_legacy_state() moves it, and this module does not.
+Settings do not control historical web records, which are excluded from answers.
 
 Examples
 --------
-::
-
-    ResearchSettings().get("auto_web_research")
+ResearchSettings().set("search_notes", True).
 """
 
 from __future__ import annotations
@@ -49,18 +37,14 @@ DEFAULT_SETTINGS_PATH = state.settings_path()
 DEFAULT_SETTINGS: Dict[str, bool] = {
     "search_local_files": True,
     "search_notes": True,
-    "auto_web_research": False,
 }
 
 TOGGLE_LABELS = {
     "search_local_files": "Local Files",
     "search_notes": "Research Notes",
-    "auto_web_research": "Automatic Web Research",
 }
 
 SETTING_ALIASES = {
-    "web": "auto_web_research", "auto-web": "auto_web_research",
-    "auto_web": "auto_web_research", "auto_web_research": "auto_web_research",
     "local": "search_local_files", "local-files": "search_local_files",
     "search_local_files": "search_local_files", "notes": "search_notes",
     "search_notes": "search_notes",
@@ -112,7 +96,7 @@ class ResearchSettings:
         cleaned = str(raw_key or "").strip().lower()
         resolved = SETTING_ALIASES.get(cleaned)
         if not resolved:
-            raise KeyError(f"Unknown setting '{raw_key}'. Try: web, local, notes")
+            raise KeyError(f"Unknown setting '{raw_key}'. Try: local, notes")
         return resolved
 
     def render(self) -> str:
@@ -121,35 +105,20 @@ class ResearchSettings:
             mark = "x" if self.get(key) else " "
             lines.append(f"[{mark}] {label}")
         lines.append("")
-        if self.get("auto_web_research"):
-            lines.append(
-                "Automatic Web Research is ON. When no local evidence "
-                "is found, BrisartAI will automatically search the "
-                "public web before answering."
-            )
-        else:
-            lines.append(
-                "Automatic Web Research is OFF. BrisartAI will only "
-                "use local indexed evidence unless you turn it on or "
-                "use the Research Web action."
-            )
-        lines.append("")
         if self.get("search_local_files"):
             lines.append(
-                "Local Files is ON. Imported files are searched "
-                "alongside previously indexed web pages."
+                "Local Files is ON. Imported files are included in search."
             )
         else:
             lines.append(
-                "Local Files is OFF. Only previously indexed web pages "
-                "are searched locally; imported files are ignored until "
+                "Local Files is OFF. Imported files are ignored until "
                 "this is turned back on."
             )
         lines.append("")
         if self.get("search_notes"):
             lines.append(
                 "Research Notes is ON. Saved notes are merged into "
-                "search results alongside files and web pages."
+                "search results alongside imported files."
             )
         else:
             lines.append(

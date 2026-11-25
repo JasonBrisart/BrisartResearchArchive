@@ -4,6 +4,40 @@ All notable changes to BrisartAI are documented here, newest release first.
 
 ---
 
+## [1.3.0] - 2026-11-25
+
+### Release overview
+
+This release unifies source imports and adds notes with quoted evidence. BrisartAI now answers exclusively from imported files and saved research notes. Internet search, provider calls, crawling and automatic web fallback have been removed rather than merely disabled.
+
+### Changed
+
+- **Unified imports:** `ui/app.py`, `ui/sidebar.py` and `ui/dialogs.py` replace separate sidebar actions with **Add Sources**. Browse for multiple files, pick whole folders, or drop them from Explorer into one reviewable queue. Folder imports remain recursive. The dialog skips unsupported or unavailable paths, deduplicates queued paths and lets users remove items before importing. `ui/windows_drop.py` bridges local Windows shell events to the queue without another Python package. Browse works without the drop bridge.
+- **Source notes:** `core/service.py` and `knowledge/index.py` supply indexed text to the note composer and verify that an attached passage actually occurs in the selected file. The note stores the excerpt, original title and path, and separately labeled observations. Existing plain notes continue working. Removing the original source does not remove a note's saved excerpt; remove the note separately if the excerpt must also be discarded.
+- **Remove Sources search and selection:** Added live, case-insensitive filtering across source type, title and location; Ctrl/Shift-click multiple selection and Ctrl+A for all visible rows. Confirmations show the number selected. Only matching visible rows are selected by Ctrl+A.
+- **Supported imports:** Browse Files uses the reader registry, including supported extensionless names. Existing regression coverage checks multi-file and nested-folder ingestion and unsupported-file filtering.
+- `core/conversation.py` and `core/service.py` use only eligible `file` and `note` sources. Empty source selection returns no evidence instead of accidentally searching all types.
+- `core/settings.py` and the desktop settings dialog expose only the two local evidence toggles. The obsolete automatic-web setting is ignored when loading older settings files.
+- `cli.py` no longer accepts `research` or `ask --web`. The desktop no longer offers Research Web.
+- Folder and project documentation now describe the local-only architecture.
+
+### Fixed
+
+- Closing the desktop during an answer now waits for the worker to finish before closing SQLite. Source and settings dialogs are modal, and they cannot open while an answer is running. A second question no longer appears in the transcript as if it was accepted while the worker is busy.
+- **Remove Sources** commits a selection as one transaction instead of leaving a partially removed batch after a failure. Duplicate and stale IDs are skipped, dependent index rows are cleared, and original files remain untouched.
+- Headless verification: 269 application tests, 7 subtests and 4 offline replay cases passed. New regression checks cover excerpt provenance, rejection of stale or mismatched excerpts, note retention after source removal, and rollback on batch failure. Windows Explorer drops and the live Tk desktop were not exercised.
+
+### Removed
+
+- The complete `brisart_ai/web/` implementation and its provider, crawler and fetch tests.
+- The live-search replay script and obsolete web-only blocklist and startup purge behavior.
+
+### Compatibility and limits
+
+Historical `web` records remain in existing SQLite databases and may still be counted, but are excluded from answers. No database deletion or schema migration is performed. The external Official Native API dependency and `%APPDATA%` storage remain unchanged. Windows GUI launch and live network behavior are not tested in this environment.
+
+---
+
 ## [1.2.0] - 2026-11-24
 
 ### Release overview

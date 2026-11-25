@@ -8,7 +8,6 @@ Retrieve candidate sources and order them by query relevance and intent.
 Communication / relationships
 -----------------------------
 - brisart_ai/core/conversation.py: build_conversation_answer() calls search().
-- brisart_ai/web/crawler.py: imports phrase_match_adjust().
 - Imports brisart_ai.knowledge.relevance_engine, brisart_ai.intent.*,
   brisart_ai.util.tokenize().
 

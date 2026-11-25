@@ -89,23 +89,7 @@ class TestIndex(unittest.TestCase):
             self.assertEqual(idx.source_count(), 2)
             idx.close()
 
-    def test_purge_junk_web_sources_removes_blocked_hosts(self):
-        with tempfile.TemporaryDirectory() as d:
-            idx = self._make(d)
-            idx.add_source(source_type="web", location="https://merriam-webster.com/x", title="Def", text="a definition")
-            idx.add_source(source_type="web", location="https://example.com/x", title="Good", text="real content")
-            removed = idx.purge_junk_web_sources()
-            self.assertEqual(removed, 1)
-            self.assertEqual(idx.source_count("web"), 1)
-            idx.close()
 
-    def test_purge_only_affects_web_sources(self):
-        with tempfile.TemporaryDirectory() as d:
-            idx = self._make(d)
-            idx.add_source(source_type="file", location="/dictionary-notes.txt", title="X", text="local text")
-            idx.purge_junk_web_sources()
-            self.assertEqual(idx.source_count("file"), 1)
-            idx.close()
 
     def test_clear_removes_all_sources(self):
         with tempfile.TemporaryDirectory() as d:
