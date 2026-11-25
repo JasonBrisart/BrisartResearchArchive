@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""
+r"""
 File: scripts/debug_search_replay.py
 
 Purpose
 -------
-Replays the real BrisartAI web search path against live providers and
-shows why results survived.
+Replay live search queries to examine provider and crawler behavior.
 
 Communication / relationships
 -----------------------------
+- Puts the project root on sys.path, then imports
+  brisart_ai.native_path and calls install() before any other brisart_ai import.
 - Imports brisart_ai.intent.{describe_intent, detect_intent},
   brisart_ai.util.normalize_url, brisart_ai.web.crawler.*,
   brisart_ai.web.search.search_public_web.
@@ -25,11 +26,16 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Calls live search providers, so results change from run to run and
+  providers may rate-limit or return challenge pages. The 45 s default
+  delay between queries exists for that reason.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    python3 scripts/debug_search_replay.py
+    python3 scripts/debug_search_replay.py --query "who founded apple?" --limit 5
 """
 
 from __future__ import annotations
@@ -43,6 +49,9 @@ import time
 from typing import Dict, List
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from brisart_ai import native_path  # noqa: E402
+
+native_path.install()
 
 from brisart_ai.intent import describe_intent, detect_intent  # noqa: E402
 from brisart_ai.util import normalize_url  # noqa: E402
@@ -180,5 +189,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-

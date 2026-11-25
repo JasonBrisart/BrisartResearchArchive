@@ -1,34 +1,37 @@
 # scripts/
 
-Diagnostic replay tools for validating ranking quality — distinct from the automated test suite in `brisart_ai/*/tests/` (see `docs/TESTING.md`), which covers correctness; these scripts cover *ranking judgment calls* with a full, inspectable per-component score breakdown.
+Use these scripts for verification and diagnostics: `run_tests.py` runs the application suite, `debug_offline_replay.py` uses fixed evidence without network access, and `debug_search_replay.py` contacts live providers. All three initialize the external native modules before importing application code.
 
+## `run_tests.py`
+
+```bash
+python scripts/run_tests.py                              # everything under brisart_ai/
+python scripts/run_tests.py brisart_ai/web/tests -v      # one folder, verbose
+python scripts/run_tests.py -k robots                    # tests whose name matches
 ```
-scripts/
-├── debug_offline_replay.py   Offline ranking regression fixtures, no network
-└── debug_search_replay.py    Live provider replay against real web search
-```
+
+Any argument is passed to pytest unchanged, and `brisart_ai/` is added when none of them names a path. The script puts the project on `sys.path`, finds the native stack, and passes `--import-mode=importlib` and `-p no:cacheprovider` to pytest, which is what lets same-named `tests/` folders coexist without any `__init__.py`. Plain `pytest` or `python -m unittest` from the project root cannot import the native modules by their plain names. The exit status is pytest's. See `docs/TESTING.md`.
+
+---
 
 ## `debug_offline_replay.py`
 
-Builds a temporary SQLite index from in-file text fixtures and runs the real `brisart_ai.knowledge.ranker.search()` against it — no network involved. This exists specifically because `debug_search_replay.py` depends on whatever DuckDuckGo/Bing/etc. feel like returning at that moment; a provider under rate-limiting can return well-formed HTML for an unrelated query, making a real ranking bug hard to distinguish from a bad day for the search provider. Four fixtures ship by default (microsoft/founder, transistor/inventor, cats/statistic, purr/explanation), each asserting a specific expected top result.
-
 ```bash
-python3 scripts/debug_offline_replay.py            # all fixtures
-python3 scripts/debug_offline_replay.py microsoft   # one fixture by name
-python3 scripts/debug_offline_replay.py --list      # list names/queries only
+python scripts/debug_offline_replay.py              # all fixtures
+python scripts/debug_offline_replay.py microsoft    # one fixture by name
+python scripts/debug_offline_replay.py --list       # names and queries only
 ```
 
-Exit status is non-zero when any fixture's expected top result doesn't win. The fixture database is built in a temp directory and deleted on exit; nothing is written to the repository.
+Builds a temporary index from four small text fixtures, `microsoft`, `transistor`, `cats` and `purr`, runs the real search against it, and prints each result with its score and the boost and penalty signals that applied. Each fixture names the document that should come first. The exit status is non-zero when one does not, and 2 for an unknown fixture name. The temporary index is deleted afterwards, and nothing in the project is written. Four fixtures show the order on those texts only; they say nothing about quality on a real collection.
+
+---
 
 ## `debug_search_replay.py`
 
-Replays the real web search path against **live** providers and shows why results survived: which query forms were sent (natural phrasing vs. keyword fallback), which provider actually answered, which batches were rejected wholesale as unrelated, and the full per-URL scoring breakdown (base score, intent delta, terms matched, whether a phrase match fired) for the final ranking.
-
 ```bash
-python3 scripts/debug_search_replay.py                        # default 10-query regression set
-python3 scripts/debug_search_replay.py --query "who founded x"  # one specific query
-python3 scripts/debug_search_replay.py --limit 5 --delay 45    # results-per-query, seconds between queries
+python scripts/debug_search_replay.py                              # ten built-in queries
+python scripts/debug_search_replay.py --query "who founded apple?" # one query; repeatable
+python scripts/debug_search_replay.py --limit 5 --delay 45
 ```
 
-Defaults to a 45-second delay between queries because live providers rate-limit aggressively — lower it only for a single-query run. `KeyboardInterrupt` returns exit code 130 rather than a traceback.
-
+For each query it prints the natural and keyword forms, the topic terms and detected intent, a trace of which providers answered and which batches were rejected, the accepted and rejected URLs, the final ranking, and a per-URL score breakdown. `--limit` is the number of results (default 5) and `--delay` the seconds waited between queries (default 45). The delay is long because live providers rate-limit; lower it only for a single query. The results change from run to run, and Ctrl+C stops with exit status 130. Nothing is indexed or saved.

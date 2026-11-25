@@ -1,9 +1,9 @@
-"""
+r"""
 File: brisart_ai/web/tests/test_models.py
 
 Purpose
 -------
-Tests for brisart_ai/web/models.py -- FetchResult.
+Check models behavior through 1 unittest test group.
 
 Communication / relationships
 -----------------------------
@@ -11,19 +11,22 @@ Direct module imports: unittest, brisart_ai.web.models.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No uppercase module-level settings are declared; parameters remain defined
+in the code below.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Additional edge-case guarantees are not established by this header; existing
+implementation and tests remain unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+python scripts/run_tests.py brisart_ai/web/tests/test_models.py
 """
 
 import unittest
@@ -49,5 +52,3 @@ class TestFetchResult(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

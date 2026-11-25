@@ -1,58 +1,53 @@
-"""
-File: brisart_ai/ui/tests/test_service_headless.py
+r"""
+File: brisart_ai/core/tests/test_service_headless.py
 
 Purpose
 -------
-Tests for brisart_ai/ui/service.py -- BrisartService (headless, no Tk display required).
+Exercise research service operations directly, without creating Tk widgets.
 
 Communication / relationships
 -----------------------------
-Direct module imports: tempfile, unittest, pathlib, brisart_ai.ui.service.
+Direct module imports: json, tempfile, unittest, pathlib,
+brisart_ai.core.service. Every service is built with a database and a
+settings file inside its own temporary directory.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+_make(tmpdir) builds a BrisartService with db_path and settings_path in
+tmpdir. Nothing here reads or writes the user's saved settings.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+- test_default_settings_path_is_in_the_state_folder only compares paths; it
+  never constructs a service on the user's own settings file.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- app.py, chat_panel.py, dialogs.py and sidebar.py need a live Tk display
+  and are checked by hand, not here.
+- ask() is exercised only with force_web=False, so no test reaches the
+  network.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for brisart_ai/ui/service.py -- BrisartService (headless, no Tk display required).
-
-BrisartService itself has no Tk dependency (it's a pure backend facade
-over Index/SessionMemory/ResearchSettings), so it can be constructed and
-exercised in a fully headless test environment. app.py, chat_panel.py,
-dialogs.py, and sidebar.py DO require a live Tk display and are outside
-the scope of headless unit testing -- they are verified manually.
+python scripts/run_tests.py brisart_ai/core/tests/test_service_headless.py
 """
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
-from brisart_ai.ui.service import BrisartService
+from brisart_ai import native_path
+from brisart_ai.core.service import BrisartService
+from brisart_ai.core.settings import DEFAULT_SETTINGS, DEFAULT_SETTINGS_PATH
 
 
 class TestBrisartServiceHeadless(unittest.TestCase):
     def _make(self, tmpdir):
-        service = BrisartService(str(Path(tmpdir) / "test.sqlite"))
-        # ResearchSettings() defaults to a fixed relative path
-        # (data/research_settings.json), so its state is shared across
-        # every BrisartService instance created in this test process.
-        # Reset to known defaults here for isolation between test cases.
-        service.settings.set("search_local_files", True)
-        service.settings.set("search_notes", True)
-        service.settings.set("auto_web_research", False)
-        return service
+        return BrisartService(
+            str(Path(tmpdir) / "test.sqlite"),
+            settings_path=str(Path(tmpdir) / "settings.json"),
+        )
 
     def test_construction_succeeds(self):
         with tempfile.TemporaryDirectory() as d:
@@ -117,8 +112,19 @@ class TestBrisartServiceHeadless(unittest.TestCase):
             self.assertIn("My Title", result)
             service.close()
 
+    def test_settings_live_in_the_given_file_not_the_state_folder(self):
+        with tempfile.TemporaryDirectory() as d:
+            service = self._make(d)
+            service.toggle_setting("notes")
+            saved = json.loads((Path(d) / "settings.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["search_notes"], not DEFAULT_SETTINGS["search_notes"])
+            service.close()
+
+    def test_default_settings_path_is_in_the_state_folder(self):
+        self.assertEqual(DEFAULT_SETTINGS_PATH.name, "research_settings.json")
+        self.assertEqual(DEFAULT_SETTINGS_PATH.parent.name, "BrisartAI")
+        self.assertNotIn(native_path.PROJECT_ROOT, DEFAULT_SETTINGS_PATH.parents)
+
 
 if __name__ == "__main__":
     unittest.main()
-
-

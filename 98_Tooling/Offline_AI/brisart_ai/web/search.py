@@ -1,12 +1,10 @@
-"""
+r"""
 File: brisart_ai/web/search.py
 
 Purpose
 -------
-Dependency-free public web search across seven providers, tried in
-order from MOST likely to be blocked to LEAST likely: Startpage -> Brave
-Search -> DuckDuckGo HTML -> DuckDuckGo Lite -> Bing HTML -> Mojeek ->
-Wikipedia API.
+Collect public provider results and normalize their titles, links and
+duplicates.
 
 Communication / relationships
 -----------------------------
@@ -15,13 +13,13 @@ Communication / relationships
 - Imports brisart_ai.blocklist.{FUNCTION_WORDS, is_blocked_web_host},
   brisart_ai.util.normalize_url, brisart_ai.web.fetcher.{MAX_PAGE_BYTES,
   REQUEST_TIMEOUT}, brisart_ai.web.policy.USER_AGENT.
-- Also imports brisart_ai.native.brisart_codec.brisart_urlsafe_b64decode
-  (replacing base64.urlsafe_b64decode), brisart_ai.native.brisart_json.
-  brisart_loads (replacing json.loads), brisart_ai.native.brisart_markup.
+- Also imports brisart_codec.brisart_urlsafe_b64decode
+  (replacing base64.urlsafe_b64decode), brisart_json.
+  brisart_loads (replacing json.loads), brisart_markup.
   {BrisartMarkupParser, brisart_unescape} (replacing html.parser.HTMLParser
-  and html.unescape), and brisart_ai.native.brisart_url's split/unsplit/
+  and html.unescape), and brisart_url's split/unsplit/
   parse_qsl/urlencode/urljoin/quote/unquote (replacing urllib.parse). See
-  brisart_ai/native/README.md for verification. Actual HTTP requests
+  94_Native_API's/Official for verification. Actual HTTP requests
   (urllib.request/urllib.error) are unchanged.
 
 Settings / parameters
@@ -38,11 +36,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -54,10 +54,10 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from brisart_ai.blocklist import FUNCTION_WORDS, is_blocked_web_host
-from brisart_ai.native.brisart_codec import brisart_urlsafe_b64decode
-from brisart_ai.native.brisart_json import brisart_loads
-from brisart_ai.native.brisart_markup import BrisartMarkupParser, brisart_unescape
-from brisart_ai.native.brisart_url import (
+from brisart_codec import brisart_urlsafe_b64decode
+from brisart_json import brisart_loads
+from brisart_markup import BrisartMarkupParser, brisart_unescape
+from brisart_url import (
     brisart_parse_qsl, brisart_quote, brisart_unquote, brisart_urlencode,
     brisart_urljoin, brisart_urlsplit, brisart_urlunsplit,
 )
@@ -752,5 +752,3 @@ def search_public_web(
 
 
 __all__ = ["search_public_web"]
-
-

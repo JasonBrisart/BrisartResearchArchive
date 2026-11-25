@@ -1,19 +1,17 @@
-"""
+r"""
 File: brisart_ai/io/extractor.py
 
 Purpose
 -------
-Two text-extraction helpers: html_to_text() and csv_to_text().
-HTMLTextExtractor is a brisart_ai.native.brisart_markup.BrisartMarkupParser
-subclass.
+Convert HTML and CSV into searchable text while retaining useful structure.
 
 Communication / relationships
 -----------------------------
 - brisart_ai/web/fetcher.py: calls html_to_text() on every fetched page.
 - brisart_ai/io/readers.py: calls html_to_text()/csv_to_text().
-- Imports brisart_ai.native.brisart_markup.BrisartMarkupParser (replacing
-  html.parser.HTMLParser) and brisart_ai.native.brisart_url.brisart_urljoin()
-  (replacing urllib.parse.urljoin()) -- see brisart_ai/native/README.md.
+- Imports brisart_markup.BrisartMarkupParser (replacing
+  html.parser.HTMLParser) and brisart_url.brisart_urljoin()
+  (replacing urllib.parse.urljoin()); see 94_Native_API's/Official.
 
 Settings / parameters
 ---------------------
@@ -29,11 +27,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ import io
 import re
 from typing import List, Optional, Tuple
 
-from brisart_ai.native.brisart_markup import BrisartMarkupParser, brisart_unescape
-from brisart_ai.native.brisart_url import brisart_urljoin
+from brisart_markup import BrisartMarkupParser, brisart_unescape
+from brisart_url import brisart_urljoin
 from brisart_ai.util import normalize_url
 
 
@@ -189,5 +189,3 @@ def csv_to_text(source: str) -> str:
         if line:
             output.append(line.replace(",", " | "))
     return "\n".join(output)
-
-

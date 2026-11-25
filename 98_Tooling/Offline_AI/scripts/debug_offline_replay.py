@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""
+r"""
 File: scripts/debug_offline_replay.py
 
 Purpose
 -------
-Offline retrieval replay: ranks imported-document chunks with no
-network involved, using controlled in-file text fixtures against the
-real brisart_ai.knowledge.ranker.search() path.
+Replay fixed evidence fixtures to inspect ranking without network access.
 
 Communication / relationships
 -----------------------------
+- Puts the project root on sys.path, then imports
+  brisart_ai.native_path and calls install() before any other brisart_ai import.
 - Imports brisart_ai.intent.{describe_intent, detect_intent},
   brisart_ai.knowledge.index.Index, brisart_ai.knowledge.ranker.search.
 - Standalone script; run directly via `python3 scripts/debug_offline_replay.py`.
@@ -26,11 +26,16 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Four fixtures with three or four chunks each. A pass shows the ranking
+  order on those texts only, not retrieval quality on a real corpus.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    python3 scripts/debug_offline_replay.py
+    python3 scripts/debug_offline_replay.py microsoft
+    python3 scripts/debug_offline_replay.py --list
 """
 
 from __future__ import annotations
@@ -42,6 +47,9 @@ import tempfile
 from typing import Dict, List, Sequence, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from brisart_ai import native_path  # noqa: E402
+
+native_path.install()
 
 from brisart_ai.intent import describe_intent, detect_intent  # noqa: E402
 from brisart_ai.knowledge.index import Index  # noqa: E402
@@ -189,5 +197,3 @@ def main(argv: Sequence[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-
-

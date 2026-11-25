@@ -1,16 +1,9 @@
-"""
+r"""
 File: brisart_ai/util.py
 
 Purpose
 -------
-The one shared, dependency-free toolbox every other layer of BrisartAI
-imports from: tokenization for the ranker and index, SHA-256 hashing for
-stable source keys and file de-duplication, URL normalization and
-same-site comparison for the crawler, sentence splitting for answer
-synthesis, and best-effort multi-encoding text reading for local file
-ingestion. Nothing here depends on any other brisart_ai module except
-brisart_ai.native, which is what lets it sit at the very bottom of the
-application's own import graph.
+Share text, URL, digest and timestamp helpers across application owners.
 
 Communication / relationships
 -----------------------------
@@ -24,11 +17,11 @@ Communication / relationships
 - brisart_ai/io/extractor.py: normalize_url()
 - brisart_ai/web/crawler.py: normalize_url(), same_site(), stable_hash()
 - brisart_ai/core/session_memory.py: now_ts(), tokenize()
-- Imports brisart_ai.native.brisart_hash.brisart_sha256() (replacing
-  hashlib.sha256()) and brisart_ai.native.brisart_url's
+- Imports brisart_hash.brisart_sha256() (replacing
+  hashlib.sha256()) and brisart_url's
   brisart_urlsplit()/brisart_urlunsplit()/brisart_quote()/
   brisart_unquote() (replacing the corresponding urllib.parse
-  functions) -- see brisart_ai/native/README.md for how each of these
+  functions); see 94_Native_API's/Official for how each of these
   was independently verified against the real stdlib function it
   replaces before being wired in here. Otherwise imports nothing from
   elsewhere in brisart_ai; only the standard library (re, time,
@@ -38,12 +31,12 @@ Settings / parameters
 ---------------------
 - STOPWORDS: a small, English-only stopword set used by tokenize() to
   drop function words before terms are indexed or matched.
-- WORD_RE: token boundary pattern for tokenize() -- alphanumerics plus
+- WORD_RE: token boundary pattern for tokenize(); alphanumerics plus
   internal underscores/hyphens, at least two characters.
 - term_variants() covers regular English singular/plural pairs only
   (-s, -es, -ies); terms shorter than MIN_VARIANT_LENGTH get none.
 - QUESTION_FRAME_RE: "how do/does/did/can/will/would/could/should ...
-  work(s)" -- the trailing "work" is the question's frame, not its topic.
+  work(s)"; the trailing "work" is the question's frame, not its topic.
 - SENTENCE_RE: a lookbehind split on sentence-ending punctuation, used
   by split_sentences(); sentences outside the 30-700 character band
   are dropped.
@@ -53,11 +46,13 @@ Edge cases
 - tokenize(None) and tokenize("") both return [] rather than raising.
 - file_hash() streams a file in 1 MB chunks rather than reading it
   whole, each chunk fed through BrisartHash256.update().
-- safe_read_text() tries utf-8, then utf-16, then latin-1, and always
-  succeeds via a final errors="replace" decode.
+- safe_read_text() reads at most max_bytes (5,000,000) and decodes them as
+  UTF-8 with errors="replace", so it never raises. Text in another
+  encoding, such as UTF-16 or Latin-1, comes back with replacement characters.
 - normalize_url("") returns ""; normalize_url() on a schemeless string
   assumes https and prepends it before parsing.
-- same_site() compares hostnames only (case-insensitively).
+- same_site() compares the netloc (host plus any port or user info),
+  case-insensitively, so the same host on two ports is two sites.
 - term_variants() never strips "ss" ("class" stays "class") and always
   includes the term itself; irregular plurals ("children") are not known.
 - query_frame_terms() returns an empty set when "work" is the only topic
@@ -65,11 +60,22 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- tokenize() drops one-character words and every STOPWORDS entry, which
+  includes everyday words such as "file", "data", "use", "one" and "two", so
+  a query made only of those words has no searchable terms.
+- term_variants() knows regular English plurals only.
+- safe_read_text() does not detect UTF-16 or Latin-1 (see Edge cases).
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    tokenize("Hello, World! Co-founder of the data lab")
+    # ['hello', 'world', 'co-founder', 'lab']
+    normalize_url("Example.COM/A%20b#top")
+    # 'https://example.com/A%20b'
+    query_frame_terms("how do lawsuits work?")
+    # {'work'}
 """
 
 from __future__ import annotations
@@ -79,8 +85,8 @@ import time
 from pathlib import Path
 from typing import List, Set
 
-from brisart_ai.native.brisart_hash import brisart_sha256
-from brisart_ai.native.brisart_url import (
+from brisart_hash import brisart_sha256
+from brisart_url import (
     brisart_quote,
     brisart_unquote,
     brisart_urlsplit,
@@ -219,5 +225,3 @@ def safe_read_text(path: Path, max_bytes: int = 5_000_000) -> str:
         except Exception:
             continue
     return raw.decode("utf-8", "replace")
-
-

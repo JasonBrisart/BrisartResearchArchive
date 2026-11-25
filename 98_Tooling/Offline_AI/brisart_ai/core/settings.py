@@ -1,37 +1,40 @@
-"""
+r"""
 File: brisart_ai/core/settings.py
 
 Purpose
 -------
-Persistent research toggles, backed by data/research_settings.json.
+Read, normalize and persist the application's research toggles.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/core/conversation.py: reads toggles via .get().
-- brisart_ai/ui/dialogs.py: SettingsDialog renders checkboxes.
-- brisart_ai/ui/service.py: constructs the single ResearchSettings instance.
-- Imports brisart_ai.native.brisart_json.{brisart_dumps, brisart_loads}
-  (replacing json.*) -- see native/README.md for verification.
+- Read by core/service.py, which passes an optional settings_path for tests.
+- Imports brisart_ai.state.settings_path() for DEFAULT_SETTINGS_PATH.
+- Serializes through the native brisart_json (found by native_path).
 
 Settings / parameters
 ---------------------
-- DEFAULT_SETTINGS_PATH: data/research_settings.json.
-- DEFAULT_SETTINGS: search_local_files/search_notes True,
-  auto_web_research False.
-- TOGGLE_LABELS / SETTING_ALIASES.
+- DEFAULT_SETTINGS_PATH: research_settings.json in the per-user state folder,
+  fixed when this module is imported.
+- DEFAULT_SETTINGS: search_local_files and search_notes on, auto_web_research off.
+- ResearchSettings(path=...) takes any other file.
 
 Edge cases
 ----------
-- load() creates defaults if missing; swallows corrupt files.
-- Only known boolean keys accepted on load.
+- A missing file is created with the defaults; a corrupt file, or a stale or
+  non-boolean key, is ignored and the default kept.
+- The file's parent folder is created if it is missing.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- No multi-process locking for simultaneous settings writers.
+- Older releases kept this file at data/research_settings.json beside the
+  program; state.migrate_legacy_state() moves it, and this module does not.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    ResearchSettings().get("auto_web_research")
 """
 
 from __future__ import annotations
@@ -39,9 +42,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict
 
-from brisart_ai.native.brisart_json import brisart_dumps, brisart_loads
+from brisart_ai import state
+from brisart_json import brisart_dumps, brisart_loads
 
-DEFAULT_SETTINGS_PATH = Path("data/research_settings.json")
+DEFAULT_SETTINGS_PATH = state.settings_path()
 DEFAULT_SETTINGS: Dict[str, bool] = {
     "search_local_files": True,
     "search_notes": True,
@@ -159,5 +163,3 @@ __all__ = [
     "DEFAULT_SETTINGS", "DEFAULT_SETTINGS_PATH", "ResearchSettings",
     "SETTING_ALIASES", "TOGGLE_LABELS",
 ]
-
-

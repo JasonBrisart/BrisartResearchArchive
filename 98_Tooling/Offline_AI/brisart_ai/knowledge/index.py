@@ -1,22 +1,24 @@
-"""
+r"""
 File: brisart_ai/knowledge/index.py
 
 Purpose
 -------
-The SQLite-backed store every indexed file, web page, and note lands in.
+Own the SQLite schema, source writes and searchable term records.
 
 Communication / relationships
 -----------------------------
 - brisart_ai/knowledge/ingest.py, brisart_ai/web/crawler.py,
   brisart_ai/knowledge/vault.py call add_source().
 - brisart_ai/knowledge/ranker.py reads terms/sources directly via SQL.
-- brisart_ai/ui/service.py calls purge_blocked_web_sources() at startup.
-- Imports brisart_ai.blocklist.is_junk_web_source() and
+- brisart_ai/core/service.py calls purge_blocked_web_sources() at startup.
+- Imports brisart_ai.blocklist.is_junk_web_source(),
+  brisart_ai.state.index_path() and
   brisart_ai.util.{now_ts, stable_hash, tokenize}.
 
 Settings / parameters
 ---------------------
-- DEFAULT_DB: anchored to project root (parents[2]).
+- DEFAULT_DB: brisart_ai_index.sqlite3 inside the per-user state folder
+  (brisart_ai/state.py), not beside the program.
 - check_same_thread=False.
 - add_source()'s source_key is a stable hash of source_type + location.
 
@@ -25,14 +27,23 @@ Edge cases
 - add_source() raises ValueError for missing type/location, returns
   False for empty text.
 - purge_junk_web_sources() only touches source_type = 'web' rows.
+- Index() creates the database's parent folder if it is missing, so the
+  per-user state folder does not have to exist before the first run.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- One connection is shared across threads (check_same_thread=False). The
+  GUI's _busy flag keeps requests from overlapping; nothing here locks.
+- DEFAULT_DB is fixed when this module is imported, so changing
+  BRISARTAI_STATE_DIR afterwards does not move it; pass a path to Index().
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    with Index() as index:
+        index.add_source("file", "/a.txt", "A", "hello world")
+        index.source_count()
 """
 
 from __future__ import annotations
@@ -42,11 +53,11 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 
+from brisart_ai import state
 from brisart_ai.blocklist import is_junk_web_source
 from brisart_ai.util import now_ts, stable_hash, tokenize
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DB = str(_PROJECT_ROOT / "brisart_ai_index.sqlite3")
+DEFAULT_DB = str(state.index_path())
 
 
 class Index:
@@ -54,6 +65,7 @@ class Index:
 
     def __init__(self, path: str = DEFAULT_DB):
         self.path = str(path)
+        Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(self.path, check_same_thread=False)
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
@@ -184,5 +196,3 @@ class Index:
 
 
 __all__ = ["DEFAULT_DB", "Index"]
-
-

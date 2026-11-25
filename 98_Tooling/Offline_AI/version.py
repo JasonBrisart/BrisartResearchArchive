@@ -1,12 +1,9 @@
-"""
+r"""
 File: version.py
 
 Purpose
 -------
-Single source of truth for BrisartAI's version string. Replaces the
-former plain-text version.txt with a real, importable Python module,
-so the version can be bumped by editing one Python assignment rather
-than a bare text file.
+Keep the application version in one root-level constant.
 
 Communication / relationships
 -----------------------------
@@ -19,7 +16,7 @@ Communication / relationships
 - Every other consumer of the version string (ui/app.py's window
   title, ui/sidebar.py's version label, web/policy.py's outbound
   USER_AGENT) goes through brisart_ai/version_info.py, not this file
-  directly -- this file has exactly one reader.
+  directly; this file has exactly one reader.
 
 Settings / parameters
 ---------------------
@@ -30,7 +27,7 @@ Settings / parameters
 
 Edge cases
 ----------
-- None -- this module has no logic, only the version string. If this
+- None; this module has no logic, only the version string. If this
   file is ever missing, unreadable, or fails to import (a syntax error
   introduced by a bad manual edit, for instance),
   brisart_ai/version_info.py falls back to "0.0.0-unknown" rather than
@@ -38,13 +35,14 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- The string is not checked against docs/CHANGELOG.md, so a release can ship
+  with the two out of step.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    __version__ = "1.2.0"
 """
 
-__version__ = "1.1.0"
-
-
+__version__ = "1.2.0"

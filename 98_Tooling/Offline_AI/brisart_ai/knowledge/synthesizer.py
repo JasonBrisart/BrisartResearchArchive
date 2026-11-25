@@ -1,10 +1,10 @@
-"""
+r"""
 File: brisart_ai/knowledge/synthesizer.py
 
 Purpose
 -------
-Turns ranked documents into an answer by extracting the most relevant
-sentences and presenting them directly, followed by a plain source list.
+Select sentences from ranked evidence and attach source citations without
+generating prose.
 
 Communication / relationships
 -----------------------------
@@ -28,11 +28,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -221,5 +223,3 @@ __all__ = [
     "format_source", "query_wants_comparison", "query_wants_quantity",
     "query_wants_reason", "sentence_score", "synthesize",
 ]
-
-

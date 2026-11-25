@@ -1,14 +1,14 @@
-"""
+r"""
 File: brisart_ai/core/session_memory.py
 
 Purpose
 -------
-A tiny SQLite-backed rolling log of recent chat topics.
+Keep per-session question and answer context in the local index.
 
 Communication / relationships
 -----------------------------
 - brisart_ai/core/conversation.py: recent_topics() / add().
-- brisart_ai/ui/service.py: constructs the single SessionMemory instance.
+- brisart_ai/core/service.py: constructs the single SessionMemory instance.
 - Imports brisart_ai.io.input_cleaner.normalize_shellish_input() and
   brisart_ai.util.now_ts()/tokenize().
 
@@ -25,11 +25,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -93,5 +95,3 @@ class SessionMemory:
 
     def close(self) -> None:
         self.conn.close()
-
-

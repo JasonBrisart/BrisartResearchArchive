@@ -1,9 +1,10 @@
-"""
+r"""
 File: brisart_ai/web/models.py
 
 Purpose
 -------
-Defines FetchResult, the single return value of one URL fetch attempt.
+Represent the data returned by web fetching without depending on the
+desktop.
 
 Communication / relationships
 -----------------------------
@@ -20,11 +21,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -44,5 +47,3 @@ class FetchResult:
     text: str
     links: List[str]
     error: str = ""
-
-

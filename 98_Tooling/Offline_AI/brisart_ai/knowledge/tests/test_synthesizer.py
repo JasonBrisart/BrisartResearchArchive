@@ -1,9 +1,9 @@
-"""
+r"""
 File: brisart_ai/knowledge/tests/test_synthesizer.py
 
 Purpose
 -------
-Tests for brisart_ai/knowledge/synthesizer.py -- source-grounded answer synthesis.
+Check synthesizer behavior through 5 unittest test groups.
 
 Communication / relationships
 -----------------------------
@@ -11,19 +11,22 @@ Direct module imports: unittest, brisart_ai.knowledge.synthesizer.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No uppercase module-level settings are declared; parameters remain defined
+in the code below.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Additional edge-case guarantees are not established by this header; existing
+implementation and tests remain unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_synthesizer.py
 """
 
 import unittest
@@ -124,5 +127,3 @@ class TestSynthesizerInflection(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

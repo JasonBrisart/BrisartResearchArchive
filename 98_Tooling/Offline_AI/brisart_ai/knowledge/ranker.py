@@ -1,12 +1,9 @@
-"""
+r"""
 File: brisart_ai/knowledge/ranker.py
 
 Purpose
 -------
-Retrieval and ranking over BrisartAI's local index -- the Brisart
-Relevance Engine's base term score, layered with coverage, title-match,
-generic-concept-title penalty, phrase-match, proximity, and intent
-adjustments.
+Retrieve candidate sources and order them by query relevance and intent.
 
 Communication / relationships
 -----------------------------
@@ -40,11 +37,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -397,5 +396,3 @@ __all__ = [
     "generic_concept_title_adjust", "intent_adjust", "phrase_match_adjust",
     "proximity_adjust", "search", "title_match_adjust",
 ]
-
-

@@ -1,37 +1,34 @@
-"""
-File: brisart_ai/ui/service.py
+r"""
+File: brisart_ai/core/service.py
 
 Purpose
 -------
-The backend facade every UI widget goes through instead of touching
-Index/SessionMemory/ResearchSettings directly.
+Coordinate import, lookup, notes, web research and settings for both
+launchers.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/ui/app.py: constructs the single BrisartService instance.
-- Owns brisart_ai.knowledge.index.Index, brisart_ai.core.session_memory.
-  SessionMemory, brisart_ai.core.settings.ResearchSettings.
-- Calls brisart_ai.core.conversation.build_conversation_answer(),
-  brisart_ai.knowledge.ingest.ingest_paths(), brisart_ai.knowledge.vault.*,
-  brisart_ai.web.crawler.web_search_and_ingest().
+Called by ui/app.py and cli.py; delegates to knowledge, conversation and web
+crawler.
 
 Settings / parameters
 ---------------------
-- __init__(db_path): construction deliberately unguarded.
-- ask(text, force_web=None).
-- _DIAGNOSTIC_MARKERS / _MAX_DIAGNOSTIC_LINES.
+db_path selects the index. settings_path selects the research-settings
+JSON file and defaults to research_settings.json in the per-user state
+folder (brisart_ai/state.py); tests pass a temporary path so they never
+touch the user's saved settings. ask/research accept per-request limits.
 
 Edge cases
 ----------
-- self._stdout_lock guards stdout redirection in ask().
+Closes both databases; captures diagnostics while answering.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Web research needs connectivity; stdout capture is process-global.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+BrisartService(db_path).counts()
 """
 
 from __future__ import annotations
@@ -39,6 +36,7 @@ from __future__ import annotations
 import contextlib
 import io
 import threading
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from brisart_ai.core.conversation import build_conversation_answer
@@ -56,7 +54,7 @@ _MAX_DIAGNOSTIC_LINES = 5
 class BrisartService:
     """Owns one Index, SessionMemory, and ResearchSettings for the app's lifetime."""
 
-    def __init__(self, db_path: str = DEFAULT_DB):
+    def __init__(self, db_path: str = DEFAULT_DB, settings_path: Optional[str] = None):
         self.db_path = db_path
         self.index = Index(db_path)
 
@@ -69,7 +67,9 @@ class BrisartService:
             print(f"Startup cleanup: indexed {reindexed} previously unindexed note(s) for ranked search.")
 
         self.memory = SessionMemory(db_path)
-        self.settings = ResearchSettings()
+        self.settings = (
+            ResearchSettings() if settings_path is None else ResearchSettings(path=Path(settings_path))
+        )
         self._stdout_lock = threading.Lock()
         self.last_diagnostics: List[str] = []
 
@@ -145,5 +145,3 @@ class BrisartService:
 
 
 __all__ = ["BrisartService"]
-
-

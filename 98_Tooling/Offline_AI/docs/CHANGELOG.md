@@ -1,6 +1,80 @@
 # Changelog
 
-All notable changes to BrisartAI are documented in this file, oldest release at the bottom.
+All notable changes to BrisartAI are documented here, newest release first.
+
+---
+
+## [1.2.0] - 2026-11-24
+
+### Release overview
+
+BrisartAI 1.2.0 keeps only `run.py`, `cli.py` and `version.py` at the project root, moves saved data to per-user storage, and requires all seven native modules to be loaded from outside Offline_AI. The index schema, settings format, ranking, synthesis and optional web research are unchanged.
+
+- **Root layout.** Every other file is now in a folder: `native_path.py` moved into `brisart_ai/`, the test runner is `scripts/run_tests.py`, the project overview is `docs/README.md`, and the `data/` folder is gone. No `__init__.py` exists anywhere, and a test fails if the root gains a file.
+- **Saved data location.** BrisartAI saves two files and both now live in the per-user folder: `brisart_ai_index.sqlite3` (imported files, crawled pages, notes and session memory) and `research_settings.json` (the three research toggles). On Windows that is `%APPDATA%\Brisart Research Archive\BrisartAI`; macOS uses `~/Library/Application Support/Brisart Research Archive/BrisartAI` and elsewhere `$XDG_CONFIG_HOME/Brisart Research Archive/BrisartAI` (or `~/.config/...`). `BRISARTAI_STATE_DIR` replaces the path. An index or settings file left beside the program by an earlier release is moved there once, on the first start of `run.py` or `cli.py`.
+- **Startup.** The launchers and development scripts install the external native module path before importing application code. The shared Archive dependency is `94_Native_API's/Official`; no native implementation or fallback ships with Offline_AI.
+- **Cleanup.** A duplicated service module is removed and the test suite no longer rewrites a settings file.
+- **Documentation.** The project README and every folder README are rewritten, each describing only its own folder, and several statements that did not match the code are corrected (see Changed and Fixed).
+
+### Added
+
+- **`brisart_ai/state.py`.** `state_dir()`, `index_path()` and `settings_path()` give the per-user folder and the two files in it; `migrate_legacy_state()` does the one-time move from `<project>/brisart_ai_index.sqlite3` (with its `-wal`, `-shm` and `-journal` files) and `<project>/data/research_settings.json`. Standard library only. The move:
+  - copies the index with SQLite's backup API, which reads through the write-ahead log, then checks `PRAGMA integrity_check` and compares every table's row count with the original before removing it;
+  - copies the settings file through a temporary file, fsynced and size-checked;
+  - never overwrites a settings file or an index with rows in any table, and replaces an index with none (what a start after a failed move would have created), so a failure cannot hide the old data on the next start;
+  - on any failure keeps the original, removes its own temporary file and prints a warning naming both folders, and the program still starts;
+  - takes a lock file in the new folder, so several copies starting together move each file once; a lock older than 120 s counts as abandoned;
+  - does nothing, not even creating the folder, when there is nothing to move, and never runs when `BRISARTAI_STATE_DIR` is set.
+- **`brisart_ai/native_path.py`.** `find_native_dir()` honors `BRISART_NATIVE_API` first; an invalid override raises instead of falling back. Without an override, it checks ancestor directories for `94_Native_API's`, preferring `Official/` and accepting the flat API folder if it is complete. Older folder spellings remain supported. All seven modules must be present and resolve outside Offline_AI. `install()` puts the chosen directory on `sys.path` once, so application code can keep its flat imports.
+- **`scripts/run_tests.py`.** Runs pytest with the project root on `sys.path`, `native_path.install()` called first, `--import-mode=importlib` and the cache folder disabled. Other arguments go to pytest, and `brisart_ai/` is added when none names a path. It does what a root `pytest.ini` and `conftest.py` would, which `docs/TESTING.md` described but the tree never contained.
+
+### Changed
+
+- **Documentation.** Reworked the six-section headers across source files, tests and tooling. Reorganized the folder READMEs and clarified the shared native dependency, local state migration, and verification boundaries in the project guides. Historical release entries are unchanged.
+- **`run.py`, `cli.py`.** Each calls `native_path.install()` before any other `brisart_ai` import, and `state.migrate_legacy_state()` before the index is opened. `run.py` now describes itself as the desktop entry point and points to `cli.py` for headless use; `cli.py --db` defaults to the index in the state folder.
+- **`brisart_ai/knowledge/index.py`.** `DEFAULT_DB` is the index in the state folder instead of `<project root>/brisart_ai_index.sqlite3`, and `Index()` creates the parent folder of its database if it is missing. The header's placeholder limitations and examples are replaced.
+- **`brisart_ai/core/settings.py`.** `DEFAULT_SETTINGS_PATH` is the settings file in the state folder. The header is rewritten.
+- **`brisart_ai/core/service.py`.** `BrisartService(db_path, settings_path=None)`; the default is the state-folder file, and a path lets a caller keep settings elsewhere.
+- **`scripts/debug_offline_replay.py`, `scripts/debug_search_replay.py`.** Call `native_path.install()` before their first `brisart_ai` import; their placeholder limitations and examples are replaced.
+- **`README.md` is now `docs/README.md`, and is rewritten.** The project overview moved from the root so the root holds only the three entry files; GitHub shows `README.md` from `docs/` for the folder. It now covers what BrisartAI is, how to run it (the `cli.py` commands, including that `ask` never searches the web without `--web`), where saved data lives, what it reads, web research, how an answer is chosen, the project layout and the documents in `docs/`. It no longer lists `docs/KNOWN_ISSUES.md` or `docs/file_types.md`, or points to a `LICENSE`, none of which is in this tree.
+- **`version.py`.** 1.2.0.
+- **Folder READMEs.** Application and script READMEs describe their own folders. `brisart_ai/README.md` now documents the application package rather than duplicating the former native README. The project overview, architecture, test instructions and release history live under `docs/`.
+- **Other documents.** `docs/ARCHITECTURE.md`, `docs/TESTING.md` and `docs/SECURITY.md` describe the entry points (`run.py` and `cli.py`; several passages still named `brisartai.py` or called the project GUI-only), the state folder and the move, where the native stack is found, the runner, and the application test setup. `docs/SECURITY.md` adds that saved data is an unencrypted SQLite file in a folder that is the roaming profile on Windows. The three documents no longer say the native modules are verified against the standard library in every case: the hash, Base64, DEFLATE, URL and JSON tests compare against it, and the markup and robots tests assert behavior.
+- **`brisart_ai/ui/app.py`.** The startup error dialog told the user to check write access to "the install folder"; the database is now in the state folder, so it says "the folder that holds BrisartAI's saved data".
+- **`brisart_ai/util.py`.** The header said `safe_read_text()` tries UTF-8, then UTF-16, then Latin-1, and that `same_site()` compares hostnames only. Neither was true: the UTF-8 decode with replacement never fails, so the other two are never tried, and `same_site()` compares the whole netloc, port included. The header now says so, and its placeholder Known limitations and Examples are replaced. The behavior is unchanged.
+- **`run.py`.** The header no longer refers to a `start.bat` that is not in the project.
+
+### Removed
+
+- **`brisart_ai/native/`.** Removed the bundled implementations, their README and module-specific tests. The application suite still exercises calls into the external modules.
+- **`native_path.py`, `README.md` and `data/` from the project root.** Moved as described above; `data/` held only `research_settings.json` and a README describing it, and the defaults are listed in `brisart_ai/core/README.md`.
+- **`brisart_ai/ui/service.py` and `brisart_ai/ui/tests/test_service_headless.py`.** Below the header, `ui/service.py` was identical to `core/service.py`, and the two test files differed by one import line. Nothing imported `brisart_ai.ui.service`; `ui/app.py` and `cli.py` use `brisart_ai.core.service`.
+
+### Fixed
+
+- **Native API folder spelling.** Automatic discovery now recognizes the apostrophe in `94_Native_API's`. The previous path list omitted this spelling and prevented startup without an override.
+- **Tests rewrote the settings file.** `BrisartService` always opened the project's own settings file and a service test toggled `search_notes`, so every run left it switched off; the committed file had `search_notes: false`, and with it `cli.py ask` ignored saved notes. The service tests now pass a temporary `settings_path`, and nothing in the suite touches the state folder.
+- **Settings dialog note was wrong.** `brisart_ai/ui/dialogs.py` told the user that only Automatic Web Research changes how questions are answered and that files and notes are always searched. The Local Files and Research Notes settings do change what is searched, and the note now says what all three do.
+- **Extra blank lines at the end of files.** 74 `.py` files ended with two blank lines and 14 `.md` files with one; each now ends with a single newline.
+
+### Tests
+
+- **Final 1.2.0 application suite:** `python scripts/run_tests.py -q` passed 346 tests and 7 subtests on Linux with Python 3.12. The test modules were staged outside Offline_AI under `94_Native_API's/Official`. The earlier 424-test result covered the bundled layout and included native-module tests that no longer ship with the application.
+- **Dependency and startup:** Regression tests check exact folder spelling and precedence over an older alias, flat directory discovery, explicit overrides, rejection of local copies, and the external import origin of all seven modules. The CLI started from outside the repository without an override. It also saved and retrieved a note in the external-only layout. Startup failed as expected when the external stack was absent.
+- **State and layout:** Tests cover platform paths using supplied environment values, SQLite migration including uncheckpointed data, preservation of existing destination data, failure and retry behavior, concurrent migration, and CLI startup after migration. Layout checks reject bundled native implementations, local saved state, `__init__.py`, and extra root files.
+- **Not verified:** The final tests used staged modules, not the live Archive copy. Windows Python 3.14 desktop startup, Tk and Windows file locking were not verified.
+
+### Compatibility and limits
+
+- **Upgrading.** Keep `94_Native_API's/Official` outside Offline_AI. If updating an older copy in place, remove obsolete `brisart_ai/native/`, root `native_path.py` and root `README.md` if present. Preserve any legacy index or `data/research_settings.json` until migration is confirmed. Eligible files move to the per-user state folder on startup; when an existing destination blocks migration, the original is retained.
+- **Roaming profile.** `%APPDATA%` is the roaming profile, which a domain can sync between computers, and the index records this computer's file paths. Set `BRISARTAI_STATE_DIR` if that matters.
+- **Layout test.** `test_layout.py` fails while an index from an earlier release is still beside the program; start `run.py` or `cli.py` once, or delete it. It also fails if any other file, such as a `README.md` or `LICENSE`, is added to the root; edit `ROOT_FILES` in that test to allow one.
+- **`brisart_ai.ui.service`** no longer exists; use `brisart_ai.core.service`. `BrisartService` is unchanged apart from the optional `settings_path`.
+- **Running tests.** Use `python scripts/run_tests.py` to configure the external dependency before test collection. The API modules and their own tests belong to the shared API project.
+- **Detached checkouts.** Set `BRISART_NATIVE_API` to the external directory containing all seven modules. There is no bundled fallback or automatic download.
+- **Lock timeout.** If the move's lock cannot be taken within 150 s the move is skipped with a warning and the program starts on an empty index; the next start moves the old one over it as long as nothing was added to the new one.
+- **History.** `cli.py`, and the public-only redirect handling in `web/fetcher.py` with `web/tests/test_public_fetch_policy.py`, were added after 1.1.0 and are not recorded in its entry; the changes made in 1.2.0 are listed above.
+- **Missing files.** The tree has no `LICENSE`, `docs/KNOWN_ISSUES.md`, `docs/file_types.md` or `docs/safety.md`. The current READMEs no longer refer to them; older entries below still do.
 
 ---
 
@@ -419,4 +493,3 @@ Shifted BrisartAI from crawler-first to data-first architecture.
 ## [0.1.0-alpha]
 
 Initial crawler/index/retrieval prototype.
-

@@ -1,61 +1,55 @@
 # Testing BrisartAI
 
-Tests are **co-located** with the source they test: every folder under `brisart_ai/` that contains source modules also contains its own `tests/` subfolder, right next to the code it exercises. There is no separate top-level `tests/` tree to keep in sync with the source layout.
-
-**389 tests total, zero external dependencies for the tests themselves** (pure `unittest.TestCase` classes). `pytest` is used only as the *runner*, because it can discover same-named `tests/` folders scattered across the tree without requiring `__init__.py` files — which would conflict with this project's deliberate "no `__init__.py` anywhere in `brisart_ai/`" design (see `brisart_ai/version_info.py`'s own docstring for why).
+Run tests from the project root using `python scripts/run_tests.py`. The runner adds the project directory, loads the external native stack, and uses pytest importlib mode to collect co-located tests without adding package initializers.
 
 ## Layout
 
 ```
 brisart_ai/
-├── native/tests/        78 tests  -- all 7 native modules vs. real stdlib
-├── tests/                69 tests  -- util.py, blocklist.py, intent.py, version_info.py
+├── tests/               100 tests  -- util, blocklist, intent, version_info, native_path, state, and the project layout rules
 ├── io/tests/              49 tests  -- all 4 io/ modules
-├── core/tests/            22 tests  -- all 3 core/ modules
+├── core/tests/            32 tests  -- conversation, session_memory, settings, service (headless)
 ├── knowledge/tests/       86 tests  -- all 6 knowledge/ modules
-├── web/tests/             69 tests  -- all 6 web/ modules
-└── ui/tests/              16 tests  -- theme.py + service.py (headless-safe subset)
-                          -----
-                          389 tests total
+├── web/tests/             71 tests  -- all 6 web/ modules, including the public-fetch redirect policy
+└── ui/tests/               8 tests  -- theme.py (the only Tk-free UI module)
 ```
 
 ## Running the tests
 
-From the project root, with no flags needed (`pytest.ini` sets the required `--import-mode=importlib` automatically):
+Use the runner. The project root holds only `run.py`, `cli.py` and `version.py`, so there is no root `pytest.ini` or `conftest.py`; `scripts/run_tests.py` does what they would do. It puts the project root on `sys.path`, calls `native_path.install()` so the flat `brisart_*` imports resolve (see `docs/ARCHITECTURE.md` §7), and runs pytest with `--import-mode=importlib`:
 
 ```bash
-pytest
+python scripts/run_tests.py
 ```
 
-Run just one folder's tests:
+Any other argument goes straight to pytest, and `brisart_ai/` is added when none of them names a path:
 
 ```bash
-pytest brisart_ai/native/tests/
-pytest brisart_ai/knowledge/tests/test_ranker.py
+python scripts/run_tests.py brisart_ai/tests/test_native_path.py
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_ranker.py -v
+python scripts/run_tests.py -k robots
 ```
 
-Verbose output:
-
-```bash
-pytest -v
-```
+The runner needs `pytest` installed; nothing else in the project does.
 
 ### Why pytest, and why `--import-mode=importlib`
 
 `unittest discover`'s built-in recursive discovery requires every intermediate directory to have an `__init__.py` to be walked into as a package. Since `brisart_ai/`'s subfolders are deliberately namespace packages with **no** `__init__.py`, `unittest discover` run from the project root silently finds **zero** tests.
 
-`pytest` doesn't have that restriction and discovers test files by path directly. The one wrinkle: several `tests/` subfolders share the exact same folder name across different parents (`brisart_ai/native/tests/`, `brisart_ai/web/tests/`, etc.), and pytest's *default* "prepend" import mode resolves a test module's dotted name by walking up to the first `__init__.py`-less ancestor — which is immediately, for all of them — causing every same-named `tests` folder to collide on the same top-level module name. `--import-mode=importlib` (configured once in `pytest.ini`) resolves each test file by its literal filesystem path instead, so identically-named `tests/` folders never collide. This is pytest's own recommendation for exactly this project shape.
+`pytest` doesn't have that restriction and discovers test files by path directly. With its default "prepend" import mode, a test file in a folder without `__init__.py` is imported under its bare file name after its folder is put on `sys.path`, so two test files with the same name in different `tests/` folders collide, and the folders themselves become importable by accident. `--import-mode=importlib` (passed by the runner) imports each file by its literal path instead, so neither can happen.
 
-Individual test files still work fine with plain `unittest` too — `python3 -m unittest brisart_ai.native.tests.test_brisart_hash` run from the project root works, since a direct (non-discovery) unittest invocation doesn't have the recursive `__init__.py` requirement.
+Use the project runner so the external native stack is configured before pytest imports application tests.
 
 ## What's covered, and what's deliberately out of scope
 
-- **`brisart_ai/native/`** — every module is tested against the *real* stdlib function it replaces (`hashlib.sha256`, `base64`, `zlib`, `urllib.parse`, `json`, `html.parser`, `urllib.robotparser`), not just internally self-consistent.
+The native modules and their own tests are maintained outside Offline_AI.
 - **`brisart_ai/web/search.py` and `crawler.py`** — all pure-logic helpers (URL decoding/unwrapping, tracking-parameter stripping, query cleaning, scoring, ranking, partitioning) are tested directly. The actual HTTP-calling provider functions are **not** exercised, since hitting live search engines from a test suite would be flaky and could itself trigger the rate-limiting/challenge-page behavior those functions exist to detect. `fetch_url()` is tested only for its error-handling paths using a non-routable address (`198.51.100.1`, reserved by RFC 5737) so no real network dependency is required.
-- **`brisart_ai/ui/`** — `theme.py` (pure constants, no Tk import) and `service.py` (a pure backend facade with no Tk dependency) are fully tested headlessly. `app.py`, `chat_panel.py`, `dialogs.py`, and `sidebar.py` all construct real `tkinter` widgets and require a live display; they are verified by manually running the application instead.
+- **`brisart_ai/ui/`** — `theme.py` (pure constants, no Tk import) is tested headlessly. `app.py`, `chat_panel.py`, `dialogs.py`, and `sidebar.py` all construct real `tkinter` widgets and require a live display; they are verified by manually running the application instead. `BrisartService`, which the GUI and `cli.py` share, lives in `core/service.py` and is tested in `core/tests/`.
+- **`native_path.py`** — covered by `brisart_ai/tests/test_native_path.py` against temporary directory layouts, not against the real Archive checkout.
+- **`state.py`** — covered by `brisart_ai/tests/test_state.py`: per-platform folders from supplied environments, the one-time move (including rows still in the write-ahead log, files that already exist, an empty index left by a failed start, a corrupt index, an unwritable target, an abandoned lock, and four processes started together), and child-process runs of a copy of `cli.py` with `HOME`, `APPDATA` and `XDG_CONFIG_HOME` redirected. Windows file locking is not exercised.
+- **Project layout** — `brisart_ai/tests/test_layout.py` fails if the root holds any file other than `run.py`, `cli.py` and `version.py`, if a `data/` folder, `research_settings.json` or `.sqlite3` file is inside the project, or if any `__init__.py` exists.
 - Every test that touches SQLite (`Index`, `SessionMemory`, vault functions, `BrisartService`) uses a fresh `tempfile.TemporaryDirectory()` per test, so tests never share state through the filesystem and can run in any order.
 
-## A note on `ResearchSettings()`'s default path
+## A note on saved state
 
-`brisart_ai/core/settings.py`'s `ResearchSettings()` defaults to a fixed relative path (`data/research_settings.json`) when no explicit `path=` is given — the correct, intended production behavior, but it means any two test instances relying on the default constructor share state through that one file. Every test that needs isolated settings either passes an explicit `path=` into its own `tempfile.TemporaryDirectory()`, or (for `BrisartService`, which always constructs `ResearchSettings()` with no override) explicitly resets the toggles it depends on at the start of the test. See `brisart_ai/ui/tests/test_service_headless.py`'s `_make()` helper for the concrete pattern.
-
+`ResearchSettings()` and `Index()` default to the per-user state folder (`brisart_ai/state.py`). That is the intended production behavior, but a test that used the defaults would rewrite the developer's own saved settings and index; the suite once did exactly that to the old project-folder settings file, leaving `search_notes` switched off. `BrisartService` therefore takes an optional `settings_path`, and every test passes paths inside its own `tempfile.TemporaryDirectory()`. See `_make()` in `brisart_ai/core/tests/test_service_headless.py` for the pattern, and `_clean_env()` in `test_state.py` for how a child process is kept away from the real folder.

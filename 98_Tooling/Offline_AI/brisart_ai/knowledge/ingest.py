@@ -1,14 +1,13 @@
-"""
+r"""
 File: brisart_ai/knowledge/ingest.py
 
 Purpose
 -------
-Local file/folder ingestion: reads every supported file and adds each
-to the index.
+Read local files and hand usable text to the index with source provenance.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/ui/service.py: BrisartService.import_paths() is the sole caller.
+- brisart_ai/core/service.py: BrisartService.import_paths() is the sole caller.
 - Calls brisart_ai.io.readers.iter_supported_files()/read_file(),
   brisart_ai.util.file_hash(), and index.add_source().
 
@@ -24,11 +23,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -75,5 +76,3 @@ def ingest_paths(paths: Iterable[str], index) -> int:
 
 
 __all__ = ["ingest_paths"]
-
-

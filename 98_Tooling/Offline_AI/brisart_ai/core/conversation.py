@@ -1,13 +1,13 @@
-"""
+r"""
 File: brisart_ai/core/conversation.py
 
 Purpose
 -------
-The single answer-routing entry point.
+Build a service reply from the query, ranked evidence and session context.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/ui/service.py: BrisartService.ask() is the only caller.
+- brisart_ai/core/service.py: BrisartService.ask() is the only caller.
 - Calls brisart_ai.io.input_cleaner.normalize_shellish_input(),
   brisart_ai.knowledge.ranker.search(),
   brisart_ai.knowledge.synthesizer.synthesize(), and
@@ -25,11 +25,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -99,5 +101,3 @@ def build_conversation_answer(
 
 
 __all__ = ["build_conversation_answer"]
-
-

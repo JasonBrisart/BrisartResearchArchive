@@ -1,35 +1,30 @@
-"""
+r"""
 File: brisart_ai/ui/app.py
 
 Purpose
 -------
-The BrisartAI desktop window -- the only entry point for the program.
+Assemble the Tk desktop and coordinate user actions with the application
+service.
 
 Communication / relationships
 -----------------------------
-- brisartai.py: the only caller of run().
-- Constructs brisart_ai.ui.service.BrisartService, Sidebar, ChatPanel,
-  dialogs.
-- Imports brisart_ai.ui.theme, brisart_ai.version_info.
+Constructs core/service.py backend and UI widgets.
 
 Settings / parameters
 ---------------------
-- Construction order: BrisartService built BEFORE the Tk window.
-- self._busy.
-- force_web=None defers to Automatic Web Research setting.
+run accepts optional database path.
 
 Edge cases
 ----------
-- run() wraps app construction in a single try/except.
-- _answer_question() runs on a background thread.
+Startup errors are handled in the GUI.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Requires a working Tk display.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+python run.py
 """
 
 from __future__ import annotations
@@ -43,7 +38,7 @@ from brisart_ai.knowledge.index import DEFAULT_DB
 from brisart_ai.ui import theme
 from brisart_ai.ui.chat_panel import ChatPanel
 from brisart_ai.ui.dialogs import SettingsDialog, ask_import_path, ask_note, ask_text
-from brisart_ai.ui.service import BrisartService
+from brisart_ai.core.service import BrisartService
 from brisart_ai.ui.sidebar import Sidebar
 from brisart_ai.version_info import APP_NAME, __version__
 
@@ -193,10 +188,10 @@ def _show_startup_error(exc: Exception) -> None:
         "BrisartAI could not open its local database.\n\n"
         f"Details: {exc}\n\n"
         "This usually means the index file is locked by another running "
-        "copy of BrisartAI, the folder is read-only, or file permissions "
-        "are blocking access. Close any other running copies of "
-        "BrisartAI, confirm you have write access to the install folder, "
-        "and try again.",
+        "copy of BrisartAI, the folder that holds BrisartAI's saved data "
+        "is read-only, or file permissions are blocking access. Close any "
+        "other running copies of BrisartAI, confirm you can write to that "
+        "folder, and try again.",
     )
     root.destroy()
 
@@ -211,5 +206,3 @@ def run(db_path: str = DEFAULT_DB) -> None:
 
 
 __all__ = ["BrisartApp", "run"]
-
-

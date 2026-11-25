@@ -1,15 +1,9 @@
-"""
+r"""
 File: brisart_ai/blocklist.py
 
 Purpose
 -------
-Web-source blocking policy for BrisartAI -- the single source of truth
-for "should this web page be kept?" Every module that needs to decide
-this imports from here, so the policy lives in exactly ONE file.
-
-This lives at the top level (next to util.py) rather than inside web/
-so that knowledge/index.py can import it without the knowledge layer
-having to depend on the web layer.
+Reject unusable research sources by host, wiki topic and source metadata.
 
 Communication / relationships
 -----------------------------
@@ -18,9 +12,9 @@ Communication / relationships
   ingest time via is_junk_web_source().
 - brisart_ai/knowledge/index.py: purges any blocked/off-topic rows
   already in the database via purge_junk_web_sources().
-- Imports brisart_ai.native.brisart_url's brisart_urlsplit()/
+- Imports brisart_url's brisart_urlsplit()/
   brisart_unquote() (replacing urllib.parse.urlsplit()/unquote())
-  -- see brisart_ai/native/README.md for how this module was
+ ; see 94_Native_API's/Official for how this module was
   independently verified against the real stdlib before being wired
   in. Otherwise imports only re.
 
@@ -40,11 +34,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -52,7 +48,7 @@ from __future__ import annotations
 import re
 from typing import Optional, Set
 
-from brisart_ai.native.brisart_url import brisart_unquote, brisart_urlsplit
+from brisart_url import brisart_unquote, brisart_urlsplit
 
 BLOCKED_WEB_HOSTS = (
     "merriam-webster.com", "dictionary.cambridge.org", "dictionary.com",
@@ -160,5 +156,3 @@ __all__ = [
     "is_offtopic_wiki",
     "is_junk_web_source",
 ]
-
-

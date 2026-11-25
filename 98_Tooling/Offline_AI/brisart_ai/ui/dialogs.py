@@ -1,9 +1,9 @@
-"""
+r"""
 File: brisart_ai/ui/dialogs.py
 
 Purpose
 -------
-The small modal prompts ui/app.py's sidebar actions need.
+Collect settings and research inputs through the desktop's modal prompts.
 
 Communication / relationships
 -----------------------------
@@ -18,15 +18,24 @@ Settings / parameters
 
 Edge cases
 ----------
-- ask_text()/ask_note() return "" (not None) on cancel.
+- ask_text() returns "" (not None) on cancel; ask_note() returns ("", "")
+  when either prompt is cancelled or left empty.
+- SettingsDialog writes each checkbox to service.settings as soon as it is
+  clicked, then calls on_change.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+- Every function here needs a live Tk display, so none is covered by the
+  automated tests; they are checked by running the application.
+- ask_note() uses two one-line prompts, so a note cannot contain a line break
+  typed in the dialog.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+::
+
+    title, body = ask_note(root)
+    SettingsDialog(root, service, on_change=refresh_status)
 """
 
 from __future__ import annotations
@@ -91,9 +100,9 @@ class SettingsDialog(tk.Toplevel):
         note = tk.Label(
             self,
             text=(
-                "Only Automatic Web Research changes how questions are\n"
-                "answered today. Imported files and saved notes are\n"
-                "always part of your local knowledge base."
+                "Local Files and Research Notes choose which of your\n"
+                "own sources are searched. Automatic Web Research\n"
+                "searches the public web when nothing local answers."
             ),
             bg=theme.BG_PANEL, fg=theme.FG_MUTED, font=("Segoe UI", 8), justify="left",
         )
@@ -112,5 +121,3 @@ class SettingsDialog(tk.Toplevel):
 
 
 __all__ = ["ask_import_path", "ask_text", "ask_note", "SettingsDialog"]
-
-

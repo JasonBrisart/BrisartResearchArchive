@@ -1,10 +1,9 @@
-"""
+r"""
 File: brisart_ai/ui/chat_panel.py
 
 Purpose
 -------
-The scrollable transcript plus single-line input box that makes up the
-center of the BrisartAI window.
+Render the transcript and compose the question-entry area of the desktop.
 
 Communication / relationships
 -----------------------------
@@ -22,11 +21,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -105,5 +106,3 @@ class ChatPanel(ttk.Frame):
 
 
 __all__ = ["ChatPanel"]
-
-

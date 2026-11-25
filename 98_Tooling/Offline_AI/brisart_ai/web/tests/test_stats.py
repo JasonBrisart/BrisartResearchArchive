@@ -1,9 +1,9 @@
-"""
+r"""
 File: brisart_ai/web/tests/test_stats.py
 
 Purpose
 -------
-Tests for brisart_ai/web/stats.py -- CrawlStats.
+Check stats behavior through 1 unittest test group.
 
 Communication / relationships
 -----------------------------
@@ -11,19 +11,22 @@ Direct module imports: io, unittest, contextlib, brisart_ai.web.stats.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No uppercase module-level settings are declared; parameters remain defined
+in the code below.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Additional edge-case guarantees are not established by this header; existing
+implementation and tests remain unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
+python scripts/run_tests.py brisart_ai/web/tests/test_stats.py
 """
 
 import io
@@ -63,5 +66,3 @@ class TestCrawlStats(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

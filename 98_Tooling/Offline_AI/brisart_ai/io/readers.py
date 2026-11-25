@@ -1,17 +1,18 @@
-"""
+r"""
 File: brisart_ai/io/readers.py
 
 Purpose
 -------
-File-type dispatch for local ingestion.
+Dispatch supported local formats to text extractors and enumerate ingest
+candidates.
 
 Communication / relationships
 -----------------------------
 - brisart_ai/knowledge/ingest.py: calls iter_supported_files() and read_file().
 - Calls brisart_ai.io.binary_readers.*, brisart_ai.io.extractor.*, and
   brisart_ai.util.safe_read_text().
-- Imports brisart_ai.native.brisart_json.{brisart_loads, brisart_dumps,
-  BrisartJSONDecodeError} (replacing json.*) -- see native/README.md.
+- Imports brisart_json.{brisart_loads, brisart_dumps,
+  BrisartJSONDecodeError} (replacing json.*); see the external native API documentation.
 
 Settings / parameters
 ---------------------
@@ -26,11 +27,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -43,7 +46,7 @@ from brisart_ai.io.binary_readers import (
     read_docx, read_odt, read_pdf_best_effort, read_pptx, read_xlsx,
 )
 from brisart_ai.io.extractor import csv_to_text, html_to_text
-from brisart_ai.native.brisart_json import BrisartJSONDecodeError, brisart_dumps, brisart_loads
+from brisart_json import BrisartJSONDecodeError, brisart_dumps, brisart_loads
 from brisart_ai.util import safe_read_text
 
 TEXT_EXTENSIONS = {
@@ -151,5 +154,3 @@ def read_file(path: Path) -> str:
     if ext == ".rtf":
         return _rtf_to_text(raw)
     return raw
-
-

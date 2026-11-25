@@ -1,10 +1,9 @@
-"""
+r"""
 File: brisart_ai/version_info.py
 
 Purpose
 -------
-Single source of truth for APP_NAME and __version__. Replaces the
-removed brisart_ai/__init__.py.
+Read the root version for runtime display and outbound identification.
 
 Communication / relationships
 -----------------------------
@@ -27,18 +26,20 @@ Edge cases
 ----------
 - If version.py is missing, unreadable, fails to import (a syntax
   error, for instance), or does not define __version__, this falls
-  back to "0.0.0-unknown" rather than raising ImportError -- exactly
+  back to "0.0.0-unknown" rather than raising ImportError; exactly
   the same failure-tolerant contract the previous version.txt-reading
   implementation had.
 - Project root located relative to this file's own path (parents[1]).
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -69,5 +70,3 @@ def _read_version() -> str:
 __version__ = _read_version()
 
 __all__ = ["APP_NAME", "__version__"]
-
-

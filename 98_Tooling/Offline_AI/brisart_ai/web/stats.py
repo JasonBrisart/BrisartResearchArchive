@@ -1,9 +1,9 @@
-"""
+r"""
 File: brisart_ai/web/stats.py
 
 Purpose
 -------
-Defines CrawlStats, five counters for one crawl run plus print_summary().
+Record crawler outcomes so callers can explain what the research run did.
 
 Communication / relationships
 -----------------------------
@@ -19,11 +19,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -48,5 +50,3 @@ class CrawlStats:
         print(f"Duplicates: {self.skipped_duplicates}")
         print(f"Empty pages: {self.skipped_empty}")
         print(f"Errors: {self.errors}")
-
-

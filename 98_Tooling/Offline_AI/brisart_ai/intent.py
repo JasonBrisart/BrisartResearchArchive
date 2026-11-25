@@ -1,13 +1,10 @@
-"""
+r"""
 File: brisart_ai/intent.py
 
 Purpose
 -------
-Question-intent detection and intent-aware scoring for BrisartAI.
-Term-overlap ranking cannot tell "does this mention the query words"
-from "does this mention them for the right reason", so a query is
-classified into a coarse intent, and each intent carries BOOST and
-PENALTY vocabularies.
+Infer retrieval intent from question wording and score corresponding
+evidence.
 
 Communication / relationships
 -----------------------------
@@ -17,9 +14,9 @@ Communication / relationships
   score_intent().
 - brisart_ai/knowledge/synthesizer.py: INTENT_COMPARISON/
   INTENT_EXPLANATION/INTENT_STATISTIC/detect_intent().
-- Imports brisart_ai.native.brisart_url.brisart_unquote() (replacing
-  urllib.parse.unquote(), used only by name_candidates()) -- see
-  brisart_ai/native/README.md for verification. Otherwise imports only
+- Imports brisart_url.brisart_unquote() (replacing
+  urllib.parse.unquote(), used only by name_candidates()); see
+  94_Native_API's/Official for verification. Otherwise imports only
   re and typing.
 
 Settings / parameters
@@ -40,11 +37,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -52,7 +51,7 @@ from __future__ import annotations
 import re
 from typing import Dict, FrozenSet, List, Sequence, Set, Tuple
 
-from brisart_ai.native.brisart_url import brisart_unquote
+from brisart_url import brisart_unquote
 
 INTENT_FOUNDER = "founder"
 INTENT_INVENTOR = "inventor"
@@ -458,5 +457,3 @@ __all__ = [
     "looks_like_person_name", "name_candidates", "penalty_terms", "score_intent",
     "wants_date", "wants_person",
 ]
-
-

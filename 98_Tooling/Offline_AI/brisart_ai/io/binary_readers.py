@@ -1,16 +1,17 @@
-"""
+r"""
 File: brisart_ai/io/binary_readers.py
 
 Purpose
 -------
-Pure-Python, best-effort text extraction for Word/PowerPoint/Excel/ODT/PDF.
+Extract indexable text from supported Office, OpenDocument and PDF
+containers.
 
 Communication / relationships
 -----------------------------
 - brisart_ai/io/readers.py: read_file() dispatches here.
-- Imports brisart_ai.native.brisart_inflate.brisart_zlib_decompress()
-  (replacing zlib.decompress() for PDF content streams) -- see
-  native/README.md for verification.
+- Imports brisart_inflate.brisart_zlib_decompress()
+  (replacing zlib.decompress() for PDF content streams); see
+  the external native API documentation for verification.
 
 Settings / parameters
 ---------------------
@@ -25,11 +26,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -39,7 +42,7 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
 
-from brisart_ai.native.brisart_inflate import brisart_zlib_decompress
+from brisart_inflate import brisart_zlib_decompress
 
 
 def _xml_text(xml_bytes: bytes) -> str:
@@ -142,5 +145,3 @@ def read_pdf_best_effort(path: Path, max_bytes: int = 10_000_000) -> str:
     text = "\n".join(chunks)
     text = re.sub(r"\s+", " ", text).strip()
     return text
-
-

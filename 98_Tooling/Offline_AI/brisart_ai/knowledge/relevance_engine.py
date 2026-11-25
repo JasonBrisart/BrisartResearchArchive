@@ -1,12 +1,10 @@
-"""
+r"""
 File: brisart_ai/knowledge/relevance_engine.py
 
 Purpose
 -------
-Brisart Relevance Engine -- BrisartAI's own term-scoring engine,
-replacing classic TF-IDF/BM25 math with small, named, fixed-value
-lookup tables (rarity tiers, presence schedule, length-shape brackets)
-plus a new proximity signal with no TF-IDF/BM25 equivalent at all.
+Score term evidence with discrete rarity, presence, length and proximity
+rules.
 
 Communication / relationships
 -----------------------------
@@ -30,11 +28,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -150,5 +150,3 @@ __all__ = [
     "presence_points", "proximity_bonus", "rarity_weight", "shape_multiplier",
     "term_contribution",
 ]
-
-

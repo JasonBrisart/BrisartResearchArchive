@@ -1,10 +1,10 @@
-"""
+r"""
 File: brisart_ai/ui/theme.py
 
 Purpose
 -------
-The single dark color palette, font tuples, and two spacing constants
-every widget in brisart_ai/ui/ shares.
+Define desktop color and presentation constants consumed by the Tk
+components.
 
 Communication / relationships
 -----------------------------
@@ -17,15 +17,17 @@ Settings / parameters
 
 Edge cases
 ----------
-- None -- this module has no logic, only literal constants.
+- None; this module has no logic, only literal constants.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -59,5 +61,3 @@ PAD = 8
 PAD_SMALL = 4
 
 SIDEBAR_WIDTH = 210
-
-

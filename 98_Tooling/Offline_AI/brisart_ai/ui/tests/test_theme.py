@@ -1,9 +1,9 @@
-"""
+r"""
 File: brisart_ai/ui/tests/test_theme.py
 
 Purpose
 -------
-Tests for brisart_ai/ui/theme.py -- shared color palette and font tuples.
+Check theme behavior through 1 unittest test group.
 
 Communication / relationships
 -----------------------------
@@ -11,28 +11,22 @@ Direct module imports: unittest, brisart_ai.ui.
 
 Settings / parameters
 ---------------------
-No uppercase module-level settings are declared; parameters remain defined in the code below.
+No uppercase module-level settings are declared; parameters remain defined
+in the code below.
 
 Edge cases
 ----------
-Additional edge-case guarantees are not established by this header; existing implementation and tests remain unchanged.
+Additional edge-case guarantees are not established by this header; existing
+implementation and tests remain unchanged.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Run this test file with the project-scoped test runner.
-
-Additional module documentation
--------------------------------
-Tests for brisart_ai/ui/theme.py -- shared color palette and font tuples.
-
-theme.py has no Tk imports and no side effects, so it is fully testable
-without a display -- unlike app.py/chat_panel.py/dialogs.py/sidebar.py/
-service.py's GUI classes, which require a live Tk display and are
-exercised manually rather than under headless unit tests.
+python scripts/run_tests.py brisart_ai/ui/tests/test_theme.py
 """
 
 import unittest
@@ -91,5 +85,3 @@ class TestThemeConstants(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

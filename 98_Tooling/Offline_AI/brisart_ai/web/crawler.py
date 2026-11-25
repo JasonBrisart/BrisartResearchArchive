@@ -1,44 +1,32 @@
-"""
+r"""
 File: brisart_ai/web/crawler.py
 
 Purpose
 -------
-The single chokepoint every web page must pass through to get indexed:
-normalize the query, rank the resulting URLs, filter out known-junk
-hosts and off-topic disambiguation pages, respect robots.txt, fetch and
-de-duplicate content, and add the survivors to the index.
+Turn web queries into accepted research pages and add usable results to the
+index.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/ui/service.py: web_search_and_ingest() is the entry point.
-- Imports brisart_ai.blocklist.*, brisart_ai.intent.*,
-  brisart_ai.knowledge.ranker.phrase_match_adjust,
-  brisart_ai.util.{normalize_url, same_site, stable_hash},
-  brisart_ai.web.fetcher.fetch_url, brisart_ai.web.search.search_public_web,
-  brisart_ai.web.policy.RobotsCache, brisart_ai.web.stats.CrawlStats.
-  Also imports brisart_ai.native.brisart_url.{brisart_unquote,
-  brisart_urlsplit} (replacing urllib.parse.urlsplit/unquote) -- see
-  brisart_ai/native/README.md for verification.
+Calls web/search.py, web/fetcher.py, web/policy.py and knowledge index.
 
 Settings / parameters
 ---------------------
-- DEFAULT_DELAY_SECONDS (1.0).
-- INTENT_WEIGHT (2) / PHRASE_MATCH_BONUS (4).
-- _INTENT_HINTS.
+limit, depth, delay, same_domain_only and topic_terms control traversal.
 
 Edge cases
 ----------
-- _stem(): crude suffix stripper.
-- Article-slug bonus checks both "-" and "_".
-- content_exists() swallows any exception, returns False.
+Skips duplicate content, disallowed redirects, empty pages and fetch
+failures.
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+Crawl limits count successfully indexed pages; upstream search availability
+varies.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+crawl_urls_to_index(["https://example.org"], index, limit=1)
 """
 
 from __future__ import annotations
@@ -54,7 +42,7 @@ from brisart_ai.blocklist import (
 )
 from brisart_ai.intent import INTENT_GENERAL, describe_intent, detect_intent, score_intent
 from brisart_ai.knowledge.ranker import phrase_match_adjust
-from brisart_ai.native.brisart_url import brisart_unquote, brisart_urlsplit
+from brisart_url import brisart_unquote, brisart_urlsplit
 from brisart_ai.util import normalize_url, same_site, stable_hash
 from brisart_ai.web.fetcher import fetch_url
 from brisart_ai.web.search import search_public_web
@@ -330,6 +318,10 @@ def crawl_urls_to_index(
         print(f"WEB FETCH depth={level}: {current_url}")
         result = fetch_url(current_url)
 
+        if result.url and result.url != current_url and not robots.allowed(result.url):
+            stats.errors += 1
+            print(f"  WARN: redirected destination disallowed: {result.url}")
+            continue
         if result.error:
             stats.errors += 1
             print(f"  WARN: {result.error}")
@@ -434,5 +426,3 @@ __all__ = [
     "explain_ranking", "rank_results", "score_result",
     "search_keyword_fallback", "web_search_and_ingest",
 ]
-
-

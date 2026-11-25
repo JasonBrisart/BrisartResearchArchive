@@ -1,20 +1,20 @@
-"""
+r"""
 File: brisart_ai/web/policy.py
 
 Purpose
 -------
-Internet-access safety policy: refuse local/private network destinations
-outright, and honor robots.txt for every public host BrisartAI crawls.
+Decide whether a web destination is public and whether robots rules allow
+fetching.
 
 Communication / relationships
 -----------------------------
 - brisart_ai/web/crawler.py: builds one RobotsCache() per crawl.
 - brisart_ai/web/fetcher.py, brisart_ai/web/search.py: import USER_AGENT.
 - Imports brisart_ai.version_info.__version__.
-- Imports brisart_ai.native.brisart_url.brisart_urlsplit (replacing
-  urllib.parse.urlsplit/urlunsplit) and brisart_ai.native.brisart_robots.
+- Imports brisart_url.brisart_urlsplit (replacing
+  urllib.parse.urlsplit/urlunsplit) and brisart_robots.
   BrisartRobotsPolicy (replacing urllib.robotparser.RobotFileParser) --
-  see brisart_ai/native/README.md for verification. Actual HTTP requests
+  see 94_Native_API's/Official for verification. Actual HTTP requests
   (urllib.request/urllib.error) are unchanged.
 
 Settings / parameters
@@ -30,11 +30,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -45,8 +47,8 @@ import urllib.error
 import urllib.request
 from typing import Dict, Optional
 
-from brisart_ai.native.brisart_robots import BrisartRobotsPolicy
-from brisart_ai.native.brisart_url import brisart_urlsplit, brisart_urlunsplit
+from brisart_robots import BrisartRobotsPolicy
+from brisart_url import brisart_urlsplit, brisart_urlunsplit
 from brisart_ai.version_info import __version__
 
 USER_AGENT = (
@@ -164,5 +166,3 @@ class RobotsCache:
 
 
 __all__ = ["MAX_ROBOTS_BYTES", "ROBOTS_TIMEOUT", "RobotsCache", "USER_AGENT", "is_local_or_private_host", "is_localhost"]
-
-

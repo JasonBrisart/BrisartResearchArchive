@@ -1,15 +1,14 @@
-"""
+r"""
 File: brisart_ai/knowledge/vault.py
 
 Purpose
 -------
-Structure layered on top of the raw SQLite index: research collections,
-local notes, lightweight entity extraction, source-to-entity links, a
-topic timeline, and a vault summary report.
+Add notes, collections, entity links and timeline views to the research
+index.
 
 Communication / relationships
 -----------------------------
-- brisart_ai/ui/service.py: calls add_note(), list_notes(), search_notes(),
+- brisart_ai/core/service.py: calls add_note(), list_notes(), search_notes(),
   reindex_missing_notes() (once, at startup).
 - Imports brisart_ai.util.{now_ts, tokenize}; calls index.add_source().
 
@@ -25,11 +24,13 @@ Edge cases
 
 Known limitations
 -----------------
-This header update does not establish complete behavioral, platform, or security validation.
+This header update does not establish complete behavioral, platform, or
+security validation.
 
 Examples
 --------
-Inspect the definitions below and the project documentation for supported usage.
+Inspect the definitions below and the project documentation for supported
+usage.
 """
 
 from __future__ import annotations
@@ -485,5 +486,3 @@ __all__ = [
     "list_notes", "reindex_missing_notes", "rebuild_entities", "search_notes",
     "search_notes_as_documents", "timeline", "vault_report",
 ]
-
-
