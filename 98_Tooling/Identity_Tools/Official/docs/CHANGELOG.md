@@ -14,7 +14,6 @@ All notable changes to BrisartIdentityTools are recorded here.
 ### Compatibility
 - Required layout: `BrisartResearchArchive/97_Encryption/v4` and `BrisartResearchArchive/98_Tooling/Identity_Tools/Official`.
 - Existing encryption formats and stored records are unchanged; `97_Encryption` was not modified.
-- Linux dependency tests are run against the exported source; Windows startup is not verified.
 
 ---
 
