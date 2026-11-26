@@ -1,11 +1,18 @@
 # UI
 
-This folder owns the Tk desktop workspace, navigation, search composer, dialogs, visual theme, and Windows file-drop integration. It displays results and progress supplied by the application service.
+This folder owns the Tk desktop interface and its interaction with the application service. It displays library counts, questions, evidence, import progress and local settings without independently ranking or persisting source content.
 
-Import cancellation and search status are coordinated by the app while background workers handle file preparation. The UI does not independently score retrieval evidence or write directly to the index.
+## Workspace components
 
-## Files and behavior
+- `app.py`: Composes the window and coordinates service access, background operations and UI-thread updates.
+- `sidebar.py`: Presents library actions, counts and navigation.
+- `chat_panel.py`: Owns the query composer and the Results and Activity views.
+- `dialogs.py`: Presents source management, import and settings dialogs.
+- `import_progress.py`: Formats elapsed time, processed counts and estimates independently of Tk.
+- `theme.py`: Defines desktop styling.
+- `windows_drop.py`: Bridges supported Windows file drops; browsing remains available without it.
+- `tests/`: Exercises UI-adjacent logic and selected interactions.
 
-`app.py` owns window composition, active search scope and worker lifecycle. `sidebar.py` owns the library actions and counts. `chat_panel.py` owns the query and the Results and Activity views. `dialogs.py` owns library management and settings, with Windows drop support in `windows_drop.py`. `theme.py` supplies the desktop palette without initializing Tk.
+## Import cancellation and responsiveness
 
-During imports `app.py` runs the service off the Tk thread and polls the latest counts; `dialogs.py` displays progress and keeps the completion summary open. `import_progress.py` formats elapsed time and estimates without Tk. The app owns the import cancellation prompt and stop signal; the import dialog forwards close requests as cancellation while running, without exiting the app. During cancellation, the dialog hides live progress, labels the retained selection for retry, and shows final counts only after safe worker cleanup.
+Imports run outside the Tk event loop. The interface polls progress from the service rather than allowing worker threads to manipulate widgets. Confirming **Cancel Import** stops additional work, waits for safe worker cleanup and keeps the application open. The dialog distinguishes an active import from the stopping and completed states.

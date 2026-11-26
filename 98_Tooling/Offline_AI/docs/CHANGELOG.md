@@ -36,9 +36,19 @@ No new third-party runtime package, index schema migration, or reindexing is req
 - Replaced unnecessary raw-string prefixes on 37 module docstrings with conventional triple-quoted headers while preserving the exact interpreted documentation text, including escaped backslashes where necessary. The executable AST was unchanged.
 - Updated all seven existing folder README headings to match their containing folders: BrisartAI, Core, IO, Knowledge, UI, Docs, and Scripts. Each now begins with a folder-specific responsibility description before existing details. The six-section source headers and 1.6.0 benchmark record remain intact.
 
-### Detailed engineering changes
+### Markdown documentation organization
 
-### Answer-quality follow-up
+- Rewrote the five application-package and developer-script folder READMEs around their actual directory responsibilities. Removed the misplaced desktop-module inventory from `brisart_ai/README.md`, removed repeated unheaded retrieval and import notes from the Knowledge README, and organized UI, IO, Core and Scripts documentation by component and boundary. No folder README describes another folder as its own contents.
+- `docs/README.md` now separates the documentation inventory, application overview, launch instructions, source workflow and state handling. `docs/ARCHITECTURE.md` labels runtime ownership and data flow; `docs/SECURITY.md` separates confidentiality, retention, parser trust and reporting. `docs/TESTING.md` distinguishes the 1.6.0 benchmark from historical 1.4.0 measurements and development regression history. Detailed release and benchmark evidence was retained rather than relocated into new files.
+- The pass changed only Markdown documentation. Python compilation and ZIP integrity were checked; the earlier 1.6.0 test and benchmark results remain historical records, not tests rerun during this edit.
+
+### Retrieval-engine engineering history
+
+The entries below are organized by the subsystem or defect addressed during development. They preserve the reasons and test evidence for each change; the release overview above is the concise summary.
+
+#### Detailed engineering changes
+
+#### Answer-quality follow-up
 
 - `knowledge/ranker.py` separates the subject from terminal method framing such as work, operate and function in explicit how-questions. The same shared topic extraction feeds retrieval and excerpt selection.
 - `knowledge/synthesizer.py` prefers mechanism evidence and retains one adjacent supporting sentence within the same paragraph. Two-concept comparisons prefer direct contrast; absent that, they surface separate cited role evidence or identify the missing side instead of using name lists as answers. These bounded text heuristics do not validate scientific claims or handle all comparison wordings.

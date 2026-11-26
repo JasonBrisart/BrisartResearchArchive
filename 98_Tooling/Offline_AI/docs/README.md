@@ -4,9 +4,17 @@ This folder contains the user-facing BrisartAI guide, versioned engineering chan
 
 `CHANGELOG.md` preserves release history and implementation rationale. `TESTING.md` distinguishes executed tests and measurements from historical benchmarks and integration checks still outstanding.
 
-## Files and behavior
+## Documentation in this folder
 
-BrisartAI indexes local files and research notes, then answers questions with excerpts and citations. It does not search the internet. Results reflect the indexed copy, not necessarily the current file on disk.
+- [README.md](README.md): Installation, launch commands, source management and local state.
+- [ARCHITECTURE.md](ARCHITECTURE.md): Runtime responsibilities, module ownership and data flow.
+- [SECURITY.md](SECURITY.md): Local-data exposure, deletion boundaries and file-parser safeguards.
+- [TESTING.md](TESTING.md): Reproduction commands, executed tests, benchmark results and limitations.
+- [CHANGELOG.md](CHANGELOG.md): Versioned changes and engineering rationale, newest release first.
+
+## Application overview
+
+BrisartAI indexes local files and research notes, then answers questions using selected excerpts and citations. It does not search the internet. Results reflect the indexed copy and may differ from a source subsequently changed on disk.
 
 ## Start here
 

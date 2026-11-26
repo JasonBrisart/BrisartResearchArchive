@@ -1,5 +1,7 @@
 # Architecture
 
+## Runtime ownership
+
 The desktop (`run.py`) and headless CLI (`cli.py`) share `core/service.py`. Both bootstrap external Native APIs before importing their consumers, then migrate eligible legacy state before opening the index. Neither launcher owns ranking, storage, or file-format handling.
 
 | Responsibility | Owner | Boundary |

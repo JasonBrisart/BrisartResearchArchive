@@ -42,7 +42,7 @@ The initial broader execution reported 173 passed, 1 failed, and 189 subtests pa
 
 **Release gate:** Run `python scripts/run_tests.py -q` and `python scripts/debug_offline_replay.py` with the official Native API stack on the target Windows system, then smoke-test import cancellation, search, citations and the Tk workspace before publication. Do not represent this local benchmark as proof of production throughput or superiority over other retrieval systems.
 
-## 1.4.0 benchmark
+## Historical 1.4.0 benchmark
 
 
 | Retrieval method | Top 1 | Top 5 | Top 10 | Typo top 1 | Median query ms |
@@ -65,7 +65,11 @@ The initial broader execution reported 173 passed, 1 failed, and 189 subtests pa
 
 Raw ranks and per-query timings are in `scripts/benchmark_data/`. On Linux, stage the original source as `baseline/` and the updated `Offline_AI/` side by side. Copy `scripts/benchmark_retrieval.py` and the pinned `queries.json` into their common parent, then set `BRISART_NATIVE_API` to the real external APIs. Run `python benchmark_retrieval.py MODE` for `baseline`, `Offline_AI`, `unicode`, `porter`, `tfidf` or `ripgrep`. Requires libseccomp; the competitor runs also require the corresponding benchmark dependencies. Reuse the same Python build and standard library to reproduce the corpus.
 
-## Reported framework-question regressions
+## Development regression history
+
+The following entries record earlier failures and follow-up tests. They are historical engineering evidence, not new 1.6.0 benchmark results.
+
+### Reported framework-question regressions
 
 Run from `Offline_AI` with the official Native API stack and the development test runner:
 
@@ -83,7 +87,7 @@ The same test command reruns both reported questions. The matrix varies mechanis
 
 The focused follow-up passed 95 tests and 32 subtests across the replay, conversation, synthesizer, ranker, relevance engine and SQLite index suites using the same local-only helper stand-ins. They are not shipped. The full official Native API run and a replay on the real archive remain outstanding.
 
-## Raw search relevance gate
+### Raw search relevance gate
 
 Run from `Offline_AI` using the official Native API stack and development test runner:
 

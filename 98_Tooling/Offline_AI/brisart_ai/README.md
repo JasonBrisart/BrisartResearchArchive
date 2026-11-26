@@ -1,9 +1,18 @@
-# BrisartAI
+# UI
 
-This folder is the BrisartAI application package. It contains the shared application services, local input handling, retrieval engine, state helpers, desktop interface, and their tests. The root launchers live outside this package.
+This folder owns the Tk desktop interface and its interaction with the application service. It displays library counts, questions, evidence, import progress and local settings without independently ranking or persisting source content.
 
-The `core/`, `io/`, `knowledge/`, and `ui/` subfolders own distinct responsibilities; this package README describes their boundaries rather than claiming that the package itself is only a desktop interface.
+## Workspace components
 
-## Files and behavior
+- `app.py`: Composes the window and coordinates service access, background operations and UI-thread updates.
+- `sidebar.py`: Presents library actions, counts and navigation.
+- `chat_panel.py`: Owns the query composer and the Results and Activity views.
+- `dialogs.py`: Presents source management, import and settings dialogs.
+- `import_progress.py`: Formats elapsed time, processed counts and estimates independently of Tk.
+- `theme.py`: Defines desktop styling.
+- `windows_drop.py`: Bridges supported Windows file drops; browsing remains available without it.
+- `tests/`: Exercises UI-adjacent logic and selected interactions.
 
-`sidebar.py` groups Library and Preferences actions and shows offline file and note counts. `app.py` shows the active search scope and delivers worker results through a queue on the Tk thread. `chat_panel.py` preserves drafts while searches run. `dialogs.py` handles imports, source management, notes and settings. `windows_drop.py` bridges Explorer drops; Browse is available without it. `theme.py` owns visual constants.
+## Import cancellation and responsiveness
+
+Imports run outside the Tk event loop. The interface polls progress from the service rather than allowing worker threads to manipulate widgets. Confirming **Cancel Import** stops additional work, waits for safe worker cleanup and keeps the application open. The dialog distinguishes an active import from the stopping and completed states.
