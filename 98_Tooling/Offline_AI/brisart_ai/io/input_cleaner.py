@@ -40,6 +40,11 @@ The normalizer is not an escaping or security boundary. It must not be used to c
 Examples
 --------
 normalize_shellish_input('"permit fee"')
+
+For a concrete entry point, inspect `normalize_shellish_input`; invoke it through the existing
+application entry point or its documented caller. The example above is illustrative of this
+file's present interface; do not treat it as an instruction to create additional state or call
+private functions directly.
 """
 
 from __future__ import annotations

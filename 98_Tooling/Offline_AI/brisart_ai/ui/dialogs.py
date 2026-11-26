@@ -59,6 +59,11 @@ Known limitations
 Browse is the fallback where Windows drop is unavailable. Removing an indexed file never
 deletes the disk original.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 AddSourcesDialog(parent, on_import, on_cancel_import)

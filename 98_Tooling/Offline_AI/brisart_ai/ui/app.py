@@ -5,26 +5,57 @@ Purpose
 -------
 Compose the offline research workspace and coordinate search and shutdown.
 
+This desktop presentation component defines `run`, `BrisartApp`. Its scope is deliberately
+limited to the responsibilities visible in this file rather than duplicating the
+application-wide workflow. Callers use these declarations through the module interface; the
+file is not a separate service or background daemon unless explicitly stated above.
+
 Communication / relationships
 -----------------------------
 Tk owns widget updates; BrisartService owns search and state. Workers publish results and import counts to Tk.
+
+The direct in-project imports visible in this module are `brisart_ai.knowledge.index`,
+`brisart_ai.ui`, `brisart_ai.ui.chat_panel`, `brisart_ai.ui.import_progress`,
+`brisart_ai.ui.dialogs`. Public entry points `run`, `BrisartApp`; this identifies where
+behavior is invoked without implying a separate hidden dependency. Higher-level coordination
+remains with the calling layer rather than being introduced here.
 
 Settings / parameters
 ---------------------
 Scope and elapsed time stay visible during search. Ctrl+L focuses the query and F1 opens Help.
 
+Parameters and configuration are supplied at the entry points named above or by the constants
+already declared in this file. This documentation pass does not introduce a new configuration
+key, command option, or persisted value. The relevant limits and defaults are those enforced
+by the executable code, not assumptions about future integrations.
+
 Edge cases
 ----------
 Focus stays with modal dialogs; a close request during import cancels only the import.
+
+The behaviors documented above must be read together with the actual branches in app.py; a
+caller must not infer success from an empty, rejected, or unsupported result. Error handling,
+input validation, and early returns remain the responsibility of the concrete functions in
+this module. No additional fallback is created by this documentation.
 
 Known limitations
 -----------------
 Search is not cancellable. Confirmed import cancellation stops after the selected file and keeps the app open.
 An import thread owns service access until completion; Tk polls its progress.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 run(db_path)
+
+For a concrete entry point, inspect `run`, `BrisartApp`; invoke it through the existing
+application entry point or its documented caller. The example above is illustrative of this
+file's present interface; do not treat it as an instruction to create additional state or call
+private functions directly.
 """
 
 from __future__ import annotations

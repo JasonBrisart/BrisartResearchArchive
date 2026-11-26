@@ -2,26 +2,59 @@
 -------
 Verify CPU sizing, real spawned work, ordered recovery, cancellation boundaries, and progress on skipped and failed files.
 
+This regression test module defines `TestParallelImport`. Its scope is deliberately limited to
+the responsibilities visible in this file rather than duplicating the application-wide
+workflow. Its fixtures and assertions describe observable behavior without changing the
+installed application.
+
 Communication / relationships
 -----------------------------
 Uses the ingestion scheduler with a picklable local probe, plus an index spy.
+
+The direct in-project imports visible in this module are `brisart_ai.knowledge`. Test methods
+`test_available_cores_and_windows_capacity`, `test_one_file_or_one_core_does_not_create_pool`,
+`test_spawned_workers_prepare_files_but_caller_writes_in_order`,
+`test_progress_counts_skips_and_write_failures_but_not_as_indexed`,
+`test_pool_failure_retries_only_the_pending_suffix`; this identifies where behavior is invoked
+without implying a separate hidden dependency. The test runner supplies the test lifecycle and
+any temporary fixtures.
 
 Settings / parameters
 ---------------------
 Two real child processes rendezvous in a temporary directory.
 
+Parameters and configuration are supplied at the entry points named above or by the constants
+already declared in this file. Test inputs are defined by the test cases and their fixtures,
+not production settings. The relevant limits and defaults are those enforced by the executable
+code, not assumptions about future integrations.
+
 Edge cases
 ----------
 One file stays in process, and lost workers must not replay completed work.
+
+The behaviors documented above must be read together with the actual branches in
+test_parallel_import.py; assertions should reject regressions rather than merely checking file
+layout. Error handling, input validation, and early returns remain the responsibility of the
+concrete functions in this module. No additional fallback is created by this documentation.
 
 Known limitations
 -----------------
 The worker probe tests multiprocessing plumbing, not official native readers.
 The existing test_ingest.py suite exercises those readers with a real index.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Passing this test module
+does not prove the entire Windows desktop or external Native API integration. No compatibility
+adapter or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 python -m pytest brisart_ai/knowledge/tests/test_parallel_import.py -q
+
+For a concrete entry point, inspect `TestParallelImport`; run this module through the existing
+project test runner with its actual test path. The example above is illustrative of this
+file's present interface; do not treat it as an instruction to create additional state or call
+private functions directly.
 """
 
 from concurrent.futures import Future

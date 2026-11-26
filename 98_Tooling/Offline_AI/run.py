@@ -5,6 +5,11 @@ Purpose
 -------
 Start the BrisartAI desktop.
 
+This application module defines the constants and module-level declarations. Its scope is
+deliberately limited to the responsibilities visible in this file rather than duplicating the
+application-wide workflow. Callers use these declarations through the module interface; the
+file is not a separate service or background daemon unless explicitly stated above.
+
 Communication / relationships
 -----------------------------
 Resolves external APIs and migrates eligible state before starting ui.app.
@@ -33,9 +38,19 @@ Known limitations
 -----------------
 Requires Tk and a working display for the desktop.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 python run.py
+
+For a concrete entry point, inspect the constants and module-level declarations; invoke it
+through the existing application entry point or its documented caller. The example above is
+illustrative of this file's present interface; do not treat it as an instruction to create
+additional state or call private functions directly.
 """
 
 from __future__ import annotations

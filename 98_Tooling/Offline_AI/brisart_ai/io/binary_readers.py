@@ -2,26 +2,57 @@
 -------
 Extract searchable text from Office, OpenDocument and PDF files.
 
+This file input and extraction component defines `read_docx`, `read_pptx`, `read_xlsx`,
+`read_odt`, `read_pdf_best_effort`. Its scope is deliberately limited to the responsibilities
+visible in this file rather than duplicating the application-wide workflow. Callers use these
+declarations through the module interface; the file is not a separate service or background
+daemon unless explicitly stated above.
+
 Communication / relationships
 -----------------------------
 Readers provide text to ingestion. PDF stream decompression uses the external Brisart Native API.
+
+The direct in-project imports visible in this module are the standard library and its direct
+caller. Public entry points `doctype`; this identifies where behavior is invoked without
+implying a separate hidden dependency. Higher-level coordination remains with the calling
+layer rather than being introduced here.
 
 Settings / parameters
 ---------------------
 Selected XML is limited to 16 MiB per member, 64 MiB total and 2,048 members. The PDF raw read honors max_bytes.
 
+Parameters and configuration are supplied at the entry points named above or by the constants
+already declared in this file. This documentation pass does not introduce a new configuration
+key, command option, or persisted value. The relevant limits and defaults are those enforced
+by the executable code, not assumptions about future integrations.
+
 Edge cases
 ----------
 Unusable input yields no text. DTD-bearing XML members are skipped. Over-budget packages yield no text.
+
+The behaviors documented above must be read together with the actual branches in
+binary_readers.py; a caller must not infer success from an empty, rejected, or unsupported
+result. Error handling, input validation, and early returns remain the responsibility of the
+concrete functions in this module. No additional fallback is created by this documentation.
 
 Known limitations
 -----------------
 PPTX order uses numeric part names, not presentation relationships. PDF support is approximate;
 the raw read limit does not constrain stream expansion. Readers are not a sandbox.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 read_docx(Path("local-notes.docx"))
+
+For a concrete entry point, inspect `read_docx`, `read_pptx`, `read_xlsx`, `read_odt`,
+`read_pdf_best_effort`; invoke it through the existing application entry point or its
+documented caller. The example above is illustrative of this file's present interface; do not
+treat it as an instruction to create additional state or call private functions directly.
 """
 
 from __future__ import annotations

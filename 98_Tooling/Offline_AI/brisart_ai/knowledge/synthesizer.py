@@ -1,129 +1,76 @@
-r"""
+"""
 File: brisart_ai/knowledge/synthesizer.py
 
 Purpose
 -------
-Render cited excerpts rather than inventing an answer.
+Render engine-selected excerpts, confidence labels, and citations.
 
-The synthesizer renders selected source excerpts with citations. It is intentionally
-extractive: the application should disclose partial evidence rather than manufacture an
-answer that was not present in the index.
-
-Public operations: query_wants_quantity (query); query_wants_comparison (query);
-query_wants_reason (query); format_source (document).
-
-Public operations: sentence_score (sentence, query_terms, quantity_mode=False,
-comparison_mode=False, reason_mode=False); synthesize (query, docs, max_sources=6,
-max_sentences=10, recent_topics=None) - Return the most relevant information from ranked
-documents.
-
-Internal helpers include _clean_sentence, _deduplication_key.
+This retrieval and indexing component defines `format_source`, `synthesize`. Its scope is
+deliberately limited to the responsibilities visible in this file rather than duplicating the
+application-wide workflow. Callers use these declarations through the module interface; the
+file is not a separate service or background daemon unless explicitly stated above.
 
 Communication / relationships
 -----------------------------
-Uses ranker query groups, supplied spelling corrections and relevance_engine passage
-scoring.
+Passes the query plan to relevance_engine.py; does not classify or score passages.
 
-It shares query concepts and passage coverage with the ranker, applies intent-related
-excerpt cues, limits duplicate passages and caps how many excerpts one source can
-contribute.
-
-Direct project imports: brisart_ai.intent, brisart_ai.knowledge.ranker,
-brisart_ai.knowledge.relevance_engine, brisart_ai.util.
-
-Direct importing modules include brisart_ai/core/conversation.py,
-brisart_ai/knowledge/tests/test_synthesizer.py.
+The direct in-project imports visible in this module are `brisart_ai.knowledge.ranker`,
+`brisart_ai.knowledge.relevance_engine`. Public entry points `format_source`, `synthesize`;
+this identifies where behavior is invoked without implying a separate hidden dependency.
+Higher-level coordination remains with the calling layer rather than being introduced here.
 
 Settings / parameters
 ---------------------
-Limits source and excerpt counts and caps excerpts per source.
+The caller supplies ranked documents and source and excerpt limits.
 
-Call signatures: query_wants_quantity(query); query_wants_comparison(query);
-query_wants_reason(query); format_source(document); sentence_score(sentence,
-query_terms, quantity_mode=False, comparison_mode=False, reason_mode=False).
-
-Call signatures: synthesize(query, docs, max_sources=6, max_sentences=10,
-recent_topics=None).
+Parameters and configuration are supplied at the entry points named above or by the constants
+already declared in this file. This documentation pass does not introduce a new configuration
+key, command option, or persisted value. The relevant limits and defaults are those enforced
+by the executable code, not assumptions about future integrations.
 
 Edge cases
 ----------
-Duplicate excerpts are skipped; partial evidence and recovered spellings are labeled.
+Renders missing comparison sides, partial coverage, relationship inferences
+and disagreements without deciding which source is correct. Date conflicts
+can come from deadlines or dependency lifecycle claims. Invalid qualifier
+messages are distinct from unsupported evidence. Dependency-list notices
+distinguish cited disagreements from disputes omitted by the citation budget.
+A known disagreement remains visible even when no complete proof fits.
 
-A cited passage can be relevant without proving the full proposition in the question.
-Spelling recovery and partial coverage must be visible instead of silently treated as
-certainty.
-
-No explicit exception-handling branch is defined at module level. Unexpected errors
-therefore follow the caller’s normal error boundary unless a lower-level helper handles
-them.
+The behaviors documented above must be read together with the actual branches in
+synthesizer.py; a caller must not infer success from an empty, rejected, or unsupported
+result. Error handling, input validation, and early returns remain the responsibility of the
+concrete functions in this module. No additional fallback is created by this documentation.
 
 Known limitations
 -----------------
-Topic coverage does not establish truth or that a source answers every part of the
-question.
+Extractive rendering cannot establish source accuracy.
+
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
 
 Examples
 --------
-synthesize("What is the permit fee?", ranked_documents)
+synthesize(plan, documents)
 
-Other callable entry points in this module include query_wants_comparison,
-query_wants_reason, format_source, sentence_score, synthesize.
+For a concrete entry point, inspect `format_source`, `synthesize`; invoke it through the
+existing application entry point or its documented caller. The example above is illustrative
+of this file's present interface; do not treat it as an instruction to create additional state
+or call private functions directly.
 """
 
 from __future__ import annotations
 
 import collections
 import re
-from typing import Dict, Iterable, List, Set, Tuple
+from typing import Dict, List
 
-from brisart_ai.intent import INTENT_COMPARISON, INTENT_EXPLANATION, INTENT_STATISTIC, detect_intent
-from brisart_ai.knowledge.ranker import query_groups
-from brisart_ai.knowledge.relevance_engine import scored_passages
-from brisart_ai.util import tokenize
+from brisart_ai.knowledge.ranker import QueryPlan, prepare_query
+from brisart_ai.knowledge.relevance_engine import evidence_confidence, select_evidence
 
 Document = Dict[str, object]
-Candidate = Tuple[float, int, int, str, Document]
-
-
-def query_wants_quantity(query: str) -> bool:
-    return detect_intent(query) == INTENT_STATISTIC
-
-
-def query_wants_comparison(query: str) -> bool:
-    return detect_intent(query) == INTENT_COMPARISON
-
-
-def query_wants_reason(query: str) -> bool:
-    return detect_intent(query) == INTENT_EXPLANATION
-
-
-_HAS_DIGIT = re.compile(r"\d")
-_HAS_QUANTITY = re.compile(
-    r"[$\u20ac\u00a3]\s*\d[\d,\.]*"
-    r"|\d[\d,\.]*\s*"
-    r"(million|billion|trillion|thousand|percent|%|households|"
-    r"people|cats|dogs|pets|residents|adults|users|"
-    r"estimated|approximately|dollars?|usd|"
-    r"kilometers?|km|miles?|mi\b|meters?|metres?|feet|ft\b|"
-    r"kilograms?|kg|pounds?|lbs?\b|tons?|tonnes?|"
-    r"years?|months?|weeks?|days?|hours?|minutes?|seconds?|"
-    r"calories|degrees)",
-    re.IGNORECASE,
-)
-_HAS_COMPARISON_SIGNAL = re.compile(
-    r"\b(than|more|less|longer|shorter|faster|slower|"
-    r"better|worse|compared\s+to|versus|vs\.?|"
-    r"outlive[sd]?|outlast[sd]?|"
-    r"bigger|smaller|cheaper|higher|lower|"
-    r"most|least|stronger|weaker)\b",
-    re.IGNORECASE,
-)
-_HAS_REASON_SIGNAL = re.compile(
-    r"\b(because|due\s+to|caused?\s+by|reason|since|"
-    r"as\s+a\s+result|leads?\s+to|results?\s+in|"
-    r"allows?|enables?|so\s+that|triggers?|prompts?)\b",
-    re.IGNORECASE,
-)
 
 
 def _clean_sentence(sentence: str) -> str:
@@ -140,97 +87,37 @@ def format_source(document: Document) -> str:
     return f"{source_type}: {title} :: {location}"
 
 
-def _deduplication_key(sentence: str) -> str:
-    return " ".join(re.findall(r"\w+", sentence.casefold()))
-
-
-def sentence_score(
-    sentence: str, query_terms: Set[str], quantity_mode: bool = False,
-    comparison_mode: bool = False, reason_mode: bool = False,
-) -> float:
-    words = tokenize(sentence)
-    if not words:
-        return 0.0
-    counts = collections.Counter(words)
-    overlap = sum(counts[term] for term in query_terms)
-    density = overlap / max(1, len(words))
-    score = float(overlap + density)
-
-    if overlap > 0:
-        if quantity_mode:
-            if _HAS_QUANTITY.search(sentence):
-                score += 10.0
-            elif _HAS_DIGIT.search(sentence):
-                score += 3.0
-        if comparison_mode and _HAS_COMPARISON_SIGNAL.search(sentence):
-            score += 8.0
-        if reason_mode and _HAS_REASON_SIGNAL.search(sentence):
-            score += 8.0
-    return score
-
-
 def synthesize(
-    query: str, docs: List[Document], max_sources: int = 6, max_sentences: int = 10,
-    recent_topics: Iterable[str] | None = None,
+    query: str | QueryPlan, docs: List[Document], max_sources: int = 6, max_sentences: int = 10,
 ) -> str:
     """Return the most relevant information from ranked documents."""
     if not docs:
-        return "I don't have any indexed information that answers that yet."
+        return "Evidence confidence: Insufficient. I don't have any indexed information that answers that yet."
 
     safe_source_limit = max(1, int(max_sources))
     safe_sentence_limit = max(1, int(max_sentences))
-    groups = query_groups(query)
-
     fixes = docs[0].get("query_corrections", {})
-    for term, corrected in fixes.items():
-        if term in groups:
-            groups[term] = groups[term] | {corrected}
-    quantity_mode = query_wants_quantity(query)
-    comparison_mode = query_wants_comparison(query)
-    reason_mode = query_wants_reason(query)
-
-    candidates: List[Candidate] = []
-    for source_number, document in enumerate(docs[:safe_source_limit], start=1):
-        text = str(document.get("text", ""))
-        for sentence, hits, length in scored_passages(text, groups.values()):
-            if not hits:
-                continue
-            coverage = hits / len(groups)
-            score = 4.0 * hits + hits / max(8, length)
-            if quantity_mode and _HAS_QUANTITY.search(sentence):
-                score += 2.0 * coverage
-            if comparison_mode and _HAS_COMPARISON_SIGNAL.search(sentence):
-                score += 2.0 * coverage
-            if reason_mode and _HAS_REASON_SIGNAL.search(sentence):
-                score += 2.0 * coverage
-            score += 0.45 / source_number
-            candidates.append((score, source_number, hits, sentence, document))
-    candidates.sort(key=lambda item: item[0], reverse=True)
-
-    chosen: List[Candidate] = []
-    seen = set()
-    source_counts: Dict[int, int] = collections.defaultdict(int)
-    if candidates and len(groups) > 1:
-        best_hits = candidates[0][2]
-        minimum_hits = min(best_hits, max(2, best_hits - 1))
-        candidates = [candidate for candidate in candidates
-                      if candidate[2] >= minimum_hits]
-    for candidate in candidates:
-        _, source_number, _, sentence, _ = candidate
-        key = _deduplication_key(sentence)
-        if not key or key in seen or source_counts[source_number] >= 3:
-            continue
-        seen.add(key)
-        source_counts[source_number] += 1
-        chosen.append(candidate)
-        if len(chosen) >= safe_sentence_limit:
-            break
-
-    if not chosen:
-        return (
-            "I found related sources, but none of them contained a "
-            "passage that directly answers that."
-        )
+    plan = prepare_query(query)
+    chosen, status, missing = select_evidence(
+        plan, docs, max_sources=safe_source_limit, max_sentences=safe_sentence_limit,
+    )
+    if status == "date_conflict_limit":
+        return "Evidence confidence: Conflicting. Found differing dates, but both cannot be shown within the citation limit."
+    if status == "insufficient" and plan.mode == "deadline":
+        return "Evidence confidence: Insufficient. I found related sources, but not enough evidence for the requested date or event."
+    if status == "insufficient":
+        return "Evidence confidence: Insufficient. I found related sources, but not enough evidence to answer that directly."
+    if status == "relationship_invalid_scope":
+        return "Use an ISO date (YYYY-MM-DD) or a month-name date with a year, and an exact numeric release if needed. For start or end questions, omit the as-of date."
+    if status == "relationship_conflict_limit":
+        return ("Evidence confidence: Conflicting. The relationship evidence cannot be shown completely "
+                "within the current source or excerpt limit.")
+    if status == "relationship_limit":
+        return "The relationship evidence cannot be shown completely within the current source or excerpt limit."
+    if status == "comparison_limit":
+        return "Not enough room to show evidence for both sides of the comparison."
+    if status == "no_passage":
+        return "Evidence confidence: Insufficient. I found related sources, but none of them contained a passage that directly answers that."
 
     by_source: Dict[int, List[str]] = collections.defaultdict(list)
     original_docs: Dict[int, Document] = {}
@@ -245,11 +132,30 @@ def synthesize(
     for new_index, original_number in enumerate(order, start=1):
         display_number[original_number] = new_index
 
-    best_hits = chosen[0][2]
     lines: List[str] = []
     if fixes:
         lines.extend(["Search also matched: " + ", ".join(f"{term} -> {word}" for term, word in fixes.items()), ""])
-    if best_hits < len(groups):
+    lines.extend([f"Evidence confidence: {evidence_confidence(plan, chosen, status)}.", ""])
+    if status == "date_conflict":
+        lines.extend(["Sources give different dates for the same event. Neither date is selected as authoritative.", ""])
+    relationship_messages = {
+        "relationship_date_scopes": "The cited dates have different year scopes. No single date is selected:",
+        "relationship_alias_conflict": "Sources disagree about what this alias refers to. I did not merge those entities.",
+        "relationship_conflict": "Sources disagree about this dependency. The evidence below shows both claims.",
+        "relationship_indirect_dispute": "A source denies the dependency, but other sources support an inferred chain. This is not an established direct link.",
+        "relationship_inferred": "Inferred dependency chain from the cited links. This is not a direct dependency statement.",
+        "relationship_list_disputed": "Sources disagree about some dependencies. The excerpts show both sides of each cited dispute and any other dependencies that fit (not an exhaustive list):",
+        "relationship_list_omitted_disputes": "Some disputed dependencies could not be shown in full within the citation limit and were left out. The excerpts show the evidence that fits (not an exhaustive list):",
+        "relationship_list": "Direct dependencies found in the cited sources (not an exhaustive list):",
+    }
+    if status in relationship_messages:
+        lines.extend([relationship_messages[status], ""])
+    if status == "missing_comparison_side":
+        labels = ", ".join(term.upper() for term in missing)
+        lines.extend([f"Not enough evidence for a comparison. Missing support for: {labels}.", ""])
+    elif status == "separate_comparison_sources":
+        lines.extend(["The sources describe each separately:", ""])
+    elif status == "partial":
         lines.extend(["Closest excerpts I found. They may not answer the whole question.", ""])
     for original_number in order:
         paragraph = " ".join(by_source[original_number])
@@ -263,7 +169,4 @@ def synthesize(
     return "\n".join(lines).rstrip()
 
 
-__all__ = [
-    "format_source", "query_wants_comparison", "query_wants_quantity",
-    "query_wants_reason", "sentence_score", "synthesize",
-]
+__all__ = ["format_source", "synthesize"]

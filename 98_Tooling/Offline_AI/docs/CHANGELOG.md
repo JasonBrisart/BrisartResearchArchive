@@ -4,7 +4,147 @@ All notable changes to BrisartAI are documented here, newest release first.
 
 ---
 
-## [1.5.0] - 2026-11-26 — Research workspace, import hardening, and multicore processing.
+## [1.6.0] - 2026-11-26 — Research workspace, import hardening, and multicore processing.
+
+### Release overview
+
+BrisartAI 1.6.0 advances the Brisart relevance engine beyond the 1.5.0 research workspace and multicore-import baseline. The changes focus on query intent, evidence selection, direct and inferred relationships, date and release scope, citation completeness, contradictions, and honest uncertainty. This release does not introduce new import or desktop features beyond those documented in 1.5.0.
+
+### Changed modules and rationale
+
+- `brisart_ai/intent.py`: Owns shared intent cues, entity and alias declarations, directional dependency syntax, date normalization, supported paraphrases, and exact release qualifiers. This prevents the ranker and answer formatter from independently interpreting the same question.
+- `brisart_ai/knowledge/ranker.py`: Builds a shared query plan, prioritizes passages matching requested evidence, preserves single-side comparison candidates, and deduplicates exact bodies in relevant result sets. Relationship collection admits intermediate links without letting repeated exports monopolize the bounded candidate pool.
+- `brisart_ai/knowledge/relevance_engine.py`: Owns evidence grading, answer selection, citation-aware chain assembly, explicit conflicts and uncertainty, calendar-checked date claims, and release-scoped relationship assessment. It distinguishes direct support from inference and declines unsupported conclusions.
+- `brisart_ai/knowledge/synthesizer.py` and `brisart_ai/core/conversation.py`: Pass the same query plan through retrieval and format the engine's support statuses, excerpts and citations. The formatter no longer owns independent ranking or claim resolution.
+- `brisart_ai/knowledge/tests/`, `brisart_ai/core/tests/`, and `docs/TESTING.md`: Add and document adversarial paraphrases, distractors, ranking judgments, source-scope checks, alias collisions, duplicate-pressure tests, temporal/release conflicts and citation-budget regressions.
+
+### Compatibility and verification
+
+No new third-party runtime package, index schema migration, or reindexing is required. The external Brisart Native API dependency, CLI interface, and per-user saved state remain unchanged. Relationship inference is limited to explicitly evidenced links and a bounded search; support labels are not calibrated probabilities or guarantees of truth. The final focused run passed 174 tests and 189 subtests using local standard-library stand-ins for unavailable Brisart helpers. The full Archive, official Native API stack, and Windows desktop have not been validated end to end.
+
+### Source documentation expansion
+
+- All 60 Python modules, tests and developer utilities received a six-section header review. Each header now contains at least two substantive paragraphs under Purpose; Communication / relationships; Settings / parameters; Edge cases; Known limitations; and Examples. Existing file-specific explanations were retained and supplemented with actual declared entry points, in-tree imports, input ownership, error boundaries and test limitations. This is a documentation-only pass; no executable AST nodes were changed.
+- The source tree compiled and the focused retrieval and conversation suite passed 174 tests and 189 subtests with local stand-ins for unavailable Brisart helpers. This does not replace the Windows desktop or official Native API integration checks. No new module, dependency, state format, or index migration was introduced.
+
+### Detailed engineering changes
+
+### Answer-quality follow-up
+
+- `knowledge/ranker.py` separates the subject from terminal method framing such as work, operate and function in explicit how-questions. The same shared topic extraction feeds retrieval and excerpt selection.
+- `knowledge/synthesizer.py` prefers mechanism evidence and retains one adjacent supporting sentence within the same paragraph. Two-concept comparisons prefer direct contrast; absent that, they surface separate cited role evidence or identify the missing side instead of using name lists as answers. These bounded text heuristics do not validate scientific claims or handle all comparison wordings.
+- `core/tests/test_answer_quality_reports.py` replays the reported questions and wording, order, and missing-evidence variations. The focused run passed 95 tests and 32 subtests with standard-library helper stand-ins; the official Native API and real archive were not validated in that run. No dependency, index schema, settings, or data migration changes.
+
+### Raw search relevance tests
+
+- `knowledge/tests/test_search_quality.py` adds judged raw-ranker checks for paraphrases, distractors, ingest-order sensitivity, repeated searches, scope, and comparison evidence crowded out by context exports. `docs/TESTING.md` records how to rerun the strict gate and interpret the baseline. This test-only pass changes no ranking behavior, runtime dependencies, or persisted state.
+
+### Intent-aware evidence
+
+- `brisart_ai/intent.py` owns shared evidence rules for mechanism questions, two-topic comparisons, and explicit deadline or expiry questions. Unrecognized queries keep the existing ranking path.
+- `knowledge/ranker.py` prioritizes passages that match the requested evidence shape within the existing bounded candidate pool. Separate role evidence can outrank co-mentions. Adjacent date language can help surface a document without certifying an answer.
+- `knowledge/synthesizer.py` uses the same rules, preserves missing-side warnings, and does not substitute renewal deadlines for expiration dates. This is bounded interpretation of wording, not general language understanding.
+- The unchanged raw relevance gate went from 27 to 42 first-place checks passing; the focused run passed 101 tests and 94 subtests using local-only helper stand-ins. No index rebuild, runtime dependency, or settings changes.
+
+### Brisart retrieval engine ownership and comparison ranking
+
+- `knowledge/relevance_engine.py` now owns excerpt selection, evidence limits, and support status. `knowledge/synthesizer.py` renders those decisions as citations and evidence warnings rather than independently selecting passages. Query intent stays in `intent.py` and document ranking stays in `knowledge/ranker.py`.
+- `knowledge/ranker.py` gives a bounded number of single-side candidates a chance to be graded when co-mentions fill the initial comparison pool. Exact duplicate bodies within the same source type no longer consume multiple comparison result slots. The highest-ranked copy keeps its original citation; no indexed file is changed. Near-duplicates and evidence beyond the bounded pool can still be missed.
+- The focused suite passed 103 tests and 94 subtests with local stand-ins for the unavailable Brisart helpers, including the unchanged first-place matrix and new comparison tests with 60 agenda exports and duplicate direct contrasts. Native API and full-archive validation remain outstanding. No UI, import, state, dependency, or schema changes.
+
+### Query-intent classification tests
+
+- `knowledge/tests/test_query_intent.py` adds 22 classification and evidence-route cases plus three real SQLite ranking cases. It checks paraphrases, intent precedence, unsupported comparison shapes and neutral fallback. The ranking cases verify that mechanism, comparison and deadline evidence beat a distractor titled with the full question.
+- The focused run passed 47 tests and 119 subtests using local stand-ins for the unavailable Brisart helpers; the official Native API stack was not exercised. This is a test-only change with no new dependencies or index changes.
+
+### Shared retrieval query plan and adversarial intent checks
+
+- `knowledge/ranker.py` prepares one query plan with original text, topic groups, intent, and evidence mode. `core/conversation.py` passes that plan to scoped search and answer rendering. `knowledge/relevance_engine.py` uses it for excerpt selection, including accepted spelling corrections. The synthesizer formats engine decisions and citations rather than independently classifying the question. Direct string search callers still use the same plan builder.
+- `intent.py` shares complete how-it-works framing with topic extraction, respects bounded explicit comparison negations, and rejects common agenda and negated-deadline distractors as direct evidence. Short explicit expiry statements remain eligible. These are bounded English rules, not general negation or contradiction resolution.
+- `knowledge/tests/test_query_intent.py` adds ten intent cases and two temporary SQLite scenarios. Both scenarios verify insufficient evidence, first-place ranking with real support present, citation selection, and one classifier call through the production conversation path. The focused run passed 158 tests and 137 subtests with local stand-ins for the unavailable Brisart helpers; official Native API and full-archive validation remain outstanding. No new dependencies, settings changes, or index rebuild.
+
+### One owner for ranking and answer evidence
+
+- `knowledge/relevance_engine.py` now owns best-passage selection and the direct-evidence grade reused for answer excerpts. Direct expiry evidence outranks renewal context; a nearby date may still help surface a related document without being quoted as the answer. In the new one-result SQLite replay, the previous build ranked the renewal notice first; the updated build ranks and cites the actual expiry notice.
+- `knowledge/ranker.py` retains query planning, candidate retrieval, and document ordering. `knowledge/synthesizer.py` renders evidence and citations; its unused intent wrappers and scoring re-exports were removed after checking in-tree callers. Passage-scoring tests moved to the evidence-engine suite, and redundant wrapper tests were removed. Touched source headers were updated in the six-section format. No new modules or dependencies.
+- The focused run passed 155 tests and 137 subtests with local stand-ins for the unavailable Brisart helpers. No CLI, UI, index schema, settings, or state migrations changed. Full Archive and official Native API validation remain outstanding.
+
+### Date evidence by requested event
+
+- `brisart_ai/intent.py` distinguishes expiry, renewal deadlines, and application or submission deadlines. It recognizes day-first, month-first, and ISO-style dates, preserves source wording, and requires a deadline cue for renewal and submission. A related date is not a substitute for the requested event. These English rules recognize date shapes; they do not validate the calendar, infer relative dates, or resolve conflicts between sources.
+- `knowledge/relevance_engine.py` assesses direct and contextual deadline evidence in one passage pass and reuses the paragraph splitter for excerpt selection. The intent module owns lexical cues; the engine owns how those cues affect ranking and citation. The adjacent ranker and formatter still delegate evidence decisions; no new module or parallel search path was needed. Touched Python headers use the six-section format.
+- Four temporary-SQLite cases in `knowledge/tests/test_query_intent.py` check distractor-only abstention, first-place ranking with a one-result limit, and the final citation. The focused run passed 156 tests and 141 subtests using local stand-ins for the unavailable Brisart helpers; Native API and full-archive validation remain outstanding. No dependency, CLI, settings, or index schema changes.
+
+### Named entities and direct dependency evidence
+
+- `brisart_ai/intent.py` recognizes direct English dependency questions with two named entities, or with one entity left to identify. It matches complete endpoint names (ignoring case, whitespace, and a leading “the”), checks direction in active and passive statements, and allows explicit negative statements only for a named-pair question. It does not resolve aliases, infer links from co-mentions, follow transitive chains, resolve conflicting sources, or provide an exhaustive dependency inventory.
+- `knowledge/ranker.py` stores the ordered names in the existing query plan and searches their terms, not question framing. `knowledge/relevance_engine.py` applies the same direct evidence grade for ranking and cited excerpts. Related sources can still appear in search; when no direct statement is available the answer abstains. The formatter and storage retain their existing roles. No new files, graph, runtime dependencies, or index changes; removed an unused query local and refreshed affected source headers.
+- `knowledge/tests/test_query_intent.py` covers forward, reverse, and passive wording; co-mentions, reversed dependencies, similar names and speculative statements; source-scope preservation; and explicit negatives. The SQLite replays require direct evidence to win with one result slot and be cited correctly. The focused run passed 158 tests and 145 subtests with standard-library stand-ins for the unavailable Brisart helpers; official Native API and full-archive validation remain outstanding.
+
+### Cited aliases, dependency chains, and disagreements
+
+- `brisart_ai/intent.py` owns explicit alias and directional dependency syntax. It recognizes `aka`, `is also known as`, and `is abbreviated as`, adds `rely on` wording, and reuses the same statement parser for ranking and aggregation. Aliases are never guessed from initials. Recognized forms are bounded English statements, not general entity extraction.
+- `knowledge/ranker.py` gathers relationship candidates from existing scoped token postings. Up to 256 cue-bearing documents are considered, with query-name matches prioritized and room for documents that only supply an intermediate link; documents over 262,144 characters are skipped. This is a bounded evidence pool, not an exhaustive audit. Ordinary ranked search retains its existing interface and direct evidence ranking.
+- `knowledge/relevance_engine.py` aggregates one representative citation per claim and polarity. It cites the declaration when a unique alias is used and shows competing declarations for an ambiguous queried alias instead of merging entities. Direct support outranks inference; otherwise it can show the shortest supported chain of up to three links. Disputed links cannot support a chain. A direct denial alongside an indirect chain is shown separately from a contradiction between direct claims. Open-ended questions can show multiple direct dependencies without counting copies as votes. No partial proof is rendered for a chain or conflict when citation limits are too small.
+- `core/conversation.py` passes one plan and scope into retrieval and no longer fetches unused topic history. `knowledge/synthesizer.py` renders evidence statuses and citations without resolving disagreements. Reviewed the adjacent storage and query boundaries, removed the obsolete boolean-only relationship matcher, and updated the touched six-section headers. No new modules, persisted graph, dependency, schema, settings, or reindexing requirements.
+- `knowledge/tests/test_query_intent.py` exercises SQLite evidence assembly with an endpoint-free middle link, missing and disputed links, cycles, direct conflicts, duplicate sources, aliases and alias collisions, scope, and tight citation limits. The focused run passed 159 tests and 155 subtests with standard-library stand-ins for unavailable Brisart helpers; the official Native API stack and full Archive were not exercised.
+
+### Date- and release-scoped relationship evidence
+
+- `brisart_ai/intent.py` parses comma-delimited `As of YYYY-MM-DD,` and `In version 1.2.3,` dependency-query prefixes. Evidence can declare its date with `On YYYY-MM-DD,` or an inclusive `From YYYY-MM-DD through YYYY-MM-DD,` interval and its exact release with `In version 1.2.3,`. Both dimensions may be combined. Dates are calendar-checked; the engine does not infer a release from filenames or a date from import timestamps. Versions are exact labels with optional `v`, not version ranges or latest-release selection.
+- `knowledge/relevance_engine.py` applies one qualifier check to relationship ranking and to each cited claim, alias declaration, and inferred link. It compares claims within the same requested scope, not across dates or releases. Unqualified claims are only used for unqualified queries. Existing three-link and citation limits remain in effect. `knowledge/synthesizer.py` renders invalid qualifiers separately from insufficient evidence when evidence documents were retrieved; the unused internal `recent_topics` argument was removed after checking callers.
+- `knowledge/ranker.py` deduplicates exact scoped document bodies before taking the bounded 256-candidate set. It still prioritizes endpoint overlap using Brisart postings and leaves originals untouched. SQLite handles storage and grouping, not relevance scoring. The six reviewed retrieval and adjacent support modules imported only standard-library and first-party Brisart code; external ranking comparators remain isolated in optional benchmark tooling and were not part of the engine. Touched source headers were reviewed; no new module, runtime dependency, or index migration.
+- `knowledge/tests/test_query_intent.py` adds a temporary-index replay with 800 identical exports, 120 distinct distractors and another 300 duplicate support claims. The previous build missed the three-link chain on that fixture; the updated build cites it, blocks a disputed middle link, and retains both sides of a direct conflict. Additional cases exercise date windows, exact releases, invalid dates and incompatible chain links. The focused run passed 161 tests and 162 subtests using local helper stand-ins. This is not a full-archive throughput benchmark or an official Native API validation.
+
+### Citation-aware dependency proofs
+
+- `knowledge/relevance_engine.py` replaces first-path inference with selection of the shortest complete proof that fits the citation budget among the collected claims. Within the same hop count it prefers fewer sources, then fewer excerpts. Reverse reachability skips branches that cannot reach the requested target within three links. The old forward global visited set is gone; it could discard alternative paths with different citation costs. Ambiguous or unresolved alias declarations cannot bridge an inferred chain. Direct conflicts, scoped claims, and the requirement to cite all parts of an inference are unchanged.
+- `knowledge/tests/test_query_intent.py` verifies that a self-contained three-link proof wins when a shorter proof cannot fit, that the shorter path wins when space permits, and that an alias collision cannot fabricate a bridge. Both regressions failed against the incoming build. The focused run passed 163 tests and 162 subtests using local stand-ins for the unavailable Brisart helpers; this is not a competitor benchmark or full Archive/Native API validation.
+- Reviewed the neighboring ranker and synthesizer: candidate collection and citation rendering retain distinct runtime roles. Proof policy lives in the existing evidence engine, with refreshed six-section headers and no new modules, compatibility paths, runtime dependencies, or index changes. The search remains bounded to the collected evidence and one representative proof per claim and polarity, so it is not an exhaustive search over all possible citation combinations.
+
+### Dependency lists that preserve disagreements
+
+- `knowledge/relevance_engine.py` replaces the first-dispute early return for open-ended dependency questions with evidence-group selection. It reserves citation space for complete disputes, then adds other supported links that fit. Both polarities of a dispute are indivisible. If a dispute does not fit, the answer can still cite other supported links, with an explicit omission notice. If nothing fits, it reports the limit without presenting a one-sided conclusion. This is a bounded list, not an exhaustive dependency audit.
+- `knowledge/synthesizer.py` renders the engine's distinct list statuses without adding its own selection rules. Reviewed the adjacent ranker, formatter, and test roles: candidate collection and rendering remain separate, and SQLite postings and chain inference are unchanged. Removed the obsolete first-conflict-only branch; refreshed touched six-section headers. No new files, dependencies, settings, or index changes.
+- `knowledge/tests/test_query_intent.py` exercises forward and reverse dependency lists with real temporary SQLite indexes, both sides of a dispute, a duplicate source, and tight citation limits. Both mixed-list cases failed on the incoming build and pass here. The focused run passed 165 tests and 164 subtests using local stand-ins for the unavailable Brisart helpers; this does not establish full-Archive or official Native API compatibility.
+
+### Evidence quality and answer confidence
+
+- `knowledge/relevance_engine.py` owns the ordinal result grade (0: no matching body evidence; 1: contextual, partial, or tentative; 2: full topical coverage; 3: direct intent evidence) and answer support labels. Neither is a calibrated probability or a measure of source reliability. `knowledge/ranker.py` exposes `evidence_quality` separately from the existing result score. `knowledge/synthesizer.py` renders the labels and citations without grading evidence itself.
+- Date answers prefer explicit dates over tentative statements and preserve tentative wording when it is the only support. Otherwise identical explicit statements with different single ISO dates are shown as conflicting, not arbitrarily resolved. `core/conversation.py` separates bounded date candidate retrieval from the visible citation budget; if opposing dates cannot both be shown, neither is presented as settled. The ranker reuses its exact-body result deduplication for date searches within each source type. This does not detect every contradiction, including differently worded claims or evidence outside the candidate pool.
+- Missing event-specific evidence is distinguished from a tentative answer. Existing dependency disputes and inferred chains use the same answer confidence labels. The SQLite replay in `knowledge/tests/test_query_intent.py` covers missing and tentative evidence, ordinal grades, duplicate pressure, conflicting dates, and a one-citation budget. The focused run passed 166 tests and 164 subtests with local stand-ins for the unavailable Brisart helpers; official Native API and full-Archive validation were not performed.
+- Reviewed touched and adjacent retrieval roles and six-section source headers. Reused the current ranker, evidence selector, formatter, and test fixture; no new module, dependency, settings, or index changes.
+
+### Calendar-checked date evidence and cross-format disagreements
+
+- `brisart_ai/intent.py` now owns date recognition and calendar validation for ISO and English month-name dates. It preserves source spans and leaves missing years unknown. Impossible dates such as February 30 cannot qualify as direct deadline evidence.
+- `knowledge/relevance_engine.py` replaces its ISO-only comparison with grouped, normalized date claims across the retrieved evidence. It compares firm single-date statements with matching wording and year scope, quotes both original passages when they disagree, and does not mistake equivalent formats or different explicit years for disagreement. This does not resolve paraphrased claims, ambiguous numeric dates, or conflicts outside the existing candidate budget.
+- `knowledge/tests/test_query_intent.py` exercises SQLite answers across formats, disputed statements beyond the first candidate, and impossible dates. Four assertions failed against the incoming build; the updated focused suite passed 169 tests and 169 subtests with local stand-ins for unavailable Brisart helpers. The official Native API stack and full Archive were not exercised.
+- Reviewed touched and adjacent retrieval roles and file necessity. Date parsing remains in the existing intent module, evidence grouping remains in the relevance engine, and the ranker and formatter retain their existing roles. Removed the superseded ISO-only matcher, refreshed affected six-section headers, and added no modules, runtime dependencies, settings changes, or index migrations.
+
+### Paraphrase-aware date conflicts
+
+- `brisart_ai/intent.py` normalizes supported full-statement forms for expiry, renewal, and submission deadlines to an event and subject key. Subject modifiers remain significant; unrecognized wording retains the previous literal comparison. It does not infer aliases, remove conditions, or guess years.
+- `knowledge/relevance_engine.py` replaces inline wording-key construction with the intent-owned key. The engine retains year scope, firm single-date checks, and citation budgeting. It quotes both original passages when comparable values disagree, and flags disagreement without choosing either date when both cannot be cited. The ranker and formatter still own collection and presentation respectively; neither needs a new path or duplicate parser.
+- `knowledge/tests/test_query_intent.py` uses temporary SQLite indexes to check cross-wording disagreement, equivalence, different subjects and events, different years, qualified or tentative notices, and a one-citation budget. The baseline missed all three initially tested paraphrased conflicts. The focused run passed 170 tests and 179 subtests with local stand-ins for unavailable Brisart helpers; official Native API and full-Archive validation remain outstanding.
+- Reviewed touched and adjacent file roles and six-section headers. The change replaces duplicated literal-key assembly with one intent-owned implementation without adding files, dependencies, settings, or index changes.
+
+### Paraphrased dependency-date conflicts
+
+- `brisart_ai/intent.py` recognizes explicit dependency start and end questions and matching active and passive claims. It also recognizes positive and negative `is a dependency of` wording for state questions. Relationship qualifiers reuse calendar validation and support ISO and English month-name dates with an explicit year. Removes the redundant ISO-only qualifier matcher.
+- `knowledge/ranker.py` carries the requested lifecycle event in the existing query plan and still collects scoped candidates through the existing index. `knowledge/relevance_engine.py` compares firm transition dates for the same ordered pair, event, release and year scope, using existing cited aliases. Different year scopes are shown separately when citations fit. As-of state queries retain inclusive interval checks; lifecycle claims are not inferred from a snapshot, nor used to extrapolate dependency state. Repeated start/end cycles within a year are not distinguished automatically.
+- `knowledge/synthesizer.py` reuses date-conflict presentation and distinguishes separate year scopes. Original evidence is preserved, and comparisons that cannot fit all necessary citations do not show one date as settled. The change stays within dependency statements, not arbitrary relation types or unrestricted paraphrases.
+- Temporary SQLite cases in `knowledge/tests/test_query_intent.py` cover active/passive conflicts, equivalent dates, separate start/end events, direction, release isolation, yearless and invalid dates, one-citation limits and overlapping intervals across formats. The focused run passed 172 tests and 186 subtests with local stand-ins for the unavailable Brisart helpers; this was not a Native API or full Archive run. Reviewed adjacent conversation and index ownership and retained the existing file boundaries. No new files, dependencies, settings or index changes.
+
+### Paraphrased versioned dependency conflicts
+
+- `brisart_ai/intent.py` accepts explicit `in version` and `for release` qualifiers before or after a relationship statement or question, recognizes passive dependency questions, and maps dependent, independent and no-longer-required wording to the same directed edge and its polarity. `v1.2` and `1.2` share a scope, but `1.2.0` is distinct. As-of date and exact-release checks both still apply. The parser does not resolve latest releases, version ranges or prerelease labels.
+- `knowledge/relevance_engine.py` reuses its conflict status policy when evidence exceeds the citation budget. `knowledge/synthesizer.py` renders the conflict without selecting one side when both cannot be cited. The existing query planner, source scope, postings and state storage remain unchanged; no parallel version parser or new module was needed. Reviewed affected and adjacent file roles and refreshed the touched six-section source headers.
+- Two temporary-SQLite regressions in `knowledge/tests/test_query_intent.py` failed on the previous build. They now cover ranking, original citations, exact release/date isolation, reversed edges, duplicate qualifiers, malformed release labels and one-citation conflict handling. The focused run passed 174 tests and 189 subtests with local stand-ins for unavailable Brisart helpers; the official Native API stack and full Archive were not exercised. No new dependencies, settings or index changes.
+
+## [1.5.0] - 2026-11-26
+
+Research workspace, import hardening, and multicore processing.
 
 ### Release overview
 

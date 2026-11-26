@@ -2,25 +2,56 @@
 -------
 Exercise query drafts, diagnostic routing and the small-window composer.
 
+This regression test module defines `TestQueryComposer`. Its scope is deliberately limited to
+the responsibilities visible in this file rather than duplicating the application-wide
+workflow. Its fixtures and assertions describe observable behavior without changing the
+installed application.
+
 Communication / relationships
 -----------------------------
 Uses ChatPanel directly without opening state or the external Native API stack.
+
+The direct in-project imports visible in this module are `brisart_ai.ui.chat_panel`. Test
+methods `test_submission_preserves_draft_until_accepted`,
+`test_diagnostics_do_not_appear_in_results`, `test_composer_remains_visible_at_small_size`;
+this identifies where behavior is invoked without implying a separate hidden dependency. The
+test runner supplies the test lifecycle and any temporary fixtures.
 
 Settings / parameters
 ---------------------
 The layout check requires a Tk display.
 
+Parameters and configuration are supplied at the entry points named above or by the constants
+already declared in this file. Test inputs are defined by the test cases and their fixtures,
+not production settings. The relevant limits and defaults are those enforced by the executable
+code, not assumptions about future integrations.
+
 Edge cases
 ----------
 Busy and rejected submissions preserve the question.
+
+The behaviors documented above must be read together with the actual branches in
+test_workspace.py; assertions should reject regressions rather than merely checking file
+layout. Error handling, input validation, and early returns remain the responsibility of the
+concrete functions in this module. No additional fallback is created by this documentation.
 
 Known limitations
 -----------------
 Does not validate Windows-specific rendering.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Passing this test module
+does not prove the entire Windows desktop or external Native API integration. No compatibility
+adapter or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 python -m pytest brisart_ai/ui/tests/test_workspace.py -q
+
+For a concrete entry point, inspect `TestQueryComposer`; run this module through the existing
+project test runner with its actual test path. The example above is illustrative of this
+file's present interface; do not treat it as an instruction to create additional state or call
+private functions directly.
 """
 
 import unittest

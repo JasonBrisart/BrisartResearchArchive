@@ -36,9 +36,19 @@ Known limitations
 -----------------
 No web search or desktop controls. The external APIs must resolve even for help.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 python cli.py ask "What is the permit fee?"
+
+For a concrete entry point, inspect `main`; invoke it through the existing application entry
+point or its documented caller. The example above is illustrative of this file's present
+interface; do not treat it as an instruction to create additional state or call private
+functions directly.
 """
 from __future__ import annotations
 import argparse

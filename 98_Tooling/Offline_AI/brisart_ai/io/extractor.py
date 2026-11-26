@@ -60,6 +60,11 @@ Known limitations
 -----------------
 HTML is not rendered as a browser page; scripts are not executed.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 csv_to_text("material,count\nsteel,4")

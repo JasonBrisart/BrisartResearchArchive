@@ -1,78 +1,70 @@
-r"""
+"""
 File: brisart_ai/knowledge/tests/test_relevance_engine.py
 
 Purpose
 -------
-Exercise term weights, shape and proximity behavior.
+Verify passage coverage, proximity, windowing and evidence scoring.
 
-Protected scenarios: TestRarityWeight verifies zero document frequency returns zero;
-TestRarityWeight verifies zero total documents returns zero; TestRarityWeight verifies
-common term gets lowest tier; TestRarityWeight verifies distinctive term gets highest
-tier; TestRarityWeight verifies tier boundaries are fixed regardless of scale.
-
-Protected scenarios: TestPresencePoints verifies zero occurrences is zero;
-TestPresencePoints verifies single occurrence gets baseline; TestPresencePoints verifies
-many occurrences capped; TestPresencePoints verifies more occurrences never scores
-lower; TestTermContribution verifies combines presence and rarity.
-
-Protected scenarios: TestShapeMultiplier verifies zero average length returns neutral;
-TestShapeMultiplier verifies typical length gets full credit; TestShapeMultiplier
-verifies short document is boosted above neutral; TestShapeMultiplier verifies long
-document is diluted; TestShapeMultiplier verifies much longer document diluted more than
-slightly longer.
-
-Protected scenarios: TestProximityBonus verifies single term returns neutral;
-TestProximityBonus verifies no terms returns neutral; TestProximityBonus verifies terms
-close together get bonus; TestProximityBonus verifies terms far apart get no bonus;
-TestProximityBonus verifies bonus is capped.
-
-Protected scenarios: TestProximityBonus verifies terms matched case insensitively.
+This regression test module defines `TestRarityWeight`, `TestPresencePoints`,
+`TestTermContribution`, `TestShapeMultiplier`, `TestProximityBonus`. Its scope is deliberately
+limited to the responsibilities visible in this file rather than duplicating the
+application-wide workflow. Its fixtures and assertions describe observable behavior without
+changing the installed application.
 
 Communication / relationships
 -----------------------------
-Uses small explicit scored token and text examples.
+Calls the Brisart evidence engine directly rather than through the answer renderer.
 
-Direct project imports: brisart_ai.knowledge.relevance_engine.
-
-The cases use self.assertEqual, self.assertLessEqual, self.assertGreater,
-self.assertLess, self.assertTrue to check returned values, persisted state or raised
-errors. The suite is run through scripts/run_tests.py so Native API discovery happens
-before collection.
+The direct in-project imports visible in this module are
+`brisart_ai.knowledge.relevance_engine`. Test methods
+`test_zero_document_frequency_returns_zero`, `test_zero_total_documents_returns_zero`,
+`test_common_term_gets_lowest_tier`, `test_distinctive_term_gets_highest_tier`,
+`test_tier_boundaries_are_fixed_regardless_of_scale`; this identifies where behavior is
+invoked without implying a separate hidden dependency. The test runner supplies the test
+lifecycle and any temporary fixtures.
 
 Settings / parameters
 ---------------------
-Run independently through the project test runner.
+Exercises fixed passages and bounded candidate scoring.
 
-The test names above define the behaviors under examination. Temporary fixtures, patch
-contexts and direct calls supply inputs; these are not user-configurable application
-settings.
+Parameters and configuration are supplied at the entry points named above or by the constants
+already declared in this file. Test inputs are defined by the test cases and their fixtures,
+not production settings. The relevant limits and defaults are those enforced by the executable
+code, not assumptions about future integrations.
 
 Edge cases
 ----------
-Near, distant and absent terms plus capped repetition.
+Scattered concepts, unrelated text, numeric answers, and comparative and causal cues.
 
-Regression coverage includes TestProximityBonus.test_single_term_returns_neutral,
-TestProximityBonus.test_no_terms_returns_neutral,
-TestProximityBonus.test_terms_close_together_get_bonus,
-TestProximityBonus.test_terms_far_apart_get_no_bonus,
-TestProximityBonus.test_bonus_is_capped,
-TestProximityBonus.test_terms_matched_case_insensitively.
+The behaviors documented above must be read together with the actual branches in
+test_relevance_engine.py; assertions should reject regressions rather than merely checking
+file layout. Error handling, input validation, and early returns remain the responsibility of
+the concrete functions in this module. No additional fallback is created by this
+documentation.
 
 Known limitations
 -----------------
-Uses controlled local fixtures, not a production research index.
+Small fixtures are not a full-archive benchmark.
+
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Passing this test module
+does not prove the entire Windows desktop or external Native API integration. No compatibility
+adapter or speculative extension point has been added as part of this pass.
 
 Examples
 --------
 python scripts/run_tests.py brisart_ai/knowledge/tests/test_relevance_engine.py -q
 
-To run one behavior rather than the full suite, use pytest selection through the project
-runner: python scripts/run_tests.py brisart_ai/knowledge/tests/test_relevance_engine.py
--k test_zero_total_documents_returns_zero.
+For a concrete entry point, inspect `TestRarityWeight`, `TestPresencePoints`,
+`TestTermContribution`, `TestShapeMultiplier`, `TestProximityBonus`; run this module through
+the existing project test runner with its actual test path. The example above is illustrative
+of this file's present interface; do not treat it as an instruction to create additional state
+or call private functions directly.
 """
 
 import unittest
 from brisart_ai.knowledge.relevance_engine import (
+    sentence_score,
     presence_points, proximity_bonus, rarity_weight, shape_multiplier, term_contribution,
 )
 
@@ -169,6 +161,29 @@ class TestProximityBonus(unittest.TestCase):
         text = "Quick Brown FOX"
         bonus, _signals = proximity_bonus(text, ["quick", "fox"])
         self.assertGreater(bonus, 1.0)
+
+
+class TestSentenceScore(unittest.TestCase):
+    def test_no_overlap_scores_zero(self):
+        self.assertEqual(sentence_score("completely unrelated content here", {"zebra"}), 0.0)
+
+    def test_overlap_scores_positive(self):
+        self.assertGreater(sentence_score("the zebra ran quickly across the field", {"zebra"}), 0.0)
+
+    def test_quantity_mode_boosts_numeric_sentence(self):
+        numeric = sentence_score("an estimated 73.8 million cats live here", {"cats"}, quantity_mode=True)
+        non_numeric = sentence_score("cats are generally independent animals", {"cats"}, quantity_mode=True)
+        self.assertGreater(numeric, non_numeric)
+
+    def test_comparison_mode_boosts_comparative_sentence(self):
+        comparative = sentence_score("dogs usually outlive cats in captivity", {"dogs", "cats"}, comparison_mode=True)
+        plain = sentence_score("dogs and cats are both popular pets", {"dogs", "cats"}, comparison_mode=True)
+        self.assertGreater(comparative, plain)
+
+    def test_reason_mode_boosts_causal_sentence(self):
+        causal = sentence_score("cats purr because of muscle twitching in the larynx", {"cats", "purr"}, reason_mode=True)
+        plain = sentence_score("cats purr often while resting comfortably", {"cats", "purr"}, reason_mode=True)
+        self.assertGreater(causal, plain)
 
 
 if __name__ == "__main__":

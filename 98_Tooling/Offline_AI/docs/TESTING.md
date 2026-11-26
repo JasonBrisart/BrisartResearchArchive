@@ -35,3 +35,43 @@ The measurements below are preserved 1.4.0 release evidence, not reruns from thi
 - Brisart ran with the supplied URL helper and temporary test-only substitutes for missing Official Native APIs. The benchmark does not cover Windows GUI or non-code research quality.
 
 Raw ranks and per-query timings are in `scripts/benchmark_data/`. On Linux, stage the original source as `baseline/` and the updated `Offline_AI/` side by side. Copy `scripts/benchmark_retrieval.py` and the pinned `queries.json` into their common parent, then set `BRISART_NATIVE_API` to the real external APIs. Run `python benchmark_retrieval.py MODE` for `baseline`, `Offline_AI`, `unicode`, `porter`, `tfidf` or `ripgrep`. Requires libseccomp; the competitor runs also require the corresponding benchmark dependencies. Reuse the same Python build and standard library to reproduce the corpus.
+
+## Reported framework-question regressions
+
+Run from `Offline_AI` with the official Native API stack and the development test runner:
+
+```text
+python scripts/run_tests.py brisart_ai/core/tests/test_answer_quality_reports.py -q
+```
+
+The tests replay `how does tfl work?` and `how does riet compare to sst?` through the real conversation, ranking and excerpt code with a temporary SQLite index. The small curated corpus uses reported excerpts as distractors and paraphrased framework notes as positive evidence. It does not import the full archive or touch the live index. The permit-fee control checks that an answer citation resolves to the corresponding indexed source.
+
+BrisartAI 1.5.0 baseline: all five quality scenarios exposed a gap; the citation control passed. For TFL, the engine returned name-only excerpts without warning and omitted the carry-forward step even when a mechanism source was indexed. For RIET versus SST, it accepted co-mentions as evidence, did not flag the missing side, and omitted both role passages when good definitions were indexed separately. The baseline used local standard-library stand-ins for the unavailable Brisart hash, URL, and JSON helpers; it was not an official Native API or full-library integration run. This baseline predates the answer-quality fix.
+
+### Answer-quality follow-up
+
+The same test command reruns both reported questions. The matrix varies mechanism phrasing, ingest order, comparison order and phrasing, and availability of both roles, one role, or neither. Additional controls cover paragraph boundaries, an unrelated transportation comparison and citation integrity. Fixtures are curated excerpts and paraphrases, not a full-archive benchmark.
+
+The focused follow-up passed 95 tests and 32 subtests across the replay, conversation, synthesizer, ranker, relevance engine and SQLite index suites using the same local-only helper stand-ins. They are not shipped. The full official Native API run and a replay on the real archive remain outstanding.
+
+## Raw search relevance gate
+
+Run from `Offline_AI` using the official Native API stack and development test runner:
+
+```text
+python scripts/run_tests.py brisart_ai/knowledge/tests/test_search_quality.py brisart_ai/core/tests/test_answer_quality_reports.py -q
+```
+
+The raw gate calls the production ranker over a temporary SQLite index, independent of excerpt selection. Fourteen judged queries run against the same corpus in original, reversed, and seeded shuffled insertion orders, plus warm repeats interleaved with unrelated searches. Target passages must rank first, not merely appear somewhere. Separate cases test whether both evidence sources survive a top-eight comparison under duplicate-export pressure, whether out-of-scope material stays out, and whether unrelated questions return no results.
+
+Baseline: 27 of 42 first-place checks passed. Both role sources failed to survive in all three duplicate-export comparison variants. Combined with the retained answer-quality suite, pytest reported 22 failing subtests, 15 passing test methods, and 72 passing subtests. The 22 failures include repeated observations of the same defects. They remain strict rather than being marked expected failures; installing this overlay can make the development suite fail on the current ranker. This is a curated relevance test, not a representative accuracy measurement for the full Archive. The local run used standard-library helper stand-ins, not the official Native API stack. No product code or data was changed.
+
+### Intent-aware follow-up
+
+The same judged matrix now passes all 42 first-place checks, up from 27 on the unchanged fixtures. Both role sources survive all three duplicate-export comparison variants. An answer regression checks that a renewal date is not reported as an expiry date. The focused run passed 101 tests and 94 subtests with local stand-ins for the unavailable Brisart helpers. The official Native API and full-archive run remain outstanding.
+
+### Query-intent classification
+
+Run `python scripts/run_tests.py brisart_ai/knowledge/tests/test_query_intent.py -q` from `Offline_AI`. The table checks both the broad classifier label and the evidence route chosen using production topic extraction. Three temporary-index cases verify that the intended route affects public ranking rather than just setting a label.
+
+The adversarial cases in the same intent test module cover competing cues, explicit negation, agenda-only co-mentions and negated expiry dates. Temporary SQLite tests exercise the normal conversation path and verify that ranking and answer selection reuse one classification.

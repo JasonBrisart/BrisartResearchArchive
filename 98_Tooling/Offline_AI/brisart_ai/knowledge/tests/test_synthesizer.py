@@ -1,120 +1,66 @@
-r"""
+"""
 File: brisart_ai/knowledge/tests/test_synthesizer.py
 
 Purpose
 -------
-Exercise selection and citation of indexed excerpts.
+Verify answer rendering, citation mapping, and grounded excerpts.
 
-Protected scenarios: TestQueryIntentDelegation verifies wants quantity for how many;
-TestQueryIntentDelegation verifies wants comparison for outlive;
-TestQueryIntentDelegation verifies wants reason for why; TestQueryIntentDelegation
-verifies general query wants none of them; TestSentenceScore verifies no overlap scores
-zero.
-
-Protected scenarios: TestSentenceScore verifies overlap scores positive;
-TestSentenceScore verifies quantity mode boosts numeric sentence; TestSentenceScore
-verifies comparison mode boosts comparative sentence; TestSentenceScore verifies reason
-mode boosts causal sentence; TestFormatSource verifies formats with title and location.
-
-Protected scenarios: TestFormatSource verifies falls back to location when no title;
-TestSynthesize verifies short structured lines and low coverage; TestSynthesize verifies
-comparison does not let one subject win; TestSynthesize verifies long unpunctuated
-passage is not dropped; TestSynthesize verifies split label and value stay together in
-cited excerpt.
-
-Protected scenarios: TestSynthesize verifies empty docs returns no information message;
-TestSynthesize verifies docs with no matching sentences returns distinct message;
-TestSynthesize verifies matching docs produce cited answer; TestSynthesize verifies
-citations are sequential with no gaps; TestSynthesizerInflection verifies singular
-sentence answers plural question.
+This regression test module defines `TestFormatSource`, `TestSynthesize`,
+`TestSynthesizerInflection`. Its scope is deliberately limited to the responsibilities visible
+in this file rather than duplicating the application-wide workflow. Its fixtures and
+assertions describe observable behavior without changing the installed application.
 
 Communication / relationships
 -----------------------------
-Uses document dictionaries with known answer passages.
+Exercises the synthesizer with ranked document fixtures; scoring tests live with the engine.
 
-Direct project imports: brisart_ai.knowledge.synthesizer.
-
-The cases use self.assertTrue, self.assertFalse, self.assertEqual, self.assertGreater,
-self.assertIn, self.assertNotIn to check returned values, persisted state or raised
-errors. The suite is run through scripts/run_tests.py so Native API discovery happens
-before collection.
+The direct in-project imports visible in this module are `brisart_ai.knowledge.synthesizer`.
+Test methods `test_formats_with_title_and_location`,
+`test_falls_back_to_location_when_no_title`, `test_short_structured_lines_and_low_coverage`,
+`test_comparison_does_not_let_one_subject_win`,
+`test_long_unpunctuated_passage_is_not_dropped`; this identifies where behavior is invoked
+without implying a separate hidden dependency. The test runner supplies the test lifecycle and
+any temporary fixtures.
 
 Settings / parameters
 ---------------------
-Run independently through the project test runner.
+Uses explicit source and excerpt limits in boundary cases.
 
-The test names above define the behaviors under examination. Temporary fixtures, patch
-contexts and direct calls supply inputs; these are not user-configurable application
-settings.
+Parameters and configuration are supplied at the entry points named above or by the constants
+already declared in this file. Test inputs are defined by the test cases and their fixtures,
+not production settings. The relevant limits and defaults are those enforced by the executable
+code, not assumptions about future integrations.
 
 Edge cases
 ----------
-Short fields, comparisons, partial coverage and long lines.
+Missing titles, duplicate excerpts, partial topic coverage and uncertain evidence.
 
-Regression coverage includes
-TestSynthesize.test_split_label_and_value_stay_together_in_cited_excerpt,
-TestSynthesize.test_empty_docs_returns_no_information_message,
-TestSynthesize.test_docs_with_no_matching_sentences_returns_distinct_message,
-TestSynthesize.test_matching_docs_produce_cited_answer,
-TestSynthesize.test_citations_are_sequential_with_no_gaps,
-TestSynthesizerInflection.test_singular_sentence_answers_plural_question.
+The behaviors documented above must be read together with the actual branches in
+test_synthesizer.py; assertions should reject regressions rather than merely checking file
+layout. Error handling, input validation, and early returns remain the responsibility of the
+concrete functions in this module. No additional fallback is created by this documentation.
 
 Known limitations
 -----------------
-Uses controlled local fixtures, not a production research index.
+Curated fixtures do not measure relevance across a production archive.
+
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Passing this test module
+does not prove the entire Windows desktop or external Native API integration. No compatibility
+adapter or speculative extension point has been added as part of this pass.
 
 Examples
 --------
 python scripts/run_tests.py brisart_ai/knowledge/tests/test_synthesizer.py -q
 
-To run one behavior rather than the full suite, use pytest selection through the project
-runner: python scripts/run_tests.py brisart_ai/knowledge/tests/test_synthesizer.py -k
-test_wants_comparison_for_outlive.
+For a concrete entry point, inspect `TestFormatSource`, `TestSynthesize`,
+`TestSynthesizerInflection`; run this module through the existing project test runner with its
+actual test path. The example above is illustrative of this file's present interface; do not
+treat it as an instruction to create additional state or call private functions directly.
 """
 
 import unittest
-from brisart_ai.knowledge.synthesizer import (
-    format_source, query_wants_comparison, query_wants_quantity, query_wants_reason, sentence_score, synthesize,
-)
-
-
-class TestQueryIntentDelegation(unittest.TestCase):
-    def test_wants_quantity_for_how_many(self):
-        self.assertTrue(query_wants_quantity("how many cats are in america?"))
-
-    def test_wants_comparison_for_outlive(self):
-        self.assertTrue(query_wants_comparison("do dogs outlive cats?"))
-
-    def test_wants_reason_for_why(self):
-        self.assertTrue(query_wants_reason("why do cats purr?"))
-
-    def test_general_query_wants_none_of_them(self):
-        self.assertFalse(query_wants_quantity("tell me about cats"))
-        self.assertFalse(query_wants_comparison("tell me about cats"))
-        self.assertFalse(query_wants_reason("tell me about cats"))
-
-
-class TestSentenceScore(unittest.TestCase):
-    def test_no_overlap_scores_zero(self):
-        self.assertEqual(sentence_score("completely unrelated content here", {"zebra"}), 0.0)
-
-    def test_overlap_scores_positive(self):
-        self.assertGreater(sentence_score("the zebra ran quickly across the field", {"zebra"}), 0.0)
-
-    def test_quantity_mode_boosts_numeric_sentence(self):
-        numeric = sentence_score("an estimated 73.8 million cats live here", {"cats"}, quantity_mode=True)
-        non_numeric = sentence_score("cats are generally independent animals", {"cats"}, quantity_mode=True)
-        self.assertGreater(numeric, non_numeric)
-
-    def test_comparison_mode_boosts_comparative_sentence(self):
-        comparative = sentence_score("dogs usually outlive cats in captivity", {"dogs", "cats"}, comparison_mode=True)
-        plain = sentence_score("dogs and cats are both popular pets", {"dogs", "cats"}, comparison_mode=True)
-        self.assertGreater(comparative, plain)
-
-    def test_reason_mode_boosts_causal_sentence(self):
-        causal = sentence_score("cats purr because of muscle twitching in the larynx", {"cats", "purr"}, reason_mode=True)
-        plain = sentence_score("cats purr often while resting comfortably", {"cats", "purr"}, reason_mode=True)
-        self.assertGreater(causal, plain)
+from brisart_ai.knowledge.synthesizer import format_source, synthesize
 
 
 class TestFormatSource(unittest.TestCase):

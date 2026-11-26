@@ -53,6 +53,11 @@ Known limitations
 -----------------
 This is persistent topic memory, not a complete conversation transcript.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 memory.recent_topics(limit=3)

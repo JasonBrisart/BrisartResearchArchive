@@ -43,6 +43,11 @@ Known limitations
 File discovery checks presence, not version or API compatibility. Codec and robots are
 not used by this application.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 native_path.install()

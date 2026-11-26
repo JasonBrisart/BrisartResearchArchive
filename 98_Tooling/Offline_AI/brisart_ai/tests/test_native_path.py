@@ -48,6 +48,11 @@ Known limitations
 -----------------
 Uses controlled local fixtures, not a production research index.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Passing this test module
+does not prove the entire Windows desktop or external Native API integration. No compatibility
+adapter or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 python scripts/run_tests.py brisart_ai/tests/test_native_path.py -q

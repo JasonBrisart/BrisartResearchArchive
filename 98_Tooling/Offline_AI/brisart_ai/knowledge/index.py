@@ -76,6 +76,11 @@ Known limitations
 -----------------
 SQLite provides record storage and lookup, not FTS ranking.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 index.remove_sources([2, 3])

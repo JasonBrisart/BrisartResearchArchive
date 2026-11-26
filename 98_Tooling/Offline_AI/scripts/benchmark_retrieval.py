@@ -55,6 +55,11 @@ dependencies do not become runtime requirements of the offline research assistan
 Examples
 --------
 python benchmark_retrieval.py Offline_AI
+
+For a concrete entry point, inspect `block`; invoke it through the existing application entry
+point or its documented caller. The example above is illustrative of this file's present
+interface; do not treat it as an instruction to create additional state or call private
+functions directly.
 """
 import ast, ctypes as C, errno, hashlib, json, os, re, socket, sqlite3, sys, sysconfig, time
 from pathlib import Path

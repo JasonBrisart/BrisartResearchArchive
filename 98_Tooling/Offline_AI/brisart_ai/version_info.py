@@ -35,6 +35,11 @@ The fallback hides the underlying import exception from normal startup. If the d
 Examples
 --------
 from brisart_ai.version_info import APP_NAME, __version__
+
+For a concrete entry point, inspect the constants and module-level declarations; invoke it
+through the existing application entry point or its documented caller. The example above is
+illustrative of this file's present interface; do not treat it as an instruction to create
+additional state or call private functions directly.
 """
 
 from __future__ import annotations

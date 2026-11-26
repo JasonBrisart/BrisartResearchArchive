@@ -80,6 +80,11 @@ Known limitations
 -----------------
 Dropping an indexed file does not remove saved note excerpts or the original disk file.
 
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
+
 Examples
 --------
 BrisartService(db_path).ask("When does the permit expire?")

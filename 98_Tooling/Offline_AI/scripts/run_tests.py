@@ -40,6 +40,11 @@ dependencies do not become runtime requirements of the offline research assistan
 Examples
 --------
 python scripts/run_tests.py -q
+
+For a concrete entry point, inspect `main`; invoke it through the existing application entry
+point or its documented caller. The example above is illustrative of this file's present
+interface; do not treat it as an instruction to create additional state or call private
+functions directly.
 """
 
 from __future__ import annotations

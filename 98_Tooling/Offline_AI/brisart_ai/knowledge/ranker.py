@@ -1,115 +1,82 @@
-r"""
+"""
 File: brisart_ai/knowledge/ranker.py
 
 Purpose
 -------
-Find and order local evidence using Brisart's lexical retrieval pipeline.
+Build query plans and rank scoped local sources from SQLite postings.
+Dependency plans retain ordered entity names and any requested start or end event; scoped relationship answers also
+gather cue-bearing middle-hop documents from existing postings.
 
-The Brisart Retrieval Engine owns query concept grouping, lexical candidate discovery,
-passage-aware ranking and source-scope enforcement. It does not delegate relevance to
-BM25, TF-IDF, an embedding service or SQLite FTS.
-
-Public operations: query_groups (query) - Return ordered topic terms and their accepted
-spellings; title_match_adjust (title, meaningful_terms, term_rarity=None) - Boost a
-score for meaningful query terms present in the title; generic_concept_title_adjust
-(title, location) - Penalize a document whose title/URL is a bare generic concept;
-phrase_match_adjust (query, haystack) - Boost a score when the literal query phrase
-appears verbatim.
-
-Public operations: proximity_adjust (matched_terms, haystack) - Boost a score when
-matched query terms sit close together; intent_adjust (base_score, title, text,
-location, intent, query, topic_terms=None, term_rarity=None, matched_terms=None) - Apply
-title-match, generic-concept, phrase-match, proximity, and intent adjustments;
-matching_source_ids (index, groups, source_types) - Return all matches, for operations
-that do not need relevance order; search (index, query, limit=8, source_type=None,
-source_types=None) - Search indexed sources and rank matches by relevance.
-
-Internal helpers include _normalize_for_phrase, _concept_postings, _one_edit,
-_fill_unmatched_terms, _build_doc_length_sql, _load_document_lengths.
+This retrieval and indexing component defines `query_groups`, `prepare_query`,
+`title_match_adjust`, `generic_concept_title_adjust`, `phrase_match_adjust`. Its scope is
+deliberately limited to the responsibilities visible in this file rather than duplicating the
+application-wide workflow. Callers use these declarations through the module interface; the
+file is not a separate service or background daemon unless explicitly stated above.
 
 Communication / relationships
 -----------------------------
-Reads ordinary SQLite postings; relevance_engine scores passage coverage; vault and
-conversation use its results.
+Uses intent.py for classification and relevance_engine.py for passage assessment.
+Conversation, notes, collections and timelines consume ranked or matching sources.
 
-Query terms are grouped with accepted variants, postings are retrieved from ordinary
-SQLite tables, and a bounded candidate set is evaluated for coverage and intent. Exact
-code declarations and uniquely recoverable one-edit spellings provide additional
-evidence without overriding the source-type boundary.
-
-Direct project imports: brisart_ai.intent, brisart_ai.knowledge, brisart_ai.util.
-
-Direct importing modules include brisart_ai/core/conversation.py,
-brisart_ai/knowledge/synthesizer.py, brisart_ai/knowledge/tests/test_ranker.py,
-brisart_ai/knowledge/vault.py, scripts/debug_offline_replay.py.
-
-Concrete calls within this file include relevance_engine.proximity_bonus,
-index.conn.execute, relevance_engine.rarity_weight, relevance_engine.scored_passages,
-relevance_engine.term_contribution, relevance_engine.shape_multiplier,
-index.source_count.
+The direct in-project imports visible in this module are `brisart_ai.intent`,
+`brisart_ai.knowledge`, `brisart_ai.util`. Public entry points `query_groups`,
+`prepare_query`, `title_match_adjust`, `generic_concept_title_adjust`, `phrase_match_adjust`;
+this identifies where behavior is invoked without implying a separate hidden dependency.
+Higher-level coordination remains with the calling layer rather than being introduced here.
 
 Settings / parameters
 ---------------------
-The lexical shortlist is bounded. Explicit source scopes are honored; the default limit
-is eight.
+The caller supplies result limit and optional source types. Candidate grading is bounded.
 
-Module configuration and named constants: STOPWORDS (set, 128 entries),
-GENERIC_QUERY_VERBS (set, 41 entries), COVERAGE_FLOOR=0.15, INTENT_WEIGHT=0.3,
-INTENT_MIN_FACTOR=0.4, INTENT_MAX_FACTOR=1.9, INTENT_TEXT_CHARS=2000,
-INTENT_CANDIDATE_FACTOR=5, INTENT_CANDIDATE_MIN=10, TITLE_MATCH_WEIGHT=0.12,
-TITLE_MATCH_MAX_FACTOR=1.42, GENERIC_TERM_DAMPING=0.2,
-SIGNAL_TITLE_MATCH='<title-match>', GENERIC_CONCEPT_TITLE_PENALTY_FACTOR=0.35,
-SIGNAL_GENERIC_CONCEPT_TITLE='<generic-concept-title>', PHRASE_MATCH_FACTOR=1.35,
-PHRASE_MATCH_MIN_WORDS=2, SIGNAL_PHRASE_MATCH='<phrase-match>'.
-
-Call signatures: query_groups(query); title_match_adjust(title, meaningful_terms,
-term_rarity=None); generic_concept_title_adjust(title, location);
-phrase_match_adjust(query, haystack); proximity_adjust(matched_terms, haystack).
-
-Call signatures: intent_adjust(base_score, title, text, location, intent, query,
-topic_terms=None, term_rarity=None, matched_terms=None); matching_source_ids(index,
-groups, source_types); search(index, query, limit=8, source_type=None,
-source_types=None).
+Parameters and configuration are supplied at the entry points named above or by the constants
+already declared in this file. This documentation pass does not introduce a new configuration
+key, command option, or persisted value. The relevant limits and defaults are those enforced
+by the executable code, not assumptions about future integrations.
 
 Edge cases
 ----------
-A missing alphabetic term can recover a unique one-edit neighbor with the same
-two-letter prefix. Document lengths are cached per scope and connection.
+Empty scopes stay empty. Typo recovery consults the eligible vocabulary.
+Comparisons reserve single-side candidates and suppress exact duplicates per source type.
 
-Typo recovery is conservative: the first two letters must agree, the candidate must be
-unique and the vocabulary scan is bounded. The document-length cache is keyed to
-connection changes; ambiguous terms and excluded documents are not guessed back into
-results.
-
-No explicit exception-handling branch is defined at module level. Unexpected errors
-therefore follow the caller’s normal error boundary unless a lower-level helper handles
-them.
+The behaviors documented above must be read together with the actual branches in ranker.py; a
+caller must not infer success from an empty, rejected, or unsupported result. Error handling,
+input validation, and early returns remain the responsibility of the concrete functions in
+this module. No additional fallback is created by this documentation.
 
 Known limitations
 -----------------
-No embeddings or general semantic matching. Ambiguous spellings and candidates outside
-the shortlist can be missed.
+Relationship collection grades up to 256 distinct bodies, each at most 262,144
+characters. A candidate outside a bounded pool may be missed. Document body and title signals are heuristic. The evidence_quality field is
+an ordinal passage grade, separate from the ranking score. Exact duplicate
+bodies do not repeat within date or comparison results of the same source type.
 
-Document scores are not calibrated probabilities. A higher score expresses relative lexical evidence among candidates, not confidence that the cited statement is factually true.
+The responsibilities listed here describe the current implementation, not a promise of general
+language understanding, platform coverage, or exhaustive validation. Any broader behavior
+depends on the documented upstream inputs and downstream consumers. No compatibility adapter
+or speculative extension point has been added as part of this pass.
 
 Examples
 --------
-search(index, "calibratoin", source_types={"file"})
+search(index, "when does the permit expire?", source_types={"file"})
 
-Other callable entry points in this module include title_match_adjust,
-generic_concept_title_adjust, phrase_match_adjust, proximity_adjust, intent_adjust,
-matching_source_ids, search.
+For a concrete entry point, inspect `query_groups`, `prepare_query`, `title_match_adjust`,
+`generic_concept_title_adjust`, `phrase_match_adjust`; invoke it through the existing
+application entry point or its documented caller. The example above is illustrative of this
+file's present interface; do not treat it as an instruction to create additional state or call
+private functions directly.
 """
 
 from __future__ import annotations
 
 import collections
+import heapq
 import re
+from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from brisart_ai.intent import (
-    INTENT_GENERAL, detect_intent, is_bare_generic_concept_title,
-    name_candidates, score_intent,
+    INTENT_GENERAL, RELATIONSHIP_POSTING_TERMS, dependency_date_request, dependency_request, relationship_context, detect_intent, is_bare_generic_concept_title,
+    name_candidates, score_intent, evidence_mode, mechanism_subject,
 )
 from brisart_ai.knowledge import relevance_engine
 from brisart_ai.util import query_frame_terms, term_variants, title_tokens, tokenize
@@ -178,8 +145,13 @@ _WORD_FAMILIES = tuple(frozenset(family.split()) for family in (
 ))
 
 
+# Strip a terminal method verb only in a how-question, not from domain terms
+# such as "function signature" or "operate a crane".
 def query_groups(query: str):
     """Return ordered topic terms and their accepted spellings."""
+    subject = mechanism_subject(query)
+    if subject and tokenize(subject):
+        query = subject
     frame = query_frame_terms(query)
     terms = [term for term in tokenize(query) if term not in STOPWORDS and term not in frame]
     focused = [term for term in terms if term not in GENERIC_QUERY_VERBS]
@@ -194,6 +166,34 @@ def query_groups(query: str):
         groups[term] = forms
         covered.update(forms)
     return groups
+
+
+@dataclass(frozen=True)
+class QueryPlan:
+    """The engine's original query, topic spellings and evidence route."""
+
+    text: str
+    groups: dict
+    intent: str
+    mode: str
+    endpoints: tuple[str, str] | None = None
+    relationship_scope: tuple[str, str, str] | None = ("", "", "")
+    relationship_event: str = ""
+
+
+def prepare_query(query: str | QueryPlan) -> QueryPlan:
+    """Classify once; an existing engine plan passes through unchanged."""
+    if isinstance(query, QueryPlan):
+        return query
+    relationship_query, scope = relationship_context(query, query=True)
+    dated = dependency_date_request(relationship_query)
+    endpoints, event = dated if dated else (dependency_request(relationship_query), "")
+    if event and scope and scope[0]:
+        scope = None
+    groups = query_groups(" ".join(endpoints) if endpoints else query)
+    intent = detect_intent(query)
+    mode = ("dependency_date" if event else "dependency") if endpoints else evidence_mode(query, len(groups), intent=intent)
+    return QueryPlan(query, groups, intent, mode, endpoints, scope, event)
 
 
 def title_match_adjust(
@@ -372,6 +372,34 @@ def matching_source_ids(index, groups, source_types):
                    for source_id in rows})
 
 
+def relationship_documents(index, plan, source_types):
+    """Gather a bounded, scoped evidence pool from the existing local postings."""
+    if not source_types:
+        return []
+    terms = sorted(RELATIONSHIP_POSTING_TERMS)
+    scope = sorted(source_types)
+    marks = ",".join("?" for _ in terms)
+    scope_marks = ",".join("?" for _ in scope)
+    # Collapse exact bodies inside the eligible scope before spending the budget.
+    # SQLite does set selection only; Brisart decides the candidate ordering.
+    candidates = index.conn.execute(
+        f"SELECT MIN(s.id) FROM sources s WHERE s.source_type IN ({scope_marks}) "
+        "AND length(s.text) <= 262144 AND s.id IN "
+        f"(SELECT source_id FROM terms WHERE term IN ({marks})) GROUP BY s.text",
+        (*scope, *terms),
+    )
+    overlap = collections.Counter(source_id for rows in _concept_postings(index, plan.groups, scope).values()
+                                  for source_id in rows)
+    ids = heapq.nsmallest(256, (sid for (sid,) in candidates), key=lambda sid: (-overlap[sid], sid))
+    if not ids:
+        return []
+    marks = ",".join("?" for _ in ids)
+    rows = index.conn.execute(f"SELECT id, source_type, location, title, text FROM sources WHERE id IN ({marks})", ids)
+    by_id = {sid: {"id": sid, "source_type": kind, "location": path, "title": title, "text": text}
+             for sid, kind, path, title, text in rows}
+    return [by_id[sid] for sid in ids if sid in by_id]
+
+
 def _build_doc_length_sql(source_types: Optional[Iterable[str]], source_type: Optional[str]) -> str:
     if source_types:
         placeholders = ",".join(["?"] * len(source_types))
@@ -414,11 +442,13 @@ def _load_document_lengths(
 
 
 def search(
-    index, query: str, limit: int = 8, source_type: Optional[str] = None,
+    index, query: str | QueryPlan, limit: int = 8, source_type: Optional[str] = None,
     source_types: Optional[Iterable[str]] = None,
 ) -> List[Dict[str, object]]:
     """Search indexed sources and rank matches by relevance."""
-    groups = query_groups(query)
+    plan = prepare_query(query)
+    query = plan.text
+    groups = plan.groups.copy()
     if limit <= 0 or not groups:
         return []
     meaningful_terms = set(groups)
@@ -472,7 +502,7 @@ def search(
         multiplier = COVERAGE_FLOOR + (1.0 - COVERAGE_FLOOR) * coverage
         adjusted_scores[source_id] = base_score * multiplier
 
-    intent = detect_intent(query)
+    intent, mode = plan.intent, plan.mode
     # Case-sensitive identifiers avoid boosting ordinary prose matches.
     identifiers = [word for word in re.findall(r"\b[A-Za-z][A-Za-z0-9_]*\b", query)
                    if "_" in word or (not word.isupper() and any(c.isupper() for c in word[1:]))]
@@ -483,10 +513,25 @@ def search(
             rf"(?m)^[ \t]*(?:(?:async[ \t]+)?(?:def|class)[ \t]+(?:{names})[ \t]*[(:\[]"
             rf"|(?:{names})[ \t]*=(?!=))"
         )
-    candidate_pool = sorted(adjusted_scores.items(), key=lambda item: (-item[1], item[0]))[
-        : max(0, limit) * INTENT_CANDIDATE_FACTOR + INTENT_CANDIDATE_MIN]
+    provisional = sorted(adjusted_scores.items(), key=lambda item: (-item[1], item[0]))
+    pool_size = limit * INTENT_CANDIDATE_FACTOR + INTENT_CANDIDATE_MIN
+    candidate_pool = provisional[:pool_size]
+    if mode == "comparison" and len(provisional) > pool_size:
+        # Admit a bounded set of single-side candidates even when co-mentions
+        # fill the provisional pool. Passage grading still decides final rank.
+        side_slots = dict.fromkeys(groups, limit)
+        for source_id, score in provisional[pool_size:]:
+            topics = matched_meaningful[source_id]
+            if len(topics) == 1:
+                topic = next(iter(topics))
+                if side_slots.get(topic, 0):
+                    candidate_pool.append((source_id, score))
+                    side_slots[topic] -= 1
+            if not any(side_slots.values()):
+                break
 
     rows_by_id: Dict[int, tuple] = {}
+    evidence_quality = {}
     reasons: Dict[int, Tuple[List[str], List[str]]] = {}
 
     for source_id, base_score in candidate_pool:
@@ -498,12 +543,9 @@ def search(
             continue
         rows_by_id[source_id] = row
 
-        best_key, best_passage = (0, 0.0), ""
-        for passage, hits, count in relevance_engine.scored_passages(row[3], groups.values()):
-            key = (hits, hits / max(8, count))
-            if key > best_key:
-                best_key, best_passage = key, passage
-        hits = best_key[0]
+        best_key, best_passage = relevance_engine.best_ranked_passage(plan, row[3], groups)
+        grade, hits, _ = best_key
+        evidence_quality[source_id] = relevance_engine.result_evidence_quality(plan, best_key, best_passage)
         new_score, boosts, penalties = intent_adjust(
             base_score, row[2] or row[1], best_passage, row[1], intent, query,
             topic_terms=meaningful_terms, term_rarity=term_rarity,
@@ -511,8 +553,10 @@ def search(
         )
         if hits:
             boosts.append(f"<passage-coverage>:{hits}/{meaningful_total}")
-        # One additional concept in the same passage outweighs metadata.
-        adjusted_scores[source_id] = hits + new_score / (1.0 + new_score)
+        # Evidence shape comes first; then distinct concepts outrank metadata.
+        adjusted_scores[source_id] = grade * (meaningful_total + 1) + hits + new_score / (1.0 + new_score)
+        if grade:
+            boosts.append(f"<intent-evidence>:{mode}")
         if declaration and (str(row[4]).lower().lstrip(".") == "py" or row[1].lower().endswith(".py")) and declaration.search(row[3]):
             adjusted_scores[source_id] += meaningful_total + 1
             boosts.append("<exact-symbol-definition>")
@@ -521,21 +565,30 @@ def search(
     ranked = sorted(
         ((source_id, adjusted_scores[source_id]) for source_id in rows_by_id),
         key=lambda item: (-item[1], item[0]),
-    )[:max(0, limit)]
+    )
 
     documents: List[Dict[str, object]] = []
+    seen_bodies = set()
     for source_id, score in ranked:
         row = rows_by_id.get(source_id)
         if row is None:
             continue
+        if mode in {"comparison", "deadline"}:
+            # Keep attribution to the highest-ranked copy without deleting its peers.
+            body_key = (row[0], row[3])
+            if body_key in seen_bodies:
+                continue
+            seen_bodies.add(body_key)
         boosts, penalties = reasons.get(source_id, ([], []))
         documents.append({
-            "id": source_id, "score": score, "source_type": row[0], "location": row[1],
+            "id": source_id, "score": score, "evidence_quality": evidence_quality[source_id], "source_type": row[0], "location": row[1],
             "title": row[2] or row[1], "text": row[3], "extension": row[4],
             "size_bytes": row[5], "indexed_at": row[6], "intent": intent,
             "intent_boosts": boosts, "intent_penalties": penalties,
             "query_corrections": corrections,
         })
+        if len(documents) == limit:
+            break
     return documents
 
 

@@ -1,4 +1,4 @@
-# BrisartAI 1.5.0
+# BrisartAI 1.6.0
 
 BrisartAI indexes local files and research notes, then answers questions with excerpts and citations. It does not search the internet. Results reflect the indexed copy, not necessarily the current file on disk.
 
