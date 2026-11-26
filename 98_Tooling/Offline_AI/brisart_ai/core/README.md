@@ -13,3 +13,15 @@ The core folder coordinates application operations used by both the Tk desktop a
 ## Ownership boundaries
 
 The core does not parse document formats, score evidence or build Tk widgets. Those operations are owned by `io/`, `knowledge/` and `ui/`, respectively. The core's settings are not a replacement for the SQLite source index.
+
+## Service lifecycle
+
+The service opens the local resources required by the active operation and coordinates access from the desktop or CLI. Source imports are submitted to the ingestion layer, while source removal and note operations are directed through the owning storage interfaces. This keeps callers from depending on the internal SQLite representation.
+
+Conversation coordination applies enabled evidence sources before invoking retrieval. The answer path does not fetch arbitrary internet material. If a scope excludes a source type, that source type should not contribute an answer merely because a relevant passage exists in the index.
+
+## State responsibilities
+
+Settings describe user choices, while session memory records compact conversation context. Neither is an alternative copy of indexed file text. A research note is independently stored evidence, so removing a source entry is not equivalent to deleting a note snapshot.
+
+For service changes, test both the normal path and the boundary where an operation fails or is interrupted. The desktop must remain responsive, and the CLI should receive a usable error rather than relying on a Tk dialog.

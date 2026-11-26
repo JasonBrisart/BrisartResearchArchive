@@ -108,3 +108,21 @@ The same judged matrix now passes all 42 first-place checks, up from 27 on the u
 Run `python scripts/run_tests.py brisart_ai/knowledge/tests/test_query_intent.py -q` from `Offline_AI`. The table checks both the broad classifier label and the evidence route chosen using production topic extraction. Three temporary-index cases verify that the intended route affects public ranking rather than just setting a label.
 
 The adversarial cases in the same intent test module cover competing cues, explicit negation, agenda-only co-mentions and negated expiry dates. Temporary SQLite tests exercise the normal conversation path and verify that ranking and answer selection reuse one classification.
+
+## What the 1.6.0 results establish
+
+The 1.6.0 judged-query benchmark measures the rank of a known relevant file on a small fixed corpus. Its three insertion orders test whether the same questions return the same first-ranked target despite different import order. The latency figures measure the search call after indexing and should not be extrapolated to large corpora or the complete desktop workflow.
+
+The focused automated suite checks many more behaviors than first-place retrieval, including evidence selection, citations, dependency direction, conflicting claims, and input boundaries. The reported run used local substitutes for unavailable first-party helpers; it is not equivalent to installing the official Native API stack in a Windows environment.
+
+## Interpreting historical evidence
+
+Earlier development entries below document defects, their reproductions, and the tests introduced to prevent recurrence. A failed baseline is useful evidence of why a change was made, but it is not the result of the current release. The newest executed results are presented above the historical sections.
+
+A benchmark is comparable to another only when corpus, queries, relevance judgments, source scope, hardware, environment, and measurement method are sufficiently aligned. The 1.4.0 historical comparison and the 1.6.0 small judged-query benchmark have different workloads and must remain separate.
+
+## Remaining integration checks
+
+Before public distribution, run the full project test runner with the official Native API installation available to spawned workers. On Windows, verify the Tk workspace, file browsing and drag-and-drop fallback, multicore import progress, cancellation, state persistence, and cited answer display.
+
+These checks are still outstanding unless a later entry records their execution. Documentation of an intended test is not evidence that the test passed.

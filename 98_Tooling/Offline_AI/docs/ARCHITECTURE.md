@@ -22,3 +22,21 @@ The desktop (`run.py`) and headless CLI (`cli.py`) share `core/service.py`. Both
 **Note:** Attach an excerpt from indexed file text → validate it against the source → save a note snapshot. Removing a file entry leaves the disk source and independent saved notes intact.
 
 Review file-specific details in the six-section source headers. Keep Linux benchmark tooling and its comparator dependencies under `scripts/`, outside the application entry points.
+
+## Dependency direction
+
+The entry points bootstrap the environment and delegate to core services. The core coordinates operations but does not own extraction or relevance scoring. IO produces text for ingestion; knowledge persists that text and supplies ranked, cited evidence. UI components consume service results and return user actions to the service.
+
+The retrieval pipeline deliberately has one owner for each decision. Intent rules identify supported query forms; the ranker constructs the query plan and retrieves candidates; the relevance engine assesses whether passages support the requested claim; and the synthesizer renders the selected evidence. Duplicating these decisions in the UI or conversation layer would allow the same question to receive inconsistent interpretations.
+
+## Concurrency and persistence
+
+Bulk file preparation can use spawned processes, but SQLite writes are performed by the caller. The desktop polls progress on the Tk thread rather than allowing workers to update widgets. Cooperative cancellation prevents new work from being indexed while already dispatched preparation and selected writes finish safely.
+
+The application stores index records, research notes, conversation memory and settings under their respective owners. The default Windows state path is separate from the program directory. Native API discovery is an environment concern, not an alternate retrieval implementation.
+
+## Evidence lifecycle
+
+A question is scoped to enabled source types before candidate retrieval. The engine can identify direct evidence, limited evidence, inferred dependency chains, and conflicts. A chain is not reported as complete unless every required link can be cited within the available budget. Date and version qualifiers apply to the cited claims rather than being inferred from import order.
+
+This architecture does not include an independently maintained knowledge graph, online search service, or third-party ranking engine. Bounded candidate pools and supported English patterns are practical implementation limits and must be considered when interpreting results.

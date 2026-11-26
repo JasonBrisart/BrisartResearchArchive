@@ -42,6 +42,12 @@ No new third-party runtime package, index schema migration, or reindexing is req
 - `docs/README.md` now separates the documentation inventory, application overview, launch instructions, source workflow and state handling. `docs/ARCHITECTURE.md` labels runtime ownership and data flow; `docs/SECURITY.md` separates confidentiality, retention, parser trust and reporting. `docs/TESTING.md` distinguishes the 1.6.0 benchmark from historical 1.4.0 measurements and development regression history. Detailed release and benchmark evidence was retained rather than relocated into new files.
 - The pass changed only Markdown documentation. Python compilation and ZIP integrity were checked; the earlier 1.6.0 test and benchmark results remain historical records, not tests rerun during this edit.
 
+### Expanded documentation and operational guidance
+
+- Expanded the existing folder READMEs with detailed descriptions of the actual modules, dependency direction, runtime boundaries, and practical development workflows. Each folder document remains scoped to its own directory rather than repeating unrelated project history.
+- Expanded the user guide, architecture, security, and testing documents with distinct sections on evidence interpretation, import lifecycle, concurrency, state handling, local-data protection, benchmark methodology, and outstanding integration checks. The historical changelog was retained without padding individual release entries with duplicate claims.
+- This is a documentation-only pass. It changes no executable code, persisted data, dependencies, or release version. Existing test results remain historical evidence and are not presented as newly executed checks.
+
 ### Retrieval-engine engineering history
 
 The entries below are organized by the subsystem or defect addressed during development. They preserve the reasons and test evidence for each change; the release overview above is the concise summary.

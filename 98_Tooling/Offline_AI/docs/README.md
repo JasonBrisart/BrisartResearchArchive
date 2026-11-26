@@ -49,3 +49,19 @@ When replacing an older program folder, preserve any project-local legacy databa
 - [Testing and benchmark evidence](TESTING.md)
 - [Local data and security](SECURITY.md)
 - [Release history](CHANGELOG.md)
+
+## Understanding the answers
+
+BrisartAI is an offline, extractive research assistant. It uses the indexed local library and research notes rather than generating an answer from an external model. A cited excerpt supports only what that source actually states. A direct support label is not a claim that the underlying document has been independently verified.
+
+When an answer seems incomplete, first confirm that the intended source type is enabled and that the relevant file has been imported. Then inspect the cited passages and the Activity diagnostics. Reimporting a changed document refreshes indexed evidence; editing the disk original alone does not guarantee the stored copy is current.
+
+## Import behavior in practice
+
+Bulk preparation may use multiple CPU workers, while index writes remain ordered and caller-owned. Import progress distinguishes discovered, processed, and successfully indexed files. The time estimate is approximate because document sizes and extraction costs vary.
+
+A confirmed cancellation stops further indexing after the current selected work has safely completed. The program remains open and keeps previously committed sources. Closing the program folder or deleting application state is not part of this cancellation operation.
+
+## Reading the engineering documentation
+
+The architecture document describes current ownership rather than a speculative design. Security guidance describes what offline storage does and does not protect. The testing record separates executed tests from historical baselines and unverified integration paths. The changelog preserves release-level behavior changes and file-specific reasons without requiring a reader to reconstruct them from source commits.
