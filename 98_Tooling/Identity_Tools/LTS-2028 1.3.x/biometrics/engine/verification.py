@@ -76,6 +76,14 @@ Edge cases
   feature vector."
 - verify_modality() raises VerificationError: "failed to extract {...} features
   from {...}: {...}"
+- verify_modality() raises VerificationError: "verification threshold must be a
+  number above 0 and at most 1, got {...}." before any stored template is
+  opened, so a NaN, infinite, zero, negative, boolean or oversized threshold can
+  neither accept everyone nor silently reject everyone.
+- verify_modality() raises VerificationError: "the stored {...} template for
+  {...} cannot be compared with the current {...} features ({...}); it was
+  probably created by an earlier version, so enrol {...} again." when the
+  stored template and the probe have different lengths.
 - verify_identity() raises VerificationError: "at least one probe source is
   required."
 - _check_video_liveness(): translates LivenessError into VerificationError;
@@ -114,6 +122,8 @@ master_key, probe_sources stand for values the caller supplies.
     verify_modality(record, modality, probe_path, master_key)
     verify_identity(record, probe_sources, master_key)
 """
+
+import math
 
 from biometrics.codecs import video as video_codec
 from biometrics.engine import modalities
@@ -170,6 +180,12 @@ def verify_modality(
         )
     if threshold is None:
         threshold = modalities.default_threshold(modality)
+    if (isinstance(threshold, bool) or not isinstance(threshold, (int, float))
+            or not math.isfinite(threshold) or not 0.0 < threshold <= 1.0):
+        raise VerificationError(
+            f"verification threshold must be a number above 0 and at most 1, "
+            f"got {threshold!r}."
+        )
 
     liveness_result = None
     if modality == "video":
@@ -206,7 +222,14 @@ def verify_modality(
         raise VerificationError(
             f"failed to extract {modality} features from {probe_path!r}: {exc}"
         ) from exc
-    score = modalities.compare(modality, stored_vector, probe_vector)
+    try:
+        score = modalities.compare(modality, stored_vector, probe_vector)
+    except ValueError as exc:
+        raise VerificationError(
+            f"the stored {modality} template for {record['identity_id']!r} cannot be "
+            f"compared with the current {modality} features ({exc}); it was "
+            f"probably created by an earlier version, so enrol {modality} again."
+        ) from exc
     result = {
         "modality": modality,
         "score": score,
@@ -262,7 +285,3 @@ def verify_identity(
         "results": results,
         "matched": matched,
     }
-
-
-
-

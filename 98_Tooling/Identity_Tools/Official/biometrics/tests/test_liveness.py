@@ -9,7 +9,7 @@ verification.py.
 Verifies: biometrics/codecs/video.py, biometrics/engine/enrollment.py,
 biometrics/engine/verification.py, biometrics/features/liveness.py,
 biometrics/samples/sample_generator.py.
-Contains 18 test case(s) across 4 TestCase class(es).
+Contains 22 test case(s) across 4 TestCase class(es).
 
 Design notes:
 
@@ -49,8 +49,12 @@ ComputeMotionEnergyTests:
 AssessLivenessTests:
 - Static clip fails the gate.
 - Moving clip passes the gate.
+- Uniform brightness change is not motion.
+- Sensor noise on a still scene is not motion.
+- Result reports the coherent motion evidence.
 - Custom threshold is respected.
 - Non positive threshold rejected.
+- Non finite threshold rejected.
 - Min frames constant is two.
 EnrollmentLivenessGateTests:
 - Static video enrollment is refused by default.
@@ -67,7 +71,7 @@ Known limitations
 -----------------
 - Tracked in docs/KNOWN_ISSUES.md: KI-001: Video liveness threshold is
   uncalibrated against real camera hardware
-- Passing proves only the 18 scenario(s) listed under Edge cases; behaviour
+- Passing proves only the 22 scenario(s) listed under Edge cases; behaviour
   outside them is not asserted here.
 
 Examples
@@ -78,6 +82,7 @@ Examples
     python tests/run_tests.py
 """
 
+import random
 import secrets
 import tempfile
 import unittest
@@ -98,16 +103,36 @@ WIDTH = HEIGHT = 8
 
 
 def _static_frames(count=5):
-    frame = bytes([100] * (WIDTH * HEIGHT))
+    """A still photograph: a textured scene, identical in every frame."""
+    frame = bytes((row * 9 + col * 5) % 120 + 60
+                  for row in range(HEIGHT) for col in range(WIDTH))
     return [frame] * count
 
 
 def _moving_frames(count=5):
+    """A bright 3x3 object that moves one pixel per frame across a flat scene."""
     frames = []
     for index in range(count):
-        value = (index * 40) % 256
-        frames.append(bytes([value] * (WIDTH * HEIGHT)))
+        pixels = bytearray([60] * (WIDTH * HEIGHT))
+        left = index % (WIDTH - 3)
+        for row in range(2, 5):
+            for col in range(left, left + 3):
+                pixels[row * WIDTH + col] = 240
+        frames.append(bytes(pixels))
     return frames
+
+
+def _brightness_ramp_frames(count=5):
+    """No movement at all: every pixel brightens together, as under a flickering light."""
+    return [bytes([(index * 40) % 256] * (WIDTH * HEIGHT)) for index in range(count)]
+
+
+def _noisy_still_frames(count=5):
+    """A still scene with sensor noise: pixel values jitter, nothing moves."""
+    rng = random.Random(7)
+    base = [(row * 9 + col * 5) % 120 + 60 for row in range(HEIGHT) for col in range(WIDTH)]
+    return [bytes(max(0, min(255, value + rng.randint(-3, 3))) for value in base)
+            for _ in range(count)]
 
 
 class ComputeMotionEnergyTests(unittest.TestCase):
@@ -139,6 +164,19 @@ class AssessLivenessTests(unittest.TestCase):
         result = assess_liveness(WIDTH, HEIGHT, _moving_frames())
         self.assertTrue(result["is_live"])
 
+    def test_uniform_brightness_change_is_not_motion(self):
+        result = assess_liveness(WIDTH, HEIGHT, _brightness_ramp_frames())
+        self.assertGreater(result["motion_energy"], 0.75)
+        self.assertFalse(result["is_live"])
+
+    def test_sensor_noise_on_a_still_scene_is_not_motion(self):
+        result = assess_liveness(WIDTH, HEIGHT, _noisy_still_frames())
+        self.assertFalse(result["is_live"])
+
+    def test_result_reports_the_coherent_motion_evidence(self):
+        result = assess_liveness(WIDTH, HEIGHT, _moving_frames())
+        self.assertGreater(result["coherent_motion"], result["coherent_threshold"])
+
     def test_custom_threshold_is_respected(self):
         result = assess_liveness(WIDTH, HEIGHT, _moving_frames(), threshold=1000.0)
         self.assertFalse(result["is_live"])
@@ -146,6 +184,11 @@ class AssessLivenessTests(unittest.TestCase):
     def test_non_positive_threshold_rejected(self):
         with self.assertRaises(LivenessError):
             assess_liveness(WIDTH, HEIGHT, _moving_frames(), threshold=0.0)
+
+    def test_non_finite_threshold_rejected(self):
+        for bad in (float("nan"), float("inf"), True, "1"):
+            with self.subTest(threshold=bad), self.assertRaises(LivenessError):
+                assess_liveness(WIDTH, HEIGHT, _moving_frames(), threshold=bad)
 
     def test_min_frames_constant_is_two(self):
         # Documents the documented edge case: exactly one frame short of a

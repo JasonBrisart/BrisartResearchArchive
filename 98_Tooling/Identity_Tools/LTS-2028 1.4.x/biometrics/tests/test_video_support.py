@@ -39,7 +39,7 @@ VideoCodecTests:
 - Probe rejects body over ceiling.
 VideoFeatureTests:
 - Extract from frames returns fixed length vector.
-- Single frame has zero motion component.
+- Single frame yields a finite template.
 - Different seeds produce different vectors.
 - Compare identical vectors is near one.
 - Compare rejects mismatched lengths.
@@ -145,12 +145,12 @@ class VideoFeatureTests(unittest.TestCase):
         vector = video_features.extract_from_frames(width, height, frames)
         self.assertEqual(len(vector), video_features.FEATURE_VECTOR_LENGTH)
 
-    def test_single_frame_has_zero_motion_component(self):
+    def test_single_frame_yields_a_finite_template(self):
         width, height = 12, 12
         frames = sample_generator.generate_video_frames("seed-b", width, height, 1)
         vector = video_features.extract_from_frames(width, height, frames)
-        motion_half = vector[len(vector) // 2:]
-        self.assertTrue(all(value == 0.0 for value in motion_half))
+        self.assertEqual(len(vector), video_features.FEATURE_VECTOR_LENGTH)
+        self.assertTrue(all(abs(value) <= 1.0 for value in vector))
 
     def test_different_seeds_produce_different_vectors(self):
         width, height = 16, 16

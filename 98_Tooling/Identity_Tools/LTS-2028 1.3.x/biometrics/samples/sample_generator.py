@@ -165,8 +165,9 @@ def generate_voice_sample(
     Returns ``{"sample_rate", "samples"}`` ready for
     ``biometrics.codecs.wave_tools.write_wave``. The waveform is a sum of a
     few harmonics whose base frequency and amplitude envelope are derived
-    from the seed, giving each seed a distinct energy and spectral profile
-    for ``voice_features.py`` to measure.
+    from the seed, giving each seed a distinct pitch and spectral profile
+    for ``voice_features.py`` to measure. The tone fades in over the first
+    50 ms and is then held at full level for the whole duration.
     """
     if sample_rate <= 0:
         raise SampleGeneratorError("sample_rate must be positive.")
@@ -178,7 +179,7 @@ def generate_voice_sample(
     samples = []
     for index in range(sample_count):
         time = index / sample_rate
-        envelope = 0.5 * (1.0 - math.cos(2 * math.pi * min(time / 0.05, 1.0)))
+        envelope = 0.5 * (1.0 - math.cos(math.pi * min(time / 0.05, 1.0)))
         value = (
             math.sin(2 * math.pi * base_frequency * time)
             + 0.5 * math.sin(2 * math.pi * base_frequency * 2 * time)
@@ -247,7 +248,3 @@ def write_fingerprint_sample(path, seed: str, size: int = DEFAULT_IMAGE_SIZE) ->
     encoded = generate_fingerprint_image(seed, size)
     with open(path, "wb") as handle:
         handle.write(encoded)
-
-
-
-

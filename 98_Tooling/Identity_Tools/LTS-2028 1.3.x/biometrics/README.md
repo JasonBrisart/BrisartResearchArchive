@@ -11,9 +11,9 @@ trained biometric model or a cloud recognition service.
 
 | Modality | Input | Feature representation |
 | --- | --- | --- |
-| Voice | Supported PCM WAV files | Averaged frame-level energy, zero-crossing, and DCT-based summary features |
-| Fingerprint | Supported PGM or PNG images | Grid-based orientation and gradient-magnitude features |
-| Video | BRVID grayscale frame sequences | Spatial block means and frame-difference motion summaries |
+| Voice | Supported PCM WAV files | Mean mel-cepstral coefficients (noise-compensated, gain-independent) and median pitch |
+| Fingerprint | Supported PGM or PNG images | Coherence-weighted ridge-orientation field on a 16 x 16 grid |
+| Video | BRVID grayscale frame sequences | Illumination-normalised appearance image (24 x 24), temporal median over frames |
 
 Supported input formats are narrower than all possible WAV, PNG, or video
 encodings. The codec modules define the accepted variants.
@@ -24,52 +24,88 @@ recording durations, devices, or capture conditions.
 
 ## Matching
 
-Each modality uses `distance_similarity()` from
-`biometrics/features/similarity.py`, a normalized Euclidean-distance score.
+Each modality owns its comparison in its feature module, because the three
+templates have different shapes:
+
+- Voice: Euclidean distance between the cepstral and pitch vectors, mapped
+  through `exp(-distance / scale)`.
+- Fingerprint: the probe's ridge-flow field is rotated (a full circle) and
+  shifted to best align with the enrolled field, and the coherence-weighted
+  agreement of ridge directions is returned.
+- Video: the two appearance images are slid over each other by a few cells and
+  the smallest root-mean-square difference is mapped through
+  `exp(-distance / scale)`.
 
 Scores are similarity measurements, not identity probabilities or confidence
 levels calibrated against a real-world population.
 
 Default acceptance thresholds come from
-`biometrics/engine/modalities.py`. The extractors and modality registry are
-authoritative for current vector dimensions and thresholds.
+`biometrics/engine/modalities.py`. Each module's score mapping was calibrated
+so that the default threshold sits near a 1% impostor-acceptance point on
+synthetic development data; that calibration must be repeated on the real
+capture device before the thresholds are relied upon. The extractors and
+modality registry are authoritative for current vector dimensions and
+thresholds.
 
-Historical before-and-after scores in the changelog refer to particular
-fixtures and releases. They are not general accuracy guarantees.
+Malformed, non-finite, or evidence-free templates score 0.0. Verification
+rejects thresholds outside (0, 1].
 
-## Fingerprint geometry
+Templates enrolled with an earlier extractor have a different length.
+Verification reports that the stored template cannot be compared and asks for
+that modality to be enrolled again.
+
+## Fingerprint template
 
 Fingerprint extraction resizes input to the dimensions defined in
 `biometrics/features/fingerprint_features.py`:
 
 - `TARGET_WIDTH = 128`
 - `TARGET_HEIGHT = 128`
-- `GRID_SIZE = 8`
-- Three values per grid cell.
-- Feature-vector length: 192.
+- `GRID_SIZE = 16` (8 x 8 pixel blocks).
+- Two values per grid cell: `(cos 2t, sin 2t)` of the ridge orientation `t`,
+  scaled by how coherent the ridges are there.
+- Feature-vector length: 512.
+
+The template stores ridge flow only; it does not detect minutiae, so it
+separates fingers by their overall pattern and is weaker for fingers of the
+same pattern class with similar layouts.
 
 `biometrics/config/settings.py` also defines `TEMPLATE_WIDTH`,
 `TEMPLATE_HEIGHT`, `GRID_SIZE`, and `DEFAULT_THRESHOLD` (64x64, 8, 0.94).
 Nothing reads them, so changing them has no effect on extraction or matching.
 
+## Voice template
+
+Voice extraction pre-emphasises the recording, cuts it into 32 ms windowed
+frames, applies an FFT, subtracts stationary noise measured in the recording's
+pauses, pools the spectrum into 24 mel bands, and keeps cepstral coefficients 1
+to 12 averaged over the speech frames plus the median pitch. Feature-vector
+length: 13. `biometrics/codecs/dsp.py` provides the signal processing.
+
 ## Video features and motion checks
 
-Video extraction uses a 6-by-6 grid:
+Video extraction reduces each sampled frame to 48 x 48, applies gamma
+compression, a difference-of-Gaussians band-pass and contrast equalisation so
+that lighting and exposure changes largely cancel, pools the result to 24 x 24,
+and takes the per-pixel median over the sampled frames:
 
-- 36 spatial-summary values.
-- 36 motion-summary values.
-- Total feature-vector length: 72.
+- 576 appearance values; motion is not part of the template.
+- Feature-vector length: 576.
 
 `MAX_FRAMES_SAMPLED` controls frame subsampling separately from vector length.
-The supplied extractor samples at most 60 frames for feature extraction.
+The supplied extractor samples at most 12 frames for feature extraction.
 
 Enrollment and verification also use a video motion-presence gate unless
 `--allow-static` is supplied.
 
-This gate measures frame-to-frame pixel changes. It is not proof that the
-capture depicts a live person and is not general anti-spoofing. Replayed video,
-moving photographs, synthetic motion, and other moving inputs are outside
-what this check can reliably distinguish.
+This gate measures frame-to-frame pixel changes and requires localised change
+that stands above the clip's sensor noise after overall brightness changes are
+removed, so a still photograph with sensor noise or a flickering light does not
+count as motion. It is not proof that the capture depicts a live person and is
+not general anti-spoofing. Replayed video, moving photographs, synthetic
+motion, and other moving inputs are outside what this check can reliably
+distinguish. A subject who is completely still for the whole clip, without
+blinking or speaking, may be refused.
 
 The default motion threshold has not been calibrated against representative
 real-camera data. Voice and fingerprint matching do not provide equivalent
@@ -84,149 +120,3 @@ The `record-video` CLI command generates a synthetic BRVID sequence. It does
 not capture a camera or assemble positional image filenames.
 
 Correct usage:
-
-```bash
-python cli.py biometrics record-video clip.brvid --seed my-seed --frames 12 --frame-rate 12
-python cli.py biometrics probe-video clip.brvid
-```
-
-Different seeds can change generated parameters, but distinct seeds do not
-guarantee distinct feature vectors or visible motion. Some generated video
-parameters can produce zero drift.
-
-## CLI usage
-
-Run these commands from the selected application root, containing `cli.py`.
-
-```bash
-python cli.py biometrics --help
-
-# Generate deterministic synthetic samples.
-python cli.py biometrics make-samples my-seed --output-dir data/samples
-
-# Enroll using generated voice and fingerprint samples.
-python cli.py biometrics enroll alice --label "Alice" \
-  --voice data/samples/my-seed_voice.wav \
-  --fingerprint data/samples/my-seed_fingerprint.pgm
-
-# Verify one modality.
-python cli.py biometrics verify alice --voice data/samples/my-seed_voice.wav
-
-# Require all supplied modalities to match.
-python cli.py biometrics verify alice \
-  --voice data/samples/my-seed_voice.wav \
-  --fingerprint data/samples/my-seed_fingerprint.pgm
-
-# Accept any one supplied modality.
-python cli.py biometrics verify alice \
-  --voice data/samples/my-seed_voice.wav \
-  --fingerprint data/samples/my-seed_fingerprint.pgm \
-  --any-match
-
-# Inspect public metadata.
-python cli.py biometrics inspect alice
-python cli.py biometrics list
-
-# Delete an identity.
-python cli.py biometrics delete alice
-```
-
-For video enrollment:
-
-```bash
-python cli.py biometrics enroll video-demo --label "Video Demo" --video clip.brvid
-python cli.py biometrics verify video-demo --video clip.brvid
-```
-
-A static synthetic clip can be rejected by the motion gate. `--allow-static`
-explicitly bypasses that gate; it does not make the input a live capture.
-
-```bash
-python cli.py biometrics enroll static-demo --label "Static Demo" \
-  --video clip.brvid --allow-static
-
-python cli.py biometrics verify static-demo --video clip.brvid --allow-static
-```
-
-Re-enrollment of an existing identity is refused. There is no overwrite flag.
-Deleting an identity before replacement also removes its stored identity state;
-it is not an in-place template update.
-
-## Storage and keyring
-
-Identity records keep some metadata readable without unlocking: the identity
-identifier, label, enrolled modalities, and each attachment's filename, size,
-and SHA-256. A SHA-256 can reveal that an attachment matches a file someone
-already has.
-
-Template payloads are sealed under a local master key. A keyring wraps that
-master key under a passphrase-derived key and an offline recovery-code-derived
-key.
-
-Operations that need the master key load or create the keyring and prompt for
-the required secret material. Creating a new keyring displays its recovery
-code once.
-
-The CLI and GUI use the shared passphrase-unlock path in
-`biometrics/identity/keyring_access.py`, including persisted attempt limiting.
-
-Attempt state is stored in the keyring JSON. It is not protection against an
-attacker who can copy or edit that file and perform offline guesses.
-
-POSIX file-mode hardening is best effort. Windows access control requires
-appropriate filesystem permissions outside these POSIX mode checks.
-
-Device binding records a keyed value derived from machine information. It is
-a weak additional check, not hardware-backed identity or an independent
-security boundary.
-
-## Reports
-
-`biometrics/reports/report_writer.py` writes separate JSON files for enrollment
-and verification events.
-
-Verification reports retain:
-
-- Identity identifier and event metadata.
-- Overall match outcome.
-- Per-modality name, similarity score, threshold, and match outcome.
-
-They do not retain feature vectors or sealed template bytes.
-
-They also do not retain the complete video motion/liveness result, including
-its motion energy and gate details. A stored report therefore cannot fully
-reconstruct why a video gate passed or failed.
-
-New-file-per-event writing is append-style behavior, not an enforced
-append-only or authenticated audit store. A party with filesystem write access
-can alter or remove reports.
-
-## Attachments
-
-Arbitrary file bytes can be attached to an identity. Bulk attachments use
-chunks and a manifest.
-
-See [file and bundle encryption](../docs/FILE_AND_BUNDLE_ENCRYPTION.md) for
-memory, temporary-file, throughput, and restore limitations.
-
-## Module map
-
-- `app.py`: CLI parsing and command orchestration.
-- `codecs/`: supported image, audio, and BRVID decoding.
-- `features/`: extraction, similarity, and video motion checks.
-- `engine/`: enrollment, verification, modality dispatch, and attachments.
-- `identity/`: record validation, storage, device binding, and keyring access.
-- `reports/`: report construction and persistence.
-- `samples/`: deterministic synthetic samples.
-- `tests/`: regression tests for the supplied application components.
-
-## Security status
-
-This is a research implementation, not production biometric authentication.
-
-BSR2 is unreviewed research cryptography. Matching thresholds and motion
-checks are not substitutes for independently validated authentication controls.
-
-See [What these tools do not protect against](../docs/BSR2_INTEGRATION.md#what-these-tools-do-not-protect-against),
-the rest of [BSR2 integration and threat model](../docs/BSR2_INTEGRATION.md),
-and [known issues](../docs/KNOWN_ISSUES.md).

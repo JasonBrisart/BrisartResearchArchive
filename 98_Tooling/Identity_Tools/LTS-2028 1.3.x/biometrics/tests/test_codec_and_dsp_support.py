@@ -8,7 +8,7 @@ Round-trip and correctness tests for biometrics.codecs.*
 Verifies: biometrics/codecs/dsp.py, biometrics/codecs/image_tools.py,
 biometrics/codecs/pgm.py, biometrics/codecs/png.py,
 biometrics/codecs/wave_tools.py.
-Contains 28 test case(s) across 5 TestCase class(es).
+Contains 26 test case(s) across 5 TestCase class(es).
 
 Communication / relationships
 -----------------------------
@@ -52,13 +52,11 @@ ImageToolsTests:
 - Rejects oversized target dimensions.
 - Valid target dimensions still accepted.
 DspTests:
-- Frame signal pads final frame.
-- Zero crossing rate all positive is zero.
-- Zero crossing rate alternating is high.
+- Hamming window tapers the edges.
 - Short time energy of silence is zero.
-- Band energies count matches request.
-- Normalize vector scales to unit peak.
-- Normalize vector handles silence.
+- Short time energy is mean square.
+- DCT of a constant has only a zeroth coefficient.
+- DCT rejects a non-positive output length.
 WaveToolsTests:
 - Rejects absurd sample rate.
 - Normal sample rate round trips.
@@ -223,32 +221,26 @@ class ImageToolsTests(unittest.TestCase):
 
 
 class DspTests(unittest.TestCase):
-    def test_frame_signal_pads_final_frame(self):
-        samples = list(range(10))
-        frames = dsp.frame_signal(samples, frame_size=4, hop_size=4)
-        self.assertEqual(len(frames[-1]), 4)
-
-    def test_zero_crossing_rate_all_positive_is_zero(self):
-        frame = [1, 2, 3, 4, 5]
-        self.assertEqual(dsp.zero_crossing_rate(frame), 0.0)
-
-    def test_zero_crossing_rate_alternating_is_high(self):
-        frame = [1, -1, 1, -1, 1]
-        self.assertGreater(dsp.zero_crossing_rate(frame), 0.5)
+    def test_hamming_window_tapers_the_edges(self):
+        windowed = dsp.apply_hamming_window([1.0] * 9)
+        self.assertAlmostEqual(windowed[0], 0.08, places=6)
+        self.assertAlmostEqual(windowed[4], 1.0, places=6)
+        self.assertEqual(dsp.apply_hamming_window([5.0]), [5.0])
 
     def test_short_time_energy_of_silence_is_zero(self):
         self.assertEqual(dsp.short_time_energy([0, 0, 0]), 0.0)
 
-    def test_band_energies_count_matches_request(self):
-        energies = dsp.band_energies(list(range(20)), 5)
-        self.assertEqual(len(energies), 5)
+    def test_short_time_energy_is_mean_square(self):
+        self.assertEqual(dsp.short_time_energy([3, -4]), 12.5)
 
-    def test_normalize_vector_scales_to_unit_peak(self):
-        normalized = dsp.normalize_vector([2, -4, 1])
-        self.assertEqual(max(abs(value) for value in normalized), 1.0)
+    def test_dct_of_a_constant_has_only_a_zeroth_coefficient(self):
+        coefficients = dsp.discrete_cosine_transform([2.0] * 8, 4)
+        self.assertAlmostEqual(coefficients[0], 16.0, places=9)
+        self.assertTrue(all(abs(value) < 1e-9 for value in coefficients[1:]))
 
-    def test_normalize_vector_handles_silence(self):
-        self.assertEqual(dsp.normalize_vector([0, 0, 0]), [0, 0, 0])
+    def test_dct_rejects_a_non_positive_output_length(self):
+        with self.assertRaises(dsp.DspError):
+            dsp.discrete_cosine_transform([1.0], 0)
 
 
 class WaveToolsTests(unittest.TestCase):
@@ -284,7 +276,3 @@ class WaveToolsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-

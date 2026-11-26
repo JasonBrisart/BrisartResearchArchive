@@ -29,6 +29,7 @@ shows only what is still outstanding.
 | [KI-010](#ki-010-vendored-randomness-lacks-bsr2-alpha-4-hardening) | Vendored randomness lacks BSR2 Alpha 4 hardening | Low | Won't fix in 1.3.x; fixed in 1.4.x |
 | [KI-011](#ki-011-deleting-or-replacing-a-vault-bulk-bundle-leaves-its-old-chunk-records-behind) | Deleting or replacing a Vault bulk bundle leaves its old chunk records behind | Medium | Open |
 | [KI-012](#ki-012-replacing-a-biometrics-bulk-attachment-with-a-smaller-one-leaves-stale-chunks-behind) | Replacing a Biometrics bulk attachment with a smaller one leaves stale chunks behind | Medium | Open |
+| [KI-013](#ki-013-biometric-match-thresholds-are-calibrated-on-synthetic-data-only) | Biometric match thresholds are calibrated on synthetic data only | Medium | Open: needs real-device captures |
 
 Resolved issues are listed at the end of this file.
 
@@ -59,9 +60,13 @@ are reported privately instead; see [SECURITY.md](SECURITY.md).
   (genuine live captures with low sensor noise) or false acceptances (a wobbled
   photo) on real hardware.
 - **Tried / Ruled out:** The gate itself (motion-presence detection via
-  mean absolute frame-to-frame pixel difference) is unit-tested and correct
-  against hand-built static and moving frame sequences — see
+  mean absolute frame-to-frame pixel difference, plus a coherent-motion check
+  that ignores sensor noise and uniform brightness changes) is unit-tested and
+  correct against hand-built static, noisy-still, flickering, and moving frame
+  sequences — see
   `biometrics/tests/test_liveness.py`. The gap is calibration data, not logic.
+  `COHERENT_MOTION_THRESHOLD` (0.005) is equally uncalibrated against real
+  cameras.
 - **Next step:** Collect real-camera liveness samples (live captures vs.
   static photo replays) across a few devices, measure `motion_energy` on
   each, and re-tune `DEFAULT_LIVENESS_THRESHOLD` (or make it configurable
@@ -336,110 +341,49 @@ are reported privately instead; see [SECURITY.md](SECURITY.md).
 
 ---
 
-## Template
+## KI-013: Biometric match thresholds are calibrated on synthetic data only
 
-Use this template for new entries:
-
-```markdown
-## KI-XXX: <short title>
-
-- **Reported date:** YYYY-MM-DD
-- **Severity:** Critical / High / Medium / Low
-- **Environment:** <output of `python tools/envinfo.py`, plus the affected
-  line, tool, and modality>
-- **Component:** <file(s) or module(s)>
+- **Reported date:** 2026-11-26
+- **Severity:** Medium
+- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official; all platforms.
+  The `voice`, `fingerprint`, and `video` biometric modalities.
+- **Component:** `biometrics/features/voice_features.py`,
+  `biometrics/features/fingerprint_features.py`,
+  `biometrics/features/video_features.py`, `biometrics/engine/modalities.py`
 - **Steps to Reproduce:**
-  1. ...
-- **Expected behavior:** ...
-- **Actual behavior:** ...
-- **Tried / Ruled out:** ...
-- **Next step:** ...
-```
+  1. Enroll a person with real device captures: a microphone recording, a
+     fingerprint scanner image, and a camera clip.
+  2. Verify the same person on a different day, then verify other people against
+     that enrollment, and record the scores `verify_modality()` returns.
+  3. Compare the rates at which the right person is rejected and the wrong
+     person is accepted with the intended operating point.
+- **Expected behavior:** The default thresholds (voice 0.85, fingerprint 0.80,
+  video 0.75) give a low false-acceptance rate and an acceptable
+  false-rejection rate on the capture devices actually in use.
+- **Actual behavior:** Unknown. The score mappings (`DISTANCE_SCALE` in the
+  voice and video modules, `SCORE_POWER` in the fingerprint module) were set so
+  that each default threshold sits at about a 1% impostor-acceptance rate on
+  synthetic development data: generated voices, ridge patterns, and drawn
+  faces. Those constants were checked on a separate set of synthetic subjects
+  during development, which is not part of the release. The figures do not
+  transfer to real people or devices. Known weaknesses of the current design:
+  the voice template is a single averaged vector, so different spoken content,
+  very short recordings, and a different microphone move it; the fingerprint
+  template stores ridge flow only and has no minutiae, so it separates fingers
+  by overall pattern; the video template is an appearance image, not a face
+  model, and needs consistent framing.
+- **Tried / Ruled out:** The extractors and matchers are covered by
+  deterministic tests (`test_voice_features.py`, `test_fingerprint_features.py`,
+  `test_video_features.py`). They show the code behaves as designed on
+  generated inputs. They say nothing about real-world error rates.
+- **Next step:** Collect real captures from the capture devices in use, from
+  several people over several sessions. Re-derive `DISTANCE_SCALE` and
+  `SCORE_POWER` from them, then set the thresholds in
+  `biometrics/engine/modalities.py`. Until then treat biometric verification as
+  a convenience check, not as strong authentication.
 
 ---
 
-## Resolved
+## Template
 
-Closed issues are kept here (rather than deleted) so there is a durable
-record of what used to be broken and how/when it was fixed. Each entry keeps
-its original fields, with **Next step** replaced by **Resolved date** and
-**Resolution** once the fix has actually landed.
-
-### KI-002: GUI had no automated test coverage — RESOLVED
-
-- **Reported date:** 2026-09-04
-- **Severity:** Low
-- **Environment:** All platforms; affects `gui/` only (CLI and application
-  layers are unaffected and already covered by `biometrics/tests/`,
-  `vault/tests/`, `packages/tests/`, `crypto/tests/`, `common/tests/`).
-- **Component:** `gui/core/`, `gui/widgets/`, `gui/tabs/`
-- **Steps to Reproduce:** Run `python tests/run_tests.py` before this issue
-  was addressed; no test files existed under any `gui/` subdirectory.
-- **Expected behavior:** Every application layer that other tools' tests
-  hold to a professional bar should have at least baseline regression
-  coverage, consistent with the rest of the repository's test discipline.
-- **Actual behavior:** `gui/` was the one subsystem with zero test files,
-  meaning a regression in the repo-root bootstrap logic, the background
-  worker/queue mechanism, the path-selection panel's dedup logic, or any of
-  the three tab modules' own selection/list/refresh logic could ship
-  silently.
-- **Tried / Ruled out:** N/A — this was a coverage gap, not a defect.
-- **Resolved date:** 2026-09-07
-- **Resolution:** Full baseline coverage added under `gui/tests/`, in two
-  passes:
-  1. `test_constants.py`, `test_busy.py`, `test_path_panel.py` — covering
-     the repo-root bootstrap walk, the background-thread/queue contract in
-     `run_in_background`, and `PathSelectionPanel`'s path add/dedup/
-     remove/clear logic.
-  2. `test_tab_vault.py`, `test_tab_biometrics.py`, `test_tab_packages.py`
-     — covering the three `gui/tabs/*.py` modules directly: record/
-     identity/recipient selection helpers, the Records-vs-Files kind
-     filtering in `VaultTab`, the manifest/chunk display-name logic in
-     `BiometricsTab`'s attachment list, and `PackagesTab`'s master-key
-     derivation and recipient-list refresh.
-
-  All six files use a `_HAS_DISPLAY` skip guard: they run for real on a
-  machine with a working Tk display and skip cleanly on a headless CI
-  runner with no display. Coverage is intentionally scoped to
-  state-inspection and list-refresh logic; methods that pop a real modal
-  dialog or run a background KDF-touching operation (`_ensure_keyring`,
-  `_enroll`, `_verify`, `_create_package`, `_run_demo`, and similar) are not
-  exercised, since no user is present in an automated run to dismiss a
-  blocking dialog. Full click-through workflow simulation remains a
-  possible future addition but is not required for this issue to be
-  considered resolved.
-
-### KI-006: Biometrics bulk CLI and direct bulk APIs do not validate chunk size — RESOLVED
-
-- **Reported date:** 2026-11-08
-- **Severity:** Medium (correctness)
-- **Environment:** LTS-2028 1.3.x, LTS-2028 1.4.x, and Official; all
-  platforms. Direct API callers, and `biometrics attach-paths --chunk-mb`,
-  which passed its value through unchecked. `vault encrypt-paths` accepts
-  only 1 to 15.
-- **Component:** `vault/store/bulk_file_service.py`,
-  `biometrics/engine/bulk_attachments.py`, `biometrics/app.py`
-- **Steps to Reproduce:**
-  1. Construct `BulkFileService` with `chunk_bytes=0`, or call
-     `attach_large_bytes()` with `chunk_bytes=0`, or run
-     `python cli.py biometrics attach-paths <id> <name> <path> --chunk-mb 0`.
-  2. Store nonempty bytes.
-  3. Repeat with a negative size.
-- **Expected behavior:** An invalid chunk size is rejected with a clear error
-  before anything is processed.
-- **Actual behavior:** Zero raised a bare `ValueError` from `range()`. A
-  negative size stored a bundle with a manifest and no data chunks and
-  reported success; restoring it then failed the size check, so the content
-  was not recoverable. A non-integer raised a bare `TypeError`, and `True`
-  was accepted as one-byte chunks.
-- **Tried / Ruled out:** Reproduced through the chunk iterator, the vault
-  service, and the biometrics attachment functions, and confirmed that the
-  restore of a negative-size bundle fails.
-- **Resolved date:** 2026-11-23
-- **Resolution:** Fixed in this line first, in LTS-2028 1.3.13, as `LTS-2028-COR-10`, and forward-ported to LTS-2028 1.4.3 and Official 1.10.3 in the same pass. `BulkFileService`, `attach_large_bytes()`, and
-  `attach_paths()` now reject a `chunk_bytes` that is not a positive integer
-  with `BulkFileServiceError` or `BulkAttachmentError`, before anything is
-  stored; a `chunk_bytes` changed after construction is rechecked when it is
-  used. `biometrics attach-paths` now accepts `--chunk-mb` from 1 to 15,
-  like `vault encrypt-paths`, and checks it before the passphrase prompt.
-  The upper bound is not checked in the API; a `chunk_bytes` above the envelope's 16 MiB payload limit still fails with an envelope error when a chunk that large is sealed.
+Use this template for new entries:
