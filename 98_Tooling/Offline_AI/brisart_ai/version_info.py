@@ -70,3 +70,4 @@ def _read_version() -> str:
 __version__ = _read_version()
 
 __all__ = ["APP_NAME", "__version__"]
+

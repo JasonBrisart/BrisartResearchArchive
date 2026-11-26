@@ -96,3 +96,4 @@ def verify_checkpoint(store, checkpoint_path, trusted_keys):
     if count and store.entry_hash_at(count - 1) != head_hash:
         return {**result, "reason": "log_rewritten"}
     return {**result, "valid": True, "reason": "ok"}
+

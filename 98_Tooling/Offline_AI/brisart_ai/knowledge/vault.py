@@ -502,3 +502,4 @@ __all__ = [
     "list_notes", "reindex_missing_notes", "rebuild_entities", "search_notes",
     "search_notes_as_documents", "timeline", "vault_report",
 ]
+

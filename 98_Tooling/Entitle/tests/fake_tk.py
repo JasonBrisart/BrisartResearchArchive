@@ -223,3 +223,4 @@ def modules():
 
 def buttons(text):
     return [w for w in REGISTRY if w.kind == "Button" and w.options.get("text") == text]
+

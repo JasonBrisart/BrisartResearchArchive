@@ -131,3 +131,4 @@ def run_entitle(*args, cwd=None, env=None, root=None):
         [sys.executable, str((root or ENTITLE_ROOT) / "run.py"), *args],
         capture_output=True, text=True, timeout=120, cwd=cwd, env=environment,
     )
+

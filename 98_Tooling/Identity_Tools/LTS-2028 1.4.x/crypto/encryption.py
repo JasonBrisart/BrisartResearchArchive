@@ -4,7 +4,7 @@ File: crypto/encryption.py
 Purpose
 -------
 The one link between BrisartIdentityTools and BSR2
-(``97_Encryption/Official`` in the Brisart Research Archive). Identity Tools
+(``97_Encryption/v4`` in the Brisart Research Archive). Identity Tools
 ships no cryptography of its own: every seal, open, key derivation, MAC, random
 byte, key file, and archive comes from the linked BSR2 library,
 located here and nowhere else. When that library is absent or incompatible the
@@ -13,13 +13,13 @@ operation that needs encryption instead of falling back to anything weaker.
 
 Public interface:
 - ENCRYPTION_DIR -- Where BSR2 is expected:
-  ``<archive root>/97_Encryption/Official``.
+  ``<archive root>/97_Encryption/v4``.
 - REQUIRED_MODULES -- Every BSR2 library module; all are linked.
 - REQUIRED_FORMATS -- The formats Identity Tools writes or must still read.
 - class EncryptionLink -- Result of resolving the link: ``available``,
   ``location``, ``release``, ``problem``, and ``describe()``, a one-line
-  summary: "Encryption: <release name> (<release>), from 97_Encryption/Official",
-  for example "Encryption: BSR2 Alpha 4 (0.4.0-alpha), from 97_Encryption/Official"
+  summary: "Encryption: <release name> (<release>), from 97_Encryption/v4",
+  for example "Encryption: BSR2 Alpha 4 (0.4.0-alpha), from 97_Encryption/v4"
   or "Encryption not found: <reason>". Paths are always shown relative to the
   archive folder, never as this machine's absolute location.
 - status() -> EncryptionLink -- Resolve the link once per process and report
@@ -76,7 +76,7 @@ Communication / relationships
 -----------------------------
 Depends on (project modules):
 - crypto.errors (crypto/errors.py)
-Links to (BSR2, 97_Encryption/Official): every module in
+Links to (BSR2, 97_Encryption/v4): every module in
 REQUIRED_MODULES.
 Standard library: dataclasses, functools, importlib, os, pathlib, sys, types.
 Imported by:
@@ -92,7 +92,7 @@ Settings / parameters
 - ARCHIVE_ROOT = Path(__file__).resolve().parents[4] -- the archive folder
   that holds 98_Tooling/Identity_Tools, wherever it is (a desktop folder, a
   drive, OneDrive).
-- ENCRYPTION_DIR = ARCHIVE_ROOT / "97_Encryption" / "Official". The only
+- ENCRYPTION_DIR = ARCHIVE_ROOT / "97_Encryption" / "v4". The only
   requirement is that 98_Tooling (holding Identity_Tools) and 97_Encryption
   are together in the same archive folder; there is no override and no
   absolute path.
@@ -157,7 +157,7 @@ from crypto.errors import EncryptionNotFoundError
 # The archive folder: crypto/ -> <line>/ -> Identity_Tools/ -> 98_Tooling/
 # -> here. 97_Encryption must sit in this same folder, wherever it is.
 ARCHIVE_ROOT = Path(__file__).resolve().parents[4]
-ENCRYPTION_DIR = ARCHIVE_ROOT / "97_Encryption" / "Official"
+ENCRYPTION_DIR = ARCHIVE_ROOT / "97_Encryption" / "v4"
 _KEEP_TOGETHER = (
     "Keep the 98_Tooling and 97_Encryption folders together in the same "
     "archive folder."
@@ -305,3 +305,4 @@ __all__ = [
     "require",
     "status",
 ]
+

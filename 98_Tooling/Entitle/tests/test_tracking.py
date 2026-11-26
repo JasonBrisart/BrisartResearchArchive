@@ -300,3 +300,4 @@ class TestDeployFromSignedFile:
         outcome = deploy_from_file(issuer=ISSUER, subject=SUBJECT, product=PRODUCT, public_keys=[public],
                                    entitlement_path=path, host="node-1", store=RecordStore(store_path))
         assert outcome["recorded"] is True and outcome["record"]["data"]["signed_by"] == public.key_id
+

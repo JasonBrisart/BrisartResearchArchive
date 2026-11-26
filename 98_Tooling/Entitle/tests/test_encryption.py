@@ -3,8 +3,8 @@ File: tests/test_encryption.py
 
 Purpose
 -------
-Verify entitle/encryption.py, Entitle's link to BSR2 in 97_Encryption/Official: that it resolves
-  to the archive's own 97_Encryption/Official and nowhere else, that every linked module comes
+Verify entitle/encryption.py, Entitle's link to BSR2 in 97_Encryption/v4: that it resolves
+  to the archive's own 97_Encryption/v4 and nowhere else, that every linked module comes
   from that folder, that Entitle keeps no copy of any brisart_security_* module, that the Ed25519
   module links on its own (a 97_Encryption without it still serves shared-key files), must
   reproduce the RFC 8032 test vector before it is trusted, and must take its randomness from
@@ -42,7 +42,7 @@ Covers a missing folder, a folder missing a module file, a copy of the library o
 
 Known limitations
 -----------------
-Does not test BSR2 itself; its tests live in 97_Encryption/Official/tests. Linking a different
+Does not test BSR2 itself; its tests live in 97_Encryption/v4/tests. Linking a different
   BSR2 release is covered only through the format checks, not by running another release. The
   process test takes a few seconds. An Entitle folder directly under a drive root is tested
   through the root calculation, not by installing there.
@@ -67,17 +67,17 @@ from support import ENTITLE_ROOT, ISSUER, LEGACY_ENTITLEMENT, MASTER_KEY, PRODUC
 
 
 class TestTheLinkToTheArchive:
-    def test_the_link_resolves_to_97_encryption_official_beside_98_tooling(self):
+    def test_the_link_resolves_to_97_encryption_v4_beside_98_tooling(self):
         link = encryption.status()
         assert link.available, link.problem
-        assert link.location.parts[-2:] == ("97_Encryption", "Official")
+        assert link.location.parts[-2:] == ("97_Encryption", "v4")
         assert encryption.ENCRYPTION_DIR.parent.parent == ENTITLE_ROOT.parent.parent
         assert ENTITLE_ROOT.parent.name == "98_Tooling"
 
     def test_the_status_line_names_the_archive_folder_not_this_machine(self):
         text = encryption.status().describe()
         assert text.startswith("Encryption: BSR2 Alpha")
-        assert text.endswith(", from 97_Encryption/Official")
+        assert text.endswith(", from 97_Encryption/v4")
         assert str(ENTITLE_ROOT.parent.parent) not in text
 
     def test_every_module_entitle_imports_comes_from_the_linked_folder(self):
@@ -120,10 +120,10 @@ class TestWhereTheArchiveIs:
 
     def test_a_drive_root_archive_reports_not_found_with_the_fix(self, monkeypatch):
         monkeypatch.setattr(encryption, "ARCHIVE_ROOT", Path("/"))
-        monkeypatch.setattr(encryption, "ENCRYPTION_DIR", Path("/97_Encryption_that_does_not_exist/Official"))
+        monkeypatch.setattr(encryption, "ENCRYPTION_DIR", Path("/97_Encryption_that_does_not_exist/v4"))
         link = encryption._resolve(encryption.ENCRYPTION_DIR)
         assert not link.available and "was not found. Keep the 98_Tooling and 97_Encryption folders together" in link.problem
-        assert link.problem.startswith("97_Encryption_that_does_not_exist/Official")
+        assert link.problem.startswith("97_Encryption_that_does_not_exist/v4")
 
 
 class TestMessagesNeverNameThisMachine:
@@ -131,18 +131,18 @@ class TestMessagesNeverNameThisMachine:
 
     def test_a_windows_path_inside_an_exceptions_repr_is_removed(self):
         # repr() doubles every backslash, which the old scrubbing (single backslashes) never matched.
-        located = str(self.WINDOWS_ROOT) + r"\97_Encryption\Official\brisart_security_aead.py"
+        located = str(self.WINDOWS_ROOT) + r"\97_Encryption\v4\brisart_security_aead.py"
         text = f"brisart_security_aead failed to import: {SyntaxError('invalid syntax', (located, 12, 5, 'x = (', 12, 6))!r}."
         assert "Jason" in text and "OneDrive" in text  # the repr really does carry the path
         cleaned = encryption._without_location(text, self.WINDOWS_ROOT)
         assert "Jason" not in cleaned and "OneDrive" not in cleaned and "C:" not in cleaned
-        assert r"97_Encryption\\Official\\brisart_security_aead.py" in cleaned
+        assert r"97_Encryption\\v4\\brisart_security_aead.py" in cleaned
 
     def test_plain_and_forward_slash_spellings_are_removed_too(self):
-        plain = str(self.WINDOWS_ROOT) + r"\97_Encryption\Official"
-        slashes = self.WINDOWS_ROOT.as_posix() + "/97_Encryption/Official"
-        assert encryption._without_location(f"missing {plain}", self.WINDOWS_ROOT) == r"missing 97_Encryption\Official"
-        assert encryption._without_location(f"missing {slashes}", self.WINDOWS_ROOT) == "missing 97_Encryption/Official"
+        plain = str(self.WINDOWS_ROOT) + r"\97_Encryption\v4"
+        slashes = self.WINDOWS_ROOT.as_posix() + "/97_Encryption/v4"
+        assert encryption._without_location(f"missing {plain}", self.WINDOWS_ROOT) == r"missing 97_Encryption\v4"
+        assert encryption._without_location(f"missing {slashes}", self.WINDOWS_ROOT) == "missing 97_Encryption/v4"
 
     def test_a_posix_path_is_removed_and_a_bare_root_becomes_a_dot(self):
         root = PurePosixPath("/home/jason/archive")
@@ -154,20 +154,20 @@ class TestMessagesNeverNameThisMachine:
         assert encryption._without_location(r"C:\x and D:\y", PureWindowsPath("C:/")) == r"C:\x and D:\y"
 
     def test_unavailable_reasons_never_contain_this_machines_archive_path(self):
-        located = str(encryption.ARCHIVE_ROOT / "97_Encryption" / "Official" / "brisart_security_aead.py")
+        located = str(encryption.ARCHIVE_ROOT / "97_Encryption" / "v4" / "brisart_security_aead.py")
         link = encryption._unavailable(f"failed: {SyntaxError('bad', (located, 1, 1, 'x'))!r}")
         assert str(encryption.ARCHIVE_ROOT) not in link.problem and "97_Encryption" in link.problem
 
 
 class TestEncryptionNotFound:
     def test_a_missing_folder_is_reported_with_the_fix_and_no_absolute_path(self, tmp_path):
-        link = encryption._resolve(tmp_path / "97_Encryption" / "Official")
+        link = encryption._resolve(tmp_path / "97_Encryption" / "v4")
         assert not link.available
         assert "Keep the 98_Tooling and 97_Encryption folders together" in link.problem
         assert link.describe().startswith("Encryption not found: ")
 
     def test_a_missing_module_file_is_named(self, tmp_path):
-        folder = tmp_path / "Official"
+        folder = tmp_path / "v4"
         folder.mkdir()
         link = encryption._resolve(folder)
         assert not link.available and "is missing brisart_security_primitives.py" in link.problem
@@ -175,15 +175,15 @@ class TestEncryptionNotFound:
     def test_a_copy_outside_the_linked_folder_is_refused(self, tmp_path, monkeypatch):
         encryption.require()  # link the real library first, so this test does not depend on test order
         monkeypatch.setattr(sys, "path", list(sys.path))
-        copy = tmp_path / "Official"
+        copy = tmp_path / "v4"
         copy.mkdir()
         for name in encryption.REQUIRED_MODULES.values():
             shutil.copy(encryption.ENCRYPTION_DIR / f"{name}.py", copy)
         link = encryption._resolve(copy)
         assert not link.available
         assert link.problem == (
-            "brisart_security_primitives was loaded from 97_Encryption/Official/brisart_security_primitives.py, "
-            "not from a copy outside this archive (Official)."
+            "brisart_security_primitives was loaded from 97_Encryption/v4/brisart_security_primitives.py, "
+            "not from a copy outside this archive (v4)."
         )
         assert str(tmp_path) not in link.problem
 
@@ -210,7 +210,7 @@ class TestEncryptionNotFound:
 
         version = run("--version")
         assert version.returncode == 0
-        assert version.stdout.splitlines()[1].startswith("Encryption not found: 97_Encryption/Official was not found.")
+        assert version.stdout.splitlines()[1].startswith("Encryption not found: 97_Encryption/v4 was not found.")
         issued = run("issue", "--issuer", ISSUER, "--subject", SUBJECT, "--product", PRODUCT, "--entitlement-id", "e",
                      "--master-key", MASTER_KEY, "--output", "x.entitle")
         assert issued.returncode == 1 and issued.stdout == ""
@@ -238,12 +238,12 @@ class TestTheSignatureLink:
     def test_ed25519_links_from_the_same_folder_and_reproduces_rfc_8032(self):
         link = encryption.signature_status()
         assert link.available, link.problem
-        assert link.describe() == "Signatures: Ed25519 (RFC 8032), from 97_Encryption/Official"
+        assert link.describe() == "Signatures: Ed25519 (RFC 8032), from 97_Encryption/v4"
         module = encryption.signatures()
         assert Path(module.__file__).resolve().parent == encryption.ENCRYPTION_DIR.resolve()
 
     def test_a_97_encryption_without_the_signature_module_still_serves_shared_key_files(self, tmp_path, monkeypatch):
-        folder = tmp_path / "Official"
+        folder = tmp_path / "v4"
         folder.mkdir()
         link = encryption._resolve_signatures(folder)
         assert not link.available and "is missing brisart_security_signature.py" in link.problem
@@ -263,14 +263,14 @@ class TestTheSignatureLink:
             del sys.modules[name]
 
     def _fake_module(self, tmp_path, monkeypatch, body):
-        folder = tmp_path / "Official"
+        folder = tmp_path / "v4"
         folder.mkdir()
         (folder / "brisart_security_signature.py").write_text(body, encoding="utf-8")
         self._forget(monkeypatch, "brisart_security_signature")
         return encryption._resolve_signatures(folder)
 
     def test_a_signature_module_that_takes_its_randomness_from_another_folder_is_refused(self, tmp_path, monkeypatch):
-        folder, stale = tmp_path / "Official", tmp_path / "stale_copy"
+        folder, stale = tmp_path / "v4", tmp_path / "stale_copy"
         folder.mkdir()
         stale.mkdir()
         (stale / "brisart_security_entropy.py").write_text(
@@ -303,3 +303,4 @@ class TestTheSignatureLink:
         )
         link = self._fake_module(tmp_path, monkeypatch, accepts_everything)
         assert not link.available and "does not reproduce the RFC 8032 test vector" in link.problem
+

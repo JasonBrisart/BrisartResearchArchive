@@ -253,3 +253,4 @@ def evaluate_payload(
     if machines and machine_id not in machines:
         return deny("machine_not_authorized", payload)
     return EntitlementResult.allowed_result(payload)
+

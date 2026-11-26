@@ -32,3 +32,4 @@ Canceling an import requests cooperative shutdown. The current selected file may
 ## Platform and accessibility boundaries
 
 The desktop uses Tk and supports file browsing independently of optional Windows drop integration. Keyboard focus and modal dialogs must not interfere with each other. UI regression tests cover nonvisual logic where possible, but a Windows smoke test is still required to verify actual layout and focus behavior.
+

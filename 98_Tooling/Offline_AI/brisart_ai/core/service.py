@@ -117,7 +117,7 @@ _MAX_DIAGNOSTIC_LINES = 5
 class BrisartService:
     """Owns one Index, SessionMemory, and ResearchSettings for the app's lifetime."""
 
-    def __init__(self, db_path: str = DEFAULT_DB, settings_path: Optional[str] = None):
+    def __init__(self, db_path: str = DEFAULT_DB, settings_path: Optional[str] = None, *, checkpoint=None):
         self.db_path = db_path
         self.index = Index(db_path)
 
@@ -129,6 +129,7 @@ class BrisartService:
         self.settings = (
             ResearchSettings() if settings_path is None else ResearchSettings(path=Path(settings_path))
         )
+        self._checkpoint = checkpoint or (lambda: None)
         self._stdout_lock = threading.Lock()
         self.last_diagnostics: List[str] = []
 
@@ -148,6 +149,7 @@ class BrisartService:
                     settings=self.settings,
                 )
         self.last_diagnostics = self._extract_diagnostics(buffer.getvalue())
+        self._checkpoint()
         return answer
 
     @staticmethod
@@ -172,6 +174,7 @@ class BrisartService:
                      should_stop: Callable[[], bool] | None = None) -> str:
         """Import paths, optionally report counts, and honor a cooperative stop request."""
         count = ingest_paths(paths, self.index, on_progress=on_progress, should_stop=should_stop)
+        self._checkpoint()
         total, _files, _web = self.counts()
         return f"Ingested {count} file(s) this run. Indexed sources total: {total}"
 
@@ -180,10 +183,14 @@ class BrisartService:
         return self.index.list_sources()
 
     def remove_source(self, source_id: int) -> bool:
-        return self.index.remove_source(source_id)
+        changed = self.index.remove_source(source_id)
+        if changed: self._checkpoint()
+        return changed
 
     def remove_sources(self, source_ids) -> int:
-        return self.index.remove_sources(source_ids)
+        changed = self.index.remove_sources(source_ids)
+        if changed: self._checkpoint()
+        return changed
 
     def get_source_for_note(self, source_id: int):
         return self.index.file_for_note(source_id)
@@ -203,7 +210,9 @@ class BrisartService:
         return self.add_note(title.strip() or source_title, body)
 
     def add_note(self, title: str, body: str) -> str:
-        return add_note(self.index, title, body)
+        result = add_note(self.index, title, body)
+        self._checkpoint()
+        return result
 
     def list_notes(self, limit: int = 20) -> str:
         return list_notes(self.index, limit=limit)
@@ -225,3 +234,4 @@ class BrisartService:
 
 
 __all__ = ["BrisartService"]
+

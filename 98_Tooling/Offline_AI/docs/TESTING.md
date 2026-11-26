@@ -93,36 +93,31 @@ Run from `Offline_AI` using the official Native API stack and development test r
 
 ```text
 python scripts/run_tests.py brisart_ai/knowledge/tests/test_search_quality.py brisart_ai/core/tests/test_answer_quality_reports.py -q
-```
 
-The raw gate calls the production ranker over a temporary SQLite index, independent of excerpt selection. Fourteen judged queries run against the same corpus in original, reversed, and seeded shuffled insertion orders, plus warm repeats interleaved with unrelated searches. Target passages must rank first, not merely appear somewhere. Separate cases test whether both evidence sources survive a top-eight comparison under duplicate-export pressure, whether out-of-scope material stays out, and whether unrelated questions return no results.
+## Encrypted backup recovery (1.6.0)
 
-Baseline: 27 of 42 first-place checks passed. Both role sources failed to survive in all three duplicate-export comparison variants. Combined with the retained answer-quality suite, pytest reported 22 failing subtests, 15 passing test methods, and 72 passing subtests. The 22 failures include repeated observations of the same defects. They remain strict rather than being marked expected failures; installing this overlay can make the development suite fail on the current ranker. This is a curated relevance test, not a representative accuracy measurement for the full Archive. The local run used standard-library helper stand-ins, not the official Native API stack. No product code or data was changed.
+The Linux backup and recovery suite passed both tests using the Official encryption code from the Archive export for the real round trip. The suite recovered committed WAL data, notes, conversation history and settings into a new directory, rejected an existing destination, and left no recovery directory on wrong-passphrase or truncated inputs. A separate fault-injection test verified cleanup when syncing the second recovered file failed. This was not a Windows permissions test, a hard-crash test, or a cryptographic audit.
 
-### Intent-aware follow-up
+Set `BRISART_ENCRYPTION` to the trusted `97_Encryption/Official` directory and run `python -m pytest -q brisart_ai/core/tests/test_library_backup.py` from `Offline_AI`.
 
-The same judged matrix now passes all 42 first-place checks, up from 27 on the unchanged fixtures. Both role sources survive all three duplicate-export comparison variants. An answer regression checks that a renewal date is not reported as an expiry date. The focused run passed 101 tests and 94 subtests with local stand-ins for the unavailable Brisart helpers. The official Native API and full-archive run remain outstanding.
+The desktop reminder callback was exercised headlessly on Linux with simulated dialogs and export outcomes. Decline, cancel, mismatch and export failure all left the prompt active on reload; success suppressed the prompt on reload. Thirteen settings tests passed against the Archive's Native API JSON implementation. Live Tk and Windows startup were not tested.
 
-### Query-intent classification
+## Manual backup workflow removal
 
-Run `python scripts/run_tests.py brisart_ai/knowledge/tests/test_query_intent.py -q` from `Offline_AI`. The table checks both the broad classifier label and the evidence route chosen using production topic extraction. Three temporary-index cases verify that the intended route affects public ranking rather than just setting a label.
+The current 1.6.0 package removes desktop and CLI backup creation. Python compilation passed. The recovery cleanup test passed and the Official archive round trip was skipped because the runnable 97_Encryption modules were not available. The earlier reminder and round-trip results above describe the previous build. This pass did not implement or test encrypted live storage.
 
-The adversarial cases in the same intent test module cover competing cues, explicit negation, agenda-only co-mentions and negated expiry dates. Temporary SQLite tests exercise the normal conversation path and verify that ranking and answer selection reuse one classification.
+## Encrypted live-library orchestration (1.6.0)
 
-## What the 1.6.0 results establish
+Two Linux orchestration tests passed in 0.89 seconds with the production lifecycle code and a deterministic authenticated archive facade. The first migrated a real SQLite index, added a source after migration, checkpointed it, removed the working copy, automatically unlocked a new session and recovered both sources. The second simulated an interrupted migration marker and verified restoration of the plaintext library.
 
-The 1.6.0 judged-query benchmark measures the rank of a known relevant file on a small fixed corpus. Its three insertion orders test whether the same questions return the same first-ranked target despite different import order. The latency figures measure the search call after indexing and should not be extrapolated to large corpora or the complete desktop workflow.
+These tests validate BrisartAI's ownership, ordering and recovery behavior. They do not validate `97_Encryption/Official`, Windows CurrentUser DPAPI, the Tk popup, Windows filesystem permissions or forced-process cleanup. Those are release-blocking tests for the target Windows environment.
 
-The focused automated suite checks many more behaviors than first-place retrieval, including evidence selection, citations, dependency direction, conflicting claims, and input boundaries. The reported run used local substitutes for unavailable first-party helpers; it is not equivalent to installing the official Native API stack in a Windows environment.
 
-## Interpreting historical evidence
+### Live-library size-limit regression
 
-Earlier development entries below document defects, their reproductions, and the tests introduced to prevent recurrence. A failed baseline is useful evidence of why a change was made, but it is not the result of the current release. The newest executed results are presented above the historical sections.
+Three encrypted-library orchestration tests passed after separating live-library capacity from backup-export capacity. The added regression verifies that migration no longer calls SQLite snapshotting with the legacy 32 MiB backup limit. The test suite continues to use an authenticated archive facade in this Linux environment, so it does not establish the maximum payload supported by the external `97_Encryption/Official` implementation on Windows.
 
-A benchmark is comparable to another only when corpus, queries, relevance judgments, source scope, hardware, environment, and measurement method are sufficiently aligned. The 1.4.0 historical comparison and the 1.6.0 small judged-query benchmark have different workloads and must remain separate.
 
-## Remaining integration checks
+### Workspace tab hierarchy and capacity follow-up
 
-Before public distribution, run the full project test runner with the official Native API installation available to spawned workers. On Windows, verify the Tk workspace, file browsing and drag-and-drop fallback, multicore import progress, cancellation, state persistence, and cited answer display.
-
-These checks are still outstanding unless a later entry records their execution. Documentation of an intended test is not evidence that the test passed.
+The selected notebook tab now uses larger padding than its inactive sibling. This was checked at the ttk style mapping level; Windows visual rendering remains unverified. The live-library safety ceiling is 5 GiB. The encrypted-library orchestration tests confirm that the live path uses this ceiling rather than the 32 MiB backup limit; they do not exercise a real 5 GiB archive.

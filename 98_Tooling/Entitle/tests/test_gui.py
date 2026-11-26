@@ -455,3 +455,4 @@ class TestLaunch:
         fake_tk.reset()
         window.module.launch()
         assert len(fake_tk.NOTEBOOKS) == 1
+

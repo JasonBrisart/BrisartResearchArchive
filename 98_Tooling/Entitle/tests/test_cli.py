@@ -279,8 +279,8 @@ class TestUsage:
         assert caught.value.code == 0
         first, second, third = capsys.readouterr().out.strip().splitlines()
         assert first == f"Entitle {__version__}"
-        assert second.startswith("Encryption: BSR2 Alpha") and second.endswith(", from 97_Encryption/Official")
-        assert third == "Signatures: Ed25519 (RFC 8032), from 97_Encryption/Official"
+        assert second.startswith("Encryption: BSR2 Alpha") and second.endswith(", from 97_Encryption/v4")
+        assert third == "Signatures: Ed25519 (RFC 8032), from 97_Encryption/v4"
         assert __version__.count(".") >= 2
 
     @pytest.mark.parametrize("argv", [
@@ -538,3 +538,4 @@ class TestSecretsStayOffTheCommandLine:
         store.write_text(store.read_text(encoding="utf-8").replace('"f"', '"g"'), encoding="utf-8")
         code, out, _ = _call(capsys, "report", "--store", str(store), "--strict")
         assert code == cli.EXIT_REFUSED and "BROKEN" in out
+

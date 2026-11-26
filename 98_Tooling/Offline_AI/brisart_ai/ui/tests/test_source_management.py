@@ -70,3 +70,4 @@ class TestSourceManagement(unittest.TestCase):
     def test_supported_file_registry_includes_common_formats(self):
         for ext in (".txt", ".pdf", ".docx", ".xlsx", ".csv", ".md"):
             self.assertIn(ext, SUPPORTED_EXTENSIONS)
+

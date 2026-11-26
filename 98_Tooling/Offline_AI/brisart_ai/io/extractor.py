@@ -227,3 +227,4 @@ def csv_to_text(source: str) -> str:
         if line:
             output.append(line.replace(",", " | "))
     return "\n".join(output)
+

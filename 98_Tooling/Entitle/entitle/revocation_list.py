@@ -123,3 +123,4 @@ def load_revocation_list(path, trusted_keys, *, issuer):
         revoked={entry["entitlement_id"]: entry for entry in entries},
         key_id=key.key_id,
     )
+

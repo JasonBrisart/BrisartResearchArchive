@@ -28,40 +28,25 @@ python cli.py ask "What is the permit fee?"
 python cli.py note "Experiment 14" "Check the readings against the baseline."
 python cli.py notes --limit 10
 python cli.py counts
+
+## Recovering existing encrypted archives
+
+BrisartAI no longer offers manual backup creation. This build still stores indexed imports in the existing plaintext SQLite library; automatic library encryption and unlock are not implemented. Original files are unchanged by this update.
+
+The recovery commands require the Archive's trusted `97_Encryption/Official` implementation and the original archive passphrase. Set `BRISART_ENCRYPTION` to that directory if it is not discovered automatically. To verify an existing archive, run `python cli.py backup-verify research.bsa` from `Offline_AI`.
+
+Restore the archive into a **new private folder**, not the active profile:
+
+```text
+python cli.py backup-restore research.bsa recovery-copy
 ```
 
-Place `--db PATH` before a subcommand to use another index. This does not change the settings path.
+Restore authenticates the archive and validates its database before creating the destination. It refuses to overwrite an existing folder or restore to the active profile location.
 
-## Work with sources
+Recovery writes plaintext. Inspect the recovered index with `python cli.py --db recovery-copy/brisart_ai_index.sqlite3 counts` before any manual profile replacement. Do not copy recovered files over a running instance or an existing profile without a separate backup. See [Security](SECURITY.md) for what this feature does not protect.
 
-1. **Add sources:** Queue files or folders, then choose **Import Sources**. After **Import Sources**, the dialog scans for supported files, then shows a progress bar, percentage, files left, indexed count, elapsed time, and an estimated time remaining. The ETA appears after enough files finish and can change as file sizes vary. The dialog keeps the final totals until you close it. Choose **Cancel Import** to stop only the import. **No** continues; **Yes** lets the current file finish, cancels the rest, and keeps BrisartAI open. Already indexed files are kept. The progress bar and ETA disappear while the app waits for the current file and worker cleanup. Once cleanup is done, the dialog reports **Import stopped**. Folder imports recurse. Bulk imports use available logical CPUs automatically; there is no toggle. Windows Explorer drops can add to the queue; use Browse if drops are unavailable. A supported suffix is not a guarantee that text can be extracted. Scanned PDFs need text supplied separately.
-2. **Add research note:** Write a standalone note, or highlight indexed text and select **Attach Highlighted Text**. The saved excerpt carries the original title and path as a snapshot.
-3. **Ask:** Type a question and press Enter. The status line shows elapsed time while the search runs. The scope strip stays visible while you search. **Results** shows answers and evidence; **Activity** shows imports, note saves and search diagnostics. **Search settings** controls eligibility without deleting data. Ctrl+L focuses the question field and F1 opens Help.
-4. **Manage sources:** Filter by title, path or kind. Ctrl/Shift-click selects multiple rows; Ctrl+A selects the visible rows. Removing a file entry never deletes the disk original. Remove a note separately if it contains an excerpt you no longer want indexed.
+## Encrypted research library
 
-## State and upgrading
+When the desktop detects a plaintext library, it offers to encrypt the SQLite library that contains indexed copies, research notes and conversation history. **No** leaves the library unchanged and asks again next launch. **Yes** shows an estimated conversion time, closes database connections, verifies the encrypted container and then reopens a private working copy.
 
-Windows stores the default index and settings in `%APPDATA%\Brisart Research Archive\BrisartAI`. `BRISARTAI_STATE_DIR` overrides this directory and disables automatic legacy migration. With the default path, startup can migrate eligible old state without overwriting populated destination data. Reimport changed files when you need updated evidence. No database rebuild is required for this package.
-
-When replacing an older program folder, preserve any project-local legacy database or settings until migration or backup is confirmed. Close the app before replacing program files. Do not delete the external API folder or per-user state.
-
-- [Architecture and ownership](ARCHITECTURE.md)
-- [Testing and benchmark evidence](TESTING.md)
-- [Local data and security](SECURITY.md)
-- [Release history](CHANGELOG.md)
-
-## Understanding the answers
-
-BrisartAI is an offline, extractive research assistant. It uses the indexed local library and research notes rather than generating an answer from an external model. A cited excerpt supports only what that source actually states. A direct support label is not a claim that the underlying document has been independently verified.
-
-When an answer seems incomplete, first confirm that the intended source type is enabled and that the relevant file has been imported. Then inspect the cited passages and the Activity diagnostics. Reimporting a changed document refreshes indexed evidence; editing the disk original alone does not guarantee the stored copy is current.
-
-## Import behavior in practice
-
-Bulk preparation may use multiple CPU workers, while index writes remain ordered and caller-owned. Import progress distinguishes discovered, processed, and successfully indexed files. The time estimate is approximate because document sizes and extraction costs vary.
-
-A confirmed cancellation stops further indexing after the current selected work has safely completed. The program remains open and keeps previously committed sources. Closing the program folder or deleting application state is not part of this cancellation operation.
-
-## Reading the engineering documentation
-
-The architecture document describes current ownership rather than a speculative design. Security guidance describes what offline storage does and does not protect. The testing record separates executed tests from historical baselines and unverified integration paths. The changelog preserves release-level behavior changes and file-specific reasons without requiring a reader to reconstruct them from source commits.
+After migration, every import, note, question-history update and source removal checkpoints the current database into the encrypted container. On Windows, the generated archive passphrase is protected for the current user with DPAPI, allowing automatic unlock at launch. Original imported files are not encrypted or rewritten. During use, BrisartAI requires a private temporary plaintext SQLite working copy; a clean shutdown checkpoints it and removes the temporary directory.

@@ -3,7 +3,7 @@ File: entitle/encryption.py
 
 Purpose
 -------
-Be Entitle's only link to the archive's shared cryptography in 97_Encryption/Official: BSR2
+Be Entitle's only link to the archive's shared cryptography in 97_Encryption/v4: BSR2
   (sealing, for shared-key entitlements and passphrase-protected signing keys) and Ed25519
   signatures (brisart_security_signature, for signed entitlements, revocation lists and
   checkpoints). Entitle ships no cryptography of its own: this file finds that folder, checks
@@ -14,7 +14,7 @@ Be Entitle's only link to the archive's shared cryptography in 97_Encryption/Off
 Communication / relationships
 -----------------------------
 Imports entitle/common.py (EntitleError) and the standard library. Links, on first use, these
-  97_Encryption/Official modules: brisart_security_aead (the current sealed format),
+  97_Encryption/v4 modules: brisart_security_aead (the current sealed format),
   brisart_security_envelope (the previous format, read only), brisart_security_drbg,
   brisart_security_version, and the three they import, brisart_security_primitives,
   brisart_security_sponge and brisart_security_entropy; and, separately and only when asked,
@@ -25,7 +25,7 @@ Imports entitle/common.py (EntitleError) and the standard library. Links, on fir
 Settings / parameters
 ---------------------
 ARCHIVE_ROOT is the folder holding 98_Tooling (three levels above this file) and
-  ENCRYPTION_DIR is ARCHIVE_ROOT/97_Encryption/Official. The only requirement is that
+  ENCRYPTION_DIR is ARCHIVE_ROOT/97_Encryption/v4. The only requirement is that
   98_Tooling and 97_Encryption sit in the same folder, wherever that is; there is no override
   and no absolute path. REQUIRED_MODULES maps each require() attribute (primitives, sponge,
   entropy, drbg, envelope, aead, version) to its module, in import order. REQUIRED_FORMATS
@@ -68,7 +68,7 @@ From the directory containing run.py:
     from entitle import encryption
 
     print(encryption.status().describe())
-    # Encryption: BSR2 Alpha 4 (0.4.1-alpha), from 97_Encryption/Official
+    # Encryption: BSR2 Alpha 4 (0.4.1-alpha), from 97_Encryption/v4
     bsr2 = encryption.require()
     assert bsr2.aead.SUITE_NAME == "BSR2-S64-SIV"
     assert encryption.signatures().ALGORITHM == "Ed25519"
@@ -96,7 +96,7 @@ def _archive_root(this_file: PurePath) -> PurePath:
 
 
 ARCHIVE_ROOT = Path(_archive_root(Path(__file__).resolve()))
-ENCRYPTION_DIR = ARCHIVE_ROOT / "97_Encryption" / "Official"
+ENCRYPTION_DIR = ARCHIVE_ROOT / "97_Encryption" / "v4"
 _KEEP_TOGETHER = "Keep the 98_Tooling and 97_Encryption folders together in the same folder."
 
 # require() attribute -> BSR2 module. Ordered so each module's own flat imports resolve first.
@@ -131,7 +131,7 @@ _RFC8032_SIGNATURE = bytes.fromhex(
 
 
 class EncryptionNotFoundError(EntitleError):
-    """Raised when the link to 97_Encryption/Official is unavailable."""
+    """Raised when the link to 97_Encryption/v4 is unavailable."""
 
 
 @dataclass(frozen=True)
@@ -290,3 +290,4 @@ def signatures():
     if not link.available:
         raise EncryptionNotFoundError(link.describe())
     return link.library
+

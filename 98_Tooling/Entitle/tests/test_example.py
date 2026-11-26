@@ -169,3 +169,4 @@ def test_a_missing_file_prints_the_commands_that_create_one(tmp_path, capsys, ke
     assert f"Not found: {path}" in out
     assert "python run.py keys generate" in out and "python run.py issue" in out and f"--output {path}" in out
     assert "master-key" not in out and "main.py" not in out
+

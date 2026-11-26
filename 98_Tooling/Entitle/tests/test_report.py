@@ -145,3 +145,4 @@ class TestStoresThatAreMissingOrDamaged:
         assert report["record_count"] == 6 and report["chain"]["valid"] is True
         assert report["counts_by_type"]["deployment"] == 2
         assert report["deployments_by_product"] == {"EntitleDemo": 2}
+

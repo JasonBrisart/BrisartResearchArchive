@@ -164,3 +164,4 @@ class TestWriteTextAtomically:
     def test_private_files_are_owner_only(self, tmp_path):
         write_text_atomically(tmp_path / "secret", "x", private=True)
         assert stat.S_IMODE((tmp_path / "secret").stat().st_mode) == 0o600
+

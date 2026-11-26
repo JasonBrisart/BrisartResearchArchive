@@ -36,4 +36,5 @@ Usage from the directory containing run.py:
     print(f"Entitle {__version__}")
 """
 
-__version__ = "0.7.1"
+__version__ = "0.7.2"
+

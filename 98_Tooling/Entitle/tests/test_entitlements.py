@@ -809,3 +809,4 @@ class TestInspect:
         assert shown["payload"]["entitlement_id"] == "lab-1"
         hidden = inspect_entitlement(shared)
         assert hidden["format"] == "sealed" and "payload" not in hidden and "secret-id-123" not in str(hidden)
+

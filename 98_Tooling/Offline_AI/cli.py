@@ -3,9 +3,10 @@ File: cli.py
 
 Purpose
 -------
-Expose local imports, notes, counts and cited questions without Tk.
+Expose local imports, notes, counts, cited questions and recovery of existing encrypted archives without Tk.
 
-Public operations: main (argv=None).
+Public operations: main (argv=None). Backup commands return before state migration
+or service initialization, so asking for verification never opens a live library.
 
 Communication / relationships
 -----------------------------
@@ -52,13 +53,13 @@ functions directly.
 """
 from __future__ import annotations
 import argparse
+import sqlite3
 
 from brisart_ai import native_path
 
 native_path.install()
 
 from brisart_ai import state  # noqa: E402
-from brisart_ai.core.service import BrisartService  # noqa: E402
 from brisart_ai.knowledge.index import DEFAULT_DB  # noqa: E402
 
 def main(argv=None):
@@ -70,8 +71,34 @@ def main(argv=None):
     imp = sub.add_parser("import"); imp.add_argument("paths", nargs="+")
     note = sub.add_parser("note"); note.add_argument("title"); note.add_argument("body")
     notes = sub.add_parser("notes"); notes.add_argument("--limit", type=int, default=20)
+    sub.add_parser("backup-verify", help="Authenticate and check an encrypted snapshot").add_argument("archive")
+    restore = sub.add_parser("backup-restore", help="Recover plaintext files into a new directory")
+    restore.add_argument("archive")
+    restore.add_argument("destination")
     args = parser.parse_args(argv)
+    if args.command in {"backup-verify", "backup-restore"}:
+        import warnings
+        from getpass import GetPassWarning, getpass
+        from brisart_ai.core.library_backup import BackupError, restore_backup, verify_backup
+
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", GetPassWarning)
+                secret = getpass("Backup passphrase: ")
+                if args.command == "backup-restore":
+                    restore_backup(args.archive, args.destination, secret)
+                else:
+                    verify_backup(args.archive, secret)
+        except (BackupError, OSError, sqlite3.Error, EOFError, GetPassWarning) as exc:
+            parser.exit(1, f"Backup operation failed: {exc or 'a private terminal prompt is required.'}\n")
+        print({
+            "backup-verify": "Encrypted backup verified.",
+            "backup-restore": "Backup restored to a new folder. Recovered files are plaintext.",
+        }[args.command])
+        return 0
     state.migrate_legacy_state()
+    from brisart_ai.core.service import BrisartService
+
     service = BrisartService(args.db)
     try:
         if args.command == "counts":
@@ -87,3 +114,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

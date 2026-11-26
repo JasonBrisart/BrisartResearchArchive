@@ -164,3 +164,4 @@ def read_pdf_best_effort(path: Path, max_bytes: int = 10_000_000) -> str:
     text = "\n".join(chunks)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+

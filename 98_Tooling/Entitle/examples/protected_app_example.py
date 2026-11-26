@@ -178,3 +178,4 @@ def main(entitlement_file=ENTITLEMENT_FILE, public_key_file=PUBLIC_KEY_FILE,
 
 if __name__ == "__main__":
     main()
+

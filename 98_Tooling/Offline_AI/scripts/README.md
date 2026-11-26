@@ -24,3 +24,4 @@ The offline replay utility is useful when a question retrieves an irrelevant pas
 The retrieval benchmark uses pinned queries so changes can be compared against a stable workload. Historical comparator results and newer judged-query results differ in corpus size, environment, and metrics; they should not be combined into one performance claim.
 
 Top-1 accuracy measures whether the first returned file is the judged target. It does not establish that the answer formatter quoted the correct passage, that every contradiction was found, or that latency will remain similar with a large real archive. Refer to `docs/TESTING.md` for exact counts, methodology, and known gaps.
+

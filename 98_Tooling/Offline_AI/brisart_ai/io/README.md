@@ -25,3 +25,4 @@ Archive-based documents require additional care because compressed size and extr
 Some files may contain no searchable text, unsupported encodings, or malformed structures. The caller must distinguish a processed file from a successfully indexed one. The import progress display uses that distinction when reporting completed and indexed counts.
 
 Input cleaning is separate from file extraction: it normalizes questions submitted for search rather than altering the original source documents. Tests should cover valid files, malformed containers, extraction budgets, and cases where the parser correctly returns no text.
+

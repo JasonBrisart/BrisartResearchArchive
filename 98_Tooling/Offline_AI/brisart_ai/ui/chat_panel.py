@@ -147,3 +147,4 @@ class ChatPanel(ttk.Frame):
 
 
 __all__ = ["ChatPanel"]
+

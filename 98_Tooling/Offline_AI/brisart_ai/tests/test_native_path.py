@@ -134,3 +134,4 @@ class TestNativePath(unittest.TestCase):
                 module = importlib.import_module(Path(filename).stem)
                 self.assertEqual(Path(module.__file__).resolve(), (selected / filename).resolve())
                 self.assertFalse(Path(module.__file__).resolve().is_relative_to(native_path.PROJECT_ROOT))
+

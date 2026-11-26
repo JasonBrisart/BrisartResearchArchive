@@ -4,7 +4,7 @@ File: tests/test_end_to_end.py
 Purpose
 -------
 Prove Entitle works from a fresh install to a finished audit, through real processes, using
-  whichever 97_Encryption/Official sits beside it. The whole workflow runs the way an operator
+  whichever 97_Encryption/v4 sits beside it. The whole workflow runs the way an operator
   would run it: version and encryption link, issue, verify (right and wrong key), migrate a file
   written by the previous encryption, deploy up to and past the limit, deploy from the migrated
   file, fork, provenance, revoke, a refused deployment, reinstate, the audit report, tamper
@@ -19,8 +19,8 @@ Communication / relationships
 -----------------------------
 Imports entitle/encryption.py (the folder to copy, including brisart_security_signature),
   entitle/records.py (to read the log the processes wrote), tests/support.py and version.py (the
-  version the processes report). Copies the Entitle folder and the linked 97_Encryption/Official
-  into a temporary archive (98_Tooling/Entitle and 97_Encryption/Official side by side) and runs
+  version the processes report). Copies the Entitle folder and the linked 97_Encryption/v4
+  into a temporary archive (98_Tooling/Entitle and 97_Encryption/v4 side by side) and runs
   run.py and examples/protected_app_example.py there, so the installed copy, not the development
   tree, is what is exercised. Run by pytest; nothing imports it.
 
@@ -68,7 +68,7 @@ def _install(tmp_path):
     installed = archive / "98_Tooling" / "Entitle"
     shutil.copytree(ENTITLE_ROOT, installed, ignore=shutil.ignore_patterns(
         "__pycache__", ".pytest_cache", "entitlements", "records", "reports", "keys"))
-    shutil.copytree(encryption.ENCRYPTION_DIR, archive / "97_Encryption" / "Official",
+    shutil.copytree(encryption.ENCRYPTION_DIR, archive / "97_Encryption" / "v4",
                     ignore=shutil.ignore_patterns("__pycache__", "tests", "docs", "research", "tools", "audio"))
     return installed
 
@@ -87,8 +87,8 @@ def test_a_fresh_install_runs_the_whole_lifecycle_with_the_linked_encryption(tmp
     # The install links the encryption that sits beside it.
     version = run("--version").stdout.splitlines()
     assert version[0] == f"Entitle {__version__}"
-    assert version[1].startswith("Encryption: ") and version[1].endswith(", from 97_Encryption/Official")
-    assert version[2] == "Signatures: Ed25519 (RFC 8032), from 97_Encryption/Official"
+    assert version[1].startswith("Encryption: ") and version[1].endswith(", from 97_Encryption/v4")
+    assert version[2] == "Signatures: Ed25519 (RFC 8032), from 97_Encryption/v4"
 
     # Issue, verify, and refuse a wrong key.
     lab = work / "entitlements" / "lab.entitle"
@@ -219,3 +219,4 @@ def test_racing_run_py_processes_never_exceed_the_deployment_limit(tmp_path):
     assert {o["reason"] for o in outcomes if not o["recorded"]} == {"deployment_limit_reached"}
     chain = RecordStore(store).verify_chain()
     assert (chain.valid, chain.record_count) == (True, 2)
+

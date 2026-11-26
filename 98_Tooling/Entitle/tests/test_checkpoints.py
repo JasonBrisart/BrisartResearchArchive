@@ -137,3 +137,4 @@ def test_an_existing_checkpoint_is_not_replaced_unless_asked(store_path, keys, t
     path = _checkpoint(store, keys, tmp_path)
     with pytest.raises(FileExistsError):
         create_checkpoint(store, keys[0], output=path)
+

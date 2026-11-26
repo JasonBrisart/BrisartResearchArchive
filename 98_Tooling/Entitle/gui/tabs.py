@@ -478,3 +478,4 @@ TABS = (
     ("Revoke / Reinstate", _revoke_tab),
     ("Audit Report", _report_tab),
 )
+

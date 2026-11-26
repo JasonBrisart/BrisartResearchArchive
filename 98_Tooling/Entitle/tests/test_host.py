@@ -95,3 +95,4 @@ class TestStateFile:
     def test_a_state_file_that_must_exist_is_reported_missing(self, tmp_path):
         with pytest.raises(EntitleError, match="is missing"):
             HostState(tmp_path / "state.json", require_existing=True).check_clock(_at(0))
+

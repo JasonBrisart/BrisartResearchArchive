@@ -724,3 +724,4 @@ __all__ = [
     "presence_points", "proximity_bonus", "rarity_weight", "shape_multiplier",
     "term_contribution",
 ]
+

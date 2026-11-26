@@ -5,7 +5,7 @@ Purpose
 -------
 Tests for the link between Identity Tools and BSR2
 (crypto/encryption.py): that every BSR2 library module is linked
-from 97_Encryption/Official, that legacy data sealed by Identity Tools 1.9.2
+from 97_Encryption/v4, that legacy data sealed by Identity Tools 1.9.2
 still opens through the link, and that without BSR2 the
 program starts and reports
 "Encryption not found" instead of encrypting anything.
@@ -45,14 +45,14 @@ Settings / parameters
 Edge cases
 ----------
 LinkedEncryptionTests:
-- The link is available and located at 97_Encryption/Official.
+- The link is available and located at 97_Encryption/v4.
 - ARCHIVE_ROOT is the folder holding 98_Tooling/Identity_Tools/<line> and
   97_Encryption (regression guard for the move into 98_Tooling).
-- The status line names 97_Encryption/Official relative to the archive and
+- The status line names 97_Encryption/v4 relative to the archive and
   never this machine's absolute path; 98_Tooling (holding Identity_Tools)
   and 97_Encryption share one archive folder.
 - Every linked module comes from the linked directory.
-- Every brisart_security_* module 97_Encryption/Official ships is linked.
+- Every brisart_security_* module 97_Encryption/v4 ships is linked.
 - The application tree contains no copy of any brisart_security_* module.
 CompatibilityTests:
 - A JSON payload sealed by 1.9.2 opens.
@@ -147,13 +147,13 @@ class LinkedEncryptionTests(unittest.TestCase):
         link = encryption.status()
         self.assertTrue(link.available, link.describe())
         self.assertEqual(link.location, encryption.ENCRYPTION_DIR)
-        self.assertEqual(link.location.parts[-2:], ("97_Encryption", "Official"))
+        self.assertEqual(link.location.parts[-2:], ("97_Encryption", "v4"))
 
     def test_status_names_the_folder_relative_to_the_archive_only(self):
         # The status line must never show where the archive lives on this
-        # machine, only that encryption comes from 97_Encryption/Official.
+        # machine, only that encryption comes from 97_Encryption/v4.
         text = encryption.status().describe()
-        self.assertTrue(text.endswith(", from 97_Encryption/Official"), text)
+        self.assertTrue(text.endswith(", from 97_Encryption/v4"), text)
         self.assertNotIn(str(encryption.ARCHIVE_ROOT), text)
         self.assertEqual(
             encryption.ENCRYPTION_DIR.parent.parent, _APP_ROOT.parents[2]
@@ -247,7 +247,7 @@ class EncryptionNotFoundTests(unittest.TestCase):
                 if str(copy) in sys.path:
                     sys.path.remove(str(copy))
         self.assertFalse(link.available)
-        self.assertIn("loaded from 97_Encryption/Official/", link.problem)
+        self.assertIn("loaded from 97_Encryption/v4/", link.problem)
         self.assertIn("not from a copy outside this archive", link.problem)
         self.assertNotIn(str(encryption.ARCHIVE_ROOT), link.problem)
 
@@ -281,3 +281,4 @@ class EncryptionNotFoundTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

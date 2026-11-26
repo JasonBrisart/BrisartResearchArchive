@@ -106,3 +106,4 @@ class ExplorerDrop:
         if not controls.SetWindowSubclass(hwnd, on_message, tag, 0):
             raise OSError("Could not register the Explorer drop target")
         shell.DragAcceptFiles(hwnd, True)
+

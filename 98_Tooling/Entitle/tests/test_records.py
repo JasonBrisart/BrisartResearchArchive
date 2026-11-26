@@ -458,3 +458,4 @@ class TestRecordsWrittenByV041:
         store.append("fork", {"fork_name": "after-upgrade"})
         status = store.verify_chain()
         assert (status.valid, status.record_count) == (True, 7)
+

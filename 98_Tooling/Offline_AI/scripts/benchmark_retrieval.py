@@ -143,3 +143,4 @@ for kind,query,target in cases:
     t=time.perf_counter(); found=lookup(query); ms=(time.perf_counter()-t)*1000
     results.append(dict(kind=kind,query=query,target=target,rank=(found.index(target)+1 if target in found else None),results=found,ms=ms))
 (root/f'{mode}.json').write_text(json.dumps(dict(documents=len(docs), sha256=hashlib.sha256(json.dumps(docs).encode()).hexdigest(),python=sys.version,sqlite=sqlite3.sqlite_version,network='seccomp; IPv4 and IPv6 socket probes denied',results=results),indent=2))
+

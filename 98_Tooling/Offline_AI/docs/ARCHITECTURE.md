@@ -40,3 +40,4 @@ The application stores index records, research notes, conversation memory and se
 A question is scoped to enabled source types before candidate retrieval. The engine can identify direct evidence, limited evidence, inferred dependency chains, and conflicts. A chain is not reported as complete unless every required link can be cited within the available budget. Date and version qualifiers apply to the cited claims rather than being inferred from import order.
 
 This architecture does not include an independently maintained knowledge graph, online search service, or third-party ranking engine. Bounded candidate pools and supported English patterns are practical implementation limits and must be considered when interpreting results.
+

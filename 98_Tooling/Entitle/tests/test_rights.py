@@ -287,3 +287,4 @@ class TestSignedPayloadRules:
         with pytest.raises(ValueError, match="need a signed entitlement"):
             make_entitlement_payload(issuer_id="i", subject_id="s", product_id="p", entitlement_id="e", rights={},
                                      issued_at="2027-01-01T00:00:00Z", machines=["m1:" + "a" * 32])
+

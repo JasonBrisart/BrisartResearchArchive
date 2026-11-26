@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.4 - 2026-11-26
+
+### Changed
+- `crypto/encryption.py`: Resolve BSR2 from archive-root `97_Encryption/v4`, replacing `97_Encryption/Official`. Preserve the existing fail-closed validation and module-origin checks.
+- `crypto/tests/test_encryption_link.py`: Update the expected dependency location for the installed layout.
+- `version.py`: Increment the patch release version.
+
+### Compatibility
+- Required layout: `BrisartResearchArchive/97_Encryption/v4` and `BrisartResearchArchive/98_Tooling/Identity_Tools/LTS-2028 1.4.x`.
+- Existing encryption formats and stored records are unchanged; `97_Encryption` was not modified.
+- Linux dependency tests are run against the exported source; Windows startup is not verified.
+
+
 All notable changes to BrisartIdentityTools are recorded here.
 
 ---
@@ -2829,3 +2842,4 @@ logging, not confidentiality. Factor hashes are unsalted single-pass SHA-256,
 which is fine for a workflow demo and not a secure credential store; a
 production version needs a slow salted KDF such as Argon2 or scrypt, along with
 protected biometric templates and liveness detection.
+

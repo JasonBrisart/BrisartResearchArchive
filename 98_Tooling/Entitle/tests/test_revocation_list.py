@@ -106,3 +106,4 @@ def test_a_signed_document_that_is_not_a_revocation_list_is_refused(keys, tmp_pa
     with pytest.raises(SignatureRejected) as caught:
         load_revocation_list(output, [keys[1]], issuer=ISSUER)
     assert caught.value.reason == "payload_invalid"
+

@@ -4,7 +4,8 @@ The core folder coordinates application operations used by both the Tk desktop a
 
 ## Modules
 
-- `service.py`: Opens application resources and coordinates imports, source management and notes.
+- `service.py`: Opens application resources, coordinates imports, source management and notes, and checkpoints encrypted-library mutations.
+- `encrypted_library.py`: Owns encrypted-at-rest migration, DPAPI automatic unlock, recovery markers and temporary working-copy cleanup.
 - `conversation.py`: Applies enabled source scope, invokes retrieval and formats the resulting answer through the knowledge layer.
 - `session_memory.py`: Stores compact conversation history separately from the indexed source text.
 - `settings.py`: Loads and saves local evidence-source preferences.
@@ -25,3 +26,4 @@ Conversation coordination applies enabled evidence sources before invoking retri
 Settings describe user choices, while session memory records compact conversation context. Neither is an alternative copy of indexed file text. A research note is independently stored evidence, so removing a source entry is not equivalent to deleting a note snapshot.
 
 For service changes, test both the normal path and the boundary where an operation fails or is interrupted. The desktop must remain responsive, and the CLI should receive a usable error rather than relying on a Tk dialog.
+

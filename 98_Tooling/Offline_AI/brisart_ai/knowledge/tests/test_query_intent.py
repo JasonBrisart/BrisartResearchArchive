@@ -796,3 +796,4 @@ class TestQueryIntent(unittest.TestCase):
             finally:
                 memory.close()
                 idx.close()
+

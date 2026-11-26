@@ -98,3 +98,4 @@ def test_retry_returns_to_live_progress():
     snapshot = (6, 10, 5, 6)
     assert progress_text(18, 0, snapshot, stopping=True)[0] is None
     assert progress_text(18, 0, snapshot)[0] == 60
+

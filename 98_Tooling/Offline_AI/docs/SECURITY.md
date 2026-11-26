@@ -35,3 +35,17 @@ A saved note containing a verified excerpt is its own record. Review notes separ
 The file readers apply limits to supported archive members and reject DTD-bearing XML, but they are not an isolation boundary against malicious inputs. The PDF raw-byte budget does not cover every possible decompression or parser resource cost. Parsing should therefore be performed only on material appropriate for the host environment.
 
 When reporting a security or parsing defect, use a minimal non-confidential reproducer. Include the affected version, operating system, source format, observed behavior, and expected behavior. Avoid sharing production indexes, private notes, access tokens, or full confidential documents.
+
+
+## Experimental encrypted backups
+
+The `.bsa` export encrypts the backup copy only. It does not change the live SQLite database, settings, original documents, prior copies, swap or crash dumps. The CLI has no plaintext export fallback. Verification authenticates contents and checks the SQLite snapshot in memory; restore materializes plaintext in a new directory. Use a private parent directory with appropriate permissions, especially on Windows. Handled write failures trigger cleanup, but a crash or forced termination may leave partial plaintext files.
+
+The upstream `97_Encryption/v4` README describes its custom construction as experimental and not independently audited. Do not rely on this export as the only protection for sensitive or valuable data. Keep using established device or storage encryption and access controls. Use only a trusted Official directory; it contains executable Python code.
+
+## Encrypted live-library boundaries
+
+At rest, the BrisartAI SQLite library is stored through `97_Encryption/v4`. Live-library migration has a separate 5 GiB process-safety ceiling and does not inherit the 32 MiB backup-export snapshot cap; the generated archive passphrase is protected by Windows CurrentUser DPAPI. This binds automatic unlock to the Windows profile. It does not encrypt original source documents, the settings file, operating-system paging, crash dumps, or a temporary working database while BrisartAI is open.
+
+Migration retains a temporary recovery copy until the encrypted container has been reopened and validated. Clean shutdown checkpoints the database before deleting the temporary working directory. Abrupt termination can leave temporary plaintext under the operating-system temporary directory and can lose changes made after the last completed checkpoint. Device encryption such as BitLocker remains appropriate.
+

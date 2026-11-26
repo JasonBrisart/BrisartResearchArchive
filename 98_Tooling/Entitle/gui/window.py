@@ -126,3 +126,4 @@ def launch():
     except tk.TclError as exc:
         raise EntitleError(f"Could not open a window: {exc}") from exc
     app.mainloop()
+

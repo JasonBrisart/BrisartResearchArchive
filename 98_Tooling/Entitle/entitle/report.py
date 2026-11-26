@@ -118,3 +118,4 @@ def format_text(report):
     else:
         lines.append(f"BROKEN: {chain['reason']} at record index {chain['broken_index']}.")
     return "\n".join(lines)
+

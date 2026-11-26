@@ -130,3 +130,4 @@ class TestIsRevoked:
         status = store.verify_chain()
         assert status.valid is True
         assert status.record_count == 2
+

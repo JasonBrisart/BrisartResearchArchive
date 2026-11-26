@@ -216,3 +216,4 @@ def safe_read_text(path: Path, max_bytes: int = 5_000_000) -> str:
     if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
         return raw.decode("utf-16", "replace")
     return raw.decode("utf-8-sig", "replace")
+

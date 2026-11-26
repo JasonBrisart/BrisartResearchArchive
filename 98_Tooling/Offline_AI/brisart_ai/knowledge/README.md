@@ -42,3 +42,4 @@ Date and release qualifiers are applied to the evidence actually cited. The engi
 ## Regression coverage
 
 Tests use temporary SQLite indexes to exercise ranking, source scope, distractors, duplicate records, conflicting dates, and citation completeness. Historical benchmark results and current measured outcomes are recorded in `docs/TESTING.md`, with limitations kept next to the corresponding result.
+

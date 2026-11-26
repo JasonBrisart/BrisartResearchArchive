@@ -294,3 +294,4 @@ class RecordStore:
                 return ChainStatus(False, index, "entry_hash_mismatch", len(lines))
             prev_hash = record["entry_hash"]
         return ChainStatus(True, None, "ok", len(lines))
+

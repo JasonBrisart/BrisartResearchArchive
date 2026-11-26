@@ -368,3 +368,4 @@ def peek_document(text, kind):
     """Return (payload, key_id) WITHOUT checking the signature. For display only; never trust it."""
     key_id, _, payload_bytes = _parse(text, kind)
     return _payload_object(payload_bytes, kind), key_id
+

@@ -214,3 +214,4 @@ def ingest_paths(paths: Iterable[str], index, *, on_progress: Callable[[int, int
 
 
 __all__ = ["ingest_paths"]
+

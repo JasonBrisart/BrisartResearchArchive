@@ -38,6 +38,7 @@ self.get, self.path.exists, self.save, self.values.get, self.path.read_text.
 
 Settings / parameters
 ---------------------
+
 search_local_files and search_notes default to True; a caller may supply a custom path.
 
 Module configuration and named constants: DEFAULT_SETTINGS_PATH, DEFAULT_SETTINGS (dict,
@@ -199,3 +200,4 @@ __all__ = [
     "DEFAULT_SETTINGS", "DEFAULT_SETTINGS_PATH", "ResearchSettings",
     "SETTING_ALIASES", "TOGGLE_LABELS",
 ]
+

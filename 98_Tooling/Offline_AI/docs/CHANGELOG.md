@@ -6,9 +6,30 @@ All notable changes to BrisartAI are documented here, newest release first.
 
 ## [1.6.0] - 2026-11-26
 
+### Workspace tab selection and library capacity
+
+- `brisart_ai/ui/app.py` now makes the selected Results or Activity tab taller and wider, with the mint accent on its label. The inactive tab uses smaller padding and a muted label. This corrects the visual hierarchy without changing tab content or keyboard navigation.
+- `brisart_ai/core/encrypted_library.py` now uses a 5 GiB process-safety ceiling for live encrypted SQLite snapshots and archive reads. The earlier 32 MiB portable backup limit remains separate. The 5 GiB limit is not a promise of low memory use; the current snapshot and archive implementation materializes data in memory.
+
+### Live-library size-limit correction
+
+- Removed the backup subsystem's 32 MiB plaintext snapshot and 40 MiB encrypted-archive caps from the live-library migration path. Those limits were originally defensive bounds for portable backup export and were incorrectly reused by `encrypted_library.py`; they were not a `97_Encryption` failure. Backup verification and recovery retain their existing conservative limits.
+- Live migration now passes a separate 5 GiB safety ceiling to SQLite snapshotting and the Official archive reader. The encrypted output is no longer rejected merely for exceeding the old 40 MiB backup cap. A regression test verifies that live migration supplies the live-library limit rather than the legacy 32 MiB backup limit. The currently configured 5 GiB ceiling is a process-safety bound, not an encryption-format limit.
+
+### Encrypted live research library
+
+- `brisart_ai/core/encrypted_library.py` owns migration, automatic unlock, encrypted checkpoints, DPAPI-protected key material and interrupted-migration rollback. The indexed SQLite library, notes and conversation history are encrypted into a `97_Encryption/v4` archive at rest. Original imported files remain unchanged. A private plaintext working copy exists only while BrisartAI is running and is removed on clean shutdown.
+- `brisart_ai/ui/app.py` offers migration until accepted, reports an estimate derived from the current database size, shows migration stages, and confirms that future indexed imports are checkpointed into the encrypted container. `BrisartService` invokes the vault checkpoint after questions, imports, note creation and source removal. Existing encrypted libraries are automatically unlocked for the same Windows account through CurrentUser DPAPI.
+- Migration publishes and verifies ciphertext before deleting the plaintext database. A marker and recovery copy permit rollback after interruption before the encrypted pair is complete. Two orchestration tests passed with a deterministic authenticated test facade: migration plus a post-migration import survived automatic reopen, and interrupted migration restored the plaintext library. The actual `97_Encryption/v4` implementation, Windows DPAPI, Tk popup and forced-process termination were not executable in this Linux environment and remain release-blocking integration checks.
+
 ### Release overview
 
-BrisartAI 1.6.0 advances the Brisart relevance engine beyond the 1.5.0 research workspace and multicore-import baseline. The changes focus on query intent, evidence selection, direct and inferred relationships, date and release scope, citation completeness, contradictions, and honest uncertainty. This release does not introduce new import or desktop features beyond those documented in 1.5.0.
+BrisartAI 1.6.0 advances the Brisart relevance engine beyond the 1.5.0 research workspace and multicore-import baseline. The changes focus on query intent, evidence selection, direct and inferred relationships, date and release scope, citation completeness, contradictions, and honest uncertainty. Recovery remains available for existing experimental encrypted archives. The live index remains unencrypted.
+
+### Manual backup workflow removed
+
+- Removed the startup backup-export prompt and the `backup-create` CLI command. Removed the unused prompt preference from defaults. The archive fixture builder remains used by the recovery regression test; existing `backup-verify` and `backup-restore` commands remain available for previously issued archives.
+- The current SQLite library and original files are not changed by this update. Automatic migration, launch unlock and encrypted import persistence are not enabled. Existing imports retain their elapsed-time and remaining-time display.
 
 ### Changed modules and rationale
 
@@ -795,3 +816,5 @@ Shifted BrisartAI from crawler-first to data-first architecture.
 ## [0.1.0-alpha]
 
 Initial crawler/index/retrieval prototype.
+
+

@@ -104,3 +104,4 @@ class TestQueryComposer(unittest.TestCase):
         self.assertTrue(panel.entry.winfo_ismapped())
         self.assertTrue(panel.send.winfo_ismapped())
         self.assertLess(panel.entry.winfo_rooty(), panel.views.winfo_rooty())
+

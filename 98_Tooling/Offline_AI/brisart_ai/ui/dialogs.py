@@ -514,3 +514,4 @@ class SettingsDialog(tk.Toplevel):
 
 
 __all__ = ["ask_import_paths", "RemoveSourcesDialog", "AddSourcesDialog", "SourceNoteDialog", "SettingsDialog"]
+

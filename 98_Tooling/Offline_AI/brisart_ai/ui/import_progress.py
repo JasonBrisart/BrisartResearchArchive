@@ -82,3 +82,4 @@ def progress_text(now: float, started: float, snapshot, *, stopping=False):
         return percent, f"{text}  |  Estimating time left..."
     eta = elapsed_label(ceil(active_seconds * remaining / processed))
     return percent, f"{text}  |  About {eta} left"
+

@@ -124,3 +124,4 @@ def revoke(store, entitlement_id, issuer_id=None, product_id=None, reason=None):
 
 def reinstate(store, entitlement_id, issuer_id=None, product_id=None, reason=None):
     return _append(store, RECORD_TYPE_REINSTATEMENT, entitlement_id, issuer_id, product_id, reason)
+

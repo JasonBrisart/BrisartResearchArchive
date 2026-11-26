@@ -127,3 +127,4 @@ class SessionMemory:
 
     def close(self) -> None:
         self.conn.close()
+

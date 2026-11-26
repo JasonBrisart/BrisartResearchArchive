@@ -155,3 +155,4 @@ class HostState:
             state["revocation_sequences"][key_id] = sequence
             self._save(state)
         return None
+

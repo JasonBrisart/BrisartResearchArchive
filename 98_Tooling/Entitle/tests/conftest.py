@@ -9,7 +9,7 @@ Prepare every pytest run: put the Entitle folder on sys.path so entitle/, gui/, 
 Communication / relationships
 -----------------------------
 Imports pytest. Loaded automatically by pytest before any test module. It does not import the
-  application: entitle/encryption.py puts 97_Encryption/Official on the import path itself, so
+  application: entitle/encryption.py puts 97_Encryption/v4 on the import path itself, so
   no preparation beyond the Entitle folder is needed. The tests do need 97_Encryption beside
   98_Tooling, because that is where Entitle's encryption lives.
 
@@ -47,3 +47,4 @@ if str(ENTITLE_ROOT) not in sys.path:
 @pytest.fixture
 def store_path(tmp_path):
     return tmp_path / "records" / "entitle_records.log"
+

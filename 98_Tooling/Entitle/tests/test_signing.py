@@ -33,7 +33,7 @@ Covers a wrong or short passphrase, existing files (refused unless overwrite), t
 
 Known limitations
 -----------------
-Ed25519 itself is tested against RFC 8032 in 97_Encryption/Official/tests; here it is only used.
+Ed25519 itself is tested against RFC 8032 in 97_Encryption/v4/tests; here it is only used.
   The owner-only permission check runs on POSIX only.
 
 Examples
@@ -247,3 +247,4 @@ class TestSignedDocuments:
         stranger = make_keys(tmp_path, name="Stranger")
         payload, key_id = peek_document(sign_document("checkpoint", {"n": 1}, stranger[0]), "checkpoint")
         assert payload == {"n": 1} and key_id == stranger[1].key_id
+

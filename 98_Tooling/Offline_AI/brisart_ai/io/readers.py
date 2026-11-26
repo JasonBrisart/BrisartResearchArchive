@@ -190,3 +190,4 @@ def read_file(path: Path) -> str:
     if ext == ".rtf":
         return _rtf_to_text(raw)
     return raw
+

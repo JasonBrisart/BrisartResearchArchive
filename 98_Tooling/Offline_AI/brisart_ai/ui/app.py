@@ -73,6 +73,7 @@ from brisart_ai.ui.chat_panel import ChatPanel
 from brisart_ai.ui.import_progress import elapsed_label
 from brisart_ai.ui.dialogs import AddSourcesDialog, RemoveSourcesDialog, SettingsDialog, SourceNoteDialog
 from brisart_ai.core.service import BrisartService
+from brisart_ai.core.encrypted_library import EncryptedLibrary, EncryptedLibraryError
 from brisart_ai.ui.sidebar import Sidebar
 from brisart_ai.version_info import APP_NAME, __version__
 
@@ -91,10 +92,12 @@ BrisartAI answers from your imported files and research notes."""
 
 
 class BrisartApp(tk.Tk):
-    def __init__(self, db_path: str = DEFAULT_DB):
+    def __init__(self, db_path: str = DEFAULT_DB, *, encrypted_library=None):
         super().__init__()
         try:
-            self.service = BrisartService(db_path)
+            self._encrypted_library = encrypted_library
+            self._profile_db = db_path
+            self.service = BrisartService(db_path, checkpoint=(encrypted_library.checkpoint if encrypted_library else None))
         except Exception:
             self.destroy()
             raise
@@ -117,6 +120,211 @@ class BrisartApp(tk.Tk):
         self.bind("<F1>", self._action_help)
         self.bind("<Control-l>", self._focus_query)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        if encrypted_library is None:
+            self.after_idle(self._offer_library_encryption)
+
+    def _offer_library_encryption(self) -> None:
+        manager = EncryptedLibrary(self._profile_db)
+        seconds = manager.estimate_seconds()
+        if seconds:
+            hours = seconds // 3600
+            minutes = (seconds % 3600 + 59) // 60
+            estimate = f"roughly {hours} h {minutes} min" if hours else f"roughly {minutes} min"
+        else:
+            estimate = "not available for an empty library"
+        accepted = messagebox.askyesno(
+            "Encrypt the BrisartAI library?",
+            "BrisartAI is ready to encrypt the SQLite library that contains indexed copies, "
+            "notes, and conversation history. Original imported files will not be modified.\n\n"
+            f"97_Encryption benchmark-based reference time: {estimate}.\n"
+            "Based on the published 27 KiB/s stream benchmark and this library's size. "
+            "Actual archive conversion may differ significantly due to compression, "
+            "verification, and computer performance. This is not a live ETA.\n\n"
+            "Once encrypted, BrisartAI will automatically unlock the library at launch "
+            "for your Windows account.\n\n"
+            "Choose No to be asked again next launch.", default=messagebox.NO, parent=self)
+        if not accepted:
+            return
+        self._busy = True
+        self.activity.set("Preparing encrypted library migration...")
+        progress_window = tk.Toplevel(self)
+        progress_window.title("Encrypting BrisartAI Library")
+        progress_window.geometry("680x455")
+        progress_window.resizable(False, False)
+        progress_window.transient(self)
+        progress_window.protocol("WM_DELETE_WINDOW", lambda: None)
+        progress_window.configure(bg=theme.BG_APP)
+        status_text = tk.StringVar(value="Preparing encrypted library...")
+        detail_text = tk.StringVar(value="0 of 0 completed")
+        panel = tk.Frame(progress_window, bg=theme.BG_APP, padx=26, pady=18)
+        panel.pack(fill="both", expand=True)
+        tk.Label(panel, text="LIBRARY ENCRYPTION", bg=theme.BG_APP,
+                 fg=theme.FG_ACCENT, font=("Segoe UI", 10, "bold"), anchor="w").pack(fill="x")
+        tk.Label(panel, textvariable=status_text, bg=theme.BG_APP,
+                 fg=theme.FG_TEXT, font=("Segoe UI", 16, "bold"), anchor="w").pack(fill="x", pady=(7, 12))
+        encryption_bar = ttk.Progressbar(panel, maximum=100,
+                                         style="Import.Horizontal.TProgressbar")
+        encryption_bar.pack(fill="x", pady=(0, 10))
+        bar_indeterminate = False
+        stage_text = tk.StringVar(value="Step 1 of 4: Preparing")
+        tk.Label(panel, textvariable=stage_text, bg=theme.BG_APP,
+                 fg=theme.FG_ACCENT, anchor="w").pack(fill="x", pady=(0, 5))
+        tk.Label(panel, textvariable=detail_text, bg=theme.BG_APP,
+                 fg=theme.FG_TEXT, anchor="w", font=("Segoe UI", 10)).pack(fill="x", pady=(0, 12))
+        tk.Frame(panel, height=1, bg="#405052").pack(fill="x", pady=(0, 12))
+        import time
+        started_at = time.monotonic()
+        last_stage = "snapshot"
+        last_completed = 0
+        byte_stage = None
+        byte_done = 0
+        byte_total = 0
+        byte_started = None
+        stage_descriptions = {
+            "snapshot": "SQLite is copying the current database into a consistent snapshot. This captures indexed document content, notes, and conversations without changing imported source files.",
+            "encrypt": "BrisartAI is generating a new library secret, encrypting the database snapshot, and protecting the secret for this Windows account. This step can take longer for large libraries.",
+            "publish": "BrisartAI is safely saving the encrypted container and Windows-protected key. The original database is retained for recovery until the new library opens successfully.",
+            "unlock": "BrisartAI is opening the encrypted container, restoring its working database, and checking that SQLite can read the library. This operation may take time.",
+            "complete": "Encryption is complete. The library is ready to use.",
+        }
+        tips = (
+            "Your original imported documents are not modified by library encryption.",
+            "The encrypted library includes indexed content, notes, and conversation history.",
+            "BrisartAI automatically unlocks the library for your Windows account at launch.",
+            "Future library changes are checkpointed into the encrypted container.",
+            "Keep BrisartAI open until the conversion is finished.",
+        )
+        explanation = tk.StringVar(value=stage_descriptions["snapshot"])
+        performance_text = tk.StringVar(value="")
+        timer_text = tk.StringVar(value="Elapsed: 00:00  |  Remaining: not yet measurable")
+        tip_text = tk.StringVar(value="Tip: " + tips[0])
+        tk.Label(panel, text="WHAT BRISARTAI IS DOING", bg=theme.BG_APP,
+                 fg=theme.FG_ACCENT, font=("Segoe UI", 10, "bold"), anchor="w").pack(fill="x")
+        tk.Label(panel, textvariable=explanation, bg=theme.BG_APP,
+                 fg=theme.FG_TEXT, wraplength=615, justify="left", anchor="w").pack(fill="x", pady=(5, 10))
+        tk.Label(panel, textvariable=timer_text, bg=theme.BG_APP,
+                 fg=theme.FG_TEXT, anchor="w").pack(fill="x", pady=(0, 10))
+        tk.Label(panel, textvariable=performance_text, bg=theme.BG_APP,
+                 fg=theme.FG_TEXT, wraplength=615, justify="left", anchor="w").pack(fill="x", pady=(0, 10))
+        tk.Frame(panel, height=1, bg="#405052").pack(fill="x", pady=(0, 9))
+        tk.Label(panel, textvariable=tip_text, bg=theme.BG_APP,
+                 fg=theme.FG_ACCENT, wraplength=615, justify="left", anchor="w").pack(fill="x")
+        tk.Label(panel, text="Keep BrisartAI open until encryption finishes.",
+                 bg=theme.BG_APP, fg=theme.FG_TEXT, anchor="w").pack(fill="x", pady=(10, 0))
+
+        def clock():
+            elapsed = max(0, int(time.monotonic() - started_at))
+            elapsed_label = f"{elapsed // 60:02d}:{elapsed % 60:02d}"
+            if byte_stage == "publish_bytes" and byte_done and byte_total and byte_started is not None:
+                duration = max(0.001, time.monotonic() - byte_started)
+                speed = byte_done / duration
+                remaining = int((byte_total - byte_done) / speed) if speed else 0
+                timer_text.set(f"Elapsed: {elapsed_label} | Writing: {speed / 1048576:.1f} MiB/s | Write ETA: ~{remaining}s")
+            else:
+                timer_text.set(f"Elapsed: {elapsed_label} | Encryption ETA unavailable (external API)")
+            tip_text.set("Tip: " + tips[(elapsed // 12) % len(tips)])
+            progress_window.after(1000, clock)
+
+        progress_window.grab_set()
+        clock()
+        self.service.close()
+        events = SimpleQueue()
+        result = SimpleQueue()
+
+        def progress(stage, completed, total):
+            events.put((stage, completed, total))
+
+        def worker():
+            try:
+                result.put((manager.migrate(progress), None))
+            except Exception as exc:
+                result.put((None, str(exc)))
+
+        def poll():
+            nonlocal last_stage, last_completed, byte_stage, byte_done, byte_total, byte_started, bar_indeterminate
+            try:
+                while True:
+                    stage, completed, total = events.get_nowait()
+                    if stage.endswith("_bytes"):
+                        if stage == "publish_bytes":
+                            status_text.set("Saving Encrypted Library")
+                            stage_text.set("Step 3 of 4: Saving encrypted library")
+                        elif stage == "encrypt_bytes":
+                            stage_text.set("Step 2 of 4: Encrypting database")
+                        elif stage == "snapshot_bytes":
+                            stage_text.set("Step 1 of 4: Preparing database")
+                        if byte_stage != stage:
+                            byte_started = time.monotonic()
+                        byte_stage, byte_done, byte_total = stage, completed, total
+                        label = {"snapshot_bytes": "Snapshot prepared", "encrypt_bytes": "External encryption operation", "publish_bytes": "Writing encrypted container"}.get(stage, stage)
+                        if stage == "encrypt_bytes" and completed == 0:
+                            status_text.set("Encrypting Database")
+                            detail_text.set(f"Library size: approximately {total / (1024 ** 3):.2f} GiB (measured for this library)")
+                            explanation.set(f"BrisartAI is securely encrypting approximately {total / (1024 ** 3):.2f} GiB of library data. Encryption is running; the encryption engine does not report intermediate progress.")
+                            performance_text.set("WHY IT TAKES TIME  |  97_Encryption uses pure Python. Published research benchmarks: stream ~27 KiB/s; v3 seal ~31 KiB/s. These are not a live speed or ETA.")
+                            encryption_bar.configure(mode="indeterminate")
+                            encryption_bar.start(15)
+                            bar_indeterminate = True
+                        else:
+                            if bar_indeterminate:
+                                encryption_bar.stop()
+                                encryption_bar.configure(mode="determinate")
+                                bar_indeterminate = False
+                            performance_text.set("")
+                            detail_text.set(f"{label}: {completed / 1048576:.2f} / {total / 1048576:.2f} MiB")
+                        if stage == "publish_bytes" and total:
+                            encryption_bar.configure(value=100 * completed / total)
+
+                        continue
+                    if bar_indeterminate:
+                        encryption_bar.stop()
+                        encryption_bar.configure(mode="determinate")
+                        bar_indeterminate = False
+                    performance_text.set("")
+                    self.activity.set(f"Encrypting library: {stage} ({completed}/{total})")
+                    titles = {"snapshot": "Preparing Database", "encrypt": "Encrypting Database",
+                              "publish": "Saving Encrypted Library", "unlock": "Verifying and Opening Library",
+                              "complete": "Library Encryption Complete"}
+                    status_text.set(titles.get(stage, str(stage).capitalize()))
+                    stage_text.set(f"Step {min(completed + 1, 4) if stage != 'complete' else 4} of 4: {titles.get(stage, stage)}")
+                    last_stage = stage
+                    last_completed = completed
+                    explanation.set(stage_descriptions.get(stage, "Processing encrypted library..."))
+                    detail_text.set(f"Stage {completed} of {total} | Byte counts appear for measurable operations")
+                    if stage == "complete":
+                        encryption_bar.configure(value=100)
+                    elif stage == "publish":
+                        encryption_bar.configure(value=0)
+                    elif stage in ("snapshot", "encrypt", "unlock"):
+                        encryption_bar.configure(value=0)
+            except Empty:
+                pass
+            try:
+                working, error = result.get_nowait()
+            except Empty:
+                self.after(125, poll); return
+            progress_window.grab_release()
+            progress_window.destroy()
+            if error:
+                self.service = BrisartService(self._profile_db)
+                self._busy = False
+                self._refresh_status()
+                messagebox.showerror("Library encryption failed", error +
+                                     "\n\nThe plaintext library remains available. You'll be asked again next launch.", parent=self)
+                return
+            self._encrypted_library = manager
+            self.service = BrisartService(working, checkpoint=manager.checkpoint)
+            self._busy = False
+            self.activity.set("Encrypted library active. Future imports will be encrypted automatically.")
+            self._refresh_status()
+            messagebox.showinfo("Library encryption complete",
+                                "The BrisartAI library is encrypted at rest. From now on, indexed copies "
+                                "from every import will be saved into the encrypted library. Original files "
+                                "remain unchanged. BrisartAI will unlock the library automatically for this "
+                                "Windows account when it starts.", parent=self)
+
+        threading.Thread(target=worker, daemon=False).start()
+        self.after(125, poll)
 
     def _configure_style(self) -> None:
         style = ttk.Style(self)
@@ -127,10 +335,13 @@ class BrisartApp(tk.Tk):
         style.configure("Panel.TFrame", background=theme.BG_PANEL)
         style.configure("Sidebar.TFrame", background=theme.BG_SIDEBAR)
         style.configure("Workspace.TNotebook", background=theme.BG_PANEL, borderwidth=0)
-        style.configure("Workspace.TNotebook.Tab", padding=(13, 6), font=theme.FONT_UI_BOLD)
+        style.configure("Workspace.TNotebook.Tab", padding=(11, 5), font=theme.FONT_UI_BOLD,
+                        borderwidth=1, relief="flat")
         style.map("Workspace.TNotebook.Tab",
-                  background=[("selected", theme.BG_CHAT), ("!selected", theme.BG_PANEL)],
-                  foreground=[("selected", theme.FG_TEXT), ("!selected", theme.FG_MUTED)])
+                  background=[("selected", theme.BG_INPUT), ("!selected", theme.BG_PANEL)],
+                  foreground=[("selected", theme.FG_ACCENT), ("!selected", theme.FG_MUTED)],
+                  padding=[("selected", (16, 9)), ("!selected", (11, 5))],
+                  relief=[("selected", "raised"), ("!selected", "flat")])
         style.configure("Import.Horizontal.TProgressbar", background=theme.FG_ACCENT,
                         troughcolor=theme.BG_INPUT)
         style.configure("TSeparator", background=theme.BORDER)
@@ -378,6 +589,8 @@ class BrisartApp(tk.Tk):
             return
         try:
             self.service.close()
+            if self._encrypted_library is not None:
+                self._encrypted_library.close()
         finally:
             self.destroy()
 
@@ -399,8 +612,13 @@ def _show_startup_error(exc: Exception) -> None:
 
 
 def run(db_path: str = DEFAULT_DB) -> None:
+    manager = EncryptedLibrary(db_path)
     try:
-        app = BrisartApp(db_path)
+        if manager.enabled:
+            working = manager.unlock()
+            app = BrisartApp(working, encrypted_library=manager)
+        else:
+            app = BrisartApp(db_path)
     except Exception as exc:
         _show_startup_error(exc)
         return
@@ -408,3 +626,4 @@ def run(db_path: str = DEFAULT_DB) -> None:
 
 
 __all__ = ["BrisartApp", "run"]
+

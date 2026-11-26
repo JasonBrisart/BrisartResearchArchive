@@ -185,3 +185,4 @@ class TestSearchJudgments(unittest.TestCase):
         self.assertTrue(all(result["source_type"] == "file" for result in files))
         self.assertEqual([result["location"] for result in notes], ["saved-note"])
         self.assertEqual(search(idx, query, source_types=set()), [])
+

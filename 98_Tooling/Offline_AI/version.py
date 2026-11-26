@@ -54,3 +54,4 @@ additional state or call private functions directly.
 """
 
 __version__ = "1.6.0"
+

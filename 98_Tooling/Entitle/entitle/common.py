@@ -134,3 +134,4 @@ def write_text_atomically(path, text, *, overwrite=True, private=False):
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+

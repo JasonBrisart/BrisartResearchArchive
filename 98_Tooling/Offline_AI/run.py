@@ -66,3 +66,4 @@ from brisart_ai.ui.app import run  # noqa: E402
 if __name__ == "__main__":
     state.migrate_legacy_state()
     run(DEFAULT_DB)
+

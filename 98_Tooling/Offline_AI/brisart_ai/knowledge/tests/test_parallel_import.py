@@ -212,3 +212,4 @@ class TestParallelImport(unittest.TestCase):
                 patch.object(ingest, "ProcessPoolExecutor", side_effect=OSError("worker unavailable")), \
                 patch.object(ingest, "_prepare_file", return_value=ingest._PreparedFile("serial")):
             self.assertEqual([path for path, _ in ingest._prepared_files(paths)], paths)
+

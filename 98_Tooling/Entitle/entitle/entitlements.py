@@ -493,3 +493,4 @@ def migrate_entitlement(*, issuer, subject, product, master_key, path, signing_k
         reason = "converted_to_signed"
     write_entitlement_file(migrated, path)
     return {"migrated": True, "reason": reason, "entitlement_id": payload.get("entitlement_id")}
+
