@@ -20,7 +20,7 @@ Update __version__ together with release documentation.
 This file has no independently configurable runtime parameters. The values it exports
 are consumed by its owner rather than loaded from another settings file.
 
-The single exported __version__ value is 1.4.0. Changing this string alone does not establish a tested release or migrate the index.
+The single exported __version__ value is 1.5.0. Changing this string alone does not establish a tested release or migrate the index.
 
 Edge cases
 ----------
@@ -36,6 +36,6 @@ The constant neither migrates user data nor installs updates.
 
 Examples
 --------
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 """
-__version__ = "1.4.0"
+__version__ = "1.5.0"

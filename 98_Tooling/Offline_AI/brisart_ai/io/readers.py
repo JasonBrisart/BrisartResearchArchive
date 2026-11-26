@@ -3,6 +3,8 @@ File: brisart_ai/io/readers.py
 
 Purpose
 -------
+Folder discovery accepts a cooperative stop callback between entries.
+
 Own the import format registry, path discovery and reader dispatch.
 
 The extension registry is the single authority for file eligibility across the picker
@@ -64,7 +66,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
 from brisart_ai.io.binary_readers import (
     read_docx, read_odt, read_pdf_best_effort, read_pptx, read_xlsx,
@@ -99,10 +101,13 @@ def is_supported(path: Path) -> bool:
     )
 
 
-def iter_supported_files(paths: Iterable[str]) -> Iterator[Path]:
+def iter_supported_files(paths: Iterable[str], *,
+                         should_stop: Callable[[], bool] | None = None) -> Iterator[Path]:
     """Yield supported files from a mix of individual paths and folders."""
     seen = set()
     for raw in paths:
+        if should_stop is not None and should_stop():
+            return
         path = Path(raw).expanduser()
         try:
             path = path.resolve()
@@ -117,6 +122,8 @@ def iter_supported_files(paths: Iterable[str]) -> Iterator[Path]:
             continue
         try:
             for child in path.rglob("*"):
+                if should_stop is not None and should_stop():
+                    return
                 try:
                     if child.is_file() and is_supported(child):
                         resolved = child.resolve()

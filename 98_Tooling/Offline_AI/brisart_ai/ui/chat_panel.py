@@ -1,70 +1,29 @@
-r"""
+"""
 File: brisart_ai/ui/chat_panel.py
 
 Purpose
 -------
-Display the transcript and collect a single-line question.
-
-The chat panel owns the visible transcript and editable question entry. It does not
-store the durable topic history or calculate answers.
-
-Public operations: ChatPanel.set_busy (self, busy); ChatPanel.append (self, text,
-tag='assistant'); ChatPanel.append_user (self, text); ChatPanel.append_assistant (self,
-text).
-
-Public operations: ChatPanel.append_system (self, text); ChatPanel.focus_input (self).
-
-Internal helpers include ChatPanel.__init__, ChatPanel._build, ChatPanel._submit.
+Keep the query composer above Results and Activity.
 
 Communication / relationships
 -----------------------------
-Sends a submission to the parent callback; the parent supplies reply and status
-messages.
-
-It invokes the application callback on submission and receives text and busy-state
-updates from its owner.
-
-Direct project imports: brisart_ai.ui.
-
-Direct importing modules include brisart_ai/ui/app.py.
-
-Concrete calls within this file include self._build, self.transcript.pack,
-self.transcript.tag_configure, self.entry.pack, self.entry.bind, self.send.pack,
-self.send.state, self.input_var.set, self.on_submit, self.transcript.configure,
-self.transcript.insert, self.transcript.see.
+The app supplies an acceptance callback and routes questions, results and diagnostics.
 
 Settings / parameters
 ---------------------
-set_busy disables the Search button while leaving the draft editable.
-
-Call signatures: ChatPanel.set_busy(self, busy); ChatPanel.append(self, text,
-tag='assistant'); ChatPanel.append_user(self, text); ChatPanel.append_assistant(self,
-text); ChatPanel.append_system(self, text).
-
-Call signatures: ChatPanel.focus_input(self).
+Enter submits; an accepted query clears the draft and selects Results.
 
 Edge cases
 ----------
-Enter during an active search does not discard the draft.
-
-Submitting during an active search must leave the draft intact; transcript output is not
-itself the persisted research database.
-
-No explicit exception-handling branch is defined at module level. Unexpected errors
-therefore follow the caller’s normal error boundary unless a lower-level helper handles
-them.
+Empty, busy and rejected submissions preserve the draft.
 
 Known limitations
 -----------------
-The visible transcript is a widget, not the persistent topic store.
+The transcript is session-only.
 
 Examples
 --------
 panel.append_assistant(answer)
-
-Other callable entry points in this module include ChatPanel.append,
-ChatPanel.append_user, ChatPanel.append_assistant, ChatPanel.append_system,
-ChatPanel.focus_input.
 """
 
 from __future__ import annotations
@@ -84,32 +43,41 @@ class ChatPanel(ttk.Frame):
         self._build()
 
     def _build(self) -> None:
-        self.transcript = scrolledtext.ScrolledText(
-            self, wrap="word", bg=theme.BG_CHAT, fg=theme.FG_TEXT,
-            insertbackground=theme.FG_TEXT, font=theme.FONT_UI,
-            borderwidth=0, highlightthickness=0, padx=theme.PAD, pady=theme.PAD,
-            state="disabled",
-        )
-        self.transcript.pack(side="top", fill="both", expand=True)
-        self.transcript.tag_configure("user", foreground=theme.FG_USER, font=theme.FONT_MONO_BOLD)
-        self.transcript.tag_configure("assistant", foreground=theme.FG_ASSISTANT)
-        self.transcript.tag_configure("system", foreground=theme.FG_SYSTEM, font=("Consolas", 9, "italic"))
-
-        input_row = ttk.Frame(self, style="Panel.TFrame")
-        input_row.pack(side="bottom", fill="x", pady=(theme.PAD_SMALL, 0))
-
-        self.input_var = tk.StringVar()
-        self.entry = tk.Entry(
-            input_row, textvariable=self.input_var, bg=theme.BG_INPUT,
-            fg=theme.FG_TEXT, insertbackground=theme.FG_TEXT, font=theme.FONT_UI,
-            relief="flat",
-        )
-        self.entry.pack(side="left", fill="x", expand=True, ipady=6, padx=(0, theme.PAD_SMALL))
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(2, weight=1)
+        tk.Label(self, text="Ask your archive", bg=theme.BG_PANEL, fg=theme.FG_TEXT,
+                 font=theme.FONT_HEADING).grid(row=0, column=0, sticky="w", pady=(0, 4))
+        row = ttk.Frame(self, style="Panel.TFrame")
+        row.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        row.columnconfigure(0, weight=1)
+        self.input_var = tk.StringVar(master=self)
+        self.entry = tk.Entry(row, textvariable=self.input_var, bg=theme.BG_INPUT,
+                              fg=theme.FG_TEXT, insertbackground=theme.FG_TEXT, font=theme.FONT_UI,
+                              relief="flat", highlightthickness=1, highlightbackground=theme.BORDER,
+                              highlightcolor=theme.FG_ACCENT)
+        self.entry.grid(row=0, column=0, sticky="ew", ipady=7, padx=(0, 8))
         self.entry.bind("<Return>", self._submit)
-
-        self.send = ttk.Button(input_row, text="Search", command=self._submit, style="Primary.TButton")
-        self.send.pack(side="right")
+        self.send = ttk.Button(row, text="Search library", command=self._submit, style="Primary.TButton")
+        self.send.grid(row=0, column=1)
         self.busy = False
+        self.views = ttk.Notebook(self, style="Workspace.TNotebook", takefocus=True)
+        self.views.grid(row=2, column=0, sticky="nsew")
+        self.transcript = self._text_tab("Results")
+        self.activity_log = self._text_tab("Activity")
+        self.transcript.tag_configure("user", foreground=theme.FG_USER, font=theme.FONT_UI_BOLD, spacing3=4)
+        self.activity_log.tag_configure("system", foreground=theme.FG_MUTED)
+        self.views.enable_traversal()
+        self.append_assistant("Ask a question to find evidence in your indexed files and research notes. "
+                              "Use Activity to review library changes and search diagnostics.")
+
+    def _text_tab(self, label):
+        page = ttk.Frame(self.views, style="Panel.TFrame")
+        self.views.add(page, text=label)
+        text = scrolledtext.ScrolledText(page, wrap="word", bg=theme.BG_CHAT, fg=theme.FG_TEXT,
+            font=theme.FONT_UI, borderwidth=0, highlightthickness=1, highlightbackground=theme.BORDER,
+            highlightcolor=theme.FG_ACCENT, padx=14, pady=10, height=8, width=30, state="disabled")
+        text.pack(fill="both", expand=True)
+        return text
 
     def set_busy(self, busy: bool) -> None:
         self.busy = busy
@@ -119,17 +87,21 @@ class ChatPanel(ttk.Frame):
         text = self.input_var.get().strip()
         if not text or self.busy:
             return "break"
-        self.input_var.set("")
-        self.on_submit(text)
+        if self.on_submit(text):
+            self.input_var.set("")
+            self.views.select(0)
         return "break"
 
     def append(self, text: str, tag: str = "assistant") -> None:
-        self.transcript.configure(state="normal")
-        if self.transcript.index("end-1c") != "1.0":
-            self.transcript.insert("end", "\n\n")
-        self.transcript.insert("end", text, tag)
-        self.transcript.configure(state="disabled")
-        self.transcript.see("end")
+        target = self.activity_log if tag == "system" else self.transcript
+        target.configure(state="normal")
+        try:
+            if target.index("end-1c") != "1.0":
+                target.insert("end", "\n\n")
+            target.insert("end", text, tag)
+        finally:
+            target.configure(state="disabled")
+        target.see("end")
 
     def append_user(self, text: str) -> None:
         self.append(f"You: {text}", "user")

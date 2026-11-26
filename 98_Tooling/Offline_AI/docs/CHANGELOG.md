@@ -4,6 +4,51 @@ All notable changes to BrisartAI are documented here, newest release first.
 
 ---
 
+## [1.5.0] - 2026-11-26 — Research workspace, import hardening, and multicore processing.
+
+### Release overview
+
+BrisartAI now puts the local library, search scope, and evidence ahead of the transcript. Bulk imports use separate worker processes for file preparation without adding a setting or changing how the index is written.
+
+### Changed
+
+- `brisart_ai/ui/app.py`, `sidebar.py`, and `theme.py`: The library rail groups source and note actions with indexed counts. The workspace header holds Search settings and Help; the active scope stays visible while search and shutdown progress appear separately. A dark mineral palette with a muted mint accent makes the primary actions easier to pick out.
+- `brisart_ai/ui/chat_panel.py`: The query composer sits above **Results** and **Activity**. Results holds questions, answers, and cited evidence; Activity holds imports, note saves, and search diagnostics.
+- `brisart_ai/knowledge/ingest.py`: Desktop and CLI bulk imports detect available logical CPUs and use spawned processes to read, parse, and hash independent files. Worker count is limited by the work available and, on Windows, by the 61-worker executor limit. Single-file and single-core imports run directly. Work in flight is bounded, and the caller writes to SQLite in discovery order. If the pool becomes unavailable, remaining files run serially without replaying completed index writes.
+- `docs/README.md` and the UI and knowledge folder READMEs explain the revised workflow and ownership. The redundant root README was removed, leaving only `run.py`, `cli.py`, and `version.py` at the project root.
+
+### Fixed
+
+- `brisart_ai/ui/chat_panel.py` gives the query controls layout priority in short windows and preserves drafts when a submission is rejected.
+- `brisart_ai/ui/app.py` preserves the draft if the search worker cannot start, prevents Ctrl+L from stealing focus from a modal dialog, and destroys the window even if final service cleanup raises.
+- `brisart_ai/io/binary_readers.py` sorts numbered PowerPoint parts numerically within slides and notes, so slide 10 no longer precedes slide 2. PDF extraction now reads only its requested raw-byte budget instead of reading the whole file before slicing it.
+
+### Security
+
+- `brisart_ai/io/binary_readers.py` bounds selected Office and OpenDocument XML to 16 MiB per member, 64 MiB total, and 2,048 members. Packages exceeding any budget yield no extracted text.
+- The XML parser rejects DTD declarations, including in UTF-16 input. This is not a parser sandbox. The PDF raw-byte limit does not bound decompressed PDF streams.
+
+### Compatibility and testing
+
+No index rebuild or schema change is required. The CLI interface, external Native API arrangement, and `%APPDATA%` state path are unchanged. SQLite writes and individual query ranking remain serial. No import speedup has been benchmarked.
+
+The workspace and hardening pass compiled and passed 35 focused tests, including the XML budgets, UTF-16 DTD rejection, numeric slide ordering, and bounded PDF reads. The multicore pass separately passed 24 focused tests, including a test with two real spawned processes working concurrently, caller-only index writes in discovery order, and serial recovery after pool failure. The combined 1.5.0 package compiled and passed 40 focused tests and 9 subtests. The Tk workspace module was skipped and three Native API-dependent cases were excluded because their dependencies were unavailable. These checks do not constitute an end-to-end Windows run. The Windows desktop smoke test and full integration suite against the official Native API stack remain outstanding.
+
+### Import and query timing follow-up
+
+- `ui/dialogs.py` and `ui/import_progress.py` show elapsed time during discovery, then a filling bar with percent, processed and remaining files, indexed count, and a throughput-based ETA. Empty folders have no ETA; the completed result stays visible. Skipped and failed files advance processed progress but not the indexed count.
+- `ui/app.py` runs imports off the Tk event loop and gives them exclusive access to the service until completion. Its status line also shows elapsed time during query execution.
+- `core/service.py` and `knowledge/ingest.py` forward real progress from discovery and indexing. Multicore file preparation and ordered single-writer SQLite behavior are unchanged. CLI output and the existing index and settings format are unchanged.
+- The timing build compiled and passed 45 focused tests and 9 subtests, covering ETA formatting, file accounting when reads or writes fail, and ordered progress with real spawned workers. Tk and the official Native API stack were unavailable; the live Windows dialog and native integration remain unverified.
+
+### Cancel an import without closing BrisartAI
+
+- `ui/app.py` and `ui/dialogs.py` show **Cancel Import** during an active batch. **No** is the default and continues the import. **Yes** stops the batch after the current file, preserves prior index writes, and keeps BrisartAI open. Closing a window during import invokes the same cancel-only prompt.
+- `ui/dialogs.py`, `ui/import_progress.py`, and `ui/app.py` switch to a stopping state when cancellation is confirmed: the bar, percentage, and ETA disappear, even if a worker sends late progress. The dialog labels the displayed paths as the original selection, explains that safe cleanup can take time, and reports the final indexed count once stopped. BrisartAI stays open, and the selection is available for retry. This follow-up compiled and passed 19 focused tests and 6 subtests; live Windows rendering was not tested.
+- `io/readers.py`, `knowledge/ingest.py`, and `core/service.py` retain cooperative cancellation: discovery stops between entries and dispatched preparations drain without adding later files to SQLite. There are no index, settings, or CLI changes.
+
+- The cancel-only build compiled and passed 49 focused tests and 9 subtests. The live Windows prompt and Native API integration remain unverified.
+
 ## [1.4.0] - 2026-11-25
 
 ### Release overview

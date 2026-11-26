@@ -5,3 +5,7 @@
 Retrieval and excerpts share the passage matcher. Short document profiles are cached in memory, exact Python declarations rank ahead of mentions for code-style identifier queries, and compact labels retain the value on the next line when it starts with a number or yes/no. No rebuild of the SQLite index is required.
 
 Brisart owns query concepts, token postings, candidate selection, ranking and passage scoring. Notes share the document ranker. Collection matching and timelines use the same token postings without relevance sorting. File pickers retain a separate title/path filter for source management; it does not rank content. SQLite is storage, not a ranking engine.
+
+## Automatic multicore import
+
+On desktop and CLI imports, BrisartAI uses spawned processes to read, parse and hash independent files. Capacity follows the available logical CPUs and the number of files, subject to the 61-worker Windows process-pool limit. A single file runs directly. Workers inherit the launcher's external Native API path and do not open SQLite. The caller adds prepared sources in discovery order. If the pool becomes unavailable, the caller finishes the uncommitted files serially. There is no setting to enable this, and query ranking and SQLite writes remain serial. Desktop import cancellation may supply a cooperative stop callback. Discovery stops between entries; the selected file can finish, queued preparation is canceled where possible, and dispatched preparations drain without indexing.

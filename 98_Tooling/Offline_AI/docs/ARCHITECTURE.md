@@ -8,7 +8,7 @@ The desktop (`run.py`) and headless CLI (`cli.py`) share `core/service.py`. Both
 | Local input | `io/readers.py`, `binary_readers.py`, `extractor.py` | Discover paths and extract text. No index or network ownership. |
 | Persistence | `knowledge/index.py`, `knowledge/vault.py`, `core/session_memory.py`, `core/settings.py` | The index stores source records and postings; the vault owns notes and collections; memory and settings own their own state. |
 | Retrieval and excerpts | `knowledge/ranker.py`, `relevance_engine.py`, `synthesizer.py`, `intent.py` | Brisart implements candidate selection, ranking and excerpt choice; SQLite is not a ranking engine. |
-| Desktop | `ui/app.py`, `sidebar.py`, `chat_panel.py`, `dialogs.py`, `theme.py` | Tk owns presentation. The search worker returns through a queue, with widget updates on the Tk thread. |
+| Desktop | `ui/app.py`, `sidebar.py`, `chat_panel.py`, `dialogs.py`, `import_progress.py`, `theme.py` | Tk owns presentation. Search and import run on background threads, one operation at a time. Tk consumes results and the latest import counts; the ingest caller remains the sole SQLite writer during import. |
 | Environment and platform boundaries | `state.py`, `native_path.py`, `ui/windows_drop.py` | State paths and migration, external API discovery, and Windows drop handling stay independently owned. |
 
 ## Data flows

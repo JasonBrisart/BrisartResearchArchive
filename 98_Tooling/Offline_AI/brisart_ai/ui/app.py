@@ -1,78 +1,37 @@
-r"""
+"""
 File: brisart_ai/ui/app.py
 
 Purpose
 -------
-Own the Tk workspace, search worker and application lifetime.
-
-The Tk application owns layout, action routing, search-worker lifetime and the
-active-source status shown to the user. It does not own retrieval algorithms or SQLite
-schema.
-
-Public operations: run (db_path=DEFAULT_DB).
-
-Internal helpers include BrisartApp.__init__, BrisartApp._configure_style,
-BrisartApp._build_layout, BrisartApp._refresh_status, BrisartApp._answer_question,
-BrisartApp._poll_answer, BrisartApp._on_answer_ready, BrisartApp._on_chat_submit,
-BrisartApp._ready_for_changes, BrisartApp._import_selected, BrisartApp._action_sources,
-BrisartApp._action_remove, and 6 additional local helpers.
+Compose the offline research workspace and coordinate search and shutdown.
 
 Communication / relationships
 -----------------------------
-Delegates research to BrisartService and composes the sidebar, transcript and dialogs.
-
-The search worker returns a result through a queue; only the Tk event loop updates
-widgets. Mutating actions are disabled while a query runs and closing waits for the
-outstanding operation.
-
-Direct project imports: brisart_ai.knowledge.index, brisart_ai.ui,
-brisart_ai.ui.chat_panel, brisart_ai.ui.dialogs, brisart_ai.core.service,
-brisart_ai.ui.sidebar, brisart_ai.version_info.
-
-Direct importing modules include run.py.
-
-Concrete calls within this file include messagebox.showerror, self.title, self.geometry,
-self.minsize, self.configure, self._configure_style, self._build_layout,
-self._refresh_status, self.chat.append_system, self.bind, self.protocol,
-self.sidebar.pack.
+Tk owns widget updates; BrisartService owns search and state. Workers publish results and import counts to Tk.
 
 Settings / parameters
 ---------------------
-Shows active source scope; F1 opens Help and Ctrl+L focuses the question field.
-
-Module configuration and named constants: HELP_TEXT='BrisartAI
-Help\n--------------\nCore actions (left sidebar):\n Add Sources drop or browse for
-files and folders to index\n Manage sources remove selected indexed files or notes\n Add
-Note save observations and optionally quote an imported source\n Settings view/toggle
-research sources\n Help show this message\n\nEnter submits a question. Ctrl+L focuses
-the question field. F1 opens Help.\n\nBrisartAI answers from your imported files and
-research notes.'.
-
-Call signatures: run(db_path=DEFAULT_DB).
+Scope and elapsed time stay visible during search. Ctrl+L focuses the query and F1 opens Help.
 
 Edge cases
 ----------
-Receives worker results through a queue on the Tk thread and defers closure while search
-is busy.
-
-The desktop requires Tk and a display. A queued answer is distinct from a submitted
-draft; a second Enter during a search must not discard the user’s text.
-
-Explicit exception branches or raised errors in this file include Exception,
-tk.TclError, RuntimeError, Empty.
+Focus stays with modal dialogs; a close request during import cancels only the import.
 
 Known limitations
 -----------------
-Requires Tk and a live display. This module does not rank documents.
+Search is not cancellable. Confirmed import cancellation stops after the selected file and keeps the app open.
+An import thread owns service access until completion; Tk polls its progress.
 
 Examples
 --------
-python run.py
+run(db_path)
 """
 
 from __future__ import annotations
 
+from collections import deque
 import threading
+from time import monotonic
 from queue import Empty, SimpleQueue
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -80,6 +39,7 @@ from tkinter import messagebox, ttk
 from brisart_ai.knowledge.index import DEFAULT_DB
 from brisart_ai.ui import theme
 from brisart_ai.ui.chat_panel import ChatPanel
+from brisart_ai.ui.import_progress import elapsed_label
 from brisart_ai.ui.dialogs import AddSourcesDialog, RemoveSourcesDialog, SettingsDialog, SourceNoteDialog
 from brisart_ai.core.service import BrisartService
 from brisart_ai.ui.sidebar import Sidebar
@@ -87,12 +47,12 @@ from brisart_ai.version_info import APP_NAME, __version__
 
 HELP_TEXT = """BrisartAI Help
 --------------
-Core actions (left sidebar):
+Library actions (left sidebar):
   Add Sources     drop or browse for files and folders to index
   Manage sources  remove selected indexed files or notes
   Add Note        save observations and optionally quote an imported source
-  Settings        view/toggle research sources
-  Help            show this message
+  Settings        view/toggle research sources (workspace header)
+  Activity        review imports, saved notes and diagnostics
 
 Enter submits a question. Ctrl+L focuses the question field. F1 opens Help.
 
@@ -108,23 +68,23 @@ class BrisartApp(tk.Tk):
             self.destroy()
             raise
         self.title(f"{APP_NAME} {__version__}")
-        self.geometry("980x640")
-        self.minsize(760, 480)
+        self.geometry("1080x700")
+        self.minsize(800, 490)
         self.configure(bg=theme.BG_APP)
         self._busy = False
         self._close_pending = False
+        self._import_stop = None
+        self._import_dialog = None
+        self._confirming_cancel = False
         self._answers = SimpleQueue()
 
         self._configure_style()
         self._build_layout()
         self._refresh_status()
 
-        self.chat.append_system(
-            f"{APP_NAME} {__version__} ready. Type a question below and "
-            "press Enter -- I'll answer using your indexed files and notes."
-        )
+        self.chat.append_system(f"{APP_NAME} {__version__} ready.")
         self.bind("<F1>", self._action_help)
-        self.bind("<Control-l>", lambda _event: self.chat.focus_input())
+        self.bind("<Control-l>", self._focus_query)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _configure_style(self) -> None:
@@ -135,6 +95,13 @@ class BrisartApp(tk.Tk):
             pass
         style.configure("Panel.TFrame", background=theme.BG_PANEL)
         style.configure("Sidebar.TFrame", background=theme.BG_SIDEBAR)
+        style.configure("Workspace.TNotebook", background=theme.BG_PANEL, borderwidth=0)
+        style.configure("Workspace.TNotebook.Tab", padding=(13, 6), font=theme.FONT_UI_BOLD)
+        style.map("Workspace.TNotebook.Tab",
+                  background=[("selected", theme.BG_CHAT), ("!selected", theme.BG_PANEL)],
+                  foreground=[("selected", theme.FG_TEXT), ("!selected", theme.FG_MUTED)])
+        style.configure("Import.Horizontal.TProgressbar", background=theme.FG_ACCENT,
+                        troughcolor=theme.BG_INPUT)
         style.configure("TSeparator", background=theme.BORDER)
         style.configure("Navigation.TButton", anchor="w", padding=(11, 7),
                         background=theme.BG_INPUT, foreground=theme.FG_TEXT)
@@ -149,39 +116,66 @@ class BrisartApp(tk.Tk):
         actions = {
             "sources": self._action_sources,
             "remove": self._action_remove, "note": self._action_note,
-            "settings": self._action_settings,
-            "help": self._action_help,
         }
         self.sidebar = Sidebar(self, actions)
         self.sidebar.pack(side="left", fill="y")
-
-        body = ttk.Frame(self, style="Panel.TFrame")
+        body = ttk.Frame(self, style="Panel.TFrame", padding=16)
         body.pack(side="right", fill="both", expand=True, padx=theme.PAD, pady=theme.PAD)
+        header = ttk.Frame(body, style="Panel.TFrame")
+        header.pack(fill="x")
+        self.settings_button = ttk.Button(header, text="Search settings", command=self._action_settings,
+                                          style="Navigation.TButton")
+        self.settings_button.pack(side="right", padx=(6, 0))
+        ttk.Button(header, text="Help", command=self._action_help,
+                   style="Navigation.TButton").pack(side="right")
+        tk.Label(header, text="Research workspace", bg=theme.BG_PANEL, fg=theme.FG_TEXT,
+                 font=theme.FONT_TITLE).pack(side="left")
 
-        tk.Label(body, text="Research workspace", bg=theme.BG_PANEL, fg=theme.FG_TEXT,
-                 font=theme.FONT_HEADING).pack(anchor="w", padx=8, pady=(8, 2))
         self.scope = tk.StringVar(master=self)
-        tk.Label(body, textvariable=self.scope, bg=theme.BG_PANEL, fg=theme.FG_MUTED,
-                 font=theme.FONT_UI).pack(anchor="w", padx=8, pady=(0, 8))
+        scope_row = tk.Frame(body, bg=theme.BG_INPUT)
+        scope_row.pack(fill="x", pady=(10, 12))
+        tk.Label(scope_row, text="SEARCH SCOPE", bg=theme.BG_INPUT, fg=theme.FG_ACCENT,
+                 font=theme.FONT_UI_BOLD).pack(side="left", padx=10, pady=6)
+        tk.Label(scope_row, textvariable=self.scope, bg=theme.BG_INPUT, fg=theme.FG_TEXT,
+                 font=theme.FONT_UI).pack(side="left", pady=6)
+        self.activity = tk.StringVar(master=self)
+        tk.Label(body, textvariable=self.activity, bg=theme.BG_PANEL, fg=theme.FG_MUTED,
+                 font=theme.FONT_UI, anchor="w").pack(side="bottom", fill="x", pady=(7, 0))
         self.chat = ChatPanel(body, on_submit=self._on_chat_submit)
         self.chat.pack(fill="both", expand=True)
-        self.chat.focus_input()
+        self.after_idle(self._focus_query)
+
+    def _focus_query(self, _event=None):
+        if self.grab_current() is None and not self._close_pending:
+            self.chat.focus_input()
+        return "break"
 
     def _refresh_status(self) -> None:
         total, files, web = self.service.counts()
-        self.sidebar.set_status(files, total - files - web)
-        active = [label for key, label in (("search_local_files", "local files"),
-                  ("search_notes", "research notes")) if self.service.settings.get(key)]
-        self.scope.set("Searching: " + " + ".join(active) if active else "Search is off. Enable sources in Search settings.")
+        notes = total - files - web
+        self.sidebar.set_status(files, notes)
+        enabled = [(label, count) for key, label, count in (
+            ("search_local_files", "Local files", files),
+            ("search_notes", "Research notes", notes),
+        ) if self.service.settings.get(key)]
+        self.scope.set(" + ".join(label for label, _ in enabled) or "Off: enable sources in Search settings")
+        if not enabled:
+            self.activity.set("No source types enabled.")
+        elif not any(count for _, count in enabled):
+            self.activity.set("No indexed items in scope. Add sources or change your scope.")
+        else:
+            self.activity.set("Ready")
 
-    def _answer_question(self, question: str) -> None:
+    def _answer_question(self, question: str) -> bool:
         question = question.strip()
         if not question or self._busy:
-            return
+            return False
         self._busy = True
         self.sidebar.set_busy(True)
         self.chat.set_busy(True)
-        self.scope.set("Searching the offline library...")
+        self.settings_button.state(["disabled"])
+        self._search_started = monotonic()
+        self.activity.set("Searching the offline library...  |  Elapsed 0:00")
 
         def worker() -> None:
             try:
@@ -193,15 +187,20 @@ class BrisartApp(tk.Tk):
         try:
             threading.Thread(target=worker, daemon=True).start()
         except RuntimeError:
-            self._on_answer_ready("Could not start search. Try again.", ())
-        else:
-            self.after(40, self._poll_answer)
+            self._on_answer_ready("Could not start search. Your draft is still available.", ())
+            return False
+        self.chat.append_user(question)
+        self.after(40, self._poll_answer)
+        return True
 
     def _poll_answer(self):
         try:
             answer, diagnostics = self._answers.get_nowait()
         except Empty:
-            self.after(40, self._poll_answer)
+            if not self._close_pending:
+                elapsed = elapsed_label(monotonic() - self._search_started)
+                self.activity.set(f"Searching the offline library...  |  Elapsed {elapsed}")
+            self.after(100, self._poll_answer)
         else:
             self._on_answer_ready(answer, diagnostics)
 
@@ -211,41 +210,88 @@ class BrisartApp(tk.Tk):
             self._on_close()
             return
         self.sidebar.set_busy(False)
+        self.settings_button.state(["!disabled"])
         self.chat.set_busy(False)
         self.chat.append_assistant(answer)
         for diagnostic_line in diagnostics:
             self.chat.append_system(diagnostic_line)
         self._refresh_status()
 
-    def _on_chat_submit(self, text: str) -> None:
-        text = text.strip()
-        if not text:
-            return
-        if self._busy:
-            self.chat.append_system("Wait for the current answer before sending another question.")
-            return
-        self.chat.append_user(text)
-        self._answer_question(text)
+    def _on_chat_submit(self, text: str) -> bool:
+        if not text.strip() or self._close_pending:
+            return False
+        return self._answer_question(text)
 
     def _ready_for_changes(self) -> bool:
-        if self._busy:
-            messagebox.showinfo("BrisartAI", "Wait for the current answer first.", parent=self)
-            return False
-        return True
+        return not self._busy and self.grab_current() is None
 
-    def _import_selected(self, paths, parent) -> bool:
+    def _import_selected(self, paths, dialog) -> None:
+        latest = deque(maxlen=1)
+        outcome = SimpleQueue()
+        stop = threading.Event()
+        self._import_stop = stop
+        self._import_dialog = dialog
+        self._busy = True
+        self.sidebar.set_busy(True)
+        self.chat.set_busy(True)
+        self.settings_button.state(["disabled"])
+        self.activity.set("Importing local sources...")
+
+        discovered_at = None
+
+        def publish(processed, total, indexed):
+            nonlocal discovered_at
+            if discovered_at is None:
+                discovered_at = monotonic()
+            latest.append((processed, total, indexed, discovered_at))
+
+        def worker():
+            try:
+                result = self.service.import_paths(paths, on_progress=publish, should_stop=stop.is_set)
+            except Exception as exc:
+                outcome.put((False, str(exc), False))
+            else:
+                outcome.put((True, result, stop.is_set()))
+
+        def poll():
+            try:
+                finished = outcome.get_nowait()
+            except Empty:
+                finished = None
+            try:
+                snapshot = latest.popleft()
+            except IndexError:
+                snapshot = None
+            dialog.update_import(snapshot)
+            if finished is None:
+                self.after(125, poll)
+                return
+            self._busy = False
+            self._import_stop = None
+            self._import_dialog = None
+            if self._close_pending:
+                self._on_close()
+                return
+            self.sidebar.set_busy(False)
+            self.chat.set_busy(False)
+            self.settings_button.state(["!disabled"])
+            ok, result, cancelled = finished
+            self.chat.append_system(f"Import stopped. {result}" if cancelled else
+                                    result if ok else f"Import failed: {result}")
+            dialog.finish_import(ok, result, cancelled=cancelled)
+            self._refresh_status()
+            if cancelled:
+                self.activity.set("Import stopped. Indexed files were kept.")
+
         try:
-            result = self.service.import_paths(paths)
-        except Exception as exc:
-            messagebox.showerror("Import Sources", str(exc), parent=parent)
-            return False
-        self.chat.append_system(result)
-        self._refresh_status()
-        return True
+            threading.Thread(target=worker, daemon=False).start()
+        except RuntimeError as exc:
+            outcome.put((False, f"Could not start import: {exc}", False))
+        self.after(0, poll)
 
     def _action_sources(self) -> None:
         if self._ready_for_changes():
-            AddSourcesDialog(self, self._import_selected)
+            AddSourcesDialog(self, self._import_selected, self._request_import_cancel)
 
     def _action_remove(self) -> None:
         if self._ready_for_changes():
@@ -268,12 +314,41 @@ class BrisartApp(tk.Tk):
         if not self.grab_current():
             messagebox.showinfo("Help and shortcuts", HELP_TEXT, parent=self)
 
-    def _on_close(self) -> None:
-        if self._busy:
-            self._close_pending = True
+    def _request_import_cancel(self) -> None:
+        stop = self._import_stop
+        dialog = self._import_dialog
+        if stop is None or dialog is None or stop.is_set() or self._confirming_cancel:
             return
-        self.service.close()
-        self.destroy()
+        self._confirming_cancel = True
+        try:
+            confirmed = messagebox.askyesno(
+                "Cancel import?",
+                "The current file will finish indexing, if one is in progress. "
+                "The rest of the import will be canceled. Files already indexed will be kept. "
+                "BrisartAI will stay open.\n\nCancel this import?",
+                default=messagebox.NO, parent=dialog,
+            )
+        finally:
+            self._confirming_cancel = False
+        # A modal prompt can process Tk callbacks while it is open.
+        if confirmed and self._import_stop is stop:
+            stop.set()
+            dialog.show_stopping()
+            self.activity.set("Stopping import safely. Waiting for the current file and workers...")
+
+    def _on_close(self) -> None:
+        if self._import_stop is not None:
+            self._request_import_cancel()
+            return
+        if self._busy:
+            if not self._close_pending:
+                self._close_pending = True
+                self.activity.set("Closing after the current operation finishes...")
+            return
+        try:
+            self.service.close()
+        finally:
+            self.destroy()
 
 
 def _show_startup_error(exc: Exception) -> None:

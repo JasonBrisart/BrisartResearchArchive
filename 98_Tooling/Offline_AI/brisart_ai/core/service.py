@@ -85,7 +85,7 @@ Examples
 BrisartService(db_path).ask("When does the permit expire?")
 
 Other callable entry points in this module include BrisartService.ask,
-BrisartService.import_paths, BrisartService.list_sources, BrisartService.remove_source,
+BrisartService.import_paths (with optional progress and stop callbacks), BrisartService.list_sources, BrisartService.remove_source,
 BrisartService.remove_sources, BrisartService.get_source_for_note,
 BrisartService.add_source_note, plus 6 more.
 """
@@ -96,7 +96,7 @@ import contextlib
 import io
 import threading
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from brisart_ai.core.conversation import build_conversation_answer
 from brisart_ai.core.session_memory import SessionMemory
@@ -163,8 +163,10 @@ class BrisartService:
                 break
         return highlights
 
-    def import_paths(self, paths: List[str]) -> str:
-        count = ingest_paths(paths, self.index)
+    def import_paths(self, paths: List[str], *, on_progress: Callable[[int, int, int], None] | None = None,
+                     should_stop: Callable[[], bool] | None = None) -> str:
+        """Import paths, optionally report counts, and honor a cooperative stop request."""
+        count = ingest_paths(paths, self.index, on_progress=on_progress, should_stop=should_stop)
         total, _files, _web = self.counts()
         return f"Ingested {count} file(s) this run. Indexed sources total: {total}"
 

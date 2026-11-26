@@ -3,6 +3,8 @@ File: brisart_ai/ui/dialogs.py
 
 Purpose
 -------
+The Add Sources dialog presents file-count progress, elapsed time and a throughput-based ETA and a confirmed import-only cancellation with a separate stopping display.
+
 Own import queues, source management, note composition and settings controls.
 
 The dialogs own human-facing import queues, source removal, note annotation and settings
@@ -59,7 +61,7 @@ deletes the disk original.
 
 Examples
 --------
-AddSourcesDialog(parent, on_import)
+AddSourcesDialog(parent, on_import, on_cancel_import)
 
 Other callable entry points in this module include AddSourcesDialog.destroy.
 """
@@ -69,6 +71,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
+from time import monotonic
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
@@ -76,6 +79,7 @@ from brisart_ai.core.settings import TOGGLE_LABELS
 from brisart_ai.io.readers import SUPPORTED_EXTENSIONS, SUPPORTED_EXTENSIONLESS_NAMES, is_supported
 from brisart_ai.knowledge.index import filter_source_rows
 from brisart_ai.ui import theme
+from brisart_ai.ui.import_progress import elapsed_label, progress_text
 
 
 def ask_import_paths(master, kind: str) -> list[str]:
@@ -175,17 +179,23 @@ class RemoveSourcesDialog(tk.Toplevel):
 class AddSourcesDialog(tk.Toplevel):
     """Queue files and recursive folders before importing them together."""
 
-    def __init__(self, master, on_import):
+    def __init__(self, master, on_import, on_cancel_import):
         super().__init__(master)
         self.title("Add Sources")
         self.transient(master)
-        self.geometry("700x360")
+        self.geometry("720x440")
+        self.minsize(630, 370)
+        self._running = False
+        self._snapshot = None
+        self._started = 0.0
+        self._stopping = False
         self.on_import = on_import
+        self.on_cancel_import = on_cancel_import
         self._paths = {}
         self._drop_timer = None
         self.status = tk.StringVar()
-        instructions = tk.StringVar(value="Browse for supported files or entire folders.")
-        ttk.Label(self, textvariable=instructions).pack(anchor="w", padx=12, pady=8)
+        self.instructions = tk.StringVar(master=self, value="Browse for supported files or entire folders.")
+        ttk.Label(self, textvariable=self.instructions).pack(anchor="w", padx=12, pady=8)
         box = ttk.Frame(self)
         box.pack(fill="both", expand=True, padx=12)
         self.queue = tk.Listbox(box, selectmode="extended", exportselection=False)
@@ -194,11 +204,23 @@ class AddSourcesDialog(tk.Toplevel):
         scroll.pack(side="right", fill="y")
         self.queue.pack(side="left", fill="both", expand=True)
         ttk.Label(self, textvariable=self.status).pack(anchor="w", padx=12)
+        self.progress = ttk.Progressbar(self, mode="determinate", maximum=100,
+                                        style="Import.Horizontal.TProgressbar")
+        self.progress.pack(fill="x", padx=12, pady=(8, 3))
+        self.progress_detail = tk.StringVar(master=self)
+        self.progress_label = ttk.Label(self, textvariable=self.progress_detail, wraplength=590)
+        self.progress_label.pack(anchor="w", padx=12)
         bar = ttk.Frame(self)
         bar.pack(fill="x", padx=12, pady=10)
-        ttk.Button(bar, text="Browse Files", command=lambda: self._browse("files")).pack(side="left")
-        ttk.Button(bar, text="Browse Folder", command=lambda: self._browse("folder")).pack(side="left")
-        ttk.Button(bar, text="Remove from Queue", command=self._unqueue).pack(side="left")
+        self.edit_buttons = []
+        for label, command in (("Browse Files", lambda: self._browse("files")),
+                               ("Browse Folder", lambda: self._browse("folder")),
+                               ("Remove from Queue", self._unqueue)):
+            button = ttk.Button(bar, text=label, command=command)
+            button.pack(side="left")
+            self.edit_buttons.append(button)
+        self.close_button = ttk.Button(bar, text="Close", command=self._request_close)
+        self.close_button.pack(side="right", padx=(6, 0))
         self.import_button = ttk.Button(bar, text="Import Sources", command=self._import, state="disabled")
         self.import_button.pack(side="right")
         self.update_idletasks()
@@ -211,7 +233,8 @@ class AddSourcesDialog(tk.Toplevel):
             else:
                 instructions.set("Drop files or folders into the list, or use the Browse buttons.")
                 self._poll_drop()
-        self.bind("<Escape>", lambda _event: self.destroy())
+        self.protocol("WM_DELETE_WINDOW", self._request_close)
+        self.bind("<Escape>", self._request_close)
         self.grab_set()
 
     def _browse(self, kind):
@@ -235,7 +258,9 @@ class AddSourcesDialog(tk.Toplevel):
 
     def _poll_drop(self):
         pending = self._drop.paths
-        self._enqueue([pending.popleft() for _ in range(len(pending))])
+        dropped = [pending.popleft() for _ in range(len(pending))]
+        if not self._running:
+            self._enqueue(dropped)
         self._drop_timer = self.after(125, self._poll_drop)
 
     def _unqueue(self):
@@ -247,10 +272,79 @@ class AddSourcesDialog(tk.Toplevel):
         self.import_button.configure(state="normal" if self._paths else "disabled")
 
     def _import(self):
-        if self._paths and self.on_import(list(self._paths.values()), self):
+        if self._running or not self._paths:
+            return
+        self._running = True
+        self._stopping = False
+        self._started = monotonic()
+        self._snapshot = None
+        self.instructions.set("Selected files and folders in this batch.")
+        self.progress.pack(fill="x", padx=12, pady=(8, 3), before=self.progress_label)
+        self.status.set("Importing local sources...")
+        self.progress.configure(mode="indeterminate", value=0)
+        self.progress.start(75)
+        self.update_import(None)
+        self.close_button.configure(text="Cancel Import")
+        for button in (*self.edit_buttons, self.import_button):
+            button.state(["disabled"])
+        self.on_import(list(self._paths.values()), self)
+
+    def update_import(self, snapshot):
+        if snapshot is not None:
+            if self._snapshot is None and not self._stopping:
+                self.progress.stop()
+                self.progress.configure(mode="determinate")
+            self._snapshot = snapshot
+        now = monotonic()
+        percent, text = progress_text(now, self._started, self._snapshot, stopping=self._stopping)
+        if percent is not None:
+            self.progress.configure(value=percent)
+        self.progress_detail.set(text)
+
+    def finish_import(self, ok, result, *, cancelled=False):
+        self._running = False
+        self.progress.stop()
+        if ok and not cancelled:
+            if self._snapshot and self._snapshot[1]:
+                self.progress.configure(mode="determinate", value=100)
+            self._paths.clear()
+            self.queue.delete(0, "end")
+        self.close_button.configure(text="Close")
+        self.instructions.set("Original selection kept for retry. Nothing is importing." if cancelled
+                              else "Browse for supported files or entire folders.")
+        if cancelled:
+            self.status.set("Import stopped. Indexed files were kept.")
+            indexed = self._snapshot[2] if self._snapshot else 0
+            elapsed = elapsed_label(monotonic() - self._started)
+            self.progress_detail.set(f"{indexed:,} indexed  |  Elapsed {elapsed}")
+        else:
+            self.status.set(result if ok else "Import failed. Review the details below.")
+        if not ok:
+            self.progress_detail.set(f"{result} | Elapsed {elapsed_label(monotonic() - self._started)}")
+        for button in (*self.edit_buttons, self.close_button):
+            button.state(["!disabled"])
+        self.import_button.state(["!disabled" if self._paths else "disabled"])
+        self.close_button.focus_set()
+
+    def show_stopping(self):
+        self._stopping = True
+        self.close_button.configure(text="Stopping...")
+        self.close_button.state(["disabled"])
+        self.progress.stop()
+        self.progress.pack_forget()
+        self.instructions.set("Batch canceled. The list below is the original selection, not active work.")
+        self.status.set("Stopping import safely. The current file and worker cleanup may take a moment.")
+        self.update_import(None)
+
+    def _request_close(self, _event=None):
+        if self._running:
+            self.on_cancel_import()
+        else:
             self.destroy()
+        return "break"
 
     def destroy(self):
+        self.progress.stop()
         if self._drop_timer is not None:
             self.after_cancel(self._drop_timer)
             self._drop_timer = None

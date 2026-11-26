@@ -1,4 +1,4 @@
-# BrisartAI 1.4.0
+# BrisartAI 1.5.0
 
 BrisartAI indexes local files and research notes, then answers questions with excerpts and citations. It does not search the internet. Results reflect the indexed copy, not necessarily the current file on disk.
 
@@ -20,9 +20,9 @@ Place `--db PATH` before a subcommand to use another index. This does not change
 
 ## Work with sources
 
-1. **Add sources:** Queue files or folders, then choose **Import Sources**. Folder imports recurse. Windows Explorer drops can add to the queue; use Browse if drops are unavailable. A supported suffix is not a guarantee that text can be extracted. Scanned PDFs need text supplied separately.
+1. **Add sources:** Queue files or folders, then choose **Import Sources**. After **Import Sources**, the dialog scans for supported files, then shows a progress bar, percentage, files left, indexed count, elapsed time, and an estimated time remaining. The ETA appears after enough files finish and can change as file sizes vary. The dialog keeps the final totals until you close it. Choose **Cancel Import** to stop only the import. **No** continues; **Yes** lets the current file finish, cancels the rest, and keeps BrisartAI open. Already indexed files are kept. The progress bar and ETA disappear while the app waits for the current file and worker cleanup. Once cleanup is done, the dialog reports **Import stopped**. Folder imports recurse. Bulk imports use available logical CPUs automatically; there is no toggle. Windows Explorer drops can add to the queue; use Browse if drops are unavailable. A supported suffix is not a guarantee that text can be extracted. Scanned PDFs need text supplied separately.
 2. **Add research note:** Write a standalone note, or highlight indexed text and select **Attach Highlighted Text**. The saved excerpt carries the original title and path as a snapshot.
-3. **Ask:** Type a question and press Enter. The workspace shows which source types are active. **Search settings** controls eligibility without deleting data. Ctrl+L focuses the question field and F1 opens Help.
+3. **Ask:** Type a question and press Enter. The status line shows elapsed time while the search runs. The scope strip stays visible while you search. **Results** shows answers and evidence; **Activity** shows imports, note saves and search diagnostics. **Search settings** controls eligibility without deleting data. Ctrl+L focuses the question field and F1 opens Help.
 4. **Manage sources:** Filter by title, path or kind. Ctrl/Shift-click selects multiple rows; Ctrl+A selects the visible rows. Removing a file entry never deletes the disk original. Remove a note separately if it contains an excerpt you no longer want indexed.
 
 ## State and upgrading

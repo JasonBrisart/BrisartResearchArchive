@@ -3,6 +3,8 @@ File: brisart_ai/io/tests/test_binary_readers.py
 
 Purpose
 -------
+Regress bounded XML, DTD rejection, numeric slide ordering and bounded PDF reads.
+
 Exercise document-container and simple PDF extraction.
 
 Protected scenarios: TestReadDocx verifies extracts text from document xml; TestReadDocx
@@ -65,6 +67,9 @@ import unittest
 import zipfile
 import zlib
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+from brisart_ai.io import binary_readers
 from brisart_ai.io.binary_readers import read_docx, read_odt, read_pdf_best_effort, read_pptx, read_xlsx
 
 
@@ -168,6 +173,44 @@ class TestReadPdfBestEffort(unittest.TestCase):
         result = read_pdf_best_effort(Path("/nonexistent/path/file.pdf"))
         self.assertEqual(result, "")
 
+
+
+class TestImportBoundaries(unittest.TestCase):
+    def test_dtd_is_rejected_even_in_utf16_xml(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "notes.odt"
+            with zipfile.ZipFile(path, "w") as archive:
+                archive.writestr("content.xml", '<!DOCTYPE content><content>Text</content>'.encode("utf-16"))
+            self.assertEqual(read_odt(path), "")
+
+    def test_each_package_budget_is_enforced_before_opening_members(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "large.docx"
+            with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("word/document.xml", "<p>First</p>")
+                archive.writestr("word/header1.xml", "<p>Later</p>")
+            for name, limit in (("_MAX_XML_MEMBER_BYTES", 8), ("_MAX_XML_TOTAL_BYTES", 20),
+                                ("_MAX_XML_MEMBERS", 1)):
+                with self.subTest(budget=name), patch.object(binary_readers, name, limit):
+                    with patch.object(zipfile.ZipFile, "open", side_effect=AssertionError("member opened")):
+                        self.assertEqual(read_docx(path), "")
+            self.assertEqual(read_docx(path), "First\nLater")
+
+    def test_slides_follow_numeric_part_order(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "order.pptx"
+            with zipfile.ZipFile(path, "w") as archive:
+                for number in (10, 2, 1):
+                    archive.writestr(f"ppt/slides/slide{number}.xml", f"<t>Slide {number}</t>")
+            self.assertEqual(read_pptx(path), "Slide 1\nSlide 2\nSlide 10")
+
+    def test_pdf_reads_only_the_requested_byte_budget(self):
+        path = MagicMock(spec=Path)
+        stream = path.open.return_value.__enter__.return_value
+        stream.read.return_value = b"(Text)"
+        self.assertEqual(read_pdf_best_effort(path, max_bytes=6), "Text")
+        stream.read.assert_called_once_with(6)
+        path.read_bytes.assert_not_called()
 
 if __name__ == "__main__":
     unittest.main()

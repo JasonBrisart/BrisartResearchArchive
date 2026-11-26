@@ -1,151 +1,113 @@
-r"""
-File: brisart_ai/io/binary_readers.py
-
-Purpose
+"""Purpose
 -------
-Extract searchable text from common document containers and simple PDFs.
-
-This module owns container-specific text extraction, not general file discovery or
-relevance scoring. It reads supported document packages and PDF text streams without
-calling external web services.
-
-Public operations: read_docx (path); read_pptx (path); read_xlsx (path); read_odt
-(path).
-
-Public operations: read_pdf_best_effort (path, max_bytes=10000000).
-
-Internal helpers include _xml_text.
+Extract searchable text from Office, OpenDocument and PDF files.
 
 Communication / relationships
 -----------------------------
-readers.py dispatches formats here; ZIP/XML parsing uses the standard library and PDF
-inflation uses a Native API.
-
-ZIP/XML handling is performed in the reader, while compressed PDF content uses the
-external Brisart inflate helper. Failures are handled at the format boundary rather than
-changing the index schema.
-
-Direct project imports: brisart_inflate.
-
-Direct importing modules include brisart_ai/io/readers.py,
-brisart_ai/io/tests/test_binary_readers.py.
+Readers provide text to ingestion. PDF stream decompression uses the external Brisart Native API.
 
 Settings / parameters
 ---------------------
-The requested reader selects the container layout.
-
-Call signatures: read_docx(path); read_pptx(path); read_xlsx(path); read_odt(path);
-read_pdf_best_effort(path, max_bytes=10000000).
+Selected XML is limited to 16 MiB per member, 64 MiB total and 2,048 members. The PDF raw read honors max_bytes.
 
 Edge cases
 ----------
-Missing or invalid document parts can yield no text.
-
-Extracted text can omit layout, images, scanned pages and unsupported encodings. A
-document that opens successfully can still produce no searchable text.
-
-Explicit exception branches or raised errors in this file include Exception.
+Unusable input yields no text. DTD-bearing XML members are skipped. Over-budget packages yield no text.
 
 Known limitations
 -----------------
-Best-effort extraction does not preserve page layout, perform OCR or implement all PDF
-encodings.
+PPTX order uses numeric part names, not presentation relationships. PDF support is approximate;
+the raw read limit does not constrain stream expansion. Readers are not a sandbox.
 
 Examples
 --------
-read_docx(Path("notebook.docx"))
-
-Other callable entry points in this module include read_pptx, read_xlsx, read_odt,
-read_pdf_best_effort.
+read_docx(Path("local-notes.docx"))
 """
 
 from __future__ import annotations
 
 import re
 import zipfile
+import zlib
 from pathlib import Path
 from xml.etree import ElementTree
 
-from brisart_inflate import brisart_zlib_decompress
+_MAX_XML_MEMBER_BYTES = 16 * 1024 * 1024
+_MAX_XML_TOTAL_BYTES = 64 * 1024 * 1024
+_MAX_XML_MEMBERS = 2048
 
 
-def _xml_text(xml_bytes: bytes) -> str:
+class _NoDoctypeTreeBuilder(ElementTree.TreeBuilder):
+    def doctype(self, name, pubid, system):
+        raise ElementTree.ParseError("DTDs are not allowed in imported documents")
+
+
+def _xml_text(payload: bytes) -> str:
     try:
-        root = ElementTree.fromstring(xml_bytes)
-    except Exception:
+        parser = ElementTree.XMLParser(target=_NoDoctypeTreeBuilder())
+        root = ElementTree.fromstring(payload, parser=parser)
+    except (ElementTree.ParseError, LookupError, ValueError):
         return ""
-    parts = []
-    for node in root.iter():
-        if node.text and node.text.strip():
-            parts.append(node.text.strip())
-    return "\n".join(parts)
+    return "\n".join(node.text.strip() for node in root.iter() if node.text and node.text.strip())
+
+
+def _read_package_xml(path: Path, select, order=None) -> str:
+    try:
+        with zipfile.ZipFile(path) as archive:
+            members = [info for info in archive.infolist() if not info.is_dir() and select(info.filename)]
+            if (len(members) > _MAX_XML_MEMBERS
+                    or any(info.file_size > _MAX_XML_MEMBER_BYTES for info in members)
+                    or sum(info.file_size for info in members) > _MAX_XML_TOTAL_BYTES):
+                return ""
+            if order is not None:
+                members.sort(key=lambda info: order(info.filename))
+            parts = []
+            remaining = _MAX_XML_TOTAL_BYTES
+            for info in members:
+                limit = min(_MAX_XML_MEMBER_BYTES, remaining)
+                with archive.open(info) as member:
+                    payload = member.read(limit + 1)
+                if len(payload) > limit:
+                    return ""
+                remaining -= len(payload)
+                if text := _xml_text(payload):
+                    parts.append(text)
+            return "\n".join(parts)
+    except (OSError, EOFError, RuntimeError, ValueError, zipfile.BadZipFile, zlib.error, NotImplementedError):
+        return ""
 
 
 def read_docx(path: Path) -> str:
-    parts = []
-    try:
-        with zipfile.ZipFile(path) as archive:
-            for name in archive.namelist():
-                if name.startswith("word/") and name.endswith(".xml"):
-                    text = _xml_text(archive.read(name))
-                    if text:
-                        parts.append(text)
-    except Exception:
-        return ""
-    return "\n".join(parts)
+    return _read_package_xml(path, lambda name: name.startswith("word/") and name.endswith(".xml"))
+
+
+def _pptx_order(name: str):
+    number = re.search(r"([0-9]{1,12})\.xml$", name)
+    return ("/notesSlides/" in name, int(number[1]) if number else float("inf"), name)
 
 
 def read_pptx(path: Path) -> str:
-    parts = []
-    try:
-        with zipfile.ZipFile(path) as archive:
-            for name in sorted(archive.namelist()):
-                if name.startswith("ppt/slides/") and name.endswith(".xml"):
-                    text = _xml_text(archive.read(name))
-                    if text:
-                        parts.append(text)
-                elif name.startswith("ppt/notesSlides/") and name.endswith(".xml"):
-                    text = _xml_text(archive.read(name))
-                    if text:
-                        parts.append(text)
-    except Exception:
-        return ""
-    return "\n".join(parts)
+    return _read_package_xml(path, lambda name: name.endswith(".xml") and
+                             name.startswith(("ppt/slides/", "ppt/notesSlides/")), _pptx_order)
 
 
 def read_xlsx(path: Path) -> str:
-    parts = []
-    try:
-        with zipfile.ZipFile(path) as archive:
-            names = set(archive.namelist())
-            if "xl/sharedStrings.xml" in names:
-                text = _xml_text(archive.read("xl/sharedStrings.xml"))
-                if text:
-                    parts.append(text)
-            for name in sorted(names):
-                if name.startswith("xl/worksheets/") and name.endswith(".xml"):
-                    text = _xml_text(archive.read(name))
-                    if text:
-                        parts.append(text)
-    except Exception:
-        return ""
-    return "\n".join(parts)
+    return _read_package_xml(path, lambda name: name == "xl/sharedStrings.xml" or
+                             (name.startswith("xl/worksheets/") and name.endswith(".xml")),
+                             lambda name: name)
 
 
 def read_odt(path: Path) -> str:
-    try:
-        with zipfile.ZipFile(path) as archive:
-            if "content.xml" in archive.namelist():
-                return _xml_text(archive.read("content.xml"))
-    except Exception:
-        return ""
-    return ""
+    return _read_package_xml(path, lambda name: name == "content.xml")
 
 
 def read_pdf_best_effort(path: Path, max_bytes: int = 10_000_000) -> str:
+    if max_bytes <= 0:
+        return ""
     try:
-        raw = path.read_bytes()[:max_bytes]
-    except Exception:
+        with path.open("rb") as source:
+            raw = source.read(max_bytes)
+    except OSError:
         return ""
     chunks = []
     for match in re.finditer(rb"\((?:\\.|[^\\)])*\)", raw):
@@ -155,6 +117,8 @@ def read_pdf_best_effort(path: Path, max_bytes: int = 10_000_000) -> str:
         if decoded.strip():
             chunks.append(decoded.strip())
     for match in re.finditer(rb"stream\r?\n(.*?)\r?\nendstream", raw, re.DOTALL):
+        from brisart_inflate import brisart_zlib_decompress
+
         stream = match.group(1).strip(b"\r\n")
         try:
             inflated = brisart_zlib_decompress(stream)

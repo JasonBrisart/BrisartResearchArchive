@@ -1,58 +1,29 @@
-r"""
+"""
 File: brisart_ai/ui/sidebar.py
 
 Purpose
 -------
-Display Library and Preferences controls and offline library counts.
-
-The sidebar is the desktop navigation owner. It groups library actions and preferences
-without duplicating the application service.
-
-Public operations: Sidebar.set_busy (self, busy); Sidebar.set_status (self, files,
-notes).
-
-Internal helpers include Sidebar.__init__, Sidebar._build, Sidebar._make_button.
+Show library actions and counts in a fixed-width rail.
 
 Communication / relationships
 -----------------------------
-The desktop supplies named action callbacks; theme defines presentation constants.
-
-Action keys map to callbacks supplied by app.py. Counts and busy state are presentation
-inputs, not independent queries into SQLite.
-
-Direct project imports: brisart_ai.ui, brisart_ai.version_info.
-
-Direct importing modules include brisart_ai/ui/app.py.
-
-Concrete calls within this file include self.pack_propagate, self._build,
-self.buttons.items, self.status_var.set, self._make_button.
+BrisartApp supplies callbacks and counts.
 
 Settings / parameters
 ---------------------
-set_status displays file and note counts; set_busy disables mutations and settings.
-
-Call signatures: Sidebar.set_busy(self, busy); Sidebar.set_status(self, files, notes).
+Import is the emphasized library action.
 
 Edge cases
 ----------
-Help remains available while search is busy.
-
-Help remains available while source-mutating controls are disabled. Displayed counts
-describe stored local files and notes, not guaranteed relevant matches.
-
-No explicit exception-handling branch is defined at module level. Unexpected errors
-therefore follow the caller’s normal error boundary unless a lower-level helper handles
-them.
+Library mutations are disabled while search runs.
 
 Known limitations
 -----------------
-Counts are stored sources, not the number eligible for a particular question.
+Counts reflect the full local library, not the current search scope.
 
 Examples
 --------
-sidebar.set_status(files=3, notes=2)
-
-Other callable entry points in this module include Sidebar.set_status.
+sidebar.set_status(files=2, notes=1)
 """
 
 from __future__ import annotations
@@ -75,21 +46,17 @@ class Sidebar(ttk.Frame):
         title = tk.Label(self, text=APP_NAME, bg=theme.BG_SIDEBAR, fg=theme.FG_ACCENT, font=("Segoe UI", 16, "bold"))
         title.pack(anchor="w", padx=theme.PAD, pady=(theme.PAD, 0))
 
-        version = tk.Label(self, text=__version__, bg=theme.BG_SIDEBAR, fg=theme.FG_MUTED, font=("Segoe UI", 9))
+        version = tk.Label(self, text=f"OFFLINE RESEARCH  /  {__version__}", bg=theme.BG_SIDEBAR, fg=theme.FG_MUTED, font=("Segoe UI", 9))
         version.pack(anchor="w", padx=theme.PAD, pady=(0, theme.PAD))
 
         self.buttons = {}
-        for heading, actions in (
-            ("LIBRARY", (("Add sources", "sources"), ("Add research note", "note"),
-                         ("Manage sources", "remove"))),
-            ("PREFERENCES", (("Search settings", "settings"), ("Help and shortcuts", "help"))),
-        ):
-            ttk.Separator(self, orient="horizontal").pack(fill="x", padx=theme.PAD, pady=6)
-            tk.Label(self, text=heading, bg=theme.BG_SIDEBAR, fg=theme.FG_MUTED,
-                     font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=theme.PAD, pady=3)
-            for label, key in actions:
-                self._make_button(label, key)
-        self.status_var = tk.StringVar(value="Indexed: 0")
+        ttk.Separator(self, orient="horizontal").pack(fill="x", padx=theme.PAD, pady=10)
+        tk.Label(self, text="LIBRARY", bg=theme.BG_SIDEBAR, fg=theme.FG_MUTED,
+                 font=theme.FONT_UI_BOLD).pack(anchor="w", padx=theme.PAD, pady=3)
+        for label, key in (("Add sources", "sources"), ("Add research note", "note"),
+                           ("Manage sources", "remove")):
+            self._make_button(label, key)
+        self.status_var = tk.StringVar(master=self, value="Indexed: 0")
         status = tk.Label(
             self, textvariable=self.status_var, bg=theme.BG_SIDEBAR, fg=theme.FG_MUTED,
             font=("Segoe UI", 8), wraplength=theme.SIDEBAR_WIDTH - 2 * theme.PAD, justify="left",
@@ -103,12 +70,11 @@ class Sidebar(ttk.Frame):
         self.buttons[key] = button
 
     def set_busy(self, busy: bool) -> None:
-        for key, button in self.buttons.items():
-            if key != "help":
-                button.state(["disabled" if busy else "!disabled"])
+        for button in self.buttons.values():
+            button.state(["disabled" if busy else "!disabled"])
 
     def set_status(self, files: int, notes: int) -> None:
-        self.status_var.set(f"OFFLINE LIBRARY\n{files:,} files   |   {notes:,} notes")
+        self.status_var.set(f"INDEXED LIBRARY\n{files:,} files   |   {notes:,} notes")
 
 
 __all__ = ["Sidebar"]
