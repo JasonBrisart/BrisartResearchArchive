@@ -21,7 +21,7 @@ A dependency-location maintenance release. Entitle now resolves the archive's sh
 ### Compatibility
 - **Unchanged:** BSR2-S64-SIV sealed v3 files, legacy v2 envelopes, Ed25519 signatures, canonical entitlement payloads, key files, revocation lists, checkpoints, record hashes, CLI arguments, and GUI workflows.
 - **Installation requirement:** `97_Encryption/v4` must be under the archive root, as a sibling of `98_Tooling/` (which contains `Entitle/`). An installation containing only `97_Encryption/Official` no longer satisfies Entitle's dependency. `97_Encryption` itself was not modified or bundled.
-- **Testing:** The previous migration package passed 421 of 421 Entitle tests against the supplied v4 source on Linux. The subsequently supplied Entitle export confirms the runtime link points to `v4`. The version and changelog update is documentation/metadata only; Windows GUI and platform-specific paths have not been exercised on Windows.
+- **Testing:** The previous migration package passed 421 of 421 Entitle tests against the supplied v4 source on Linux. The subsequently supplied Entitle export confirms the runtime link points to `v4`. The version and changelog update is documentation/metadata only.
 
 ---
 
