@@ -1,5 +1,9 @@
 # Changelog
 
+All notable changes to BrisartIdentityTools LTS 1.4.x are recorded here.
+
+---
+
 ## 1.4.4 - 2026-11-26
 
 ### Changed
@@ -10,10 +14,6 @@
 ### Compatibility
 - Required layout: `BrisartResearchArchive/97_Encryption/v4` and `BrisartResearchArchive/98_Tooling/Identity_Tools/LTS-2028 1.4.x`.
 - Existing encryption formats and stored records are unchanged; `97_Encryption` was not modified.
-- Linux dependency tests are run against the exported source; Windows startup is not verified.
-
-
-All notable changes to BrisartIdentityTools are recorded here.
 
 ---
 
