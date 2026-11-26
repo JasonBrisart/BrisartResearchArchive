@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/io/tests/test_input_cleaner.py
 
 Purpose

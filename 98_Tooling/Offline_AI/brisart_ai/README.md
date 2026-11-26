@@ -1,5 +1,9 @@
-# Desktop workspace
+# BrisartAI
 
-`app.py` owns window composition, active search scope and worker lifecycle. `sidebar.py` owns the library actions and counts. `chat_panel.py` owns the query and the Results and Activity views. `dialogs.py` owns library management and settings, with Windows drop support in `windows_drop.py`. `theme.py` supplies the desktop palette without initializing Tk.
+This folder is the BrisartAI application package. It contains the shared application services, local input handling, retrieval engine, state helpers, desktop interface, and their tests. The root launchers live outside this package.
 
-During imports `app.py` runs the service off the Tk thread and polls the latest counts; `dialogs.py` displays progress and keeps the completion summary open. `import_progress.py` formats elapsed time and estimates without Tk. The app owns the import cancellation prompt and stop signal; the import dialog forwards close requests as cancellation while running, without exiting the app. During cancellation, the dialog hides live progress, labels the retained selection for retry, and shows final counts only after safe worker cleanup.
+The `core/`, `io/`, `knowledge/`, and `ui/` subfolders own distinct responsibilities; this package README describes their boundaries rather than claiming that the package itself is only a desktop interface.
+
+## Files and behavior
+
+`sidebar.py` groups Library and Preferences actions and shows offline file and note counts. `app.py` shows the active search scope and delivers worker results through a queue on the Tk thread. `chat_panel.py` preserves drafts while searches run. `dialogs.py` handles imports, source management, notes and settings. `windows_drop.py` bridges Explorer drops; Browse is available without it. `theme.py` owns visual constants.

@@ -1,4 +1,4 @@
-r"""
+"""
 File: cli.py
 
 Purpose

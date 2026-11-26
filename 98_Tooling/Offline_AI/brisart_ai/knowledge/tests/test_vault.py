@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/knowledge/tests/test_vault.py
 
 Purpose

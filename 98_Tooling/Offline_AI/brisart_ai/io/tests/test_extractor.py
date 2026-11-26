@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/io/tests/test_extractor.py
 
 Purpose

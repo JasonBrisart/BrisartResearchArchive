@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/core/tests/test_conversation.py
 
 Purpose

@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/tests/test_intent.py
 
 Purpose

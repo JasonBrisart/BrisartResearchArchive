@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/core/settings.py
 
 Purpose

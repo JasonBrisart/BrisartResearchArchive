@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/native_path.py
 
 Purpose

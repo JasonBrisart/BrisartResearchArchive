@@ -1,4 +1,4 @@
-r"""
+"""
 File: scripts/benchmark_retrieval.py
 
 Purpose

@@ -1,4 +1,10 @@
-# Knowledge and evidence
+# Knowledge
+
+This folder owns the local SQLite source index, bulk ingestion, research notes, relevance ranking, evidence selection, and citation formatting. Query intent enters through the shared query plan.
+
+The ranker retrieves candidate sources; the relevance engine decides which passages support the requested answer, including relationship chains and conflicts. The synthesizer presents those excerpts with their source references. The knowledge tests exercise these behaviors independently of the desktop.
+
+## Files and behavior
 
 `index.py` owns the SQLite index, file previews and transactional source removal. `ingest.py` imports local files; `ranker.py` and `relevance_engine.py` rank by how much of the question occurs together in an indexed passage; `relevance_engine.py` selects evidence and reports support status; `synthesizer.py` formats those excerpts and citations; `vault.py` stores and retrieves notes and related metadata. `tests/` covers indexing, ranking and synthesis. The database schema can retain historical `web` records without searching or deleting them; the conversation layer searches only `file` and `note` records.
 

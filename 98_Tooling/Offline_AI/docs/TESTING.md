@@ -13,6 +13,35 @@ The runner configures external imports before collecting co-located tests. Pass 
 
 The measurements below are preserved 1.4.0 release evidence, not reruns from this documentation pass.
 
+## 1.6.0 benchmark (2026-11-26)
+
+This is a **new execution on the packaged 1.6.0 source**, not a copy of the 1.4.0 results below. The environment was Linux with temporary SQLite indexes and local standard-library substitutes for the unavailable first-party Brisart hash, JSON, URL and inflate modules. Those substitutes were injected only into the test process and are **not included in the release**. The official Native API integration and live Windows desktop remain unverified.
+
+### Judged retrieval relevance and latency
+
+The fixed `knowledge/tests/test_search_quality.py` corpus contains 12 curated files and 14 judged queries spanning mechanism explanations, comparisons, permit facts, and filter behavior. Each query's correct file was labeled before ranking. Three independent insertion orders were tested with the production `ranker.search` function, limit 3 and file-only scope. Elapsed time measures the Python search call after indexing, not import, GUI, or answer rendering.
+
+| Index insertion order | Correct top-1 | Top-1 accuracy | Median search latency | Observed p95 search latency |
+|---|---:|---:|---:|---:|
+| Original | 14/14 | 100% | 0.673 ms | 1.663 ms |
+| Reversed | 14/14 | 100% | 0.653 ms | 0.987 ms |
+| Seeded shuffle (17) | 14/14 | 100% | 0.626 ms | 0.914 ms |
+| **Combined** | **42/42** | **100%** | Not pooled | Not pooled |
+
+These are 42 repeated judgments over **14 unique questions**, not 42 independent examples. Each p95 is the sorted observation at index `int(0.95*(14-1))`, rather than a statistically stable production percentile. The corpus is tiny and curated, so the timing is not comparable to the historical 1.4.0 benchmark's 124-file, 270-query corpus. No new competitor benchmark was executed.
+
+### Automated test executions
+
+| Execution | Observed outcome | Interpretation |
+|---|---|---|
+| Direct `pytest` collection without external APIs | 19 collection errors, 1 skipped | Missing Brisart helper imports; not a code correctness verdict. |
+| Focused search, intent and answer tests with local substitutes | **42 tests passed, 183 subtests passed** | Includes judged ranking and adversarial evidence checks. |
+| Broader intent, knowledge and conversation tests with local substitutes | **174 passed, 189 subtests passed** | All selected tests passed after correcting the temporary runner bootstrap. |
+
+The initial broader execution reported 173 passed, 1 failed, and 189 subtests passed because the temporary harness launched pytest at module import time, which is unsafe for spawned child processes. The traceback explicitly reported Python's multiprocessing bootstrapping error. The harness was corrected to call pytest only under `if __name__ == "__main__":`, and the **same selected tests were rerun successfully: 174 passed and 189 subtests passed in 19.81 seconds**. This was a harness-only correction outside the distributed project, not a change to BrisartAI's importer. The stand-ins remain process-local test substitutes rather than official Native APIs.
+
+**Release gate:** Run `python scripts/run_tests.py -q` and `python scripts/debug_offline_replay.py` with the official Native API stack on the target Windows system, then smoke-test import cancellation, search, citations and the Tk workspace before publication. Do not represent this local benchmark as proof of production throughput or superiority over other retrieval systems.
+
 ## 1.4.0 benchmark
 
 

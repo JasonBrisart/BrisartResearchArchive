@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/ui/tests/test_source_management.py
 
 Purpose

@@ -4,7 +4,7 @@ All notable changes to BrisartAI are documented here, newest release first.
 
 ---
 
-## [1.6.0] - 2026-11-26 — Research workspace, import hardening, and multicore processing.
+## [1.6.0] - 2026-11-26
 
 ### Release overview
 
@@ -26,6 +26,15 @@ No new third-party runtime package, index schema migration, or reindexing is req
 
 - All 60 Python modules, tests and developer utilities received a six-section header review. Each header now contains at least two substantive paragraphs under Purpose; Communication / relationships; Settings / parameters; Edge cases; Known limitations; and Examples. Existing file-specific explanations were retained and supplemented with actual declared entry points, in-tree imports, input ownership, error boundaries and test limitations. This is a documentation-only pass; no executable AST nodes were changed.
 - The source tree compiled and the focused retrieval and conversation suite passed 174 tests and 189 subtests with local stand-ins for unavailable Brisart helpers. This does not replace the Windows desktop or official Native API integration checks. No new module, dependency, state format, or index migration was introduced.
+
+### 1.6.0 benchmark follow-up
+
+- `docs/TESTING.md` now records a fresh 1.6.0 judged relevance and search-latency benchmark on 14 curated queries in three index orders (42/42 top-1 judgments), together with the exact local test outcomes and their dependency limits. An initial spawned-worker failure was traced to the temporary test harness invoking pytest during child-process import; after correcting its `__main__` guard, the broader selected suite passed 174 tests and 189 subtests. No runtime files, test expectations, index data or version identifiers changed in this documentation pass.
+
+### Header and folder documentation cleanup
+
+- Replaced unnecessary raw-string prefixes on 37 module docstrings with conventional triple-quoted headers while preserving the exact interpreted documentation text, including escaped backslashes where necessary. The executable AST was unchanged.
+- Updated all seven existing folder README headings to match their containing folders: BrisartAI, Core, IO, Knowledge, UI, Docs, and Scripts. Each now begins with a folder-specific responsibility description before existing details. The six-section source headers and 1.6.0 benchmark record remain intact.
 
 ### Detailed engineering changes
 

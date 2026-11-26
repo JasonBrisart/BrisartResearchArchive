@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/ui/windows_drop.py
 
 Purpose

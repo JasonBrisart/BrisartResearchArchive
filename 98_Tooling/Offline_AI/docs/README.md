@@ -1,4 +1,10 @@
-# BrisartAI 1.6.0
+# Docs
+
+This folder contains the user-facing BrisartAI guide, versioned engineering changelog, and test and benchmark record. The documents explain how to operate and validate the application; they are not runtime configuration.
+
+`CHANGELOG.md` preserves release history and implementation rationale. `TESTING.md` distinguishes executed tests and measurements from historical benchmarks and integration checks still outstanding.
+
+## Files and behavior
 
 BrisartAI indexes local files and research notes, then answers questions with excerpts and citations. It does not search the internet. Results reflect the indexed copy, not necessarily the current file on disk.
 

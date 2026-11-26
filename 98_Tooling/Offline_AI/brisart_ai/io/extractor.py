@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/io/extractor.py
 
 Purpose
@@ -67,7 +67,7 @@ or speculative extension point has been added as part of this pass.
 
 Examples
 --------
-csv_to_text("material,count\nsteel,4")
+csv_to_text("material,count\\nsteel,4")
 
 Other callable entry points in this module include HTMLTextExtractor.handle_startendtag,
 HTMLTextExtractor.handle_endtag, HTMLTextExtractor.handle_data,

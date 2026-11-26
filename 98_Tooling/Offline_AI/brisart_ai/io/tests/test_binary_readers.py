@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/io/tests/test_binary_readers.py
 
 Purpose

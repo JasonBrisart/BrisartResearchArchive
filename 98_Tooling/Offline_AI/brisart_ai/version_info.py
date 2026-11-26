@@ -1,4 +1,4 @@
-r"""
+"""
 File: brisart_ai/version_info.py
 
 Purpose
