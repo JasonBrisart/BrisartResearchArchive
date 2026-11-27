@@ -38,21 +38,21 @@ All notable changes to BrisartIdentityTools are recorded here.
 
 ## [1.3.14] - 2026-11-26 — LTS-2028 Biometric Recognition Correctness Update
 
-A five-fix biometric correctness release. Voice, fingerprint, and video verification now compare characteristics that distinguish one person from another instead of relying on summary measurements that could be nearly the same across different people, and the video liveness gate no longer treats sensor noise or global lighting changes as sufficient motion.
+A six-fix biometric correctness release. Voice, fingerprint, and video verification now compare characteristics that distinguish one person from another instead of relying on summary measurements that could be nearly the same across different people, and the video liveness gate no longer treats sensor noise or global lighting changes as sufficient motion.
 
-The voice, fingerprint, and video feature extractors, their matchers, and the liveness gate are rewritten. The verification engine also gains safeguards for invalid thresholds and incompatible stored templates.
+The voice, fingerprint, and video feature extractors, their matchers, and the liveness gate are rewritten. The verification engine also gains safeguards for invalid thresholds and incompatible stored templates, and the synthetic voice sample generator is corrected so generated recordings contain voiced material for their intended duration.
 
 The three biometric modalities and their commands are unchanged. No external dependency is added, and encrypted storage, sealed-envelope formats, identity records, attachments, the command line, and the desktop interface are unchanged.
 
 This is a recognition-correctness release, not a security fix. The liveness changes improve the correctness of the existing motion-presence check but do not turn it into an anti-spoofing system.
 
-Under the LTS-2028 release model, these corrections originate in LTS-2028 1.3.14 and are carried unchanged to LTS-2028 1.4.5 and Official 1.10.5, with the same implementation and tests, so the three supported lines do not drift.
+Under the LTS-2028 release model, these corrections originate in LTS-2028 1.3.14 and are carried unchanged to LTS-2028 1.4.5 and Official 1.10.5, with the same biometric implementation and tests, so the three supported lines do not drift.
 
 ### Compatibility — read this first
 
 The template produced by each biometric extractor has changed length. Every stored voice, fingerprint, and video template enrolled by an earlier release must therefore be enrolled again.
 
-Verification detects an incompatible template length and reports that the affected identity and modality must be re-enrolled. It never compares templates of different formats and never rewrites an existing stored record automatically.
+Verification detects an incompatible template length and reports that the affected identity and modality must be re-enrolled. It never compares templates of different representations and never rewrites an existing stored record automatically.
 
 Scores produced by this release are not comparable with scores produced by earlier releases.
 
@@ -74,6 +74,8 @@ Template lengths change as follows:
 
 Encrypted storage, sealed-envelope formats, identity records, attachments, the command line, and the desktop interface are unchanged.
 
+The biometric template representations introduced in 1.3.14 are intentionally incompatible with earlier template representations. This is a biometric-template compatibility change, not a change to the encrypted storage or identity-record format.
+
 ### Why these corrections were necessary
 
 The previous biometric extractors produced representations that did not separate identities reliably enough.
@@ -88,7 +90,7 @@ The liveness gate averaged absolute frame-to-frame pixel differences. Sensor noi
 
 ---
 
-### Fix 1 of 5 — Voice features did not distinguish speakers reliably
+### Fix 1 of 6 — Voice features did not distinguish speakers reliably
 
 | Field | Details |
 |---|---|
@@ -161,7 +163,7 @@ The FFT is checked against the definition of the discrete Fourier transform, and
 
 ---
 
-### Fix 2 of 5 — Fingerprint matching was excessively sensitive to placement
+### Fix 2 of 6 — Fingerprint matching was excessively sensitive to placement
 
 | Field | Details |
 |---|---|
@@ -220,7 +222,7 @@ Flat, nearly flat, ridge-free, and dimensionally invalid images are refused.
 
 ---
 
-### Fix 3 of 5 — Video templates encoded lighting and motion as identity
+### Fix 3 of 6 — Video templates encoded lighting and motion as identity
 
 | Field | Details |
 |---|---|
@@ -273,7 +275,7 @@ Uniform clips, invalid dimensions, and incompatible template lengths are refused
 
 ---
 
-### Fix 4 of 5 — Liveness treated sensor noise and global lighting changes as motion
+### Fix 4 of 6 — Liveness treated sensor noise and global lighting changes as motion
 
 | Field | Details |
 |---|---|
@@ -337,15 +339,15 @@ Four tests were added covering:
 
 ---
 
-### Fix 5 of 5 — Verification accepted invalid thresholds and did not explain incompatible templates
+### Fix 5 of 6 — Verification accepted invalid thresholds and did not explain incompatible templates
 
 | Field | Details |
 |---|---|
 | ID | `LTS-2028-COR-15` |
 | Severity | Medium |
-| Component | `biometrics/engine/verification.py`, `biometrics/samples/sample_generator.py` |
+| Component | `biometrics/engine/verification.py` |
 | Affected versions | `1.3.0 – 1.3.13` |
-| Files changed | `biometrics/engine/verification.py`; `biometrics/samples/sample_generator.py`; `biometrics/tests/test_template_compatibility.py`; related tests and documentation |
+| Files changed | `biometrics/engine/verification.py`; `biometrics/tests/test_template_compatibility.py`; related tests and documentation |
 
 **Gap.** `verify_modality()` did not fully validate its threshold before opening and comparing a stored template.
 
@@ -371,15 +373,29 @@ When the stored template and the probe have different lengths, verification rais
 
 Verification never compares incompatible templates and does not silently rewrite the stored record.
 
-**Sample-generator correction.** `biometrics/samples/sample_generator.py` contained a separate correctness fault exposed while validating the new voice extractor.
+**Verification.** `test_template_compatibility.py` contains four tests.
 
-The synthetic voice envelope used:
+A stale template from each biometric modality produces the re-enrol message. A current-format template verifies normally. Invalid thresholds are rejected before a stored template is opened.
+
+---
+
+### Fix 6 of 6 — Synthetic voice samples became silent after 50 ms
+
+| Field | Details |
+|---|---|
+| ID | `LTS-2028-COR-16` |
+| Severity | Low |
+| Component | `biometrics/samples/sample_generator.py` |
+| Affected versions | `1.3.0 – 1.3.13` |
+| Files changed | `biometrics/samples/sample_generator.py`; related biometric tests |
+
+**Gap.** The synthetic voice envelope used:
 
 `cos(2*pi*t/0.05)`
 
-That envelope returned to zero after 50 ms, so the generated voice became silent after approximately its first 50 ms.
+The envelope returned to zero after 50 ms, causing each generated voice sample to become silent after approximately its first 50 ms. The generated sample therefore did not represent the intended full-duration synthetic voice signal.
 
-The generator now uses:
+**Fix.** The envelope now uses:
 
 `cos(pi*t/0.05)`
 
@@ -387,9 +403,7 @@ and holds full level for the remainder of the generated recording.
 
 Voice files produced by `make-samples` therefore change as a result.
 
-**Verification.** `test_template_compatibility.py` contains four tests.
-
-A stale template from each biometric modality produces the re-enrol message. A current-format template verifies normally. Invalid thresholds are rejected before a stored template is opened.
+**Verification.** The corrected samples are exercised by the biometric voice tests used to validate the new extractor and matcher. Generated samples now provide usable voiced content across the intended recording duration.
 
 ---
 
@@ -506,7 +520,7 @@ There is no change to cryptographic primitives, encrypted-storage formats, seale
 
 No new dependency is introduced. The biometric implementation remains standard-library only.
 
-The stored biometric template payloads are intentionally incompatible with templates generated by releases through 1.3.13:
+The biometric template representations introduced in 1.3.14 are intentionally incompatible with templates generated by releases through 1.3.13:
 
 | Modality | Old length | 1.3.14 length | Required action |
 |---|---:|---:|---|
@@ -522,7 +536,7 @@ The default thresholds remain voice `0.85`, fingerprint `0.80`, and video `0.75`
 
 Data unrelated to biometric feature templates continues to use the same formats as before.
 
-The same biometric correctness changes, comparison behavior, validation rules, and tests are carried forward unchanged to LTS-2028 1.4.5 and Official 1.10.5. Only release-line-specific version information differs.
+The same six biometric correctness fixes, comparison behavior, validation rules, and tests are carried forward unchanged to LTS-2028 1.4.5 and Official 1.10.5. Only release-line-specific version, encryption-integration, and test-execution details differ where applicable.
 
 ---
 
