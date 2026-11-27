@@ -60,7 +60,7 @@ from one another in raw magnitude. In particular:
 
 ---
 
-### Change 1 of 5 — Voice (`biometrics/features/voice_features.py`, `biometrics/codecs/dsp.py`)
+### Change 1 of 6 — Voice (`biometrics/features/voice_features.py`, `biometrics/codecs/dsp.py`)
 
 | Field | Details |
 |---|---|
@@ -68,44 +68,15 @@ from one another in raw magnitude. In particular:
 | **Template** | 12 mel-frequency cepstral coefficients plus median pitch, 13 values |
 | **Files changed** | `voice_features.py` rewritten; `dsp.py` gains an FFT, mel filterbank, and pitch estimator |
 
-**What it does now.** Each recording is pre-emphasised (0.97), cut into 32 ms
-Hamming-windowed frames with 50% overlap, and converted to a power spectrum with
-an FFT. Stationary background noise is estimated from the quietest 15% of
-frames and subtracted (three times over) from every spectrum, but only when the
-recording really has pauses to measure it in; unbroken speech or a sustained
-tone is left alone. Frames below 10% of the loudest cleaned frame are treated as
-pauses. The spectrum is pooled into 24 mel-scale bands between 100 Hz and 95%
-of the Nyquist frequency, each band is floored at 3% of its own peak so that
-bands buried in noise take the same value in a clean and a noisy recording, the
-log energies are decorrelated with a DCT, and coefficients 1 to 12 are averaged
-over the speech frames. Coefficient 0, the overall level, is discarded, so
-recording gain does not change the template. The thirteenth value is the median
-fundamental frequency of the voiced frames, as `10 * log2(pitch / 100 Hz)`,
-measured by FFT-based autocorrelation.
+**What it does now.** Each recording is pre-emphasised (`0.97`), cut into 32 ms Hamming-windowed frames with 50% overlap, and converted to a power spectrum with an FFT. Stationary background noise is estimated from the quietest 15% of frames and subtracted three times from every spectrum, but only when the recording really has pauses to measure it in; unbroken speech or a sustained tone is left alone. Frames below 10% of the loudest cleaned frame are treated as pauses. The spectrum is pooled into 24 mel-scale bands between 100 Hz and 95% of the Nyquist frequency, each band is floored at 3% of its own peak so that bands buried in noise take the same value in a clean and a noisy recording, the log energies are decorrelated with a DCT, and coefficients 1 to 12 are averaged over the speech frames. Coefficient 0, the overall level, is discarded, so recording gain does not change the template. The thirteenth value is the median fundamental frequency of the voiced frames, as `10 * log2(pitch / 100 Hz)`, measured by FFT-based autocorrelation.
 
-**Matching.** `compare()` maps the Euclidean distance `d` between two templates
-through `exp(-d / 25)`, so identical templates score exactly 1.0.
+**Matching.** `compare()` maps the Euclidean distance `d` between two templates through `exp(-d / 25)`, so identical templates score exactly `1.0`.
 
-**Refused input.** `VoiceFeatureError` is raised for a sample rate that is not
-an integer of at least 4000 Hz (booleans included), empty input, non-numeric,
-boolean, NaN, or infinite samples, a constant or silent recording, a recording
-too short for four analysis frames, and a recording with fewer than three
-voiced frames, so noise alone cannot be enrolled as a voice. A comparison of
-templates of different lengths raises the same error; vectors of the right
-length with non-finite values score 0.0.
+**Refused input.** `VoiceFeatureError` is raised for a sample rate that is not an integer of at least 4000 Hz, including booleans; empty input; non-numeric, boolean, NaN, or infinite samples; a constant or silent recording; a recording too short for four analysis frames; and a recording with fewer than three voiced frames, so noise alone cannot be enrolled as a voice. A comparison of templates of different lengths raises the same error; vectors of the right length with non-finite values score `0.0`.
 
-**Signal-processing primitives (`dsp.py`).** Added `next_power_of_two()`,
-`fft()` (iterative radix-2, standard library only), `power_spectrum()`,
-`hz_to_mel()`, `mel_to_hz()`, `mel_filterbank()`, `apply_filterbank()`, and
-`estimate_pitch()`. Removed `frame_signal()`, `zero_crossing_rate()`,
-`band_energies()`, `normalize_vector()`, and the `DEFAULT_FRAME_SIZE` and
-`DEFAULT_HOP_SIZE` constants: nothing else uses them, and `band_energies()` is
-the time-segment measurement described above. The header is rewritten to
-describe the module as it now is.
+**Signal-processing primitives (`dsp.py`).** Added `next_power_of_two()`, `fft()` (iterative radix-2, standard library only), `power_spectrum()`, `hz_to_mel()`, `mel_to_hz()`, `mel_filterbank()`, `apply_filterbank()`, and `estimate_pitch()`. Removed `frame_signal()`, `zero_crossing_rate()`, `band_energies()`, `normalize_vector()`, and the `DEFAULT_FRAME_SIZE` and `DEFAULT_HOP_SIZE` constants: nothing else uses them, and `band_energies()` is the time-segment measurement described above. The header is rewritten to describe the module as it now is.
 
----
-
-### Change 2 of 5 — Fingerprint (`biometrics/features/fingerprint_features.py`)
+### Change 2 of 6 — Fingerprint (`biometrics/features/fingerprint_features.py`)
 
 | Field | Details |
 |---|---|
@@ -113,33 +84,13 @@ describe the module as it now is.
 | **Template** | A 16 by 16 grid of `(cos 2t, sin 2t)` ridge-orientation vectors, scaled by ridge coherence, 512 values |
 | **Files changed** | Rewritten |
 
-**What it does now.** The image is resized to 128 by 128, normalised against the
-mean and spread of each pixel's own 17 by 17 neighbourhood (so a faint, dry, or
-over-inked impression has the same scale as a good one), and lightly smoothed.
-Gradients are accumulated over 8 by 8 pixel blocks into a structure tensor,
-pooled with the eight neighbouring blocks, and each cell stores the dominant
-ridge orientation as a doubled-angle vector whose length is the local coherence.
-A blank, smudged, or noisy cell therefore carries little weight.
+**What it does now.** The image is resized to 128 by 128, normalised against the mean and spread of each pixel's own 17 by 17 neighbourhood, so a faint, dry, or over-inked impression has the same scale as a good one, and lightly smoothed. Gradients are accumulated over 8 by 8 pixel blocks into a structure tensor, pooled with the eight neighbouring blocks, and each cell stores the dominant ridge orientation as a doubled-angle vector whose length is the local coherence. A blank, smudged, or noisy cell therefore carries little weight.
 
-**Matching.** `compare()` rotates and shifts the probe's flow field to best align
-with the enrolled one and returns the coherence-weighted mean of
-`cos(2 * angle difference)` over the overlap, raised to the sixth power.
-The search is coarse to fine: every 15 degrees over a full circle with one cell
-of shift on a field pooled to 8 by 8, then 3-degree steps within 7.5 degrees
-and two cells of shift on the full field around the best three coarse
-candidates. At least 40% of cells must overlap. A probe of the same print
-rotated by any angle, or shifted by up to about 16 pixels, scores as the same
-print.
+**Matching.** `compare()` rotates and shifts the probe's flow field to best align with the enrolled one and returns the coherence-weighted mean of `cos(2 * angle difference)` over the overlap, raised to the sixth power. The search is coarse to fine: every 15 degrees over a full circle with one cell of shift on a field pooled to 8 by 8, then 3-degree steps within 7.5 degrees and two cells of shift on the full field around the best three coarse candidates. At least 40% of cells must overlap. A probe of the same print rotated by any angle, or shifted by up to about 16 pixels, scores as the same print.
 
-**Refused input.** `FingerprintFeatureError` is raised for bad dimensions or a
-wrong-sized buffer, an image spanning fewer than 8 gray levels, and an image in
-which no region shows coherent ridges (uniform, noise-only, or fully blurred).
-Templates of different lengths raise it; non-finite or evidence-free templates
-score 0.0.
+**Refused input.** `FingerprintFeatureError` is raised for bad dimensions or a wrong-sized buffer, an image spanning fewer than eight grey levels, and an image in which no region shows coherent ridges (uniform, noise-only, or fully blurred). Templates of different lengths raise it; non-finite or evidence-free templates score `0.0`.
 
----
-
-### Change 3 of 5 — Video template (`biometrics/features/video_features.py`)
+### Change 3 of 6 — Video template (`biometrics/features/video_features.py`)
 
 | Field | Details |
 |---|---|
@@ -147,162 +98,38 @@ score 0.0.
 | **Template** | An illumination-normalised 24 by 24 appearance image, 576 values |
 | **Files changed** | Rewritten |
 
-**What it does now.** Each sampled frame (at most 12; longer clips are evenly
-subsampled) is reduced to 48 by 48, gamma-compressed so that a lighting gain
-becomes an additive offset, band-passed with a difference of Gaussians (widths
-1.5 and 4.0) to remove slowly varying shading and fine noise, contrast-equalised,
-soft-limited with `tanh`, and pooled to 24 by 24. The per-pixel median over
-the frames is the template, which discards a blink, a hand passing the lens, or
-a few corrupted frames. Motion is no longer part of the template: how a person
-moves differs from one recording to the next, and whether motion is real is the
-liveness gate's job.
+**What it does now.** Each sampled frame, at most 12 with longer clips evenly subsampled, is reduced to 48 by 48, gamma-compressed so that a lighting gain becomes an additive offset, band-passed with a difference of Gaussians (widths `1.5` and `4.0`) to remove slowly varying shading and fine noise, contrast-equalised, soft-limited with `tanh`, and pooled to 24 by 24. The per-pixel median over the frames is the template, which discards a blink, a hand passing the lens, or a few corrupted frames. Motion is no longer part of the template: how a person moves differs from one recording to the next, and whether motion is real is the liveness gate's job.
 
-**Matching.** `compare()` slides one template over the other by up to three cells
-in each direction, takes the smallest root-mean-square difference over the
-overlap, and maps it through `exp(-d / 0.55)`. Small changes in framing do not
-count against a match.
+**Matching.** `compare()` slides one template over the other by up to three cells in each direction, takes the smallest root-mean-square difference over the overlap, and maps it through `exp(-d / 0.55)`. Small changes in framing do not count against a match.
 
-**Refused input.** `VideoFeatureError` is raised for bad dimensions, an empty
-clip, a frame of the wrong length, and a clip in which every sampled frame is
-uniform. A clip with only some blank frames is accepted from the frames that have
-detail.
+**Refused input.** `VideoFeatureError` is raised for bad dimensions, an empty clip, a frame of the wrong length, and a clip in which every sampled frame is uniform. A clip with only some blank frames is accepted from the frames that have detail.
 
----
-
-### Change 4 of 5 — Liveness (`biometrics/features/liveness.py`)
+### Change 4 of 6 — Liveness (`biometrics/features/liveness.py`)
 
 | Field | Details |
 |---|---|
 | **Component** | `biometrics/features/liveness.py` |
 | **Files changed** | `compute_coherent_motion()` and a noise estimator added; `assess_liveness()` extended |
 
-**Before.** `assess_liveness()` reported a clip as live when the mean absolute
-frame-to-frame pixel difference reached 0.75.
+**Before.** `assess_liveness()` reported a clip as live when the mean absolute frame-to-frame pixel difference reached `0.75`.
 
-**Now.** A clip is live only when that measure still reaches 0.75 *and*
-`compute_coherent_motion()` finds localised change above the clip's own noise.
-Frames are reduced to a 16 by 16 grid of block means, which averages pixel noise
-down by the block area. For each pair of frames the overall brightness change
-(an offset and a gain fitted by least squares, which is what a flickering light
-or an auto-exposure step produces) is removed. The sensor-noise level is
-estimated from the frames' finest-scale texture (Immerkaer's estimator), so it
-does not depend on how much of the picture moves. Blocks whose residual exceeds
-five times the expected block noise, and that have a neighbouring block doing
-the same, are counted; the clip must show at least 0.5% of such blocks. Frames
-too small to analyse (under 4 pixels) are judged by the frame-difference gate
-alone.
+**Now.** A clip is live only when that measure still reaches `0.75` and `compute_coherent_motion()` finds localised change above the clip's own noise. Frames are reduced to a 16 by 16 grid of block means, which averages pixel noise down by the block area. For each pair of frames the overall brightness change, an offset and a gain fitted by least squares, which is what a flickering light or an auto-exposure step produces, is removed. The sensor-noise level is estimated from the frames' finest-scale texture using Immerkaer's estimator, so it does not depend on how much of the picture moves. Blocks whose residual exceeds five times the expected block noise, and that have a neighbouring block doing the same, are counted; the clip must show at least 0.5% of such blocks. Frames too small to analyse, under four pixels, are judged by the frame-difference gate alone.
 
-The result dictionary keeps `motion_energy`, `threshold`, and `is_live` and adds
-`coherent_motion` and `coherent_threshold`. `assess_liveness()` now rejects a
-non-finite, boolean, or non-numeric threshold; `compute_*` functions reject
-boolean or non-integer dimensions.
+The result dictionary keeps `motion_energy`, `threshold`, and `is_live` and adds `coherent_motion` and `coherent_threshold`. `assess_liveness()` now rejects a non-finite, boolean, or non-numeric threshold; `compute_*` functions reject boolean or non-integer dimensions.
 
-**What it still does not do.** A photograph moved in front of the camera, a
-replayed recording, a mask, and a deepfake all contain real motion and are
-accepted. A subject who is completely still for the whole clip, without blinking
-or speaking, is refused. This is a motion-presence check, not anti-spoofing.
+**What it still does not do.** A photograph moved in front of the camera, a replayed recording, a mask, and a deepfake all contain real motion and are accepted. A subject who is completely still for the whole clip, without blinking or speaking, is refused. This is a motion-presence check, not anti-spoofing.
 
----
+### Change 5 of 6 — Verification engine (`biometrics/engine/verification.py`)
 
-### Change 5 of 5 — Verification engine and sample generator
+`verify_modality()` now rejects a `threshold` that is NaN, infinite, zero, negative, above `1`, a boolean, or not a number, with `VerificationError`, before any stored template is opened. Previously a NaN threshold made every comparison fail silently and a threshold of `0` accepted everyone.
 
-**`biometrics/engine/verification.py`.**
+When the stored template and the probe have different lengths, as happens with a template made by an earlier version, verification raises `VerificationError` naming the identity and modality and telling the owner to enrol that modality again, instead of an unexplained `ValueError`.
 
-- `verify_modality()` now rejects a `threshold` that is NaN, infinite, zero,
-  negative, above 1, a boolean, or not a number, with `VerificationError`,
-  before any stored template is opened. Previously a NaN threshold made every
-  comparison fail silently and a threshold of 0 accepted everyone.
-- When the stored template and the probe have different lengths, as happens with
-  a template made by an earlier version, verification raises
-  `VerificationError` naming the identity and modality and telling the owner to
-  enrol that modality again, instead of an unexplained `ValueError`.
+### Change 6 of 6 — Sample generator (`biometrics/samples/sample_generator.py`)
 
-**`biometrics/samples/sample_generator.py`.** The synthetic voice envelope used
-`cos(2*pi*t/0.05)`, which returns to zero after 50 ms, so every generated voice
-sample was silent after its first 50 ms. It now uses `cos(pi*t/0.05)` and holds
-full level for the whole duration. Generated voice files from `make-samples`
-change as a result.
+The synthetic voice envelope used `cos(2*pi*t/0.05)`, which returns to zero after 50 ms, so every generated voice sample was silent after its first 50 ms. It now uses `cos(pi*t/0.05)` and holds full level for the whole duration. Generated voice files from `make-samples` change as a result.
 
-**`biometrics/features/similarity.py` removed.** `distance_similarity()` was
-used only by the three old matchers; each modality now owns its comparison.
-
----
-
-### Tests
-
-On this line the 121 tests in the 7 modules that need no sealed encryption
-(voice, fingerprint, video, codec and DSP, video support, report writer,
-identity-id validation) pass. The other 10 modules seal templates through
-`97_Encryption/v4`, which was not available where this release was built, so
-**they have not been run on this line.** They pass on LTS-2028 1.3.14, whose
-biometric code is byte-identical to this line's, and the encryption entry
-points that code calls have identical signatures on all three lines. Run the
-full suite in the archive layout before this release is tagged. 58 tests are in
-four new modules, and four were added to `test_liveness.py`:
-
-- **`test_voice_features.py` (23 tests).** The same speaker stays above the default
-  threshold across recordings and phrases and a different speaker stays below;
-  recording gain leaves the template unchanged; moderate noise keeps the same
-  speaker closer than a different one; a sustained tone is accepted; silence,
-  noise, short, non-finite, and badly-rated input is refused; a template of
-  another length is detected. The FFT is checked against the definition of the
-  DFT, and the pitch estimator and filterbank against known tones.
-- **`test_fingerprint_features.py` (14 tests).** A print rotated by 25, 90, and 180
-  degrees, shifted, noisy, faint, or re-contrasted still matches; a print of a
-  different pattern type does not; flat, nearly flat, and ridge-free images and
-  bad dimensions are refused.
-- **`test_video_features.py` (17 tests).** Gain, offset, and strong left-to-right
-  lighting changes, noise, a small framing shift, and corrupted frames still
-  match; a clearly different scene does not; uniform clips, bad dimensions, and
-  a template of another length are refused.
-- **`test_template_compatibility.py` (4 tests).** A stale template of each
-  modality produces the re-enrol message; a current template verifies; every
-  invalid threshold is refused before a template is opened.
-- **Updated:** `test_liveness.py` (22 tests) now uses a moving object for its "moving"
-  fixture (the old one brightened every pixel together, which the new gate
-  correctly refuses) and gains tests for brightness-only change, sensor noise on
-  a still scene, the reported coherent-motion evidence, and non-finite thresholds.
-  `test_codec_and_dsp_support.py` (26 tests) replaces the tests of the removed
-  helpers with tests of windowing, energy, and the DCT. `test_video_support.py`
-  asserts a finite template for a single frame instead of a zero motion half.
-
-All test inputs are generated by the tests themselves from the standard
-library. Passing shows the code behaves as designed on those inputs.
-
----
-
-### Documentation
-
-`biometrics/README.md` is rewritten for the new templates, matching, and liveness
-gate. The module headers of `voice_features.py`, `fingerprint_features.py`,
-`video_features.py`, `liveness.py`, and `dsp.py` are rewritten in the standard
-six sections. `docs/KNOWN_ISSUES.md` gains KI-013 and extends KI-001.
-`version.py` is `1.10.5`.
-
----
-
-### Limits of this release
-
-- **Calibrated on synthetic data only (KI-013).** The score constants
-  (`DISTANCE_SCALE` for voice and video, `SCORE_POWER` for fingerprint) place each
-  default threshold at about 1% impostor acceptance on generated voices, ridge
-  patterns, and drawn faces. No real recording, scanner image, or camera clip was
-  available. Real false-accept and false-reject rates are unknown, and the
-  liveness threshold is equally uncalibrated (KI-001).
-- **Not recognition models.** The voice template is one averaged vector, so
-  different spoken content, recordings near one second, and a different
-  microphone shift it. The fingerprint template stores ridge flow without
-  minutiae, so it separates fingers by overall pattern and is weaker for fingers
-  of one pattern class with similar layouts. The video template is an appearance
-  image with no face detection or alignment and needs consistent framing.
-  None of the three detects replayed audio, a fake finger, or a printed photo.
-- **Cost.** Extraction is pure Python: roughly 0.4 s per voice recording of about
-  two and a half seconds, 0.2 s per fingerprint image plus about 0.1 s per
-  comparison, and 0.5 s per ten-frame clip on the machine this was built on.
-- **Not run:** Windows startup and the desktop interface were not exercised, and no
-  existing enrolled identity was migrated, because stored templates must be
-  enrolled again.
-- **Encryption-dependent tests on this line:** not run (see Tests). The full suite must be run with `97_Encryption/v4` beside `98_Tooling` before release.
+`biometrics/features/similarity.py` removed. `distance_similarity()` was used only by the three old matchers; each modality now owns its comparison.
 
 ---
 
